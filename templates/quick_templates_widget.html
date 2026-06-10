@@ -1,0 +1,181 @@
+﻿
+<style>.template-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:12px}.template-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;justify-content:space-between;gap:10px}.template-title{font-weight:800;margin-bottom:4px}.template-meta{font-size:.75rem;color:var(--muted);line-height:1.5}.icon-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:30px;height:30px;cursor:pointer}</style>
+<script>(()=>{let T=[];const q=id=>document.getElementById(id),A=u=>fetch(u).then(r=>r.json()),P=(u,d)=>fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}).then(r=>r.json()),E=v=>String(v??"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function logControls(){let m=q("nu-meal"),v=q("vit-name");if(m&&!q("nu-template")){let d=document.createElement("div");d.className="fg";d.style.marginBottom="8px";d.innerHTML="<label>Hazır seç</label><select id=nu-template><option value=>Şablon seç...</option></select>";m.closest(".card").querySelector(".card-head").after(d);q("nu-template").onchange=e=>meal(e.target.value)}if(v&&!q("vit-template")){let d=document.createElement("div");d.className="fg";d.style.marginBottom="8px";d.innerHTML="<label>Hazır seç</label><select id=vit-template><option value=>Şablon seç...</option></select>";v.closest(".card").querySelector(".card-head").after(d);q("vit-template").onchange=e=>sup(e.target.value)}}
+function tab(){if(q("tab-templates"))return;let tabs=document.querySelector(".tabs"),c=document.querySelector(".container"),t=document.createElement("div");t.className="tab";t.textContent="Şablonlar";t.onclick=show;tabs.appendChild(t);let p=document.createElement("div");p.className="tab-content";p.id="tab-templates";
+p.innerHTML=`<div class=cards-grid><div class=card><div class=card-head><span class=card-icon>🥣</span><div><div class=card-name>Yemek Şablonu</div><div class=card-sub>Kahvaltı, pre, post ve sabit öğünler</div></div></div><div class=form-row><div class=fg><label>Tür</label><select id=tmc><option>kahvaltı</option><option>öğle</option><option>akşam</option><option>ara öğün</option><option>pre-workout</option><option>post-workout</option></select></div><div class=fg><label>Ad</label><input id=tmt placeholder="Standart kahvaltı"></div><div class=fg><label>Kalori</label><input type=number id=tmk placeholder=650></div></div><div class=fg style="margin-bottom:8px"><label>İçerik</label><textarea id=tmd placeholder="3 yumurta, yulaf, muz..."></textarea></div><button class=btn onclick=saveMealTemplate()>Şablonu Kaydet</button></div>`;
+p.innerHTML+=`<div class=card><div class=card-head><span class=card-icon>💊</span><div><div class=card-name>Supplement Şablonu</div><div class=card-sub>Tekrar kullandığın takviyeler</div></div></div><div class=form-row><div class=fg><label>Grup</label><select id=tsc><option>supplement</option><option>pre-workout</option><option>post-workout</option><option>sabah</option><option>akşam</option></select></div><div class=fg><label>Ad</label><input id=tst placeholder=D3></div></div><div class=form-row><div class=fg><label>Miktar</label><input id=tsa placeholder=5000></div><div class=fg><label>Birim</label><input id=tsu placeholder="IU / mg"></div></div><button class=btn onclick=saveSupplementTemplate()>Şablonu Kaydet</button></div></div><div class=section-title>Kayıtlı Şablonlar</div><div class=template-list id=template-list></div>`;c.appendChild(p)}
+function show(){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab")[5].classList.add("active");q("tab-templates").classList.add("active");load()}
+async function load(){T=await A("/api/templates");sels();list()}
+function sels(){let M=T.filter(x=>x.kind==="meal"),S=T.filter(x=>x.kind==="supplement"),m=q("nu-template"),s=q("vit-template");if(m)m.innerHTML="<option value=>Şablon seç...</option>"+M.map(x=>`<option value=${x.id}>${E(x.category)} · ${E(x.title)}</option>`).join("");
+if(s)s.innerHTML="<option value=>Şablon seç...</option>"+S.map(x=>`<option value=${x.id}>${E(x.category)} · ${E(x.title)}</option>`).join("")}
+function list(){let el=q("template-list");if(!el)return;if(!T.length){el.innerHTML="<div class=template-item><div><div class=template-title>Henüz şablon yok</div><div class=template-meta>Kahvaltı, pre/post yemek veya supplementlerini buradan kaydet.</div></div></div>";return}
+el.innerHTML=T.map(x=>`<div class=template-item><div><div class=template-title>${E(x.title)}</div><div class=template-meta>${E(x.category)} · ${x.kind==="meal"?(E(x.calories||"")+" kcal<br>"+E(x.description||"")):(E(x.amount||"")+" "+E(x.unit||""))}</div></div><div><button class=icon-btn onclick=useTemplate(${x.id})>↗</button><button class=icon-btn onclick=delTemplate(${x.id})>✕</button></div></div>`).join("")}
+window.meal=id=>{let x=T.find(a=>String(a.id)===String(id));if(!x)return;q("nu-meal").value=x.category||"kahvaltı";q("nu-desc").value=x.description||"";q("nu-cal").value=x.calories||""};window.sup=id=>{let x=T.find(a=>String(a.id)===String(id));if(!x)return;q("vit-name").value=x.title||"";q("vit-amount").value=x.amount||"";q("vit-unit").value=x.unit||""};
+window.useTemplate=id=>{let x=T.find(a=>a.id===id);if(!x)return;switchTab("log");if(x.kind==="meal"){q("nu-template").value=id;meal(id)}else{q("vit-template").value=id;sup(id)}};window.delTemplate=async id=>{await fetch(`/api/templates/${id}`,{method:"DELETE"});toast("Şablon silindi");load()};
+window.saveMealTemplate=async()=>{let title=q("tmt").value.trim();if(!title)return toast("Şablon adı gerekli");await P("/api/templates",{kind:"meal",category:q("tmc").value,title,description:q("tmd").value,calories:parseInt(q("tmk").value)||null});q("tmt").value="";q("tmd").value="";q("tmk").value="";toast("Yemek şablonu kaydedildi");load()};
+window.saveSupplementTemplate=async()=>{let title=q("tst").value.trim();if(!title)return toast("Şablon adı gerekli");await P("/api/templates",{kind:"supplement",category:q("tsc").value,title,amount:q("tsa").value,unit:q("tsu").value});q("tst").value="";q("tsa").value="";q("tsu").value="";toast("Supplement şablonu kaydedildi");load()};tab();logControls();load()})();</script>
+<script>(()=>{const q=id=>document.getElementById(id),A=u=>fetch(u).then(r=>r.json()),P=(u,d)=>fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}).then(r=>r.json());let MT=[],ME=[];const slots=["kahvaltı","öğle","ara atıştırma","pre-workout","post-workout","akşam"];
+function panel(){if(q("meal-board"))return;let host=q("tab-log").querySelector(".cards-grid"),d=document.createElement("div");d.id="meal-board";d.className="card";d.style.marginBottom="14px";d.innerHTML=`<div class=card-head><span class=card-icon>🍽️</span><div><div class=card-name>Öğün Düzeni</div><div class=card-sub>Sabit öğünler ve extra / dışarıdan yemek</div></div></div><div id=meal-slots></div><div class=form-row><div class=fg><label>Extra / dışarıdan</label><input id=exmeal placeholder="Burger, dışarıdan tavuk..."></div><div class=fg><label>Kalori</label><input id=excal type=number></div></div><button class=btn onclick=saveExtraMeal()>Extra Ekle</button>`;host.before(d)}
+function draw(){let b=q("meal-slots");b.innerHTML="";slots.forEach(s=>row(s,b));document.querySelectorAll("[data-meal-select]").forEach(x=>x.onchange=()=>fillSlot(x.dataset.slot,x.value))}
+function row(s,b){let e=ME.find(x=>x.slot===s)||{},d=document.createElement("div");d.className="form-row";d.style.alignItems="flex-end";d.innerHTML=`<div class=fg><label>${s}</label><select data-meal-select data-slot="${s}" id="sel-${s}"></select></div><div class=fg><input id="txt-${s}" placeholder="serbest değiştir"></div><div class=fg style="max-width:110px"><input id="cal-${s}" type=number placeholder=kcal></div><button class="btn btn-ghost" style="width:auto">Kaydet</button>`;b.appendChild(d);
+q("txt-"+s).value=e.description||e.title||"";q("cal-"+s).value=e.calories||"";d.querySelector("button").onclick=()=>saveMealSlot(s);fillOptions(q("sel-"+s))}
+function fillOptions(el){el.innerHTML="<option value=>Şablon seç</option>"+MT.map(t=>"<option value="+t.id+">"+t.category+" · "+t.title+"</option>").join("")}
+window.fillSlot=(s,id)=>{let t=MT.find(x=>String(x.id)===String(id));if(!t)return;q("txt-"+s).value=t.description||t.title||"";q("cal-"+s).value=t.calories||""}
+window.saveMealSlot=async s=>{await P("/api/meals",{slot:s,title:s,description:q("txt-"+s).value,calories:parseInt(q("cal-"+s).value)||null,source:"plan"});toast(s+" kaydedildi");mealLoad()}
+window.saveExtraMeal=async()=>{if(!q("exmeal").value.trim())return toast("Extra yemek adı gerekli");await P("/api/meals",{slot:"extra",title:"extra",description:q("exmeal").value,calories:parseInt(q("excal").value)||null,source:"extra"});q("exmeal").value="";q("excal").value="";toast("Extra yemek eklendi");mealLoad()}
+async function mealLoad(){MT=(await A("/api/templates")).filter(x=>x.kind==="meal");ME=await A("/api/meals/today");draw()}panel();mealLoad()})();</script>
+<style id="lively-theme">:root{--bg:#10131a;--bg2:#181d27;--bg3:#222938;--border:#344052;--red:#ff6b4a;--red2:#2dd4bf;--red-dim:#7c3aed;--text:#f8fafc;--muted:#a7b1c2;--push:#ff6b4a;--pull:#2dd4bf;--leg:#fbbf24;--upper:#8b5cf6;--lower:#22c55e;--off:#64748b}body{background:radial-gradient(circle at top left,#172033 0,#10131a 34%,#0f1720 100%)}header{background:#171b26cc;backdrop-filter:blur(10px);border-bottom:2px solid #2dd4bf}.logo em,.section-title,.tab.active{color:#2dd4bf}.section-title{border-left-color:#ff6b4a}.tab.active{border-bottom-color:#2dd4bf}.stat,.card,.chart-card,.report-box,.day-panel{background:linear-gradient(180deg,#1b2230,#161b25);border-color:#344052;box-shadow:0 12px 28px rgba(0,0,0,.18)}.stat:hover,.card:hover{border-color:#2dd4bf}.btn{background:linear-gradient(135deg,#ff6b4a,#f59e0b);color:#111827}.btn:hover{background:linear-gradient(135deg,#2dd4bf,#38bdf8);color:#07111c}.btn-ghost{background:#222938;border-color:#42526a;color:#dbeafe}.btn-ghost:hover{background:#263244;border-color:#2dd4bf;color:#67e8f9}input,select,textarea,.report-text{background:#202838;border-color:#3b485e}.streak{background:#f59e0b;color:#111827}.training-badge{color:#fff}.template-item,.day-data-item,.vit-item{background:#202838;border:1px solid #344052}.cal-day:hover{border-color:#2dd4bf}.cal-day.today{border-color:#fbbf24}.sv{background:#273247;border-color:#42526a}input[type=range]{accent-color:#2dd4bf}</style>
+<script>(()=>{const q=id=>document.getElementById(id);function addDeletePanel(){if(q("delete-board"))return;let host=q("tab-log").querySelector(".cards-grid"),d=document.createElement("div");d.id="delete-board";d.className="card";d.style.marginBottom="14px";d.innerHTML=`<div class=card-head><span class=card-icon>🧹</span><div><div class=card-name>Silme / Temizleme</div><div class=card-sub>Bugünkü yanlış girilen kayıtları kaldır</div></div></div><div class=form-row id=delete-buttons></div>`;host.before(d);drawDeleteButtons()}function btn(label,fn){let b=document.createElement("button");b.className="btn btn-ghost";b.style.width="auto";b.textContent=label;b.onclick=fn;q("delete-buttons").appendChild(b)}
+async function del(url,name){if(!confirm(name+" silinsin mi?"))return;await fetch(url,{method:"DELETE"});toast(name+" silindi");if(window.loadToday)loadToday();if(window.mealLoad)mealLoad()}function drawDeleteButtons(){btn("Uyku",()=>del("/api/log/sleep","Uyku"));btn("Egzersiz",()=>del("/api/log/exercise","Egzersiz"));btn("Beslenme/Su",()=>del("/api/log/nutrition","Beslenme/Su"));btn("Öğünler",()=>del("/api/meals/today","Bugünkü öğünler"));btn("Vitaminler",()=>del("/api/vitamins/today","Vitaminler"));btn("İş",()=>del("/api/log/work","İş"));btn("Antrenörlük",()=>del("/api/log/coaching","Antrenörlük"));btn("Ruh hali",()=>del("/api/log/mood","Ruh hali"));btn("Not",()=>del("/api/note","Günlük not"))}addDeletePanel()})();</script>
+<style id="report-upgrade">.pretty-report{display:grid;gap:12px}.report-section-card{background:#202838;border:1px solid #344052;border-radius:8px;padding:14px 16px}.report-section-title{font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:1.4px;color:#2dd4bf;margin-bottom:8px;display:flex;align-items:center;gap:8px}.report-section-body{font-size:.92rem;line-height:1.65;color:#f8fafc;white-space:pre-wrap}.report-section-body .muted-line{color:#a7b1c2}.report-headline{background:linear-gradient(135deg,#263244,#1b2230);border-color:#2dd4bf}.report-headline .report-section-title{color:#fbbf24}.report-warning{border-color:#f59e0b}.report-warning .report-section-title{color:#f59e0b}.report-good{border-color:#2dd4bf}.report-good .report-section-title{color:#2dd4bf}</style>
+<script>(()=>{const q=id=>document.getElementById(id),old=window.loadReport;function clean(s){return String(s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}function titleIcon(t){if(t.includes("UYKU"))return "😴";if(t.includes("EGZERS"))return "💪";if(t.includes("BESLEN"))return "🥩";if(t.includes("IS"))return "💼";if(t.includes("ANTRENOR"))return "🏋️";if(t.includes("RUH"))return "⚡";if(t.includes("VITAMIN"))return "💊";if(t.includes("ANALIZ"))return "📌";return "📄"}
+function renderPrettyReport(txt){let lines=String(txt||"").split("\n"),cards=[],cur=null,head=[];for(let line of lines){if(line.startsWith("[ ")&&line.endsWith(" ]")){if(cur)cards.push(cur);cur={title:line.replace(/[\[\]]/g,"").trim(),body:[]}}else if(cur){if(line.trim())cur.body.push(line.trim())}else if(line.trim()){head.push(line.trim())}}if(cur)cards.push(cur);let html="<div class=pretty-report>";if(head.length)html+=`<div class="report-section-card report-headline"><div class=report-section-title>📊 Günlük Özet</div><div class=report-section-body>${clean(head.join("\n"))}</div></div>`;
+for(let c of cards){let body=c.body.join("\n")||"Kayıt yok";let cls=body.includes("Kayit yok")||body.includes("⚠")||body.includes("az")||body.includes("dusuk")?" report-warning":" report-good";html+=`<div class="report-section-card${cls}"><div class=report-section-title>${titleIcon(c.title)} ${clean(c.title)}</div><div class=report-section-body>${clean(body)}</div></div>`}html+="</div>";q("report-text").classList.remove("report-text");q("report-text").innerHTML=html}window.loadReport=async function(){q("report-text").textContent="Rapor hazırlanıyor...";let r=await fetch("/api/report/today").then(x=>x.json());renderPrettyReport(r.report||"Rapor oluşturulamadı.")};setTimeout(()=>window.loadReport&&window.loadReport(),300)})();</script>
+<style id="white-coach-theme">:root{--bg:#f4f7fb;--bg2:#ffffff;--bg3:#eef3f8;--border:#d8e1ec;--red:#2563eb;--red2:#14b8a6;--red-dim:#c7d2fe;--text:#172033;--muted:#64748b;--push:#ef4444;--pull:#2563eb;--leg:#f59e0b;--upper:#8b5cf6;--lower:#16a34a;--off:#94a3b8}body{background:linear-gradient(180deg,#f8fbff,#eef4fb);color:#172033}header{background:#ffffffd9;border-bottom:1px solid #d8e1ec;box-shadow:0 8px 24px rgba(15,23,42,.07)}.logo em,.tab.active{color:#2563eb}.container{max-width:1440px}.tabs{background:#fff;border:1px solid #d8e1ec;border-radius:10px;padding:6px;gap:4px;overflow-x:auto}.tab{border-radius:8px;margin-bottom:0}.tab.active{background:#e8f0ff;border-bottom-color:transparent}.stat,.card,.chart-card,.report-box,.day-panel{background:#fff;border-color:#d8e1ec;box-shadow:0 14px 34px rgba(15,23,42,.08)}.card-head{border-bottom-color:#e5edf5}.section-title{color:#2563eb;border-left-color:#14b8a6}.btn{background:#2563eb;color:#fff}.btn:hover{background:#14b8a6;color:#06201d}.btn-ghost{background:#f8fbff;border-color:#d8e1ec;color:#334155}.btn-ghost:hover{background:#ecfeff;color:#0f766e;border-color:#14b8a6}input,select,textarea,.report-text{background:#f8fbff;color:#172033;border-color:#d8e1ec}.template-item,.day-data-item,.vit-item,.report-section-card{background:#fff;color:#172033;border-color:#d8e1ec}.report-section-body{color:#172033}.streak{background:#f59e0b;color:#111827}.cal-day{background:#fff}.report-headline .report-section-title{color:#2563eb}.report-section-card:nth-child(2) .report-section-title{color:#0ea5e9}.report-section-card:nth-child(3) .report-section-title{color:#ef4444}.report-section-card:nth-child(4) .report-section-title{color:#16a34a}.report-section-card:nth-child(5) .report-section-title{color:#8b5cf6}.report-section-card:nth-child(6) .report-section-title{color:#f59e0b}.report-section-card:nth-child(7) .report-section-title{color:#14b8a6}.report-warning{border-left:5px solid #f59e0b}.report-good{border-left:5px solid #14b8a6}</style>
+<script>(()=>{function q(id){return document.getElementById(id)}function addMacroInputs(){if(q("tmp"))return;let cal=q("tmk");if(cal){let box=document.createElement("div");box.className="form-row";box.innerHTML="<div class=fg><label>Protein</label><input id=tmp type=number placeholder=g></div><div class=fg><label>Karbonhidrat</label><input id=tmc2 type=number placeholder=g></div><div class=fg><label>Yağ</label><input id=tmf type=number placeholder=g></div><div class=fg><label>Lif</label><input id=tmfi type=number placeholder=g></div>";cal.closest(".form-row").after(box)}}
+const oldSave=window.saveMealTemplate;window.saveMealTemplate=async()=>{let title=q("tmt").value.trim();if(!title)return toast("Şablon adı gerekli");await fetch("/api/templates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:"meal",category:q("tmc").value,title,description:q("tmd").value,calories:parseInt(q("tmk").value)||null,protein_g:parseFloat(q("tmp").value)||null,carbs_g:parseFloat(q("tmc2").value)||null,fat_g:parseFloat(q("tmf").value)||null,fiber_g:parseFloat(q("tmfi").value)||null})});["tmt","tmd","tmk","tmp","tmc2","tmf","tmfi"].forEach(id=>q(id)&&(q(id).value=""));toast("Makrolu yemek şablonu kaydedildi");setTimeout(()=>location.reload(),500)};
+function groupTemplates(){let el=q("template-list");if(!el)return;fetch("/api/templates").then(r=>r.json()).then(T=>{let meals=T.filter(x=>x.kind==="meal"),sups=T.filter(x=>x.kind==="supplement");el.innerHTML="<div class=section-title>Yemek Şablonları</div>";
+let card=x=>"<div class=template-item><div><div class=template-title>"+x.title+"</div><div class=template-meta>"+(x.category||"")+" · "+(x.calories||0)+" kcal · P"+(x.protein_g||0)+" K"+(x.carbs_g||0)+" Y"+(x.fat_g||0)+"<br>"+(x.description||x.amount||"")+" "+(x.unit||"")+"</div></div><button class=icon-btn onclick=delTemplate("+x.id+")>✕</button></div>";
+el.innerHTML+=meals.map(card).join("")||"<div class=template-item>Yemek şablonu yok</div>";el.innerHTML+="<div class=section-title style=margin-top:14px>Supplement Şablonları</div>";el.innerHTML+=sups.map(card).join("")||"<div class=template-item>Supplement şablonu yok</div>"})}setTimeout(()=>{addMacroInputs();groupTemplates()},600)})();</script>
+<script>(()=>{function q(id){return document.getElementById(id)}function patchMeals(){document.querySelectorAll("#meal-slots .form-row").forEach(r=>{let s=r.querySelector("select")?.dataset.slot;if(!s||q("pro-"+s))return;let box=document.createElement("div");box.className="form-row";box.style.width="100%";box.innerHTML="<div class=fg><label>Protein</label><input id=pro-"+s+" type=number placeholder=g></div><div class=fg><label>Karbonhidrat</label><input id=carb-"+s+" type=number placeholder=g></div><div class=fg><label>Yağ</label><input id=fat-"+s+" type=number placeholder=g></div>";r.after(box)})}
+const oldFill=window.fillSlot;window.fillSlot=(s,id)=>{fetch("/api/templates").then(r=>r.json()).then(T=>{let t=T.find(x=>String(x.id)===String(id));if(!t)return;if(q("txt-"+s))q("txt-"+s).value=t.description||t.title||"";if(q("cal-"+s))q("cal-"+s).value=t.calories||"";if(q("pro-"+s))q("pro-"+s).value=t.protein_g||"";if(q("carb-"+s))q("carb-"+s).value=t.carbs_g||"";if(q("fat-"+s))q("fat-"+s).value=t.fat_g||""})};
+window.saveMealSlot=async s=>{await fetch("/api/meals",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slot:s,title:s,description:q("txt-"+s)?.value||"",calories:parseInt(q("cal-"+s)?.value)||null,protein_g:parseFloat(q("pro-"+s)?.value)||null,carbs_g:parseFloat(q("carb-"+s)?.value)||null,fat_g:parseFloat(q("fat-"+s)?.value)||null,source:"plan"})});toast(s+" makrolarıyla kaydedildi");if(window.mealLoad)mealLoad();setTimeout(patchMeals,400)};setInterval(patchMeals,1000);})();</script>
+<script>(()=>{function q(id){return document.getElementById(id)}function addTrainingPanel(){let tab=q("tab-schedule");if(!tab||q("training-builder"))return;let d=document.createElement("div");d.id="training-builder";d.className="card";d.style.marginTop="18px";d.innerHTML=`<div class=card-head><span class=card-icon>🏋️</span><div><div class=card-name>Hareket Planı</div><div class=card-sub>Push/Pull/Leg günlerinde yapılacak hareketler</div></div></div><div class=form-row><div class=fg><label>Gün</label><select id=trday><option>Push</option><option>Pull</option><option>Leg</option><option>Upper</option><option>Lower</option></select></div><div class=fg><label>Hareket</label><input id=trex placeholder="Bench press"></div><div class=fg><label>Set</label><input id=trsets placeholder="4"></div><div class=fg><label>Tekrar</label><input id=trreps placeholder="8-10"></div><div class=fg><label>Ağırlık</label><input id=trw placeholder="80kg"></div></div><button class=btn onclick=saveTrainingExercise()>Hareketi Ekle</button><div id=training-list class=template-list></div>`;tab.appendChild(d);loadTrainingExercises()}
+window.saveTrainingExercise=async()=>{if(!q("trex").value.trim())return toast("Hareket gerekli");await fetch("/api/training/exercises",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({training_day:q("trday").value,exercise:q("trex").value,sets:q("trsets").value,reps:q("trreps").value,weight:q("trw").value})});["trex","trsets","trreps","trw"].forEach(id=>q(id).value="");toast("Hareket eklendi");loadTrainingExercises()};
+window.loadTrainingExercises=async()=>{let list=q("training-list");if(!list)return;let rows=await fetch("/api/training/exercises").then(r=>r.json());let days=["Push","Pull","Leg","Upper","Lower"];list.innerHTML=days.map(day=>"<div class=template-item style=display:block><div class=template-title>"+day+"</div>"+rows.filter(x=>x.training_day===day).map(x=>"<div class=template-meta>"+x.exercise+" · "+(x.sets||"-")+" set · "+(x.reps||"-")+" tekrar · "+(x.weight||"")+" <button class=icon-btn onclick=deleteTrainingExercise("+x.id+")>✕</button></div>").join("")+"</div>").join("")};window.deleteTrainingExercise=async id=>{await fetch("/api/training/exercises/"+id,{method:"DELETE"});loadTrainingExercises()};setInterval(addTrainingPanel,1000)})();</script>
+<script>(()=>{function q(id){return document.getElementById(id)}function sleepHours(){let b=q("sl-bed")?.value,w=q("sl-wake")?.value;if(!b||!w||!q("sl-h"))return;let [bh,bm]=b.split(":").map(Number),[wh,wm]=w.split(":").map(Number);let start=bh*60+bm,end=wh*60+wm;if(end<=start)end+=24*60;let h=Math.round(((end-start)/60)*10)/10;q("sl-h").value=h}setInterval(()=>{let b=q("sl-bed"),w=q("sl-wake");if(b&&!b.dataset.autoSleep){b.dataset.autoSleep=1;w.dataset.autoSleep=1;b.addEventListener("change",sleepHours);w.addEventListener("change",sleepHours);b.addEventListener("input",sleepHours);w.addEventListener("input",sleepHours)}},700)})();</script>
+<style id="delete-manager-style">#delete-board{display:none!important}.delete-manager{margin-bottom:16px}.dm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.dm-item{background:#fff;border:1px solid #d8e1ec;border-radius:10px;padding:12px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.dm-title{font-weight:900;color:#172033}.dm-meta{font-size:.78rem;color:#64748b;margin-top:4px;line-height:1.45}.dm-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dm-danger{border-color:#fecaca;color:#dc2626;background:#fff5f5}.dm-danger:hover{background:#fee2e2;color:#991b1b;border-color:#fca5a5}.dm-empty{opacity:.55}.dm-pill{display:inline-block;border-radius:999px;padding:2px 8px;font-size:.7rem;font-weight:800;background:#ecfeff;color:#0f766e;margin-top:6px}</style>
+<script>(()=>{const q=id=>document.getElementById(id),api=u=>fetch(u).then(r=>r.json());async function del2(url,name){if(!confirm(name+" silinsin mi?"))return;let r=await fetch(url,{method:"DELETE"});if(!r.ok)return toast("Silinemedi");toast(name+" silindi");await refreshDeleteManager();if(window.loadToday)loadToday();if(window.mealLoad)mealLoad();if(window.loadReport)loadReport()}function addDeleteManager(){if(q("delete-manager"))return;let host=q("tab-log")?.querySelector(".cards-grid");if(!host)return;let d=document.createElement("div");d.id="delete-manager";d.className="card delete-manager";d.innerHTML="<div class=card-head><span class=card-icon>🗂️</span><div><div class=card-name>Bugünkü Kayıtları Yönet</div><div class=card-sub>Ne dolu, ne boş gör; tek tek veya kategori olarak sil</div></div></div><div id=dm-grid class=dm-grid></div>";host.before(d);refreshDeleteManager()}
+function card(title,meta,url,filled){let btn=filled?"<button class=\"icon-btn dm-danger\" onclick=\"deleteManaged(\x27"+url+"\x27,\x27"+title+"\x27)\">✕</button>":"";return "<div class=\"dm-item "+(filled?"":"dm-empty")+"\"><div><div class=dm-title>"+title+"</div><div class=dm-meta>"+meta+"</div><span class=dm-pill>"+(filled?"Kayıt var":"Boş")+"</span></div><div class=dm-actions>"+btn+"</div></div>"}
+window.deleteManaged=del2;window.refreshDeleteManager=async function(){let g=q("dm-grid");if(!g)return;let t=await api("/api/today"),meals=await api("/api/meals/today");let html="";
+html+=card("Uyku",t.sleep&&t.sleep.id?(t.sleep.hours+" saat · kalite "+(t.sleep.quality||"-")):"Kayıt yok","/api/log/sleep",!!(t.sleep&&t.sleep.id));
+html+=card("Egzersiz",t.exercise&&t.exercise.id?((t.exercise.type||"-")+" · "+(t.exercise.duration||"-")+" dk"):"Kayıt yok","/api/log/exercise",!!(t.exercise&&t.exercise.id));html+=card("Beslenme/Su",t.nutrition&&t.nutrition.id?((t.nutrition.calories||0)+" kcal · "+((t.nutrition.water_ml||0)/1000).toFixed(1)+"L su"):"Kayıt yok","/api/log/nutrition",!!(t.nutrition&&t.nutrition.id));
+html+=card("İş",t.work&&t.work.id?((t.work.hours||0)+" saat"):"Kayıt yok","/api/log/work",!!(t.work&&t.work.id));html+=card("Antrenörlük",t.coaching&&t.coaching.id?((t.coaching.sessions||0)+" seans"):"Kayıt yok","/api/log/coaching",!!(t.coaching&&t.coaching.id));html+=card("Ruh Hali",t.mood&&t.mood.id?("Enerji "+(t.mood.energy||"-")+" · Stres "+(t.mood.stress||"-")):"Kayıt yok","/api/log/mood",!!(t.mood&&t.mood.id));html+=card("Günlük Not",t.note?"Not var":"Kayıt yok","/api/note",!!t.note);
+html+="<div class=dm-item style=display:block><div class=dm-title>Öğünler</div><div class=dm-meta>"+(meals.length?"Tek tek silebilirsin":"Bugün öğün kaydı yok")+"</div>";for(let m of meals){html+="<div class=dm-meta>"+(m.slot||"-")+": "+(m.description||m.title||"-")+" <button class=\"icon-btn dm-danger\" onclick=\"deleteManaged(\x27/api/meals/"+m.id+"\x27,\x27Öğün\x27)\">✕</button></div>"}html+="</div>";
+html+="<div class=dm-item style=display:block><div class=dm-title>Vitaminler</div><div class=dm-meta>"+(t.vitamins&&t.vitamins.length?"Tek tek silebilirsin":"Bugün vitamin yok")+"</div>";for(let v of (t.vitamins||[])){html+="<div class=dm-meta>"+(v.name||"-")+" "+(v.amount||"")+" "+(v.unit||"")+" <button class=\"icon-btn dm-danger\" onclick=\"deleteManaged(\x27/api/vitamin/"+v.id+"\x27,\x27Vitamin\x27)\">✕</button></div>"}html+="</div>";g.innerHTML=html};setInterval(addDeleteManager,800)})();</script>
+
+
+<style id="meal-board-clean-v4">
+#meal-board{display:none!important}
+.meal-clean-board{margin-bottom:16px}
+.meal-clean-list{display:grid;gap:10px}
+.meal-clean-row{display:grid;grid-template-columns:180px minmax(180px,1fr) 90px 90px 90px 90px 86px;gap:8px;align-items:end;border-top:1px solid #e5edf5;padding-top:10px}
+.meal-clean-row:first-child{border-top:0;padding-top:0}
+.meal-clean-row label{display:block}
+.meal-clean-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:12px 0}
+.meal-chip{border:1px solid #d8e1ec;border-radius:9px;background:#f8fbff;padding:9px 10px}
+.meal-chip b{display:block;color:#172033;font-size:1rem}.meal-chip span{font-size:.72rem;color:#64748b;text-transform:uppercase}
+.meal-clean-items{display:grid;gap:8px;margin-top:12px}
+.meal-clean-item{border:1px solid #d8e1ec;background:#fff;border-radius:9px;padding:10px;display:flex;justify-content:space-between;gap:8px}
+.meal-clean-actions{display:flex;gap:6px;align-items:flex-start}
+.meal-clean-actions .icon-btn{width:auto;min-width:34px;padding:0 8px}
+@media(max-width:1100px){.meal-clean-row{grid-template-columns:1fr 1fr}.meal-clean-row button{grid-column:1/-1}}
+</style>
+<script id="meal-board-clean-v4">
+(() => {
+  const q = id => document.getElementById(id);
+  const slots = ["kahvaltı","öğle","ara atıştırma","pre-workout","post-workout","akşam","extra"];
+  const esc = v => String(v ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  let templates = [], meals = [];
+
+  function stopOldMacroLoop(){
+    ["pro-ara atıştırma","carb-ara atıştırma","fat-ara atıştırma"].forEach(id => {
+      if (!q(id)) { const s = document.createElement("span"); s.id = id; s.hidden = true; document.body.appendChild(s); }
+    });
+  }
+
+  function mount(){
+    stopOldMacroLoop();
+    if (q("meal-board-clean-v4")) return;
+    const host = q("tab-log")?.querySelector(".cards-grid");
+    if (!host) return;
+    const panel = document.createElement("div");
+    panel.id = "meal-board-clean-v4";
+    panel.className = "card meal-clean-board";
+    panel.innerHTML = `<div class=card-head><span class=card-icon>🍽️</span><div><div class=card-name>Öğün Düzeni</div><div class=card-sub>Tek panel, tek kayıt, anlık makro senkronizasyon</div></div></div><div id=meal-clean-summary class=meal-clean-summary></div><div id=meal-clean-list class=meal-clean-list></div><div class=section-title style="margin-top:14px">Bugün Eklenen Öğünler</div><div id=meal-clean-items class=meal-clean-items></div>`;
+    host.before(panel);
+    loadMealClean();
+  }
+
+  async function loadMealClean(){
+    templates = await fetch("/api/templates").then(r => r.json()).catch(() => []);
+    templates = templates.filter(x => x.kind === "meal");
+    meals = await fetch("/api/meals/today").then(r => r.json()).catch(() => []);
+    renderMealClean();
+    if (window.loadMacroBoard) loadMacroBoard();
+  }
+  window.mealLoad = loadMealClean;
+
+  function totals(){
+    return meals.reduce((a,m) => {
+      ["calories","protein_g","carbs_g","fat_g","fiber_g"].forEach(k => a[k] += parseFloat(m[k] || 0));
+      return a;
+    }, {calories:0,protein_g:0,carbs_g:0,fat_g:0,fiber_g:0});
+  }
+
+  function renderMealClean(){
+    const sum = totals();
+    q("meal-clean-summary").innerHTML = [
+      ["Kalori",sum.calories,"kcal"],["Protein",sum.protein_g,"g"],["Karbonhidrat",sum.carbs_g,"g"],["Yağ",sum.fat_g,"g"],["Lif",sum.fiber_g,"g"]
+    ].map(x => `<div class=meal-chip><b>${Math.round(x[1]*10)/10}</b><span>${x[0]} ${x[2]}</span></div>`).join("");
+    q("meal-clean-list").innerHTML = slots.map(rowHtml).join("");
+    q("meal-clean-items").innerHTML = meals.length ? meals.map(itemHtml).join("") : `<div class=meal-clean-item><div><b>Henüz öğün yok</b><div class=card-sub>Kaydedince burada listelenecek.</div></div></div>`;
+    q("meal-clean-list").querySelectorAll("[data-template]").forEach(sel => sel.onchange = () => fillFromTemplate(sel.dataset.slot, sel.value));
+    q("meal-clean-list").querySelectorAll("[data-save-slot]").forEach(btn => btn.onclick = () => saveSlot(btn.dataset.saveSlot));
+    q("meal-clean-items").querySelectorAll("[data-delete-meal]").forEach(btn => btn.onclick = () => deleteMeal(btn.dataset.deleteMeal));
+  }
+
+  function rowHtml(slot){
+    const options = `<option value="">Şablon seç</option>` + templates.map(t => `<option value="${t.id}">${esc(t.category)} · ${esc(t.title)}</option>`).join("");
+    const key = slot.replace(/\s+/g,"-");
+    return `<div class=meal-clean-row data-row="${esc(slot)}">
+      <div><label>${esc(slot)}</label><select data-template data-slot="${esc(slot)}" id="mc-tpl-${key}">${options}</select></div>
+      <div><label>İçerik</label><input id="mc-desc-${key}" placeholder="serbest değiştir"></div>
+      <div><label>kcal</label><input id="mc-cal-${key}" type=number></div>
+      <div><label>Protein</label><input id="mc-pro-${key}" type=number placeholder=g></div>
+      <div><label>Karb.</label><input id="mc-carb-${key}" type=number placeholder=g></div>
+      <div><label>Yağ</label><input id="mc-fat-${key}" type=number placeholder=g></div>
+      <button class="btn btn-ghost" data-save-slot="${esc(slot)}">Kaydet</button>
+    </div>`;
+  }
+
+  function ids(slot){ const key = slot.replace(/\s+/g,"-"); return {desc:q("mc-desc-"+key),cal:q("mc-cal-"+key),pro:q("mc-pro-"+key),carb:q("mc-carb-"+key),fat:q("mc-fat-"+key)}; }
+  function fillFromTemplate(slot,id){
+    const t = templates.find(x => String(x.id) === String(id));
+    if (!t) return;
+    const el = ids(slot);
+    el.desc.value = t.description || t.title || "";
+    el.cal.value = t.calories || "";
+    el.pro.value = t.protein_g || "";
+    el.carb.value = t.carbs_g || "";
+    el.fat.value = t.fat_g || "";
+  }
+  async function saveSlot(slot){
+    const el = ids(slot);
+    const payload = {slot,title:slot,description:el.desc.value.trim(),calories:parseFloat(el.cal.value)||null,protein_g:parseFloat(el.pro.value)||null,carbs_g:parseFloat(el.carb.value)||null,fat_g:parseFloat(el.fat.value)||null,source:"meal-clean"};
+    if (!payload.description && !payload.calories && !payload.protein_g && !payload.carbs_g && !payload.fat_g) return toast("Öğün için en az bir alan doldur");
+    await fetch("/api/meals",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    Object.values(el).forEach(x => x.value = "");
+    toast(slot + " eklendi");
+    await loadMealClean();
+    if (window.loadToday) await loadToday();
+    if (window.refreshDeleteManager) refreshDeleteManager();
+    if (window.loadReport) loadReport();
+  }
+  function itemHtml(m){
+    return `<div class=meal-clean-item><div><b>${esc(m.slot)}: ${esc(m.description || m.title || "-")}</b><div class=card-sub>${m.calories||0} kcal · P ${m.protein_g||0} · K ${m.carbs_g||0} · Y ${m.fat_g||0}</div></div><div class=meal-clean-actions><button class=icon-btn data-delete-meal="${m.id}">Sil</button></div></div>`;
+  }
+  async function deleteMeal(id){
+    if (!confirm("Öğün silinsin mi?")) return;
+    await fetch("/api/meals/" + id, {method:"DELETE"});
+    toast("Öğün silindi");
+    await loadMealClean();
+    if (window.loadToday) await loadToday();
+    if (window.refreshDeleteManager) refreshDeleteManager();
+    if (window.loadReport) loadReport();
+  }
+  document.addEventListener("DOMContentLoaded", mount);
+  setInterval(mount, 1000);
+})();
+</script>
