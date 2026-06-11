@@ -155,7 +155,7 @@ def init_db():
     macro_cols = {
         'quick_templates': {'protein_g': 'REAL', 'carbs_g': 'REAL', 'fat_g': 'REAL', 'fiber_g': 'REAL'},
         'meal_entries': {'protein_g': 'REAL', 'carbs_g': 'REAL', 'fat_g': 'REAL', 'fiber_g': 'REAL'},
-        'workout_logs': {'set_type': 'TEXT'},
+        'workout_logs': {'set_type': 'TEXT', 'rir': 'INTEGER'},
     }
     for table, cols in macro_cols.items():
         existing = {r['name'] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -1153,8 +1153,8 @@ def api_workout_set_add():
     ).fetchone()
     set_num = (last['mx'] or 0) + 1
     conn.execute(
-        "INSERT INTO workout_logs (date, training_day, exercise, set_num, weight, reps, notes, set_type) VALUES (?,?,?,?,?,?,?,?)",
-        (d, td, data.get('exercise',''), set_num, data.get('weight',''), data.get('reps',''), data.get('notes',''), data.get('set_type','Working Set'))
+        "INSERT INTO workout_logs (date, training_day, exercise, set_num, weight, reps, notes, set_type, rir) VALUES (?,?,?,?,?,?,?,?,?)",
+        (d, td, data.get('exercise',''), set_num, data.get('weight',''), data.get('reps',''), data.get('notes',''), data.get('set_type','Working Set'), data.get('rir') or None)
     )
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'set_num': set_num})
@@ -1170,8 +1170,8 @@ def api_workout_set_del(sid):
 def api_workout_set_update(sid):
     data = request.get_json(force=True) or {}
     conn = get_db()
-    conn.execute("UPDATE workout_logs SET weight=?, reps=?, notes=?, set_type=? WHERE id=?",
-                 (data.get('weight',''), data.get('reps',''), data.get('notes',''), data.get('set_type','Working Set'), sid))
+    conn.execute("UPDATE workout_logs SET weight=?, reps=?, notes=?, set_type=?, rir=? WHERE id=?",
+                 (data.get('weight',''), data.get('reps',''), data.get('notes',''), data.get('set_type','Working Set'), data.get('rir') or None, sid))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -1196,6 +1196,20 @@ def api_workout_history(training_day_name):
         result.append({'date': d, 'exercises': groups})
     conn.close()
     return jsonify(result)
+
+@app.route('/api/workout/muscle-heatmap')
+def api_muscle_heatmap():
+    """Son 14 günün antrenmanlarini döndürür — exercise + date listesi."""
+    days = int(request.args.get('days', 14))
+    from datetime import date as _date, timedelta
+    cutoff = (_date.today() - timedelta(days=days)).isoformat()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT date, exercise FROM workout_logs WHERE date >= ? ORDER BY date DESC",
+        (cutoff,)
+    ).fetchall()
+    conn.close()
+    return jsonify([{'date': r['date'], 'exercise': r['exercise']} for r in rows])
 
 # ─── TELEGRAM BOT ──────────────────────────────────────────────────────────────
 

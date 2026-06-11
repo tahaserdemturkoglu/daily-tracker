@@ -203,6 +203,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .set-badge{font-size:.64rem;padding:2px 7px;border-radius:5px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
 .badge-wu{background:rgba(0,229,204,.18);color:var(--teal)}
 .badge-ws{background:rgba(255,59,59,.18);color:var(--red)}
+.rir-badge{font-size:.6rem;padding:1px 6px;border-radius:4px;font-weight:700;background:rgba(255,200,0,.15);color:var(--yellow);margin-left:6px;letter-spacing:.2px}
 .badge-bo{background:rgba(180,77,255,.18);color:var(--purple)}
 .set-del-btn{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px;border-radius:4px}
 .set-del-btn:hover{color:var(--red)}
@@ -594,9 +595,9 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <div class="tr-layout">
       <div>
         <div class="card ct ct-red" style="margin-bottom:12px">
-          <div class="card-head"><span class="card-icon">➕</span><div><div class="card-name">Set Ekle</div></div></div>
+          <div class="card-head"><span class="card-icon">➕</span><div><div class="card-name">Set Ekle</div><div class="card-sub" id="tr-set-counter" style="display:none"></div></div></div>
           <!-- Locked exercise chip (shown after first set) -->
-          <div id="tr-locked-ex" style="display:none;background:var(--bg4);border:1px solid var(--red);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between">
+          <div id="tr-locked-ex" style="display:none;background:var(--bg4);border:1px solid var(--red);border-radius:10px;padding:10px 14px;margin-bottom:10px;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Aktif Hareket</div>
               <div id="tr-locked-name" style="font-weight:900;color:var(--yellow);font-size:1rem"></div>
@@ -612,6 +613,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <div class="form-row">
             <div class="fg"><label>Ağırlık (kg)</label><input type="number" id="tr-w" step=".5" placeholder="80"></div>
             <div class="fg"><label>Tekrar</label><input type="number" id="tr-r" placeholder="8"></div>
+            <div class="fg" style="max-width:80px"><label>RIR</label><input type="number" id="tr-rir" min="0" max="10" placeholder="2" style="text-align:center"></div>
           </div>
           <div class="set-type-row">
             <button class="st-btn" id="stb-wu" onclick="selectSetType('Warm-up')">🔥 Isınma</button>
@@ -629,6 +631,117 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div class="tr-day-big" id="tr-day-big">—</div>
         <div class="tr-date-sub" id="tr-date-sub"></div>
         <div id="tr-exercises"><div class="list-empty">Bir gün seç</div></div>
+      </div>
+    </div>
+
+    <!-- Kas Grubu Haritası -->
+    <div class="card ct ct-indigo" style="margin-top:16px">
+      <div class="card-head"><span class="card-icon">🗺️</span><div><div class="card-name">Kas Grubu Haritası</div><div class="card-sub" id="muscle-tooltip-text">Kas üzerine gel → son antrenman</div></div></div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;font-size:.67rem;color:var(--text2)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#ff4444;flex-shrink:0"></span>Bugün/Dün</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#ff7700;flex-shrink:0"></span>2 gün</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#ffaa00;flex-shrink:0"></span>3 gün</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#88cc00;flex-shrink:0"></span>4–6 gün</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#33bb44;flex-shrink:0"></span>7+ gün</span>
+      </div>
+      <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap">
+        <!-- ÖN -->
+        <div style="text-align:center">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;font-weight:700">ÖN</div>
+          <svg viewBox="0 0 100 252" width="130" height="328">
+            <defs>
+              <clipPath id="clip-front">
+                <ellipse cx="50" cy="15" rx="14" ry="15"/>
+                <rect x="43" y="28" width="14" height="13" rx="5"/>
+                <path d="M14,40 C8,46 6,60 6,74 C6,88 8,100 14,108 Q18,116 22,118 L23,135 Q22,150 24,168 C25,180 26,192 27,200 Q27,210 26,220 L24,244 L43,244 L44,220 Q44,210 44,200 C44,192 44,180 44,168 Q44,155 45,145 Q48,136 50,135 Q52,136 55,145 Q56,155 56,168 C56,180 56,192 56,200 Q56,210 56,220 L57,244 L76,244 L73,220 Q72,210 73,200 C74,192 75,180 77,168 Q78,150 77,135 L78,118 Q82,116 86,108 C92,100 94,88 94,74 C94,60 92,46 86,40 Q78,35 66,33 L66,40 Q58,36 50,36 Q42,36 34,40 L34,33 Q22,35 14,40 Z"/>
+                <path d="M34,40 Q16,44 12,58 Q8,70 8,82 L16,82 Q16,70 18,60 Q22,48 28,44 Z"/>
+                <path d="M66,40 Q84,44 88,58 Q92,70 92,82 L84,82 Q84,70 82,60 Q78,48 72,44 Z"/>
+                <path d="M8,82 Q6,96 7,108 L15,107 Q15,96 16,82 Z"/>
+                <path d="M92,82 Q94,96 93,108 L85,107 Q85,96 84,82 Z"/>
+              </clipPath>
+            </defs>
+            <g fill="var(--bg3)" stroke="var(--border)" stroke-width="0.7">
+              <ellipse cx="50" cy="15" rx="14" ry="15"/>
+              <rect x="43" y="28" width="14" height="13" rx="5"/>
+              <path d="M14,40 C8,46 6,60 6,74 C6,88 8,100 14,108 Q18,116 22,118 L23,135 Q22,150 24,168 C25,180 26,192 27,200 Q27,210 26,220 L24,244 L43,244 L44,220 Q44,210 44,200 C44,192 44,180 44,168 Q44,155 45,145 Q48,136 50,135 Q52,136 55,145 Q56,155 56,168 C56,180 56,192 56,200 Q56,210 56,220 L57,244 L76,244 L73,220 Q72,210 73,200 C74,192 75,180 77,168 Q78,150 77,135 L78,118 Q82,116 86,108 C92,100 94,88 94,74 C94,60 92,46 86,40 Q78,35 66,33 L66,40 Q58,36 50,36 Q42,36 34,40 L34,33 Q22,35 14,40 Z"/>
+              <path d="M34,40 Q16,44 12,58 Q8,70 8,82 L16,82 Q16,70 18,60 Q22,48 28,44 Z"/>
+              <path d="M66,40 Q84,44 88,58 Q92,70 92,82 L84,82 Q84,70 82,60 Q78,48 72,44 Z"/>
+              <path d="M8,82 Q6,96 7,108 L15,107 Q15,96 16,82 Z"/>
+              <path d="M92,82 Q94,96 93,108 L85,107 Q85,96 84,82 Z"/>
+            </g>
+            <g clip-path="url(#clip-front)" style="cursor:pointer">
+              <ellipse id="mf-shoulder-l" cx="22" cy="45" rx="13" ry="12" fill="var(--border)" opacity="0.92" data-mname="Omuz (Ön)"><title>Omuz (Ön Deltoid)</title></ellipse>
+              <ellipse id="mf-shoulder-r" cx="78" cy="45" rx="13" ry="12" fill="var(--border)" opacity="0.92" data-mname="Omuz (Ön)"><title>Omuz (Ön Deltoid)</title></ellipse>
+              <ellipse id="mf-chest-l" cx="37" cy="60" rx="14" ry="11" fill="var(--border)" opacity="0.92" data-mname="Göğüs"><title>Göğüs (Pektoral)</title></ellipse>
+              <ellipse id="mf-chest-r" cx="63" cy="60" rx="14" ry="11" fill="var(--border)" opacity="0.92" data-mname="Göğüs"><title>Göğüs (Pektoral)</title></ellipse>
+              <ellipse id="mf-bicep-l" cx="13" cy="65" rx="6" ry="13" fill="var(--border)" opacity="0.92" data-mname="Biceps"><title>Biceps</title></ellipse>
+              <ellipse id="mf-bicep-r" cx="87" cy="65" rx="6" ry="13" fill="var(--border)" opacity="0.92" data-mname="Biceps"><title>Biceps</title></ellipse>
+              <ellipse id="mf-forearm-l" cx="10" cy="96" rx="6" ry="10" fill="var(--border)" opacity="0.92" data-mname="Önkol"><title>Önkol</title></ellipse>
+              <ellipse id="mf-forearm-r" cx="90" cy="96" rx="6" ry="10" fill="var(--border)" opacity="0.92" data-mname="Önkol"><title>Önkol</title></ellipse>
+              <ellipse id="mf-abs" cx="50" cy="86" rx="13" ry="22" fill="var(--border)" opacity="0.92" data-mname="Karın / Core"><title>Karın (Core)</title></ellipse>
+              <ellipse id="mf-quad-l" cx="33" cy="172" rx="12" ry="27" fill="var(--border)" opacity="0.92" data-mname="Quadriceps"><title>Quadriceps</title></ellipse>
+              <ellipse id="mf-quad-r" cx="67" cy="172" rx="12" ry="27" fill="var(--border)" opacity="0.92" data-mname="Quadriceps"><title>Quadriceps</title></ellipse>
+              <ellipse id="mf-calf-l" cx="33" cy="225" rx="9" ry="16" fill="var(--border)" opacity="0.92" data-mname="Baldır"><title>Baldır</title></ellipse>
+              <ellipse id="mf-calf-r" cx="67" cy="225" rx="9" ry="16" fill="var(--border)" opacity="0.92" data-mname="Baldır"><title>Baldır</title></ellipse>
+            </g>
+            <text x="50" y="62" text-anchor="middle" font-size="5.5" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Göğüs</text>
+            <text x="50" y="88" text-anchor="middle" font-size="5.5" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Karın</text>
+            <text x="50" y="174" text-anchor="middle" font-size="5.5" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Quad</text>
+            <text x="22" y="47" text-anchor="middle" font-size="4.8" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Omuz</text>
+            <text x="78" y="47" text-anchor="middle" font-size="4.8" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Omuz</text>
+            <text x="13" y="67" text-anchor="middle" font-size="4.8" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Bi</text>
+            <text x="87" y="67" text-anchor="middle" font-size="4.8" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Bi</text>
+          </svg>
+        </div>
+        <!-- ARKA -->
+        <div style="text-align:center">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;font-weight:700">ARKA</div>
+          <svg viewBox="0 0 100 252" width="130" height="328">
+            <defs>
+              <clipPath id="clip-back">
+                <ellipse cx="50" cy="15" rx="14" ry="15"/>
+                <rect x="43" y="28" width="14" height="13" rx="5"/>
+                <path d="M14,40 C8,46 6,60 6,74 C6,88 8,100 14,108 Q18,116 22,118 L23,135 Q22,150 24,168 C25,180 26,192 27,200 Q27,210 26,220 L24,244 L43,244 L44,220 Q44,210 44,200 C44,192 44,180 44,168 Q44,155 45,145 Q48,136 50,135 Q52,136 55,145 Q56,155 56,168 C56,180 56,192 56,200 Q56,210 56,220 L57,244 L76,244 L73,220 Q72,210 73,200 C74,192 75,180 77,168 Q78,150 77,135 L78,118 Q82,116 86,108 C92,100 94,88 94,74 C94,60 92,46 86,40 Q78,35 66,33 L66,40 Q58,36 50,36 Q42,36 34,40 L34,33 Q22,35 14,40 Z"/>
+                <path d="M34,40 Q16,44 12,58 Q8,70 8,82 L16,82 Q16,70 18,60 Q22,48 28,44 Z"/>
+                <path d="M66,40 Q84,44 88,58 Q92,70 92,82 L84,82 Q84,70 82,60 Q78,48 72,44 Z"/>
+                <path d="M8,82 Q6,96 7,108 L15,107 Q15,96 16,82 Z"/>
+                <path d="M92,82 Q94,96 93,108 L85,107 Q85,96 84,82 Z"/>
+              </clipPath>
+            </defs>
+            <g fill="var(--bg3)" stroke="var(--border)" stroke-width="0.7">
+              <ellipse cx="50" cy="15" rx="14" ry="15"/>
+              <rect x="43" y="28" width="14" height="13" rx="5"/>
+              <path d="M14,40 C8,46 6,60 6,74 C6,88 8,100 14,108 Q18,116 22,118 L23,135 Q22,150 24,168 C25,180 26,192 27,200 Q27,210 26,220 L24,244 L43,244 L44,220 Q44,210 44,200 C44,192 44,180 44,168 Q44,155 45,145 Q48,136 50,135 Q52,136 55,145 Q56,155 56,168 C56,180 56,192 56,200 Q56,210 56,220 L57,244 L76,244 L73,220 Q72,210 73,200 C74,192 75,180 77,168 Q78,150 77,135 L78,118 Q82,116 86,108 C92,100 94,88 94,74 C94,60 92,46 86,40 Q78,35 66,33 L66,40 Q58,36 50,36 Q42,36 34,40 L34,33 Q22,35 14,40 Z"/>
+              <path d="M34,40 Q16,44 12,58 Q8,70 8,82 L16,82 Q16,70 18,60 Q22,48 28,44 Z"/>
+              <path d="M66,40 Q84,44 88,58 Q92,70 92,82 L84,82 Q84,70 82,60 Q78,48 72,44 Z"/>
+              <path d="M8,82 Q6,96 7,108 L15,107 Q15,96 16,82 Z"/>
+              <path d="M92,82 Q94,96 93,108 L85,107 Q85,96 84,82 Z"/>
+            </g>
+            <g clip-path="url(#clip-back)" style="cursor:pointer">
+              <ellipse id="mb-traps" cx="50" cy="52" rx="22" ry="11" fill="var(--border)" opacity="0.92" data-mname="Trapez"><title>Trapez</title></ellipse>
+              <ellipse id="mb-rear-delt-l" cx="22" cy="44" rx="12" ry="11" fill="var(--border)" opacity="0.92" data-mname="Arka Deltoid"><title>Arka Deltoid</title></ellipse>
+              <ellipse id="mb-rear-delt-r" cx="78" cy="44" rx="12" ry="11" fill="var(--border)" opacity="0.92" data-mname="Arka Deltoid"><title>Arka Deltoid</title></ellipse>
+              <ellipse id="mb-lats-l" cx="28" cy="76" rx="12" ry="22" fill="var(--border)" opacity="0.92" data-mname="Sırt (Lat)"><title>Sırt (Latissimus Dorsi)</title></ellipse>
+              <ellipse id="mb-lats-r" cx="72" cy="76" rx="12" ry="22" fill="var(--border)" opacity="0.92" data-mname="Sırt (Lat)"><title>Sırt (Latissimus Dorsi)</title></ellipse>
+              <ellipse id="mb-tricep-l" cx="13" cy="66" rx="6" ry="13" fill="var(--border)" opacity="0.92" data-mname="Triceps"><title>Triceps</title></ellipse>
+              <ellipse id="mb-tricep-r" cx="87" cy="66" rx="6" ry="13" fill="var(--border)" opacity="0.92" data-mname="Triceps"><title>Triceps</title></ellipse>
+              <ellipse id="mb-lower-back" cx="50" cy="104" rx="15" ry="11" fill="var(--border)" opacity="0.92" data-mname="Alt Sırt / Bel"><title>Alt Sırt (Lower Back)</title></ellipse>
+              <ellipse id="mb-glute-l" cx="35" cy="128" rx="15" ry="16" fill="var(--border)" opacity="0.92" data-mname="Kalça"><title>Kalça (Glute)</title></ellipse>
+              <ellipse id="mb-glute-r" cx="65" cy="128" rx="15" ry="16" fill="var(--border)" opacity="0.92" data-mname="Kalça"><title>Kalça (Glute)</title></ellipse>
+              <ellipse id="mb-hamstring-l" cx="33" cy="177" rx="12" ry="26" fill="var(--border)" opacity="0.92" data-mname="Hamstring"><title>Hamstring</title></ellipse>
+              <ellipse id="mb-hamstring-r" cx="67" cy="177" rx="12" ry="26" fill="var(--border)" opacity="0.92" data-mname="Hamstring"><title>Hamstring</title></ellipse>
+              <ellipse id="mb-calf-l" cx="33" cy="227" rx="9" ry="15" fill="var(--border)" opacity="0.92" data-mname="Baldır"><title>Baldır</title></ellipse>
+              <ellipse id="mb-calf-r" cx="67" cy="227" rx="9" ry="15" fill="var(--border)" opacity="0.92" data-mname="Baldır"><title>Baldır</title></ellipse>
+            </g>
+            <text x="50" y="54" text-anchor="middle" font-size="5.5" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Trapez</text>
+            <text x="50" y="78" text-anchor="middle" font-size="5.5" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Sırt</text>
+            <text x="50" y="106" text-anchor="middle" font-size="5.2" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Bel</text>
+            <text x="50" y="130" text-anchor="middle" font-size="5.2" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Kalça</text>
+            <text x="50" y="179" text-anchor="middle" font-size="5.2" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Ham.</text>
+            <text x="13" y="68" text-anchor="middle" font-size="4.8" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Tri</text>
+            <text x="87" y="68" text-anchor="middle" font-size="4.8" fill="rgba(255,255,255,0.88)" font-weight="700" pointer-events="none">Tri</text>
+          </svg>
+        </div>
       </div>
     </div>
   </div>
@@ -1154,6 +1267,74 @@ async function loadTraining(){
     </div>`;
   }).join('');
   selectDay(trDate);
+  loadMuscleHeatmap();
+}
+
+/* ── KAS GRUBU HARITASI ─────────────────────────────── */
+const MUSCLE_MAP=[
+  {muscle:'chest',  ids:['mf-chest-l','mf-chest-r'],    re:/bench|göğüs|chest|flye|fly|pec|cable cross|kablo geçiş|incline|decline|dip/i},
+  {muscle:'shoulder',ids:['mf-shoulder-l','mf-shoulder-r'],re:/shoulder|omuz|overhead|ohp|military|lateral raise|front raise|arnold|upright row|shoulder press/i},
+  {muscle:'rear_delt',ids:['mb-rear-delt-l','mb-rear-delt-r'],re:/rear delt|face pull|reverse fly|arka omuz|bent.*over.*fly/i},
+  {muscle:'bicep',  ids:['mf-bicep-l','mf-bicep-r'],    re:/curl|bicep|bıçak|hammer|preacher|incline curl/i},
+  {muscle:'tricep', ids:['mb-tricep-l','mb-tricep-r'],   re:/tricep|skull crusher|pushdown|overhead.*ext|french press|trisep|kickback|dips/i},
+  {muscle:'forearm',ids:['mf-forearm-l','mf-forearm-r'],re:/forearm|önkol|wrist|bilek|reverse curl/i},
+  {muscle:'traps',  ids:['mb-traps'],                    re:/shrug|trap|omuz sıkma|rack pull/i},
+  {muscle:'lats',   ids:['mb-lats-l','mb-lats-r'],       re:/pulldown|pull.?up|lat |lat$|row|kürek|t.?bar|cable row|chest.*supported|assisted pull/i},
+  {muscle:'lower_back',ids:['mb-lower-back'],            re:/deadlift|rdl|romanian|good morning|hyperextension|bel|lower back|back ext|stiff.?leg/i},
+  {muscle:'glute',  ids:['mb-glute-l','mb-glute-r'],     re:/hip thrust|glute|kalça|sumo|rdl|romanian|stiff.?leg|deadlift|abductor/i},
+  {muscle:'abs',    ids:['mf-abs'],                      re:/crunch|abs|karın|plank|sit.?up|mekik|leg raise|russian twist|hanging leg|core/i},
+  {muscle:'quad',   ids:['mf-quad-l','mf-quad-r'],       re:/squat|leg press|lunge|leg ext|bacak|quad|step.?up|hack squat|goblet/i},
+  {muscle:'hamstring',ids:['mb-hamstring-l','mb-hamstring-r'],re:/hamstring|leg curl|rdl|romanian|stiff.?leg|nordic|glute.?ham/i},
+  {muscle:'calf',   ids:['mf-calf-l','mf-calf-r','mb-calf-l','mb-calf-r'],re:/calf|baldır|standing calf|seated calf|donkey/i},
+];
+
+function muscleColor(daysAgo){
+  if(daysAgo===null)return null;
+  if(daysAgo<=1)return '#ff4444';
+  if(daysAgo===2)return '#ff7700';
+  if(daysAgo===3)return '#ffaa00';
+  if(daysAgo<=6)return '#88cc00';
+  return '#33bb44';
+}
+
+async function loadMuscleHeatmap(){
+  try{
+    const today=new Date();today.setHours(12,0,0,0);
+    const data=await API('/api/workout/muscle-heatmap');
+    const minDays={};
+    (data||[]).forEach(row=>{
+      const d=new Date(row.date+'T12:00:00');
+      const diff=Math.round((today-d)/(1000*60*60*24));
+      MUSCLE_MAP.forEach(m=>{
+        if(m.re.test(row.exercise)){
+          if(minDays[m.muscle]===undefined||diff<minDays[m.muscle])minDays[m.muscle]=diff;
+        }
+      });
+    });
+    MUSCLE_MAP.forEach(m=>{
+      const days=minDays[m.muscle]!==undefined?minDays[m.muscle]:null;
+      const color=muscleColor(days);
+      m.ids.forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el)return;
+        el.setAttribute('fill',color||'var(--border)');
+        // Hover tooltip
+        el.onmouseenter=()=>{
+          const lbl=$('muscle-tooltip-text');
+          if(!lbl)return;
+          const name=el.getAttribute('data-mname')||'';
+          if(days===null)lbl.textContent=name+' — henüz çalışılmadı';
+          else if(days===0)lbl.textContent=name+' — bugün çalışıldı 🔴';
+          else if(days===1)lbl.textContent=name+' — dün çalışıldı 🔴';
+          else lbl.textContent=name+' — '+days+' gün önce çalışıldı';
+        };
+        el.onmouseleave=()=>{
+          const lbl=$('muscle-tooltip-text');
+          if(lbl)lbl.textContent='Kas üzerine gel → son antrenman';
+        };
+      });
+    });
+  }catch(e){console.warn('muscle heatmap err',e);}
 }
 
 async function selectDay(dateStr){
@@ -1170,12 +1351,299 @@ async function selectDay(dateStr){
   else {
     el.innerHTML=Object.entries(groups).map(([ex,sets])=>{
       const wuSets=sets.filter(s=>s.set_type==='Warm-up'),wsSets=sets.filter(s=>s.set_type==='Working Set'||!s.set_type),boSets=sets.filter(s=>s.set_type==='Back-off');
-      const renderSets=(arr,badge,cls)=>arr.map(s=>`<div class="set-line"><span class="set-badge ${cls}">${badge}</span><span style="flex:1">S${s.set_num} — ${s.weight||'—'} × ${s.reps||'—'}</span><button class="set-del-btn" onclick="confirmDelSet(${s.id})">✕</button></div>`).join('');
-      return `<div class="ex-block"><div class="ex-block-title"><span>${ex}</span><span style="font-size:.7rem;color:var(--muted);font-weight:400">${sets.length} set</span></div>${renderSets(wuSets,'WU','badge-wu')}${renderSets(wsSets,'WS','badge-ws')}${renderSets(boSets,'BO','badge-bo')}</div>`;
+      const renderSets=(arr,badge,cls)=>arr.map(s=>`<div class="set-line"><span class="set-badge ${cls}">${badge}</span><span style="flex:1">S${s.set_num} — ${s.weight||'—'} × ${s.reps||'—'}${s.rir!=null?` <span class="rir-badge">RIR ${s.rir}</span>`:''}</span><button class="set-del-btn" onclick="confirmDelSet(${s.id})">✕</button></div>`).join('');
+      const exEnc=ex.replace(/'/g,"\\'");
+      return `<div class="ex-block"><div class="ex-block-title"><span>${ex}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:.7rem;color:var(--muted);font-weight:400">${sets.length} set</span><button onclick="quickAddSet('${exEnc}')" style="background:var(--red);border:none;color:#fff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;cursor:pointer">+ Set</button></div></div>${renderSets(wuSets,'WU','badge-wu')}${renderSets(wsSets,'WS','badge-ws')}${renderSets(boSets,'BO','badge-bo')}</div>`;
     }).join('');
   }
   const hist=await API('/api/workout/history/'+td);
   const hel=$('tr-history');if(!hel)return;
   if(!Array.isArray(hist)||!hist.length){hel.innerHTML='<div class="list-empty">Geçmiş yok</div>';return;}
   hel.innerHTML=hist.slice(0,5).map(sess=>{
-    const exRows=Obje
+    const exRows=Object.entries(sess.exercises||{});if(!exRows.length)return'';
+    return `<div class="history-card"><div class="history-date">${fmtD(sess.date)}</div>${exRows.map(([ex,sets])=>`<div style="font-size:.8rem;margin-bottom:3px"><b>${ex}</b>: ${sets.map(s=>(s.weight||'?')+'×'+(s.reps||'?')).join(', ')}</div>`).join('')}</div>`;
+  }).join('');
+}
+
+function onExInput(){
+  // nothing needed — exercise locks after addSet
+}
+function quickAddSet(exercise){
+  // Lock the exercise and scroll to form
+  $('tr-locked-name').textContent=exercise;
+  $('tr-locked-ex').style.display='flex';
+  $('tr-ex-row').style.display='none';
+  $('tr-w').focus();$('tr-w').select();
+  document.querySelector('.card.ct-red')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function clearExercise(){
+  $('tr-ex').value='';
+  $('tr-w').value='';
+  $('tr-r').value='';
+  $('tr-rir').value='';
+  $('tr-locked-ex').style.display='none';
+  $('tr-ex-row').style.display='';
+  const ctr=$('tr-set-counter');if(ctr)ctr.style.display='none';
+  $('tr-ex').focus();
+}
+async function addSet(){
+  let exercise=$('tr-locked-ex').style.display!=='none'
+    ? $('tr-locked-name').textContent
+    : $('tr-ex').value.trim();
+  const weight=$('tr-w').value,reps=$('tr-r').value,rir=$('tr-rir').value;
+  if(!exercise)return toast('Hareket adı gir',false);
+  await POST('/api/workout/set',{date:trDate,exercise,weight:weight?weight+' kg':weight,reps,set_type:activeSetType,rir:rir?parseInt(rir):null});
+  // Lock exercise, keep weight/reps for next set
+  $('tr-locked-name').textContent=exercise;
+  $('tr-locked-ex').style.display='flex';
+  $('tr-ex-row').style.display='none';
+  $('tr-rir').value='';
+  $('tr-w').focus();
+  $('tr-w').select();
+  toast(`${exercise} — ${weight||'?'}kg × ${reps||'?'}${rir?' RIR'+rir:''} kaydedildi`);
+  selectDay(trDate);
+  loadMuscleHeatmap();
+  // Update set counter
+  try{
+    const data=await API('/api/workout/'+trDate);
+    const sets=(data.exercises||{})[exercise]||[];
+    const ctr=$('tr-set-counter');
+    if(ctr){ctr.style.display='';ctr.textContent=`${exercise} — ${sets.length} set kayıtlı, Set ${sets.length+1} hazır`;}
+  }catch(e){}
+  // populate datalist for future exercises
+  try{
+    const existing=Array.from($('tr-ex-list').options).map(o=>o.value);
+    if(!existing.includes(exercise)){const o=document.createElement('option');o.value=exercise;$('tr-ex-list').appendChild(o);}
+  }catch(e){}
+}
+
+/* ═══════════════════════════════════════════════════
+   ÖZET PAGE
+════════════════════════════════════════════════════ */
+let _ozCharts={};
+function destroyOzChart(id){if(_ozCharts[id]){_ozCharts[id].destroy();delete _ozCharts[id];}}
+function mkOzChart(id,type,labels,datasets,opts={}){
+  destroyOzChart(id);
+  const ctx=$(id);if(!ctx)return;
+  _ozCharts[id]=new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,plugins:{legend:{display:datasets.length>1}},scales:{y:{grid:{color:'rgba(255,255,255,.05)'}},...(opts.scales||{})}}});
+}
+
+function ozSub(which){
+  ['daily','weekly','monthly'].forEach(n=>{
+    $('oz-'+n).style.display=n===which?'':'none';
+  });
+  document.querySelectorAll('#page-ozet .sub-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['daily','weekly','monthly'][i]===which);
+  });
+  if(which==='daily')renderOzDaily();
+  else if(which==='weekly')renderOzWeekly();
+  else renderOzMonthly();
+}
+
+async function loadOzet(){ozSub('daily');}
+
+async function renderOzDaily(){
+  const el=$('oz-daily-content');if(!el)return;
+  const [d,meals]=await Promise.all([API('/api/today'),API('/api/meals/'+today())]);
+  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},mo=d.mood||{};
+  const totals=(meals||[]).reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),c:a.c+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{cal:0,p:0,c:0,f:0});
+  const card=(icon,title,content,color)=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px;border-left:3px solid ${color}">
+    <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${icon} ${title}</div>
+    <div style="font-size:.9rem;color:var(--text);line-height:1.7">${content}</div>
+  </div>`;
+  const water=((nu.water_ml||0)/1000).toFixed(1);
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      ${card('😴','Uyku',sl.hours?`<b>${sl.hours}s</b> — Kalite <b>${sl.quality||'?'}/10</b>`:'Kayıt yok','var(--blue)')}
+      ${card('💪','Antrenman',ex.type?`<b>${ex.type}</b> · ${ex.duration||'?'}dk · Yoğunluk ${ex.intensity||'?'}/10`:'Kayıt yok','var(--red)')}
+      ${card('🥩','Beslenme',`<b>${totals.cal} kcal</b> · P ${Math.round(totals.p)}g · K ${Math.round(totals.c)}g · Y ${Math.round(totals.f)}g`,'var(--yellow)')}
+      ${card('💧','Su',`<b>${water}L</b> bugün`,'var(--teal)')}
+      ${card('🧠','Ruh Hali',mo.energy?`Enerji <b>${mo.energy}/10</b> · Mood <b>${mo.mood}/10</b> · Stres <b>${mo.stress}/10</b>`:'Kayıt yok','var(--purple)')}
+      ${card('🏃','Antrenman Günü',`<b style="color:var(--yellow)">${d.training_day||'—'}</b> · Seri: <b>${d.streak||0} gün</b>`,'var(--orange)')}
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
+      <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🍽️ Öğünler</div>
+      ${meals&&meals.length?meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:.84rem">${m.title||m.slot}</span><span style="font-size:.78rem;color:var(--muted)">${m.calories||0} kcal</span></div>`).join(''):'<div style="color:var(--muted);font-size:.84rem">Öğün kaydı yok</div>'}
+    </div>`;
+}
+
+async function renderOzWeekly(){
+  const data=await API('/api/summary?days=7');
+  if(!Array.isArray(data)||!data.length)return;
+  const labels=data.map(d=>new Date(d.date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric'}));
+  const vals=(key,fallback=null)=>data.map(d=>d[key]!=null?d[key]:fallback);
+  // Stats card
+  const slRows=data.filter(d=>d.sleep_hours!=null);
+  const moRows=data.filter(d=>d.energy!=null);
+  const avgSl=slRows.length?Math.round(slRows.reduce((s,d)=>s+d.sleep_hours,0)/slRows.length*10)/10:'-';
+  const avgEn=moRows.length?Math.round(moRows.reduce((s,d)=>s+d.energy,0)/moRows.length*10)/10:'-';
+  const totalCal=data.reduce((s,d)=>s+(d.calories||0),0);
+  const trainDays=data.filter(d=>d.training_day!=='Off'&&d.has_data).length;
+  $('oz-week-stats').innerHTML=`<div class="card-head"><span class="card-icon">📊</span><div><div class="card-name">7 Gün Özeti</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
+      <div><div style="color:var(--muted);font-size:.62rem">ORT. UYKU</div><div style="font-size:1.3rem;font-weight:900;color:var(--blue)">${avgSl}<small style="font-size:.6em">s</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">ORT. ENERJİ</div><div style="font-size:1.3rem;font-weight:900;color:var(--green)">${avgEn}<small style="font-size:.6em">/10</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">TOPLAM KALORİ</div><div style="font-size:1.3rem;font-weight:900;color:var(--yellow)">${totalCal}<small style="font-size:.6em">kcal</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">ANTRENMAN</div><div style="font-size:1.3rem;font-weight:900;color:var(--red)">${trainDays}<small style="font-size:.6em">/7</small></div></div>
+    </div>`;
+  // Macro card
+  const avgP=data.filter(d=>d.protein_g).reduce((s,d)=>s+d.protein_g,0)/7;
+  const avgC=data.filter(d=>d.carbs_g).reduce((s,d)=>s+d.carbs_g,0)/7;
+  const avgF=data.filter(d=>d.fat_g).reduce((s,d)=>s+d.fat_g,0)/7;
+  $('oz-week-macro').innerHTML=`<div class="card-head"><span class="card-icon">🥩</span><div><div class="card-name">Haftalık Makro Ort.</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
+      <div><div style="color:var(--muted);font-size:.62rem">PROTEIN</div><div style="font-size:1.3rem;font-weight:900;color:var(--green)">${Math.round(avgP)}<small style="font-size:.6em">g</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">KARB</div><div style="font-size:1.3rem;font-weight:900;color:var(--yellow)">${Math.round(avgC)}<small style="font-size:.6em">g</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">YAĞ</div><div style="font-size:1.3rem;font-weight:900;color:var(--orange)">${Math.round(avgF)}<small style="font-size:.6em">g</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">SU ORT.</div><div style="font-size:1.3rem;font-weight:900;color:var(--teal)">${Math.round(data.reduce((s,d)=>s+(d.water_ml||0),0)/7/100)/10}<small style="font-size:.6em">L</small></div></div>
+    </div>`;
+  // Charts
+  setTimeout(()=>{
+    mkOzChart('oz-sleep-chart','bar',labels,[{label:'Uyku (s)',data:vals('sleep_hours'),backgroundColor:'rgba(77,159,255,.6)',borderColor:'#4d9fff',borderWidth:1.5}]);
+    mkOzChart('oz-mood-chart','line',labels,[
+      {label:'Enerji',data:vals('energy'),borderColor:'#00e676',tension:.4,pointRadius:3,fill:false},
+      {label:'Mood',data:vals('mood'),borderColor:'#b44dff',tension:.4,pointRadius:3,fill:false},
+      {label:'Stres',data:vals('stress'),borderColor:'#ff3b3b',tension:.4,pointRadius:3,fill:false},
+    ]);
+    mkOzChart('oz-cal-chart','bar',labels,[{label:'Kalori',data:vals('calories',0),backgroundColor:'rgba(255,184,0,.5)',borderColor:'#ffb800',borderWidth:1.5}]);
+  },100);
+}
+
+async function renderOzMonthly(){
+  const data=await API('/api/summary?days=30');
+  if(!Array.isArray(data)||!data.length)return;
+  const labels=data.map(d=>new Date(d.date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'}));
+  const vals=(key,fallback=null)=>data.map(d=>d[key]!=null?d[key]:fallback);
+  // Monthly stats
+  const totalTrain=data.filter(d=>d.training_day!=='Off'&&d.has_data).length;
+  const avgSl=data.filter(d=>d.sleep_hours).map(d=>d.sleep_hours);
+  const avgSlV=avgSl.length?Math.round(avgSl.reduce((a,v)=>a+v,0)/avgSl.length*10)/10:'-';
+  const wRows=data.filter(d=>d.weight_kg);
+  const firstW=wRows.length?wRows[0].weight_kg:null;
+  const lastW=wRows.length?wRows[wRows.length-1].weight_kg:null;
+  const wChange=firstW&&lastW?Math.round((lastW-firstW)*10)/10:null;
+  $('oz-month-stats').innerHTML=`<div class="card-head"><span class="card-icon">📆</span><div><div class="card-name">30 Gün Özeti</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:.82rem">
+      <div><div style="color:var(--muted);font-size:.62rem">ANTRENMAN</div><div style="font-size:1.6rem;font-weight:900;color:var(--red)">${totalTrain}<small style="font-size:.45em">/30</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">ORT. UYKU</div><div style="font-size:1.6rem;font-weight:900;color:var(--blue)">${avgSlV}<small style="font-size:.45em">s</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">KİLO DEĞ.</div><div style="font-size:1.6rem;font-weight:900;color:${wChange<0?'var(--green)':wChange>0?'var(--red)':'var(--muted)'}">${wChange!=null?(wChange>0?'+':'')+wChange:'—'}<small style="font-size:.45em">kg</small></div></div>
+      <div><div style="color:var(--muted);font-size:.62rem">TOPLAM CAL</div><div style="font-size:1.3rem;font-weight:900;color:var(--yellow)">${Math.round(data.reduce((s,d)=>s+(d.calories||0),0)/1000)}K<small style="font-size:.45em">kcal</small></div></div>
+    </div>`;
+  setTimeout(()=>{
+    mkOzChart('oz-weight-chart','line',labels,[{label:'Kilo (kg)',data:vals('weight_kg'),borderColor:'#ff7043',tension:.4,pointRadius:2,fill:true,backgroundColor:'rgba(255,112,67,.1)'}]);
+    mkOzChart('oz-sleep30-chart','bar',labels,[{label:'Uyku (s)',data:vals('sleep_hours',0),backgroundColor:'rgba(77,159,255,.5)',borderColor:'#4d9fff',borderWidth:1}]);
+    mkOzChart('oz-cal30-chart','bar',labels,[{label:'Kalori',data:vals('calories',0),backgroundColor:'rgba(255,184,0,.4)',borderColor:'#ffb800',borderWidth:1}]);
+  },100);
+}
+
+/* ═══════════════════════════════════════════════════
+   CALENDAR
+════════════════════════════════════════════════════ */
+let calY=new Date().getFullYear(),calM=new Date().getMonth()+1;
+function loadCalendar(){renderCal(calY,calM);}
+function calMove(dir){calM+=dir;if(calM>12){calM=1;calY++;}if(calM<1){calM=12;calY--;}renderCal(calY,calM);}
+
+async function renderCal(y,m){
+  sv('cal-month',new Date(y,m-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'}));
+  const [days,vitDays]=await Promise.all([API('/api/calendar/'+y+'/'+m), getVitDays(y,m)]);
+  const el=$('cal-days');if(!el)return;
+  const firstDow=(new Date(y,m-1,1).getDay()+6)%7;
+  let html=Array(firstDow).fill('<div class="cal-day empty"></div>').join('');
+  days.forEach(d=>{
+    const isT=d.date===today(),hasVit=vitDays.has(d.date);
+    html+=`<div class="cal-day ${isT?'today':''} ${d.has_data?'has-data':''} ${hasVit?'has-vit':''}" style="background:${d.color}22;border-color:${d.color}55;border-style:solid" onclick="showDayPanel('${d.date}')">
+      <div class="cal-num" style="color:${d.color}">${d.day}</div>
+      <div class="cal-type" style="color:${d.color}">${d.training}</div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+async function getVitDays(y,m){
+  try{
+    const conn=await fetch(`/api/vitamins/month/${y}/${m}`).then(r=>r.json()).catch(()=>[]);
+    return new Set((conn||[]).map(v=>v.date));
+  }catch{return new Set();}
+}
+
+async function showDayPanel(dateStr){
+  const [d,meals]=await Promise.all([API('/api/day/'+dateStr),API('/api/meals/'+dateStr)]);
+  const panel=$('day-panel');panel.style.display='block';
+  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},w=d.work||{},mo=d.mood||{};
+  const totCal=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.calories||0),0):0;
+  const totP=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.protein_g||0),0):0;
+  const vits=d.vitamins||[];
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="font-size:1rem;font-weight:900">${new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
+      <div style="background:${d.color||'#333'};color:#fff;padding:3px 12px;border-radius:6px;font-size:.72rem;font-weight:900;text-transform:uppercase">${d.training||'—'}</div>
+    </div>
+    <div class="day-data-grid">
+      ${sl.hours?`<div class="day-data-item"><div class="day-lbl">Uyku</div><div class="day-val">${sl.hours}s / ${sl.quality||'?'}/10</div></div>`:''}
+      ${ex.type?`<div class="day-data-item"><div class="day-lbl">Egzersiz</div><div class="day-val">${ex.type} ${ex.duration||''}dk</div></div>`:''}
+      ${totCal?`<div class="day-data-item"><div class="day-lbl">Kalori</div><div class="day-val">${Math.round(totCal)} kcal</div></div>`:''}
+      ${totP?`<div class="day-data-item"><div class="day-lbl">Protein</div><div class="day-val">${Math.round(totP)}g</div></div>`:''}
+      ${nu.water_ml?`<div class="day-data-item"><div class="day-lbl">Su</div><div class="day-val">${(nu.water_ml/1000).toFixed(1)}L</div></div>`:''}
+      ${w.hours?`<div class="day-data-item"><div class="day-lbl">İş</div><div class="day-val">${w.hours}s</div></div>`:''}
+      ${mo.energy?`<div class="day-data-item"><div class="day-lbl">Enerji/Mood</div><div class="day-val">${mo.energy}/${mo.mood||'?'}</div></div>`:''}
+    </div>
+    ${vits.length?`<div style="margin-bottom:8px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:5px">💊 Takviyeler</div>${vits.map(v=>`<span style="display:inline-block;background:rgba(180,77,255,.15);border:1px solid rgba(180,77,255,.3);color:var(--purple);border-radius:6px;padding:3px 9px;font-size:.75rem;font-weight:700;margin:2px">${v.name}${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>`).join('')}</div>`:''}
+    ${Array.isArray(meals)&&meals.length?`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:6px">Öğünler</div>${meals.map(m=>`<div style="display:flex;justify-content:space-between;font-size:.82rem;padding:5px 0;border-bottom:1px solid var(--border)"><span>${m.title||m.slot}</span><span style="color:var(--muted)">${m.calories?m.calories+' kcal':''}</span></div>`).join('')}`:''}
+    ${d.note?`<div style="margin-top:10px;font-size:.82rem;color:var(--muted);font-style:italic">"${d.note}"</div>`:''}
+    <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="$('day-panel').style.display='none'">Kapat ✕</button>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   TEMPLATES
+════════════════════════════════════════════════════ */
+async function loadTemplates(){
+  const all=await API('/api/templates');
+  const items=Array.isArray(all)?all:[];
+  renderTplList('tpl-meal-list',items.filter(t=>t.kind==='meal'),'meal');
+  renderTplList('tpl-supp-list',items.filter(t=>t.kind==='supplement'),'supplement');
+}
+function renderTplList(elId,items,kind){
+  const el=$(elId);if(!el)return;
+  if(!items.length){el.innerHTML='<div class="list-empty">Şablon yok</div>';return;}
+  el.innerHTML=items.map(t=>{
+    const mac=kind==='meal'?[t.calories?t.calories+'kcal':null,t.protein_g?'P'+t.protein_g+'g':null].filter(Boolean).join(' '):[t.amount,t.unit].filter(Boolean).join(' ');
+    return `<div class="tpl-item"><div><div class="tpl-name">${t.title}</div><div class="tpl-meta">${t.category||''}${t.category&&mac?' · ':''}${mac}</div></div><div class="tpl-actions"><button class="tpl-use" onclick="useTpl(${t.id},'${kind}')">Kullan</button><button class="tpl-del" onclick="confirmDelTpl(${t.id})">✕</button></div></div>`;
+  }).join('');
+}
+async function useTpl(id,kind){
+  const all=await API('/api/templates');const t=(Array.isArray(all)?all:[]).find(x=>x.id===id);if(!t)return;
+  if(kind==='meal'){await POST('/api/meals',{slot:t.category||'extra',title:t.title,description:t.description||t.title,calories:t.calories,protein_g:t.protein_g,carbs_g:t.carbs_g,fat_g:t.fat_g,source:'template'});toast(t.title+' eklendi');loadDashboard();}
+  else{await POST('/api/vitamin',{name:t.title,amount:t.amount||'',unit:t.unit||''});toast(t.title+' eklendi');loadDashboard();}
+}
+async function saveMealTpl(){const name=$('tm-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/templates',{kind:'meal',category:$('tm-cat').value,title:name,calories:parseInt($('tm-cal').value)||null,protein_g:parseFloat($('tm-prot').value)||null,carbs_g:parseFloat($('tm-carb').value)||null,fat_g:parseFloat($('tm-fat').value)||null});toast('Şablon kaydedildi');['tm-name','tm-cal','tm-prot','tm-carb','tm-fat'].forEach(id=>$(id).value='');loadTemplates();}
+async function saveSuppTpl(){const name=$('ts-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/templates',{kind:'supplement',category:$('ts-cat').value,title:name,amount:$('ts-amt').value,unit:$('ts-unit').value});toast('Supplement şablonu kaydedildi');['ts-name','ts-amt','ts-unit'].forEach(id=>$(id).value='');loadTemplates();}
+
+/* ═══════════════════════════════════════════════════
+   REPORT
+════════════════════════════════════════════════════ */
+async function loadReport(){
+  const rep=await API('/api/report/today');
+  const el=$('report-body');if(!el)return;
+  const text=rep.report||'Veri yok';
+  const sections=[];let cur=null;
+  text.split('\n').forEach(line=>{
+    if(line.startsWith('===')){cur={title:line.replace(/=/g,'').trim(),body:[],type:'header'};sections.push(cur);}
+    else if(line.match(/^\[.+\]$/)){cur={title:line.slice(1,-1),body:[],type:'section'};sections.push(cur);}
+    else if(cur){cur.body.push(line);}
+    else{if(!cur){cur={title:'',body:[],type:'plain'};sections.push(cur);}cur.body.push(line);}
+  });
+  el.innerHTML=sections.map(s=>{
+    const body=s.body.join('\n').trim();if(!body&&!s.title)return'';
+    const cls=body.includes('✓')||body.includes('iyi')?'ok':body.includes('!')||body.includes('eksik')?'warn':'';
+    return `<div class="rep-sec ${cls}">${s.title?`<div class="rep-title">${s.title}</div>`:''}<div class="rep-body">${body}</div></div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+loadDashboard();
+setInterval(loadDashboard,60000);
+</script>
+</body>
+</html>

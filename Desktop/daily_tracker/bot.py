@@ -745,24 +745,30 @@ async def cmd_photo(u, c):
 # ─── BOT RUNNER ───────────────────────────────────────────────────────────────
 async def _run_bot():
     from telegram.ext import Application, CommandHandler, MessageHandler, filters
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start",     cmd_start))
-    app.add_handler(CommandHandler("uyku",      cmd_uyku))
-    app.add_handler(CommandHandler("su",        cmd_su))
-    app.add_handler(CommandHandler("mood",      cmd_mood))
-    app.add_handler(CommandHandler("vitamin",   cmd_vitamin))
-    app.add_handler(CommandHandler("bugun",     cmd_bugun))
-    app.add_handler(CommandHandler("rapor",     cmd_rapor))
-    app.add_handler(CommandHandler("hafta",     cmd_hafta))
-    app.add_handler(CommandHandler("antrenman", cmd_antrenman))
-    app.add_handler(CommandHandler("streak",    cmd_streak))
-    app.add_handler(MessageHandler(filters.PHOTO, cmd_photo))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
-    log.info("Bot baslatiliyor: @taha_serdem_daily_rapor_bot")
-    async with app:
-        await app.updater.start_polling(drop_pending_updates=True)
-        await app.start()
-        await asyncio.Event().wait()
+    retry_delay = 15  # saniye — 409 conflict sonrasi bekleme
+    while True:
+        try:
+            app = Application.builder().token(TELEGRAM_TOKEN).build()
+            app.add_handler(CommandHandler("start",     cmd_start))
+            app.add_handler(CommandHandler("uyku",      cmd_uyku))
+            app.add_handler(CommandHandler("su",        cmd_su))
+            app.add_handler(CommandHandler("mood",      cmd_mood))
+            app.add_handler(CommandHandler("vitamin",   cmd_vitamin))
+            app.add_handler(CommandHandler("bugun",     cmd_bugun))
+            app.add_handler(CommandHandler("rapor",     cmd_rapor))
+            app.add_handler(CommandHandler("hafta",     cmd_hafta))
+            app.add_handler(CommandHandler("antrenman", cmd_antrenman))
+            app.add_handler(CommandHandler("streak",    cmd_streak))
+            app.add_handler(MessageHandler(filters.PHOTO, cmd_photo))
+            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
+            log.info("Bot baslatiliyor: @taha_serdem_daily_rapor_bot")
+            async with app:
+                await app.updater.start_polling(drop_pending_updates=True)
+                await app.start()
+                await asyncio.Event().wait()
+        except Exception as e:
+            log.warning(f"[bot] Hata: {e} — {retry_delay}s sonra yeniden deneniyor...")
+            await asyncio.sleep(retry_delay)
 
 def main():
     asyncio.run(_run_bot())
