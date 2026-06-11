@@ -36,6 +36,51 @@ ANTHROPIC_MODEL   = 'claude-haiku-4-5-20251001'
 CYCLE_START       = _cfg.get('CYCLE_START', date.today().isoformat())
 TRAINING_CYCLE    = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
 
+# Antrenman programı v1 — 11.06.2026
+PROGRAM = {
+    'Push': [
+        ('Incline DB/Makine Press',      '4×6-10',  'üst göğüs öncelikli'),
+        ('High to Low Cable Fly',         '3×12-15', 'stretch hissini koru'),
+        ('Lateral Raise',                 '4×12-15', 'kontrollü tempo'),
+        ('Overhead Press (makine/DB)',    '3×10-12', 'opsiyonel'),
+        ('Triceps Pushdown',              '3×12-15', ''),
+        ('Overhead Rope Extension',       '3×12-15', ''),
+    ],
+    'Pull': [
+        ('Pull-Up / Lat Pulldown',        '4×6-10',  'lat genişliği öncelikli'),
+        ('Chest Supported Row',           '4×8-12',  'orta sırt kalınlığı'),
+        ('Single Arm Cable Pulldown',     '3×12-15', 'lat stretch'),
+        ('Rear Delt Fly',                 '4×15-20', 'ilerleme sürüyor'),
+        ('EZ Bar Curl',                   '3×10-12', ''),
+        ('Hammer Curl',                   '3×12-15', 'brachialis'),
+    ],
+    'Leg': [
+        ('Bulgarian Split Squat',         '4×8-12',  'quad öncelikli'),
+        ('Toe Elevated RDL',              '4×8-12',  'hamstring stretch'),
+        ('Leg Extension',                 '4×10-15', 'hedef: 55→60 kg'),
+        ('Leg Curl',                      '3×10-15', ''),
+        ('Standing Calf Raise',           '4×15-20', 'full ROM'),
+        ('Glute Bridge',                  '3×15',    'opsiyonel'),
+    ],
+    'Upper': [
+        ('Incline Press',                 '3×8-12',  'Push\'tan farklı varyant'),
+        ('Chest Supported Row',           '3×10-12', ''),
+        ('Lat Pulldown',                  '3×10-12', ''),
+        ('Lateral Raise',                 '3×15-20', 'hafif, pump'),
+        ('Rear Delt',                     '3×15-20', ''),
+        ('Bayesian Curl',                 '3×12-15', ''),
+        ('Triceps Pushdown/Rope',         '3×12-15', ''),
+    ],
+    'Lower': [
+        ('Reverse Lunge',                 '3×10-12', 'her bacak'),
+        ('Leg Curl',                      '3×12-15', ''),
+        ('Leg Extension',                 '3×12-15', 'heavy günden hafif'),
+        ('Calf Raise',                    '3×15-20', ''),
+        ('Core: Leg Raise + Plank',       '3-4 set', ''),
+    ],
+    'Off': [],
+}
+
 # DB
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -166,6 +211,46 @@ def norm_tr(text):
         t = t.replace(a, b)
     return t
 
+def get_last_sets_for_day(day_type):
+    """O antrenman günü için önceki seanstan ağırlıkları çek."""
+    conn = get_db()
+    # son tarih
+    row = conn.execute(
+        "SELECT MAX(date) as last_date FROM workout_logs WHERE training_day=? AND date < ?",
+        (day_type, date.today().isoformat())
+    ).fetchone()
+    if not row or not row['last_date']:
+        conn.close()
+        return {}
+    last_date = row['last_date']
+    rows = conn.execute(
+        "SELECT exercise, weight, reps, set_num FROM workout_logs WHERE date=? AND training_day=? ORDER BY exercise, set_num",
+        (last_date, day_type)
+    ).fetchall()
+    conn.close()
+    # Her egzersiz için son seti al (en yüksek set_num)
+    result = {}
+    for r in rows:
+        result[r['exercise']] = {'weight': r['weight'], 'reps': r['reps'], 'date': last_date}
+    return result
+
+def get_today_sets():
+    """Bugün kaydedilen setleri çek."""
+    today = date.today().isoformat()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT exercise, set_num, weight, reps, set_type FROM workout_logs WHERE date=? ORDER BY exercise, set_num",
+        (today,)
+    ).fetchall()
+    conn.close()
+    grouped = {}
+    for r in rows:
+        ex = r['exercise']
+        if ex not in grouped:
+            grouped[ex] = []
+        grouped[ex].append({'set': r['set_num'], 'weight': r['weight'], 'reps': r['reps']})
+    return grouped
+
 def streak_count():
     conn = get_db()
     n, d = 0, date.today()
@@ -221,9 +306,16 @@ def today_ai_context():
     mo  = conn.execute("SELECT * FROM mood_logs     WHERE date=?", (today,)).fetchone()
     vs  = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
     conn.close()
+    td = training_day(today)
+    last_sets = get_last_sets_for_day(td)
+    today_sets = get_today_sets()
+    program_exercises = [(name, sets) for name, sets, _ in PROGRAM.get(td, [])]
     return {
         'date': today,
-        'training_day': training_day(today),
+        'training_day': td,
+        'program': program_exercises,
+        'last_session_weights': last_sets,
+        'todays_logged_sets': today_sets,
         'macros': totals,
         'water_l': round(((dict(nu).get('water_ml') or 0) if nu else 0) / 1000, 2),
         'sleep': dict(sl) if sl else {},
@@ -253,6 +345,12 @@ def claude_call(user_text):
         "Turkce, samimi, net ve motive edici konus.\n"
         "Mesaji analiz et. Kayit iceriyorsa actions listesini doldur. "
         "Birden fazla kayit varsa hepsini ayri action olarak ekle.\n"
+        "\nANTRENMAN KOCLUGU KURALLARI:\n"
+        "- Kullanici set logu gonderirse (ornek: 'incline 32kg 4x8') -> workout_set action olustur ve kisa geri bildirim ver\n"
+        "- Onceki seanstan agirlik varsa (last_session_weights) karsilastir: artti mi, ayni mi, dustu mu belirt\n"
+        "- Bugunkü programa (program) gore hangi egzersizlerin loga girmedigini fark edersen nazikce hatirlatabilirsin\n"
+        "- Uyku 5-6 saat ise: 'hacmi biraz azalt' uyu\n"
+        "- Progressive overload: rep araligi tutulduysa bir sonraki seans icin agirlik artisini oner\n"
         "\nKAPIL KURALLAR:\n"
         "- Supplement/vitamin: kapsul/tablet sayisini amount olarak kaydet, unit='kapsul' veya 'tablet' yaz\n"
         "- Kapsul ornekleri: '2 kapsul NAC' -> amount='2' unit='kapsul' | '1 tablet D3' -> amount='1' unit='tablet'\n"
@@ -616,13 +714,60 @@ async def cmd_hafta(u, c):
     )
 
 async def cmd_antrenman(u, c):
-    today = date.today()
-    lines = ["ANTRENMAN TAKVIMI\n"]
-    for i in range(-1, 8):
-        d = today + timedelta(days=i)
-        td = training_day(d.isoformat())
-        prefix = ">>> BUGUN: " if i == 0 else ("DUN:       " if i == -1 else "           ")
-        lines.append(f"{prefix}{d.strftime('%a %d/%m')} -- {td}")
+    args = c.args
+    today_str = date.today().isoformat()
+
+    # /antrenman log — bugünün setleri
+    if args and norm_tr(args[0]) in ('log', 'sets', 'setler'):
+        sets = get_today_sets()
+        if not sets:
+            await u.message.reply_text("Bugün henüz set kaydı yok.")
+            return
+        lines = [f"📋 Bugünün Setleri — {date.today().strftime('%d/%m/%Y')}\n"]
+        for ez, s_list in sets.items():
+            set_strs = ' | '.join(f"S{s['set']}: {s['weight']} ×{s['reps']}" for s in s_list)
+            lines.append(f"• {ex}: {set_strs}")
+        await u.message.reply_text('\n'.join(lines))
+        return
+
+    # /antrenman [push|pull|leg|upper|lower] veya bugünkü gün
+    if args:
+        day_map = {'push': 'Push', 'pull': 'Pull', 'leg': 'Leg', 'legs': 'Leg',
+                   'bacak': 'Leg', 'upper': 'Upper', 'lower': 'Lower'}
+        td = day_map.get(norm_tr(args[0]))
+        if not td:
+            await u.message.reply_text("Kullanım: /antrenman [push|pull|leg|upper|lower|log]")
+            return
+    else:
+        td = training_day(today_str)
+
+    exercises = PROGRAM.get(td, [])
+
+    if td == 'Off' or not exercises:
+        await u.message.reply_text("🛌 Bugün dinlenme günü. İyi recovery!")
+        return
+
+    last_sets = get_last_sets_for_day(td)
+
+    emoji = {'Push': '🔥', 'Pull': '💪', 'Leg': '🦵', 'Upper': '⚡', 'Lower': '🏃'}
+    lines = [f"{emoji.get(td,'💪')} {td.upper()} DAY — {date.today().strftime('%d/%m/%Y')}\n"]
+
+    for i, (name, reps, note) in enumerate(exercises, start=1):
+        # Son seanstan ağırlık var mı?
+        # Benzer isim arama (tam eşleşme veya içerme)
+        last_weight = ''
+        for ex_name, ex_data in last_sets.items():
+            if norm_tr(name[:10]) in norm_tr(ex_name) or norm_tr(ex_name[:10]) in norm_tr(name):
+                w = ex_data.get('weight', '')
+                r = ex_data.get('reps', '')
+                if w:
+                    last_weight = f"  [son: {w} ×{r}]"
+                break
+
+        note_str = f"  ({note})" if note else ''
+        lines.append(f"{i}. {name}\n   {reps}{last_weight}{note_str}")
+
+    lines.append("\n📝 Seti kaydetmek için yaz:\n\"incline 32kg 4x8\" veya \"leg ext 55 4 set 12 tekrar\"")
     await u.message.reply_text('\n'.join(lines))
 
 async def cmd_streak(u, c):
