@@ -156,7 +156,7 @@ def init_db():
             chest_cm REAL, arm_cm REAL, notes TEXT,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE TABLE IF NOT EXISTS training_day_logs (
+        CREATE TABLE IF NOT EXISTR training_day_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL, training_day TEXT NOT NULL,
             exercise TEXT NOT NULL, program_exercise_id INTEGER,
@@ -290,7 +290,7 @@ def today_summary():
     lines.append("Egzersiz: "    + (f"{ex['type']} {ex['duration']}dk" if ex and ex['type'] else "-"))
     lines.append("Kalori: "      + (f"{totals['calories']} kcal | P {totals['protein_g']}g K {totals['carbs_g']}g Y {totals['fat_g']}g" if totals['calories'] else "-"))
     lines.append("Su: "          + (f"{(nu['water_ml'] or 0)/1000:.1f}L" if nu and nu['water_ml'] else "-"))
-    lines.append("Is: "          + (f"{w['hours']}s" if w and w['hours'] else "-"))
+    lines.append("Is: "          + (f"{w['hours']}s" if w and wW'hours'] else "-"))
     lines.append("Antrenorluk:" + (f" {co['sessions']} seans" if co and co['sessions'] else " -"))
     lines.append("Ruh hali: "    + (f"enerji {mo['energy']} mood {mo['mood']} stres {mo['stress']}" if mo and mo['energy'] else "-"))
     return '\n'.join(lines)
@@ -358,6 +358,8 @@ def claude_call(user_text):
         "- Birden fazla su girisi: her birini ayri water action olarak ekle (hepsi ayni gune toplanir)\n"
         "- Gecmis tarih: 'dun', 'onceki gun', 'dun gece' -> date=dun tarihi\n"
         "- Yemek title: her zaman gercek isim (Panikek, Tavuklu Pilav, Omlet...), asla slot ismi yazma\n"
+        "- Gramaj ile yemek girildiginde VARSAYILAN: cig agirlik. 'pismis', 'pisirilmis', 'haslama' gibi ifade olmadikca cig form kabul et ve makrolarini cig haliyle hesapla. Reply'da 'cig agirlik uzerinden hesaplandı' yaz.\n"
+        "- Kullanici 'pismis' yazarsa pismis agirlik olarak hesapla (su kaybi var, genellikle %15-30 daha az).\n"
         "- Kalori/makro bilinmiyorsa makul tahmin yap, reply'da belirt\n"
         "- Egzersiz: exercise_type alani hareketin/gunun adini icersin (Push, Squat, Bench Press...)\n"
         "- Antrenman set: 'bench press 80kg 8 tekrar' veya 'squat 3 set 100kg 5 tekrar' gibi seyler workout_set olarak kaydet\n"
@@ -724,7 +726,7 @@ async def cmd_antrenman(u, c):
             await u.message.reply_text("Bugün henüz set kaydı yok.")
             return
         lines = [f"📋 Bugünün Setleri — {date.today().strftime('%d/%m/%Y')}\n"]
-        for ez, s_list in sets.items():
+        for ex, s_list in sets.items():
             set_strs = ' | '.join(f"S{s['set']}: {s['weight']} ×{s['reps']}" for s in s_list)
             lines.append(f"• {ex}: {set_strs}")
         await u.message.reply_text('\n'.join(lines))
