@@ -233,6 +233,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .badge-ws{background:rgba(255,59,59,.18);color:var(--red)}
 .rir-badge{font-size:.6rem;padding:1px 6px;border-radius:4px;font-weight:700;background:rgba(255,200,0,.15);color:var(--yellow);margin-left:6px;letter-spacing:.2px}
 .badge-bo{background:rgba(180,77,255,.18);color:var(--purple)}
+.badge-ds{background:rgba(255,140,0,.22);color:#ff8c00}
+.badge-ss{background:rgba(0,180,255,.18);color:#00b4ff}
 .set-del-btn{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px;border-radius:4px}
 .set-del-btn:hover{color:var(--red)}
 .history-card{background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid var(--indigo)}
@@ -610,6 +612,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="st-btn" id="stb-wu" onclick="selectSetType('Warm-up')">🔥 Isınma</button>
             <button class="st-btn active-ws" id="stb-ws" onclick="selectSetType('Working Set')">💪 Çalışma</button>
             <button class="st-btn" id="stb-bo" onclick="selectSetType('Back-off')">🎯 Back-off</button>
+            <button class="st-btn" id="stb-ds" onclick="selectSetType('Drop Set')">⬇️ Drop Set</button>
+            <button class="st-btn" id="stb-ss" onclick="selectSetType('Super Set')">🔗 Super Set</button>
           </div>
           <button class="btn btn-red" style="width:100%;margin-top:4px;font-size:1rem;padding:13px" onclick="addSet()">➕ Set Ekle</button>
         </div>
@@ -1296,6 +1300,8 @@ function selectSetType(t){
   $('stb-wu').className='st-btn'+(t==='Warm-up'?' active-wu':'');
   $('stb-ws').className='st-btn'+(t==='Working Set'?' active-ws':'');
   $('stb-bo').className='st-btn'+(t==='Back-off'?' active-bo':'');
+  if($('stb-ds'))$('stb-ds').className='st-btn'+(t==='Drop Set'?' active-ds':'');
+  if($('stb-ss'))$('stb-ss').className='st-btn'+(t==='Super Set'?' active-ss':'');
 }
 selectSetType('Working Set');
 
@@ -1404,10 +1410,10 @@ async function selectDay(dateStr){
   if(!Object.keys(groups).length){el.innerHTML='<div class="list-empty">Bu gün kayıt yok. Sol panelden set ekle.</div>';} 
   else {
     el.innerHTML=Object.entries(groups).map(([ex,sets])=>{
-      const wuSets=sets.filter(s=>s.set_type==='Warm-up'),wsSets=sets.filter(s=>s.set_type==='Working Set'||!s.set_type),boSets=sets.filter(s=>s.set_type==='Back-off');
+      const wuSets=sets.filter(s=>s.set_type==='Warm-up'),wsSets=sets.filter(s=>s.set_type==='Working Set'||!s.set_type),boSets=sets.filter(s=>s.set_type==='Back-off'),dsSets=sets.filter(s=>s.set_type==='Drop Set'),ssSets=sets.filter(s=>s.set_type==='Super Set');
       const renderSets=(arr,badge,cls)=>arr.map(s=>`<div class="set-line"><span class="set-badge ${cls}">${badge}</span><span style="flex:1">S${s.set_num} — ${s.weight||'—'} × ${s.reps||'—'}${s.rir!=null?` <span class="rir-badge">RIR ${s.rir}</span>`:''}</span><button class="set-del-btn" onclick="confirmDelSet(${s.id})">✕</button></div>`).join('');
       const exEnc=ex.replace(/'/g,"\\'");
-      return `<div class="ex-block"><div class="ex-block-title"><span>${ex}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:.7rem;color:var(--muted);font-weight:400">${sets.length} set</span><button onclick="quickAddSet('${exEnc}')" style="background:var(--red);border:none;color:#fff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;cursor:pointer">+ Set</button></div></div>${renderSets(wuSets,'WU','badge-wu')}${renderSets(wsSets,'WS','badge-ws')}${renderSets(boSets,'BO','badge-bo')}</div>`;
+      return `<div class="ex-block"><div class="ex-block-title"><span>${ex}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:.7rem;color:var(--muted);font-weight:400">${sets.length} set</span><button onclick="quickAddSet('${exEnc}')" style="background:var(--red);border:none;color:#fff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;cursor:pointer">+ Set</button></div></div>${renderSets(wuSets,'WU','badge-wu')}${renderSets(wsSets,'WS','badge-ws')}${renderSets(boSets,'BO','badge-bo')}${renderSets(dsSets,'DROP','badge-ds')}${renderSets(ssSets,'SS','badge-ss')}</div>`;
     }).join('');
   }
   const hist=await API('/api/workout/history/'+td);
