@@ -1413,10 +1413,20 @@ async function selectDay(dateStr){
     const EX_ORDER=['Lateral Raise','Cable Lower Chest Press','Chest Supported Rear Delt Row','Seated Front Raise (SS)','Low to High Single DB Fly','Face Pull','Cable Triceps Extension','Cable Triceps Pushdown'];
     const sortedEntries=Object.entries(groups).sort(([a],[b])=>{const ai=EX_ORDER.indexOf(a),bi=EX_ORDER.indexOf(b);return (ai<0?999:ai)-(bi<0?999:bi);});
     el.innerHTML=sortedEntries.map(([ex,sets])=>{
-      const wuSets=sets.filter(s=>s.set_type==='Warm-up'),wsSets=sets.filter(s=>s.set_type==='Working Set'||!s.set_type),boSets=sets.filter(s=>s.set_type==='Back-off'),dsSets=sets.filter(s=>s.set_type==='Drop Set'),ssSets=sets.filter(s=>s.set_type==='Super Set');
-      const renderSets=(arr,badge,cls)=>arr.map(s=>`<div class="set-line"><span class="set-badge ${cls}">${badge}</span><span style="flex:1">S${s.set_num} — ${s.weight||'—'} × ${s.reps||'—'}${s.rir!=null?` <span class="rir-badge">RIR ${s.rir}</span>`:''}</span><button class="set-del-btn" onclick="confirmDelSet(${s.id})">✕</button></div>`).join('');
+      const allSorted=sets.slice().sort((a,b)=>(a.set_num||0)-(b.set_num||0));
+      const rows=[];for(const s of allSorted){if(s.set_type==='Drop Set'&&rows.length>0){rows[rows.length-1].drops.push(s);}else{rows.push({...s,drops:[]});}}
+      const renderSets=rows=>rows.map((row,i)=>{
+        let badge,cls;
+        if(i===0||row.set_type==='Warm-up'){badge='WU';cls='badge-wu';}
+        else if(row.set_type==='Back-off'){badge='BO';cls='badge-bo';}
+        else{badge='WS';cls='badge-ws';}
+        const main=`${row.weight||'—'} × ${row.reps||'—'}${row.rir!=null?` <span class="rir-badge">RIR ${row.rir}</span>`:''}`;
+        const dropStr=row.drops.map(d=>`${d.weight||'—'} × ${d.reps||'—'}`).join(' / ');
+        const content=dropStr?main+' / '+dropStr:main;
+        return `<div class="set-line"><span class="set-badge ${cls}">${badge}</span><span style="flex:1">S${row.set_num} — ${content}</span><button class="set-del-btn" onclick="confirmDelSet(${row.id})">✕</button></div>`;
+      }).join('');
       const exEnc=ex.replace(/'/g,"\\'");
-      return `<div class="ex-block"><div class="ex-block-title"><span>${ex}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:.7rem;color:var(--muted);font-weight:400">${sets.length} set</span><button onclick="quickAddSet('${exEnc}')" style="background:var(--red);border:none;color:#fff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;cursor:pointer">+ Set</button></div></div>${renderSets(wuSets,'WU','badge-wu')}${renderSets(wsSets,'WS','badge-ws')}${renderSets(boSets,'BO','badge-bo')}${renderSets(dsSets,'DROP','badge-ds')}${renderSets(ssSets,'SS','badge-ss')}</div>`;
+      return `<div class="ex-block"><div class="ex-block-title"><span>${ex}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:.7rem;color:var(--muted);font-weight:400">${sets.length} set</span><button onclick="quickAddSet('${exEnc}')" style="background:var(--red);border:none;color:#fff;border-radius:6px;padding:2px 8px;font-size:.7rem;font-weight:700;cursor:pointer">+ Set</button></div></div>${renderSets(rows)}</div>`;
     }).join('');
   }
   const hist=await API('/api/workout/history/'+td);
