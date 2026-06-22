@@ -33,6 +33,25 @@
   --border:#c0d0ea;--border2:#a8c0e0;
   --text:#0a1428;--muted:#5060a0;--muted2:#3a50a0;
 }
+[data-theme=amber]{
+  --bg:#05080e;--bg2:#0c1320;--bg3:#111c2e;--bg4:#17253d;
+  --border:#1c2e46;--border2:#263d5c;
+  --text:#f5f0e6;--muted:#8090a8;--muted2:#a0b0c5;
+  --red:#f59e0b;--red2:#d97706;--red3:#fbbf24;
+  --yellow:#fcd34d;--yellow2:#fde68a;
+  --green:#10b981;--green2:#059669;
+  --teal:#06b6d4;--teal2:#0891b2;
+  --blue:#3b82f6;--blue2:#2563eb;
+  --purple:#8b5cf6;--purple2:#7c3aed;
+  --pink:#ec4899;--pink2:#db2777;
+  --indigo:#6366f1;--orange:#f97316;
+  --g-red:linear-gradient(135deg,#f59e0b,#d97706);
+  --g-yellow:linear-gradient(135deg,#fcd34d,#f97316);
+  --g-green:linear-gradient(135deg,#10b981,#06b6d4);
+  --g-teal:linear-gradient(135deg,#06b6d4,#3b82f6);
+  --g-purple:linear-gradient(135deg,#8b5cf6,#3b82f6);
+  --g-pink:linear-gradient(135deg,#ec4899,#8b5cf6);
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;display:flex;min-height:100vh;overflow-x:hidden}
 /* SCROLLBAR */
@@ -157,10 +176,19 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .vit-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:8px;padding:7px 12px;font-size:.84rem;border-left:3px solid var(--purple);gap:8px}
 .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:4px;transition:color .15s;flex-shrink:0}
 .del-btn:hover{color:var(--red)}
-.meal-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.meal-item{background:var(--bg3);border-radius:10px;padding:10px 14px;border-left:3px solid var(--teal)}
+.meal-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.meal-slot-group{display:flex;flex-direction:column;gap:4px}
+.meal-slot-header{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:linear-gradient(135deg,rgba(0,229,204,.08),rgba(41,121,255,.05));border-radius:8px;border-left:3px solid var(--teal);margin-bottom:3px}
+.meal-slot-name{font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--teal)}
+.meal-slot-total{font-size:.68rem;color:var(--muted2);font-weight:700}
+.meal-item{background:var(--bg3);border-radius:8px;padding:8px 12px;border-left:2px solid var(--border2)}
 .meal-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.meal-name{font-weight:700;font-size:.88rem}
+.meal-name{font-weight:700;font-size:.85rem}
+.meal-macro-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.mi-kcal{font-size:.7rem;font-weight:800;color:var(--yellow)}
+.mi-p{font-size:.7rem;font-weight:700;color:var(--green)}
+.mi-k{font-size:.7rem;font-weight:700;color:var(--blue)}
+.mi-y{font-size:.7rem;font-weight:700;color:var(--orange)}
 .meal-macro{font-size:.72rem;color:var(--muted);margin-top:3px}
 .list-empty{color:var(--muted);font-size:.8rem;padding:6px 0;font-style:italic}
 
@@ -336,8 +364,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <div style="font-size:1.1rem;font-weight:900;color:var(--purple)" id="h-sleep">—</div>
           </div>
           <div style="background:var(--bg3);border-radius:12px;padding:10px 14px;border:1px solid var(--border)">
-            <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Enerji / Mood</div>
-            <div style="font-size:1.1rem;font-weight:900;color:var(--pink)" id="h-mood">—</div>
+            <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Adım</div>
+            <div style="font-size:1.1rem;font-weight:900;color:var(--yellow)" id="h-steps">—</div>
           </div>
         </div>
       </div>
@@ -487,7 +515,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           </div>
           <div class="form-row">
             <div class="fg"><label>Manuel (L)</label><input type="number" id="water-m" step=".1" placeholder="1.5"></div>
-            <button class="btn btn-teal btn-sm" onclick="addWaterManual()">Ekle</button>
+            <button class="btn btn-teal btn-sm" onclick="addWaterManual()">+ Ekle</button>
+            <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
           </div>
         </div>
         <div class="card ct ct-teal">
@@ -849,7 +878,10 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <div class="card ct ct-red" style="max-width:480px">
       <div class="card-head"><span class="card-icon">🎯</span><div><div class="card-name">Hedefler</div></div></div>
       <div class="form-row">
-        <div class="fg"><label>Kalori</label><input type="number" id="s-cal" placeholder="3200"></div>
+        <div class="fg"><label>Kalori (Off)</label><input type="number" id="s-cal" placeholder="1800"></div>
+        <div class="fg"><label>Kalori (Antrenman)</label><input type="number" id="s-cal-training" placeholder="2000"></div>
+      </div>
+      <div class="form-row">
         <div class="fg"><label>Protein (g)</label><input type="number" id="s-prot" placeholder="190"></div>
       </div>
       <div class="form-row">
@@ -911,26 +943,35 @@ const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('tr-TR',{day:'numer
 })();
 
 /* THEME */
-function toggleTheme(){const h=document.documentElement,n=h.dataset.theme==='dark'?'light':'dark';h.dataset.theme=n;localStorage.setItem('theme',n);}
+function toggleTheme(){const h=document.documentElement,themes=['dark','light','amber'],cur=h.dataset.theme||'dark',n=themes[(themes.indexOf(cur)+1)%themes.length];h.dataset.theme=n;localStorage.setItem('theme',n);}
 (()=>{const t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;})();
 
 /* SETTINGS */
-const DEF={cal:3200,prot:190,carb:360,fat:80,water:3500,weight_goal:0};
-function getT(){try{return {...DEF,...JSON.parse(localStorage.getItem('targets')||'{}')};}catch{return DEF;}}
+const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight_goal:0};
+function getT(training_day){
+  try{
+    const t={...DEF,...JSON.parse(localStorage.getItem('targets')||'{}')};
+    // Training day'de cal_training kullan (Off değilse)
+    if(training_day && training_day!=='Off' && t.cal_training){ t.cal=t.cal_training; }
+    return t;
+  }catch{return DEF;}
+}
 function saveSettings(){
-  const t={cal:+$('s-cal').value||DEF.cal,prot:+$('s-prot').value||DEF.prot,carb:+$('s-carb').value||DEF.carb,fat:+$('s-fat').value||DEF.fat,water:+$('s-water').value||DEF.water,weight_goal:+($('s-weight-goal').value)||0};
+  const t={cal:+$('s-cal').value||DEF.cal,cal_training:+($('s-cal-training')&&$('s-cal-training').value)||DEF.cal_training,prot:+$('s-prot').value||DEF.prot,carb:+$('s-carb').value||DEF.carb,fat:+$('s-fat').value||DEF.fat,water:+$('s-water').value||DEF.water,weight_goal:+($('s-weight-goal').value)||0};
   localStorage.setItem('targets',JSON.stringify(t));
   fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
   toast('Hedefler kaydedildi');loadDashboard();
 }
 async function loadSettings(){
   try{const s=await fetch('/api/settings').then(r=>r.json());if(Object.keys(s).length){const merged={...DEF,...s};localStorage.setItem('targets',JSON.stringify(merged));}}catch(e){}
-  const t=getT();['cal','prot','carb','fat','water'].forEach(k=>$('s-'+k)&&($('s-'+k).value=t[k]));if($('s-weight-goal')&&t.weight_goal)$('s-weight-goal').value=t.weight_goal;
+  const t=getT();['cal','prot','carb','fat','water'].forEach(k=>$('s-'+k)&&($('s-'+k).value=t[k]));
+  if($('s-cal-training')&&t.cal_training)$('s-cal-training').value=t.cal_training;
+  if($('s-weight-goal')&&t.weight_goal)$('s-weight-goal').value=t.weight_goal;
 }
 
 /* TOAST */
 let _undoFn=null;
-function toast(msg, ok=true, undoFn=null){
+function fmtSleep(h){if(h==null||h===''||h==='—')return'—';const n=parseFloat(h);if(isNaN(n))return h+'s';const hrs=Math.floor(n),mins=Math.round((n-hrs)*60);return mins>0?`${hrs}s ${mins}dk`:`${hrs}s`;}function toast(msg, ok=true, undoFn=null){
   const el=$('toast');
   _undoFn=undoFn;
   let html=(ok?'✅ ':'❌ ')+msg;
@@ -1022,7 +1063,7 @@ function training_day_local(dateStr){
 
 async function loadDashboard(){
   const [d,macro,week]=await Promise.all([API('/api/today'),API('/api/macro/today'),API('/api/week')]);
-  const t=getT(), tot=macro.totals||{};
+  const t=getT(d.training_day||training_day_local()), tot=macro.totals||{};
   const cal=Math.round(tot.calories||0), prot=Math.round(tot.protein_g||0), carb=Math.round(tot.carbs_g||0), fat=Math.round(tot.fat_g||0);
   const wml=d.nutrition?.water_ml||0, pct=Math.min(100,Math.round(cal/(t.cal||1)*100));
 
@@ -1048,7 +1089,7 @@ async function loadDashboard(){
   sv('d-water',(wml/1000).toFixed(1)+'L');
 
   const sl=d.sleep||{},ex=d.exercise||{},w=d.work||{},co=d.coaching||{},mo=d.mood||{};
-  sv('d-sleep',sl.hours??'—'); sv('d-ex',ex.type?ex.duration+'dk':'—');
+  sv('d-sleep',fmtSleep(sl.hours)); sv('d-ex',ex.type?ex.duration+'dk':'—');
   sv('d-work',w.hours??'—'); sv('d-coach',co.sessions??'—');
   sv('d-energy',mo.energy??'—'); sv('d-mood',mo.mood??'—');
 
@@ -1073,8 +1114,9 @@ async function loadDashboard(){
   /* hero — bugünün verileri */
   sv('h-prot', prot+'g');
   sv('h-water', (wml/1000).toFixed(1)+'L');
-  sv('h-sleep', sl.hours ? sl.hours+'s' : '—');
+  sv('h-sleep', fmtSleep(sl.hours));
   sv('h-mood', (mo.energy??'—')+' / '+(mo.mood??'—'));
+  const hsteps=d.steps?.steps||0; if($('h-steps')) sv('h-steps', hsteps?hsteps.toLocaleString('tr-TR'):'—');
 
   /* trend charts — sadece kilo trendi */
 
@@ -1136,17 +1178,63 @@ async function loadDashboard(){
 function renderVitList(elId,vitamins,canDel){
   const el=$(elId);if(!el)return;
   if(!vitamins.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
-  el.innerHTML=vitamins.map(v=>
-    `<div class="vit-item"><span><b>${v.name}</b>${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>${canDel?`<button class="del-btn" onclick="confirmDelVit(${v.id},'${v.name}')">✕</button>`:''}</div>`
-  ).join('');
+  // Vitamin gruplama: gece stack, sabah stack, diger
+  const NIGHT_KEYS=['melatonin','magnesium glycinate','glycine','theanine','ashwagandha','l-theanine'];
+  const MORNING_KEYS=['nac','probiyotik','collagen','d3','omega','magtein','goz','b-complex','vitamin c','l-theanine'];
+  function vitGroup(v){
+    const n=(v.name||'').toLowerCase(), notes=(v.notes||'').toLowerCase();
+    if(notes.includes('gece')||notes.includes('night')||NIGHT_KEYS.some(k=>n.includes(k))) return 'GECE STACK';
+    if(notes.includes('ac karna')) return 'AC KARNA STACK';
+    if(notes.includes('kahvalti')||notes.includes('sabah')||MORNING_KEYS.some(k=>n.includes(k))) return 'SABAH STACK';
+    if(notes.includes('pre-workout')||notes.includes('pre workout')) return 'PRE-WORKOUT STACK';
+    if(notes.includes('post-workout')||notes.includes('post workout')||notes.includes('creatine')||n.includes('creatine')) return 'POST-WORKOUT';
+    return 'POST-WORKOUT';
+  }
+  const groups={};
+  vitamins.forEach(v=>{const g=vitGroup(v);(groups[g]=groups[g]||[]).push(v);});
+  const GORDER=['AC KARNA STACK','SABAH STACK','PRE-WORKOUT STACK','POST-WORKOUT','GECE STACK'];
+  const sorted=Object.keys(groups).sort((a,b)=>{const ia=GORDER.indexOf(a)<0?99:GORDER.indexOf(a),ib=GORDER.indexOf(b)<0?99:GORDER.indexOf(b);return ia-ib;});
+  el.innerHTML=sorted.map(g=>{
+    const rows=groups[g].map(v=>`<div class="vit-item"><span><b>${v.name}</b>${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>${canDel?`<button class="del-btn" onclick="confirmDelVit(${v.id},'${v.name}')">✕</button>`:''}</div>`).join('');
+    return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">💊 ${g}</span></div>${rows}</div>`;
+  }).join('');
 }
 function renderMealList(elId,meals,canDel){
   const el=$(elId);if(!el)return;
   if(!Array.isArray(meals)||!meals.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
-  el.innerHTML=meals.map(m=>{
-    const name=m.title||m.description||m.slot||'—';
-    const mac=[m.calories?m.calories+'kcal':null,m.protein_g?'P'+Math.round(m.protein_g)+'g':null,m.carbs_g?'K'+Math.round(m.carbs_g)+'g':null].filter(Boolean).join(' · ');
-    return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${name}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${mac?`<div class="meal-macro">${mac}</div>`:''}</div>`;
+  function slotTR(s){
+    if(s==='breakfast'||s==='kahvalti') return 'Kahvalti';
+    if(s==='pre-workout'||s==='preworkout') return 'Pre-Workout';
+    if(s==='lunch'||s==='ogle') return 'Ogle / Pre Meal';
+    if(s==='post-workout'||s==='posworkout') return 'Post-Workout';
+    if(s==='ara'||s==='snack') return 'Snack / Ara';
+    if(s==='dinner'||s==='aksam') return 'Aksam';
+    if(s==='gece'||s==='night') return 'Gece';
+    if(s==='extra') return 'Ekstra';
+    return s.charAt(0).toUpperCase()+s.slice(1);
+  }
+  const ORDER=['breakfast','kahvalti','pre-workout','preworkout','lunch','ogle','post-workout','posworkout','ara','snack','dinner','aksam','gece','night','extra'];
+  const groups={};
+  meals.forEach(m=>{const k=(m.slot||'extra').toLowerCase();(groups[k]=groups[k]||[]).push(m);});
+  el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
+    const rows=groups[slot];
+    const totCal=rows.reduce(function(s,m){return s+(m.calories||0);},0);
+    const totP=rows.reduce(function(s,m){return s+(m.protein_g||0);},0);
+    const totK=rows.reduce(function(s,m){return s+(m.carbs_g||0);},0);
+    const totY=rows.reduce(function(s,m){return s+(m.fat_g||0);},0);
+    const slotLabel=slotTR(slot).toUpperCase();
+    const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${Math.round(totCal)} kcal · P ${Math.round(totP)}g · K ${Math.round(totK)}g · Y ${Math.round(totY)}g</span></div>`;
+    const items=rows.map(m=>{
+      const name=m.title||m.description||m.slot||'—';
+      const parts=[];
+      if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
+      if(m.protein_g) parts.push(`<span class="mi-p">P:${Math.round(m.protein_g)}g</span>`);
+      if(m.carbs_g) parts.push(`<span class="mi-k">K:${Math.round(m.carbs_g)}g</span>`);
+      if(m.fat_g) parts.push(`<span class="mi-y">Y:${Math.round(m.fat_g)}g</span>`);
+      const macroHtml=parts.length?`<div class="meal-macro-row">${parts.join('')}</div>`:'';
+      return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${name}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${macroHtml}</div>`;
+    }).join('');
+    return `<div class="meal-slot-group">${header}${items}</div>`;
   }).join('');
 }
 
@@ -1162,7 +1250,7 @@ function confirmDelTpl(id){confirm_('Şablon silinsin mi?','Bu şablon kalıcı 
 async function loadLogPage(){
   const d=await API('/api/today');
   const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},w=d.work||{};
-  sv('sl-cur',sl.hours?sl.hours+'s, kalite '+(sl.quality||'?')+'/10':'Kayıt yok');
+  sv('sl-cur',sl.hours?fmtSleep(sl.hours)+', kalite '+(sl.quality||'?')+'/10':'Kayıt yok');
   sv('ex-day-lbl','Bugün: '+(d.training_day||'—'));
   if($('sl-hours')&&sl.hours)$('sl-hours').value=sl.hours;
   if($('wo-h')&&w.hours)$('wo-h').value=w.hours;
@@ -1193,6 +1281,8 @@ async function saveNote(){const n=$('note-txt').value.trim();if(!n)return toast(
 async function clearTodayConfirm(){confirm_('Bugünü temizle','Tüm öğün ve takviye kayıtları silinecek. Emin misin?',async()=>{const d=today();await DEL('/api/meals/today?date='+d);await DEL('/api/vitamins/today?date='+d);toast('✅ Bugünün tüm kayıtları silindi',true);loadDashboard();loadTodayMeals&&loadTodayMeals();loadVitamins&&loadVitamins();});}
 async function addWater(ml){const cur=await API('/api/today');const now=(cur.nutrition?.water_ml||0)+ml;await POST('/api/log/nutrition',{water_ml:now});sv('water-cur',(now/1000).toFixed(1)+'L bugün');toast('+'+ml+'ml su');loadDashboard();}
 async function addWaterManual(){const l=parseFloat($('water-m').value);if(!l||l<=0)return toast('Litre gir',false);await addWater(Math.round(l*1000));$('water-m').value='';}
+async function setWaterTotal(ml){const total=Math.max(0,Math.round(Number(ml)||0));await POST('/api/log/nutrition',{date:today(),water_ml:total});sv('water-cur',(total/1000).toFixed(1)+'L bugün');if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();else loadDashboard();return total;}
+async function setWaterManualTotal(){const raw=String($('water-m').value||'').replace(',','.');const l=parseFloat(raw);if(!Number.isFinite(l)||l<0)return toast('Toplam litreyi gir',false);const total=await setWaterTotal(l*1000);$('water-m').value='';toast('Su toplamı '+(total/1000).toFixed(1)+'L olarak ayarlandı');}
 async function saveMeal(){const title=$('nu-title').value.trim();if(!title)return toast('Yemek adı gir',false);const slot=$('nu-slot').value,cal=parseInt($('nu-cal').value)||null,prot=parseFloat($('nu-prot').value)||null,carb=parseFloat($('nu-carb').value)||null,fat=parseFloat($('nu-fat').value)||null;await POST('/api/meals',{slot,title,description:title,calories:cal,protein_g:prot,carbs_g:carb,fat_g:fat,source:'web'});toast('Öğün kaydedildi');['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>$(id).value='');loadTodayMeals();loadDashboard();}
 async function saveVitamin(){const name=$('vit-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim()});toast(name+' eklendi');['vit-name','vit-amount','vit-unit'].forEach(id=>$(id).value='');loadVitamins();loadDashboard();}
 
@@ -1418,7 +1508,7 @@ async function renderOzDaily(){
   const water=((nu.water_ml||0)/1000).toFixed(1);
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      ${card('😴','Uyku',sl.hours?`<b>${sl.hours}s</b> — Kalite <b>${sl.quality||'?'}/10</b>`:'Kayıt yok','var(--blue)')}
+      ${card('😴','Uyku',sl.hours?`<b>${fmtSleep(sl.hours)}</b> — Kalite <b>${sl.quality||'?'}/10</b>`:'Kayıt yok','var(--blue)')}
       ${card('💪','Antrenman',ex.type?`<b>${ex.type}</b> · ${ex.duration||'?'}dk · Yoğunluk ${ex.intensity||'?'}/10`:'Kayıt yok','var(--red)')}
       ${card('🥩','Beslenme',`<b>${totals.cal} kcal</b> · P ${Math.round(totals.p)}g · K ${Math.round(totals.c)}g · Y ${Math.round(totals.f)}g`,'var(--yellow)')}
       ${card('💧','Su',`<b>${water}L</b> bugün`,'var(--teal)')}
@@ -1427,7 +1517,7 @@ async function renderOzDaily(){
     </div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
       <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🍽️ Öğünler</div>
-      ${meals&&meals.length?meals.map(m=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:.84rem">${m.title||m.slot}</span><span style="font-size:.78rem;color:var(--muted)">${m.calories||0} kcal</span></div>`).join(''):'<div style="color:var(--muted);font-size:.84rem">Öğün kaydı yok</div>'}
+      ${meals&&meals.length?meals.map(m=>`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><div style="font-size:.84rem;font-weight:700">${m.title||m.slot}</div><div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">${m.calories?`<span style="font-size:.7rem;font-weight:800;color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="font-size:.7rem;color:var(--green)">P:${Math.round(m.protein_g)}g</span>`:''} ${m.carbs_g?`<span style="font-size:.7rem;color:var(--blue)">K:${Math.round(m.carbs_g)}g</span>`:''} ${m.fat_g?`<span style="font-size:.7rem;color:var(--orange)">Y:${Math.round(m.fat_g)}g</span>`:''}</div></div>`).join(''):'<div style="color:var(--muted);font-size:.84rem">Öğün kaydı yok</div>'}
     </div>`;
 }
 
@@ -1543,7 +1633,7 @@ async function showDayPanel(dateStr){
       <div style="background:${d.color||'#333'};color:#fff;padding:3px 12px;border-radius:6px;font-size:.72rem;font-weight:900;text-transform:uppercase">${d.training||'—'}</div>
     </div>
     <div class="day-data-grid">
-      ${sl.hours?`<div class="day-data-item"><div class="day-lbl">Uyku</div><div class="day-val">${sl.hours}s / ${sl.quality||'?'}/10</div></div>`:''}
+      ${sl.hours?`<div class="day-data-item"><div class="day-lbl">Uyku</div><div class="day-val">${fmtSleep(sl.hours)} / ${sl.quality||'?'}/10</div></div>`:''}
       ${ex.type?`<div class="day-data-item"><div class="day-lbl">Egzersiz</div><div class="day-val">${ex.type} ${ex.duration||''}dk</div></div>`:''}
       ${totCal?`<div class="day-data-item"><div class="day-lbl">Kalori</div><div class="day-val">${Math.round(totCal)} kcal</div></div>`:''}
       ${totP?`<div class="day-data-item"><div class="day-lbl">Protein</div><div class="day-val">${Math.round(totP)}g</div></div>`:''}
@@ -1552,7 +1642,7 @@ async function showDayPanel(dateStr){
       ${mo.energy?`<div class="day-data-item"><div class="day-lbl">Enerji/Mood</div><div class="day-val">${mo.energy}/${mo.mood||'?'}</div></div>`:''}
     </div>
     ${vits.length?`<div style="margin-bottom:8px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:5px">💊 Takviyeler</div>${vits.map(v=>`<span style="display:inline-block;background:rgba(180,77,255,.15);border:1px solid rgba(180,77,255,.3);color:var(--purple);border-radius:6px;padding:3px 9px;font-size:.75rem;font-weight:700;margin:2px">${v.name}${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>`).join('')}</div>`:''}
-    ${Array.isArray(meals)&&meals.length?`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:6px">Öğünler</div>${meals.map(m=>`<div style="display:flex;justify-content:space-between;font-size:.82rem;padding:5px 0;border-bottom:1px solid var(--border)"><span>${m.title||m.slot}</span><span style="color:var(--muted)">${m.calories?m.calories+' kcal':''}</span></div>`).join('')}`:''}
+    ${Array.isArray(meals)&&meals.length?`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:6px">🍽️ Öğünler</div>${meals.map(m=>`<div style="padding:5px 0;border-bottom:1px solid var(--border)"><div style="font-size:.82rem;font-weight:700">${m.title||m.slot}</div><div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">${m.calories?`<span style="font-size:.69rem;font-weight:800;color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="font-size:.69rem;color:var(--green)">P:${Math.round(m.protein_g)}g</span>`:''} ${m.carbs_g?`<span style="font-size:.69rem;color:var(--blue)">K:${Math.round(m.carbs_g)}g</span>`:''} ${m.fat_g?`<span style="font-size:.69rem;color:var(--orange)">Y:${Math.round(m.fat_g)}g</span>`:''}</div></div>`).join('')}`:''}
     ${d.note?`<div style="margin-top:10px;font-size:.82rem;color:var(--muted);font-style:italic">"${d.note}"</div>`:''}
     <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="$('day-panel').style.display='none'">Kapat ✕</button>`;
 }
@@ -2000,6 +2090,21 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     await window.refreshAllVisibleData();
   };
 
+  window.setCustomWaterTotalMl = async function(inputId){
+    const el = $id(inputId || 'water-custom-ml') || $id('water-ml');
+    const raw = String(el?.value || '').replace(',', '.');
+    const ml = Math.round(parseFloat(raw));
+    if(!Number.isFinite(ml) || ml < 0){
+      toastSafe('Yeni su toplamını ml olarak yaz', false);
+      return;
+    }
+    if(typeof setWaterTotal === 'function') await setWaterTotal(ml);
+    else await POST('/api/log/nutrition', {date:(typeof operationToday === 'function' ? operationToday() : undefined), water_ml:ml});
+    if(el) el.value = '';
+    toastSafe('Su toplamı ' + (ml/1000).toFixed(1) + 'L olarak ayarlandı');
+    await window.refreshAllVisibleData();
+  };
+
   function ensureCustomWaterInput(){
     const waterDisplay = $id('water-display');
     if(waterDisplay && !$id('water-custom-panel')){
@@ -2014,6 +2119,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
           <input type="number" id="water-custom-ml" min="1" step="50" placeholder="100 / 200 / 350">
         </div>
         <button class="btn btn-blue btn-sm" onclick="saveCustomWaterMl('water-custom-ml')">Su Ekle</button>
+        <button class="btn btn-teal btn-sm" onclick="setCustomWaterTotalMl('water-custom-ml')">Toplam Yap</button>
       `;
       const controls = $id('water-stable-panel') || card.querySelector('.water-btns') || waterDisplay.parentElement;
       controls.insertAdjacentElement('afterend', panel);
@@ -2029,6 +2135,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
         <div class="hero-water-controls" id="hero-water-custom-panel">
           <input type="number" id="hero-water-custom-ml" min="1" step="50" placeholder="100ml" style="min-width:90px">
           <button class="btn btn-blue btn-sm" onclick="saveCustomWaterMl('hero-water-custom-ml')">Ekle</button>
+          <button class="btn btn-teal btn-sm" onclick="setCustomWaterTotalMl('hero-water-custom-ml')">Toplam</button>
         </div>
       `);
       $id('hero-water-custom-ml')?.addEventListener('keydown', e => {
@@ -4060,10 +4167,15 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .mission-log-item{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(148,163,184,.12);background:rgba(2,6,23,.25);border-radius:12px;padding:9px 10px}
 .mission-log-slot{font-size:.62rem;color:#93c5fd;text-transform:uppercase;font-weight:1000;letter-spacing:.7px}.mission-log-name{font-size:.82rem;font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mission-log-meta{font-size:.68rem;color:var(--muted);margin-top:2px}.mission-log-pill{border-radius:999px;background:rgba(255,184,0,.12);border:1px solid rgba(255,184,0,.24);color:#fde68a;padding:4px 8px;font-size:.68rem;font-weight:900}
-.mission-stack-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.mission-stack-item{border:1px solid rgba(148,163,184,.13);background:rgba(2,6,23,.28);border-radius:12px;padding:10px;min-height:66px}
+.mission-stack-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}.mission-stack-item{border:1px solid rgba(148,163,184,.13);background:rgba(2,6,23,.28);border-radius:10px;padding:8px 10px;min-height:0}
 .mission-stack-item b{font-size:.8rem;color:var(--text);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mission-stack-item span{font-size:.68rem;color:var(--muted);margin-top:4px;display:block}
+.mission-meal-stack{border:1px solid rgba(148,163,184,.13);background:rgba(2,6,23,.25);border-radius:12px;padding:10px 11px}
+.mission-meal-stack-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.mission-meal-stack-title{font-size:.7rem;color:#93c5fd;text-transform:uppercase;font-weight:1000;letter-spacing:.07em}.mission-meal-stack-total{font-size:.7rem;color:#fde68a;font-weight:900}
+.mission-meal-stack-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:6px 0;border-top:1px solid rgba(148,163,184,.09)}.mission-meal-stack-row:first-of-type{border-top:0}.mission-meal-stack-row b{font-size:.77rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mission-meal-stack-row span{font-size:.67rem;color:var(--muted)}
+.mission-user-badge{display:inline-flex!important;width:max-content;margin-top:5px!important;padding:2px 6px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac!important;font-size:.6rem!important;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+#ms-meal-log{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:none;overflow:visible;align-content:start}
 @media(max-width:1180px){.mission-control,.mission-panel-grid{grid-template-columns:1fr}.mission-days{grid-template-columns:repeat(4,minmax(100px,1fr))}}
-@media(max-width:680px){.mission-kcal{font-size:4rem}.mission-inline-stats{grid-template-columns:1fr 1fr}.mission-days{grid-template-columns:1fr 1fr}.mission-log-item{grid-template-columns:1fr}}
+@media(max-width:680px){.mission-kcal{font-size:4rem}.mission-inline-stats{grid-template-columns:1fr 1fr}.mission-days{grid-template-columns:1fr 1fr}.mission-log-item{grid-template-columns:1fr}#ms-meal-log{grid-template-columns:1fr}}
 </style>
 <script id="DASHBOARD_MISSION_CONTROL_V1">
 (function(){
@@ -4086,8 +4198,25 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   }
   function taskBar(cls,label,value,target){ const p=pct(value,target); return `<div><div class="mission-task-label"><span>${label}</span><span>${p}%</span></div><div class="mission-task ${cls}"><i style="width:${p}%"></i></div></div>`; }
   function renderDayCard(row,t,idx){ const ds=row.date,today=(window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)),sc=scoreDay(row,t),type=row.training_day||'Off',color=typeColors[type]||'#64748b',id='ms-ring-'+idx; setTimeout(()=>ring(id,sc,color),0); return `<div class="mission-day ${ds===today?'today':''}"><div class="mission-date"><b>${dateLabel(ds)}</b><span>${ds===today?'Bugün':dateLabel(ds,{weekday:'short'})}</span></div><div class="mission-type" style="background:${color}">${type}</div><div class="mission-score"><canvas id="${id}"></canvas><span>${sc}%</span></div><div class="mission-tasks">${taskBar('prot','P',row.protein_g||0,t.prot)}${taskBar('water','Su',row.water_ml||0,t.water)}${taskBar('sleep','Uyku',row.sleep_hours||0,7.5)}${taskBar('train','Plan',type==='Off'?80:(row.has_data?100:35),100)}</div></div>`; }
-  function renderMeals(meals){ const box=$m('ms-meal-log'); if(!box)return; if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;} box.innerHTML=meals.map(m=>`<div class="mission-log-item"><div class="mission-log-slot">${m.slot||'öğün'}</div><div><div class="mission-log-name">${m.title||m.description||m.slot||'Kayıt'}</div><div class="mission-log-meta">${[m.protein_g?'P '+Math.round(m.protein_g)+'g':'',m.carbs_g?'K '+Math.round(m.carbs_g)+'g':'',m.fat_g?'Y '+Math.round(m.fat_g)+'g':''].filter(Boolean).join(' · ')}</div></div><div class="mission-log-pill">${m.calories||0} kcal</div></div>`).join(''); }
-  function renderStack(vits){ const box=$m('ms-stack-log'); if(!box)return; if(!Array.isArray(vits)||!vits.length){box.innerHTML='<div class="list-empty">Bugün takviye kaydı yok.</div>';return;} const order=['Ac Karna Stack','Kahvalti Stack','Sabah Stack','Pre-Workout Stack','Post-Workout Stack','Gece Stack','Supplement Stack']; const groupOf=v=>{const n=(v.notes||''); return order.find(x=>n.toLowerCase().includes(x.toLowerCase()))||'Diğer Takviyeler';}; const groups={}; vits.forEach(v=>{const g=groupOf(v); (groups[g]=groups[g]||[]).push(v);}); box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(g=>`<div class="mission-stack-group"><div class="mission-stack-group-title">${g}</div>${groups[g].map(v=>`<div class="mission-stack-item"><b>💊 ${v.name||'Takviye'}</b><span>${[v.amount,v.unit].filter(Boolean).join(' ')||'doz'}${v.notes?' · '+v.notes:''}</span></div>`).join('')}</div>`).join(''); }
+  function renderMeals(meals){
+    const box=$m('ms-meal-log'); if(!box)return;
+    if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
+    const order=['kahvalti','ogle','aksam','pre-workout','post-workout','ara','extra'];
+    const labels={kahvalti:'Kahvaltı',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
+    const groups={}; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');(groups[key]=groups[key]||[]).push(m);});
+    box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(key=>{
+      const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
+      return `<div class="mission-meal-stack"><div class="mission-meal-stack-head"><div class="mission-meal-stack-title">${labels[key]||key}</div><div class="mission-meal-stack-total">${Math.round(cal)} kcal · P ${Math.round(p)} · K ${Math.round(c)} · Y ${Math.round(f)}</div></div>${rows.map(m=>`<div class="mission-meal-stack-row"><b>${m.title||m.description||'Kayıt'}</b><span style="display:flex;gap:5px;align-items:center">${m.calories?`<span style="color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="color:var(--green);font-size:.75em">P:${Math.round(m.protein_g)}</span>`:''} ${m.carbs_g?`<span style="color:var(--blue);font-size:.75em">K:${Math.round(m.carbs_g)}</span>`:''} ${m.fat_g?`<span style="color:var(--orange);font-size:.75em">Y:${Math.round(m.fat_g)}</span>`:''}</span></div>`).join('')}</div>`;
+    }).join('');
+  }
+  function renderStack(vits){
+    const box=$m('ms-stack-log'); if(!box)return;
+    if(!Array.isArray(vits)||!vits.length){box.innerHTML='<div class="list-empty">Bugün takviye kaydı yok.</div>';return;}
+    const order=['Ac Karna Stack','Kahvalti Stack','Sabah Stack','Pre-Workout Stack','Post-Workout Stack','Post-Workout','Gece Stack','Supplement Stack'];
+    const groupOf=v=>{const n=(v.notes||''); return order.find(x=>n.toLowerCase().includes(x.toLowerCase()))||'Post-Workout';};
+    const groups={}; vits.forEach(v=>{const g=groupOf(v); (groups[g]=groups[g]||[]).push(v);});
+    box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(g=>`<div class="mission-stack-group"><div class="mission-stack-group-title">${g}</div>${groups[g].map(v=>{const raw=String(v.notes||''),reported=/kullanici bildirimi/i.test(raw),detail=raw.split('|').map(x=>x.trim()).filter(x=>x&&!/stack$/i.test(x)&&!/kullanici bildirimi/i.test(x)).join(' · ');return `<div class="mission-stack-item"><b>💊 ${v.name||'Takviye'}</b><span>${[v.amount,v.unit].filter(Boolean).join(' ')||'doz'}${detail?' · '+detail:''}</span>${reported?'<span class="mission-user-badge">Kullanıcı bildirimi</span>':''}</div>`;}).join('')}</div>`).join('');
+  }
   window.refreshMissionControl = async function(){
     ensureMissionControl();
     const t=typeof getT==='function'?getT():{cal:3200,prot:190,water:3500};
@@ -5143,6 +5272,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       return;
     }
     const vals = clean.map(r => n(r.weight_kg || r.weight));
+    const nightVals = clean.map(r => n(r.weight_kg_night));
     const labels = clean.map(r => new Date(String(r.date)+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'}));
     const cur = vals[vals.length-1];
     const prev = vals.length >= 2 ? vals[Math.max(0, vals.length-7)] : vals[0];
@@ -5163,7 +5293,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     guardWeightChart = new Chart(canvas,{
       type:'line',
       data:{labels,datasets:[{label:'Kilo',data:vals,borderColor:'#14f1d9',backgroundColor:grad,fill:true,tension:.35,borderWidth:3,pointRadius:4,pointBackgroundColor:'#f8fafc',pointBorderColor:'#38bdf8',pointBorderWidth:2}]},
-      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(148,163,184,.08)'},ticks:{color:'#9fb3d4',font:{size:11,weight:'700'}}},y:{grid:{color:'rgba(148,163,184,.12)'},ticks:{color:'#cbd5e1',callback:v=>Number(v).toFixed(1)+'kg',font:{size:11,weight:'800'}}}}}
+      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,23,42,.96)',borderColor:'rgba(56,189,248,.35)',borderWidth:1,displayColors:false,callbacks:{label:(c)=>'Sabah ac karna: '+Number(c.parsed.y).toFixed(2)+' kg',afterLabel:(c)=>{const r=clean[c.dataIndex]||{};const nw=Number(r.weight_kg_night||0);if(!nw)return 'Gece kaydi yok';const sw=Number(r.weight_kg||0);const diff=sw?(nw-sw):0;return 'Gece: '+nw.toFixed(2)+' kg'+(sw?' ('+(diff>=0?'+':'')+diff.toFixed(2)+' kg)':'');}}}},scales:{x:{grid:{color:'rgba(148,163,184,.08)'},ticks:{color:'#9fb3d4',font:{size:11,weight:'700'}}},y:{grid:{color:'rgba(148,163,184,.12)'},ticks:{color:'#cbd5e1',callback:v=>Number(v).toFixed(1)+'kg',font:{size:11,weight:'800'}}}}}
     });
   }
   async function syncDashboardData(){
