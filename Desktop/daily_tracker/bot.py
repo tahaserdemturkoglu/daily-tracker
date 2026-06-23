@@ -481,12 +481,10 @@ def save_owner_chat_id(chat_id):
 
 # TRAINING
 def training_day(date_str):
+    # Weekday-based: Mon=Push, Tue=Pull, Wed=Leg, Thu=Upper, Fri=Lower, Sat=Off, Sun=Off
+    WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
     d = date.fromisoformat(date_str)
-    start = date.fromisoformat(CYCLE_START)
-    diff = (d - start).days % 7
-    if diff < 0:
-        diff = (diff + 7) % 7
-    return TRAINING_CYCLE[diff]
+    return WEEKDAY_CYCLE[d.weekday()]
 
 # HELPERS
 def norm_tr(text):
@@ -611,8 +609,17 @@ AKNE VE CILT:
 - Cilt bariyeri hassas. Is sonrasi dus: nemlendirici. Gece: CeraVe temizleyici, Akneroxid, nemlendirici.
 
 ANTRENMAN:
-- Dongu: Push / Pull / Leg / Upper / Lower / Off / Off.
+- Dongu: Pzt=Push, Sal=Pull, Car=Leg, Per=Upper, Cum=Lower, Cmt/Paz=Off (haftalik sabit).
 - Sistem tarafindaki resmi antrenman gunu esas alinir; foto veya AI tahminiyle degistirme.
+
+OGUN SLOT SISTEMI (guncel):
+- kahvalti = KAHVALTI
+- snack = SNACK (ara ogun 1)
+- meal1 = MEAL1 (ana ogun)
+- pre-workout-meal = PRE-WORKOUT MEAL
+- post-workout-meal = POST-WORKOUT MEAL
+- snack2 = SNACK 2 (gece/son ara ogun)
+Eski slot adlari (ogle, aksam, ara, atistirma, gece) KALDIRILDI. Bunlari kullanma.
 
 DEGERLENDIRME:
 - Tek gunluk kilo degisimini yag olarak yorumlama; su, glikojen, sodyum ve bagirsak icerigini hesaba kat.
@@ -1271,41 +1278,50 @@ def claude_call(user_text, history=None):
         "  - Toplam makroyu yaz: 🔥 Toplam: ~X kcal | P:Xg K:Xg Y:Xg\n"
         "  - 2-3 cumle kisa koçluk yorum yap (gunun durumuna gore)\n"
         "  - Kisa, vurucu, samimi. Makale yazma.\n"
+        "\nSLOT İSİMLERİ (GÜNCEL):\n"
+        "DB slot key → görünen isim:\n"
+        "  kahvalti → KAHVALTI\n"
+        "  snack → SNACK\n"
+        "  meal1 → MEAL1\n"
+        "  pre-workout-meal → PRE-WORKOUT MEAL\n"
+        "  post-workout-meal → POST-WORKOUT MEAL\n"
+        "  snack2 → SNACK 2\n"
+        "Kullanıcı 'MEAL1', 'PRE WORKOUT MEAL', 'POST WORKOUT MEAL', 'SNACK 2' yazarsa doğru DB key'e çevir.\n"
+        "Eski slot adları (ogle, aksam, ara, atistirma, gece) artık kullanılmıyor.\n"
+        "\nKULLANICI YAZMA STİLİ:\n"
+        "Format: 'SLOT / gramaj besin / gramaj besin / ...'\n"
+        "Örnek: 'MEAL1 / 250g tavuk / bol salata / 20g ketçap'\n"
+        "       'PRE WORKOUT MEAL / 500g patates / 4 fıs yağ / 100g pirinç'\n"
+        "       'KAHVALTI / 184g yumurta beyazı / 20g yulaf / 4 yumurta'\n"
+        "Her '/' ile ayrılan parça ayrı bir besin kalemi = ayrı meal action.\n"
+        "Slot adını ayrıştır, kalan parçaları besin olarak işle.\n"
         "\nKAPIL KURALLAR:\n"
+        "- MEAL ACTION: title = SADECE besin adı (örn: 'Tavuk Göğsü'), description = SADECE gramaj (örn: '250g' veya '4 adet'). ASLA title içine gramaj yazma.\n"
+        "- Default ÇIĞDIR: kullanıcı 'pişmiş' demediği sürece tüm et/pirinç/patates çiğ gramı baz al. description'a 'çiğ' yazma.\n"
+        "- fıs / fis = GymBeam Sprey Yağ. 1 fıs = 1.8ml = 15 kcal, Y:1.65g. '4 fıs' = 60 kcal, Y:6.6g.\n"
         "- Supplement/vitamin: kapsul/tablet sayisini amount olarak kaydet, unit='kapsul' veya 'tablet' yaz\n"
-        "- Su gecmis saat: 'saat 09da 500ml' veya '09:00da 2 bardak' bile olsa bugune ekle, water_ml hesapla\n"
-        "- Birden fazla su girisi: her birini ayri water action olarak ekle (hepsi ayni gune toplanir)\n"
+        "- Su: ml veya L, 5.2L = 5200ml\n"
         "- Gecmis tarih: 'dun', 'onceki gun', 'dun gece' -> date=dun tarihi\n"
-        "- Yemek title: her zaman gercek isim + MIKTAR birlikte yaz: 'Yumurta (4 adet)', 'Tavuk Gogsu (300g)', 'Yulaf (25g)'. Miktar belli degilse en makul tahmini yaz. ASLA sadece isim yazma, ASLA slot ismi yazma.\n"
         "- Kalori/makro bilinmiyorsa makul tahmin yap, reply'da belirt\n"
-        "- Kullanici sadece sayi gondermisse -> son mesaj kontekstine gore yorumla; belirsizse sor\n"
-        "- Likit protein hesabi: kullanici '100ml X gram protein var' demisse sonraki sayi ml miktaridir\n"
-        "- Egzersiz: exercise_type alani hareketin/gunun adini icersin (Push, Squat, Bench Press...)\n"
-        "- Antrenman set: 'bench press 80kg 8 tekrar' veya 'squat 3 set 100kg 5 tekrar' -> workout_set\n"
-        "- workout_set icin: exercise=hareket adi, weight='80 kg', reps='8', set_type=('Working Set'|'Warm-up'|'Back-off')\n"
-        "- Birden fazla set: '3 set' -> 3 ayri workout_set action uret\n"
-        "- Hem exercise hem workout_set uret: exercise(genel gun logu) + workout_set(detayli setler)\n"
-        "YEMEK KAYDI — MUTLAK KURAL (ihlal etme):\n"
+        "- Egzersiz: exercise_type alani hareketin/gunun adini icersin\n"
+        "- Antrenman set: 'bench press 80kg 8 tekrar' -> workout_set; exercise=hareket, weight='80', reps='8', set_type='Working Set'|'Warm-up'|'Back-off'\n"
+        "- Birden fazla set: '3 set' -> 3 ayri workout_set action\n"
+        "- Hem exercise hem workout_set uret\n"
+        "YEMEK KAYDI — MUTLAK KURAL:\n"
         "Her farkli yiyecek = ayri meal action. ASLA birlestirme.\n"
-        "DOGRU ORNEK — '4 yumurta, 300g nutella, 5 tost, 200g cilek yedim':\n"
-        '  {"type":"meal","slot":"kahvalti","title":"Yumurta (4 adet)","calories":280,"protein_g":24,"carbs_g":2,"fat_g":20}\n'
-        '  {"type":"meal","slot":"kahvalti","title":"Nutella (300g)","calories":1605,"protein_g":18,"carbs_g":171,"fat_g":90}\n'
-        '  {"type":"meal","slot":"kahvalti","title":"Tost Ekmegi (5 dilim)","calories":325,"protein_g":11,"carbs_g":60,"fat_g":5}\n'
-        '  {"type":"meal","slot":"kahvalti","title":"Cilek (200g)","calories":64,"protein_g":1,"carbs_g":15,"fat_g":1}\n'
-        "YANLIS ORNEK (yapma): {\"title\":\"Sabah Stack Kahvaltisi\",\"calories\":2274} — TEK action yasak.\n"
+        "DOGRU ORNEK — 'MEAL1 / 250g tavuk / bol salata / 20g ketçap':\n"
+        '  {"type":"meal","slot":"meal1","title":"Tavuk Göğsü","description":"250g","calories":285,"protein_g":57.5,"carbs_g":0,"fat_g":6.5}\n'
+        '  {"type":"meal","slot":"meal1","title":"Salata","description":"marul, domates, salatalık (bol)","calories":63,"protein_g":4,"carbs_g":12,"fat_g":1}\n'
+        '  {"type":"meal","slot":"meal1","title":"Keto Ketçap","description":"20g","calories":8,"protein_g":0.4,"carbs_g":1.2,"fat_g":0}\n'
         "Supplement/stack: type='vitamin', yemeklerden AYRI, meal action degil.\n"
         "REPLY FORMATI — yemek loglandığında MUTLAKA tam bu yapıyı kullan:\n"
-        "[slot emoji] [Slot Adı]  (kahvaltı→🍳  öğle→🥗  akşam→🍽️  ara öğün→🌙)\n\n"
-        "• [malzeme 1 miktarıyla]\n"
-        "• [malzeme 2 miktarıyla]\n"
+        "[slot emoji] [Slot Adı]  (KAHVALTI→🍳  SNACK→🍎  MEAL1→🥗  PRE-WORKOUT MEAL→⚡  POST-WORKOUT MEAL→💪  SNACK 2→🌙)\n\n"
+        "• [gramaj] [besin adı]\n"
         "• ...\n\n"
         "**Makrolar**\n"
-        "• Protein: ~Xg\n"
-        "• Karbonhidrat: ~Xg\n"
-        "• Yağ: ~Xg\n"
-        "• Kalori: ~X kcal\n\n"
+        "🔥 [X] kcal · 💪 P:[X]g · 🍞 K:[X]g · 🧈 Y:[X]g\n\n"
         "**Yorum**\n"
-        "[Kullanıcının son günlerine, hedeflerine ve bu öğüne bakarak kişisel, motive edici 2-3 cümle koçluk yorumu.]\n"
+        "[Kişisel, motive edici 2-3 cümle. Protein fazlaysa sivilce uyarısı, kalori fazlaysa hedef sapması belirt.]\n"
         "\nDUZELTME/SILME KURALLARI (ASLA SORU SORMA — direkt isle):\n"
         "- 'su toplam X yaz', 'su X olsun', 'suyu X yap' -> water_set action\n"
         "- 'son yemegi sil', 'az once girdimi sil', '[isim] sil' -> delete_meal action, title varsa doldur\n"
@@ -1435,17 +1451,23 @@ def tg_water_actions_from_text(raw_text):
 
 
 def tg_slot_from_text(raw_text):
+    """Kullanıcının yazdığı slot adını DB slot key'ine çevirir.
+    Desteklenen formatlar: KAHVALTI, SNACK, MEAL1, PRE WORKOUT MEAL / PRE-WORKOUT MEAL,
+    POST WORKOUT MEAL / POST-WORKOUT MEAL, SNACK 2 / SNACK2
+    """
     n = _tg_norm(raw_text) if '_tg_norm' in globals() else (raw_text or '').lower()
-    if any(w in n for w in ['kahvalti', 'sabah']):
+    if any(w in n for w in ['kahvalti', 'sabah yemek']):
         return 'kahvalti'
-    if any(w in n for w in ['ogle', 'ögle', 'öğle']):
-        return 'ogle'
-    if 'aksam' in n or 'akşam' in n:
-        return 'aksam'
-    if any(w in n for w in ['ara ogun', 'ara öğün', 'atistirma', 'atıştırma', 'snack']):
-        return 'atistirma'
-    if 'gece' in n:
-        return 'gece'
+    if any(w in n for w in ['snack 2', 'snack2', 'snack2', '2. snack', 'ikinci snack']):
+        return 'snack2'
+    if any(w in n for w in ['snack', 'atistirma', 'ara ogun']):
+        return 'snack'
+    if any(w in n for w in ['meal1', 'meal 1', '1. ogun', 'birinci ogun']):
+        return 'meal1'
+    if any(w in n for w in ['post workout meal', 'post-workout meal', 'post workout yemek', 'post meal', 'antrenman sonrasi yemek']):
+        return 'post-workout-meal'
+    if any(w in n for w in ['pre workout meal', 'pre-workout meal', 'pre workout yemek', 'pre meal', 'antrenman oncesi yemek']):
+        return 'pre-workout-meal'
     return 'extra'
 
 
@@ -2628,32 +2650,4 @@ async def _run_bot():
             app.add_handler(CommandHandler("su",        cmd_su))
             app.add_handler(CommandHandler("mood",      cmd_mood))
             app.add_handler(CommandHandler("vitamin",   cmd_vitamin))
-            app.add_handler(CommandHandler("bugun",     cmd_bugun))
-            app.add_handler(CommandHandler("rapor",     cmd_rapor))
-            app.add_handler(CommandHandler("hafta",     cmd_hafta))
-            app.add_handler(CommandHandler("antrenman", cmd_antrenman))
-            app.add_handler(CommandHandler("streak",    cmd_streak))
-            app.add_handler(MessageHandler(filters.PHOTO, cmd_photo))
-            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
-            # Sabah brifing: 07:00 Turkey = 04:00 UTC
-            from datetime import time as dtime
-            jq = app.job_queue
-            if jq:
-                jq.run_daily(morning_briefing, time=dtime(4, 0, 0),  name='sabah_brifing')
-                jq.run_daily(night_check,      time=dtime(19, 0, 0), name='gece_ozeti')  # 22:00 Turkey
-                log.info("Job queue: sabah 07:00 + gece 22:00 Turkey kuruldu")
-            log.info("Bot baslatiliyor: @taha_serdem_daily_rapor_bot")
-            async with app:
-                await app.updater.start_polling(drop_pending_updates=True)
-                await app.start()
-                await asyncio.Event().wait()
-        except Exception as e:
-            log.warning(f"[bot] Hata: {e} \u2014 {retry_delay}s sonra yeniden deneniyor...")
-            await asyncio.sleep(retry_delay)
-
-def main():
-    asyncio.run(_run_bot())
-
-
-if __name__ == "__main__":
-    main()
+            app.add_handler(CommandHandler("bugun",     cmd
