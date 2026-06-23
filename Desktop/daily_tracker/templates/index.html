@@ -186,6 +186,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .meal-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .meal-name{font-weight:700;font-size:.85rem}
 .meal-desc{font-size:.74rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.meal-gram{font-size:.8em;color:var(--muted);font-weight:normal}
 .meal-macro-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .mi-kcal{font-size:.7rem;font-weight:800;color:var(--yellow)}
 .mi-p{font-size:.7rem;font-weight:700;color:var(--green)}
@@ -1244,14 +1245,14 @@ function renderMealList(elId,meals,canDel){
     const items=rows.map(m=>{
       const name=m.title||m.slot||'—';
       const desc=(m.description&&m.description!==m.title&&m.description!==m.slot)?m.description:'';
+      const nameHtml=desc?`${name} <span class="meal-gram">(${desc})</span>`:name;
       const parts=[];
       if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
       if(m.protein_g) parts.push(`<span class="mi-p">P:${Math.round(m.protein_g)}g</span>`);
       if(m.carbs_g) parts.push(`<span class="mi-k">K:${Math.round(m.carbs_g)}g</span>`);
       if(m.fat_g) parts.push(`<span class="mi-y">Y:${Math.round(m.fat_g)}g</span>`);
       const macroHtml=parts.length?`<div class="meal-macro-row">${parts.join('')}</div>`:'';
-      const descHtml=desc?`<div class="meal-desc">${desc}</div>`:'';
-      return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${name}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${descHtml}${macroHtml}</div>`;
+      return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${nameHtml}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${macroHtml}</div>`;
     }).join('');
     return `<div class="meal-slot-group">${header}${items}</div>`;
   }).join('');
