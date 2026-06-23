@@ -779,16 +779,23 @@ def api_body_metrics_save():
     data = request.get_json(force=True) or {}
     d = data.get('date') or operation_today()
     weight = data.get('weight_kg')
+    weight_night = data.get('weight_kg_night')
     waist = data.get('waist_cm')
     chest = data.get('chest_cm')
     arm = data.get('arm_cm')
     notes = data.get('notes') or ''
     conn = get_db()
     conn.execute("""
-        INSERT INTO body_metrics (date, weight_kg, waist_cm, chest_cm, arm_cm, notes)
-        VALUES (?,?,?,?,?,?)
-        ON CONFLICT(date) DO UPDATE SET weight_kg=excluded.weight_kg, waist_cm=excluded.waist_cm, chest_cm=excluded.chest_cm, arm_cm=excluded.arm_cm, notes=excluded.notes
-    """, (d, weight, waist, chest, arm, notes))
+        INSERT INTO body_metrics (date, weight_kg, weight_kg_night, waist_cm, chest_cm, arm_cm, notes)
+        VALUES (?,?,?,?,?,?,?)
+        ON CONFLICT(date) DO UPDATE SET
+            weight_kg=COALESCE(excluded.weight_kg, weight_kg),
+            weight_kg_night=COALESCE(excluded.weight_kg_night, weight_kg_night),
+            waist_cm=COALESCE(excluded.waist_cm, waist_cm),
+            chest_cm=COALESCE(excluded.chest_cm, chest_cm),
+            arm_cm=COALESCE(excluded.arm_cm, arm_cm),
+            notes=COALESCE(NULLIF(excluded.notes,''), notes)
+    """, (d, weight, weight_night, waist, chest, arm, notes))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'date': d})
 
