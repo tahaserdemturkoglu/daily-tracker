@@ -3892,6 +3892,12 @@ def ensure_food_registry():
     if 'aliases' not in cols:
         try: conn.execute("ALTER TABLE food_registry ADD COLUMN aliases TEXT DEFAULT ''")
         except: pass
+    if 'unit' not in cols:
+        try: conn.execute("ALTER TABLE food_registry ADD COLUMN unit TEXT DEFAULT 'g'")
+        except: pass
+    if 'serving_size' not in cols:
+        try: conn.execute("ALTER TABLE food_registry ADD COLUMN serving_size REAL DEFAULT 100")
+        except: pass
     conn.commit()
     # Seed default foods (INSERT OR IGNORE - safe to re-run, no duplicates)
     _foods = [
