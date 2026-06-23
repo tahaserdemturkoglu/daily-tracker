@@ -101,12 +101,10 @@ TRAINING_COLORS = {
 }
 
 def training_day(date_str):
+    # Weekday-based: Mon=Push, Tue=Pull, Wed=Leg, Thu=Upper, Fri=Lower, Sat=Off, Sun=Off
+    WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
     d = date.fromisoformat(date_str)
-    start = date.fromisoformat(CYCLE_START)
-    diff = (d - start).days % 7
-    if diff < 0:
-        diff = (diff + 7) % 7
-    return TRAINING_CYCLE[diff]
+    return WEEKDAY_CYCLE[d.weekday()]
 
 # ─── DATABASE ──────────────────────────────────────────────────────────────────
 def get_db():
@@ -3890,8 +3888,8 @@ def api_food_registry_add():
     ensure_food_registry()
     data = request.get_json(force=True) or {}
     conn = get_db()
-    conn.execute("""INSERT INTO food_registry (name,calories_per_100g,protein_per_100g,carbs_per_100g,fat_per_100g,fiber_per_100g,unit,serving_size,serving_unit,notes) VALUES (?,?,?,?,?,?,?,?,?,?)""",
-        (data.get('name',''),data.get('calories_per_100g'),data.get('protein_per_100g'),data.get('carbs_per_100g'),data.get('fat_per_100g'),data.get('fiber_per_100g'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes','')))
+    conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases','')))
     conn.commit()
     new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.close()
