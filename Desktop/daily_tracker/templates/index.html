@@ -185,6 +185,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .meal-item{background:var(--bg3);border-radius:8px;padding:8px 12px;border-left:2px solid var(--border2)}
 .meal-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .meal-name{font-weight:700;font-size:.85rem}
+.meal-desc{font-size:.74rem;color:var(--muted);margin-top:2px;line-height:1.4}
 .meal-macro-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .mi-kcal{font-size:.7rem;font-weight:800;color:var(--yellow)}
 .mi-p{font-size:.7rem;font-weight:700;color:var(--green)}
@@ -1207,20 +1208,31 @@ function renderVitList(elId,vitamins,canDel){
 function renderMealList(elId,meals,canDel){
   const el=$(elId);if(!el)return;
   if(!Array.isArray(meals)||!meals.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
+  function normSlot(s){
+    s=(s||'extra').toLowerCase().trim();
+    if(s==='breakfast'||s==='kahvaltı') return 'kahvalti';
+    if(s==='lunch') return 'ogle';
+    if(s==='dinner') return 'aksam';
+    if(s==='preworkout') return 'pre-workout';
+    if(s==='postworkout'||s==='posworkout') return 'post-workout';
+    if(s==='snack') return 'ara';
+    if(s==='night') return 'gece';
+    return s;
+  }
   function slotTR(s){
-    if(s==='breakfast'||s==='kahvalti') return 'Kahvalti';
-    if(s==='pre-workout'||s==='preworkout') return 'Pre-Workout';
-    if(s==='lunch'||s==='ogle') return 'Ogle / Pre Meal';
-    if(s==='post-workout'||s==='posworkout') return 'Post-Workout';
-    if(s==='ara'||s==='snack') return 'Snack / Ara';
-    if(s==='dinner'||s==='aksam') return 'Aksam';
-    if(s==='gece'||s==='night') return 'Gece';
+    if(s==='kahvalti') return 'Kahvaltı';
+    if(s==='pre-workout') return 'Pre-Workout';
+    if(s==='ogle') return 'Öğle / Pre Meal';
+    if(s==='post-workout') return 'Post-Workout';
+    if(s==='ara') return 'Ara Öğün';
+    if(s==='aksam') return 'Akşam';
+    if(s==='gece') return 'Gece';
     if(s==='extra') return 'Ekstra';
     return s.charAt(0).toUpperCase()+s.slice(1);
   }
-  const ORDER=['breakfast','kahvalti','pre-workout','preworkout','lunch','ogle','post-workout','posworkout','ara','snack','dinner','aksam','gece','night','extra'];
+  const ORDER=['kahvalti','pre-workout','ogle','post-workout','ara','aksam','gece','extra'];
   const groups={};
-  meals.forEach(m=>{const k=(m.slot||'extra').toLowerCase();(groups[k]=groups[k]||[]).push(m);});
+  meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
     const rows=groups[slot];
     const totCal=rows.reduce(function(s,m){return s+(m.calories||0);},0);
@@ -1230,14 +1242,16 @@ function renderMealList(elId,meals,canDel){
     const slotLabel=slotTR(slot).toUpperCase();
     const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${Math.round(totCal)} kcal · P ${Math.round(totP)}g · K ${Math.round(totK)}g · Y ${Math.round(totY)}g</span></div>`;
     const items=rows.map(m=>{
-      const name=m.title||m.description||m.slot||'—';
+      const name=m.title||m.slot||'—';
+      const desc=(m.description&&m.description!==m.title&&m.description!==m.slot)?m.description:'';
       const parts=[];
       if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
       if(m.protein_g) parts.push(`<span class="mi-p">P:${Math.round(m.protein_g)}g</span>`);
       if(m.carbs_g) parts.push(`<span class="mi-k">K:${Math.round(m.carbs_g)}g</span>`);
       if(m.fat_g) parts.push(`<span class="mi-y">Y:${Math.round(m.fat_g)}g</span>`);
       const macroHtml=parts.length?`<div class="meal-macro-row">${parts.join('')}</div>`:'';
-      return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${name}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${macroHtml}</div>`;
+      const descHtml=desc?`<div class="meal-desc">${desc}</div>`:'';
+      return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${name}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${descHtml}${macroHtml}</div>`;
     }).join('');
     return `<div class="meal-slot-group">${header}${items}</div>`;
   }).join('');
@@ -1417,7 +1431,7 @@ async function selectDay(dateStr){
       const rows=[];for(const s of allSorted){if(s.set_type==='Drop Set'&&rows.length>0){rows[rows.length-1].drops.push(s);}else{rows.push({...s,drops:[]});}}
       const renderSets=rows=>rows.map((row,i)=>{
         let badge,cls;
-        if(i===0||row.set_type==='Warm-up'){badge='WU';cls='badge-wu';}
+        if(row.set_type==='Warm-up'){badge='WU';cls='badge-wu';}
         else if(row.set_type==='Back-off'){badge='BO';cls='badge-bo';}
         else{badge='WS';cls='badge-ws';}
         const main=`${row.weight||'—'} × ${row.reps||'—'}${row.rir!=null?` <span class="rir-badge">RIR ${row.rir}</span>`:''}`;

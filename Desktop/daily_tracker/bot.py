@@ -1276,7 +1276,7 @@ def claude_call(user_text, history=None):
         "- Su gecmis saat: 'saat 09da 500ml' veya '09:00da 2 bardak' bile olsa bugune ekle, water_ml hesapla\n"
         "- Birden fazla su girisi: her birini ayri water action olarak ekle (hepsi ayni gune toplanir)\n"
         "- Gecmis tarih: 'dun', 'onceki gun', 'dun gece' -> date=dun tarihi\n"
-        "- Yemek title: her zaman gercek isim (Pankek, Tavuklu Pilav, Omlet...), asla slot ismi yazma\n"
+        "- Yemek title: her zaman gercek isim + MIKTAR birlikte yaz: 'Yumurta (4 adet)', 'Tavuk Gogsu (300g)', 'Yulaf (25g)'. Miktar belli degilse en makul tahmini yaz. ASLA sadece isim yazma, ASLA slot ismi yazma.\n"
         "- Kalori/makro bilinmiyorsa makul tahmin yap, reply'da belirt\n"
         "- Kullanici sadece sayi gondermisse -> son mesaj kontekstine gore yorumla; belirsizse sor\n"
         "- Likit protein hesabi: kullanici '100ml X gram protein var' demisse sonraki sayi ml miktaridir\n"
