@@ -1296,7 +1296,7 @@ def api_training_schedule():
 def api_workout_get(date_str):
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM workout_logs WHERE date=? ORDER BY exercise, set_num", (date_str,)
+        "SELECT * FROM workout_logs WHERE date=? ORDER BY id", (date_str,)
     ).fetchall()
     conn.close()
     # Group by exercise
