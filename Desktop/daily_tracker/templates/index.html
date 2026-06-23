@@ -1232,7 +1232,7 @@ function renderMealList(elId,meals,canDel){
     if(s==='extra') return 'Ekstra';
     return s.charAt(0).toUpperCase()+s.slice(1);
   }
-  const ORDER=['kahvalti','snack','meal1','pre-meal','post-workout-meal','snack2'];
+  const ORDER=['kahvalti','snack','meal1','pre-workout-meal','post-workout-meal','snack2'];
   const groups={};
   meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
@@ -4239,7 +4239,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function renderMeals(meals){
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
-    const order=['kahvalti','snack','meal1','pre-meal','post-workout-meal','snack2'];
+    const order=['kahvalti','snack','meal1','pre-workout-meal','post-workout-meal','snack2'];
     const labels={kahvalti:'Kahvaltı',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
     const groups={}; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');(groups[key]=groups[key]||[]).push(m);});
     box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(key=>{
