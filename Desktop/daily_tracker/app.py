@@ -3937,15 +3937,21 @@ def api_food_registry_list():
 
 @app.route('/api/food-registry', methods=['POST'])
 def api_food_registry_add():
-    ensure_food_registry()
-    data = request.get_json(force=True) or {}
-    conn = get_db()
-    conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases) VALUES (?,?,?,?,?,?,?,?,?,?)""",
-        (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases','')))
-    conn.commit()
-    new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-    conn.close()
-    return jsonify({'ok':True,'id':new_id})
+    try:
+        ensure_food_registry()
+        data = request.get_json(force=True) or {}
+        if not data.get('name','').strip():
+            return jsonify({'error':'name required'}), 400
+        conn = get_db()
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases','')))
+        conn.commit()
+        new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+        return jsonify({'ok':True,'id':new_id})
+    except Exception as e:
+        import traceback
+        return jsonify({'error':str(e),'trace':traceback.format_exc()}), 500
 
 @app.route('/api/food-registry/<int:fid>', methods=['PUT'])
 def api_food_registry_update(fid):
