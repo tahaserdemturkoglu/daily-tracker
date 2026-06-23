@@ -3856,6 +3856,65 @@ def start_telegram_bot():
         tg_touch_heartbeat('stopped', 'telegram polling stopped') if 'tg_touch_heartbeat' in globals() else None
         release_telegram_bot_lock()
 
+
+def ensure_food_registry():
+    conn = get_db()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS food_registry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            calories_per_100g REAL,
+            protein_per_100g REAL,
+            carbs_per_100g REAL,
+            fat_per_100g REAL,
+            fiber_per_100g REAL,
+            unit TEXT DEFAULT 'g',
+            serving_size REAL,
+            serving_unit TEXT,
+            notes TEXT,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit(); conn.close()
+
+@app.route('/api/food-registry', methods=['GET'])
+def api_food_registry_list():
+    ensure_food_registry()
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM food_registry ORDER BY name").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/food-registry', methods=['POST'])
+def api_food_registry_add():
+    ensure_food_registry()
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    conn.execute("""INSERT INTO food_registry (name,calories_per_100g,protein_per_100g,carbs_per_100g,fat_per_100g,fiber_per_100g,unit,serving_size,serving_unit,notes) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (data.get('name',''),data.get('calories_per_100g'),data.get('protein_per_100g'),data.get('carbs_per_100g'),data.get('fat_per_100g'),data.get('fiber_per_100g'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes','')))
+    conn.commit()
+    new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    return jsonify({'ok':True,'id':new_id})
+
+@app.route('/api/food-registry/<int:fid>', methods=['PUT'])
+def api_food_registry_update(fid):
+    ensure_food_registry()
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    conn.execute("""UPDATE food_registry SET name=?,calories_per_100g=?,protein_per_100g=?,carbs_per_100g=?,fat_per_100g=?,fiber_per_100g=?,unit=?,serving_size=?,serving_unit=?,notes=? WHERE id=?""",
+        (data.get('name',''),data.get('calories_per_100g'),data.get('protein_per_100g'),data.get('carbs_per_100g'),data.get('fat_per_100g'),data.get('fiber_per_100g'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),fid))
+    conn.commit(); conn.close()
+    return jsonify({'ok':True})
+
+@app.route('/api/food-registry/<int:fid>', methods=['DELETE'])
+def api_food_registry_delete(fid):
+    ensure_food_registry()
+    conn = get_db()
+    conn.execute("DELETE FROM food_registry WHERE id=?", (fid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok':True})
+
 if __name__ == '__main__':
     init_db()
     log.info(f"DB: {DB_PATH}")
