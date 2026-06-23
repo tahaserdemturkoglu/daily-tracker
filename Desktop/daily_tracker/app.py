@@ -246,13 +246,19 @@ def consolidate_water_all_dates():
 
 def migrate_body_metrics_weight_log():
     """body_metrics'e weight_kg_night kolonu ekle (gece tartisi ayri sakla)."""
-    conn = get_db()
-    existing = {r['name'] for r in conn.execute("PRAGMA table_info(body_metrics)").fetchall()}
-    if 'weight_kg_night' not in existing:
-        conn.execute("ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL")
-        conn.commit()
-        log.info("body_metrics: weight_kg_night kolonu eklendi")
-    conn.close()
+    try:
+        conn = get_db()
+        existing = {r['name'] for r in conn.execute("PRAGMA table_info(body_metrics)").fetchall()}
+        if not existing:
+            conn.close()
+            return  # table doesn't exist yet - init_db will create it
+        if 'weight_kg_night' not in existing:
+            conn.execute("ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL")
+            conn.commit()
+            log.info("body_metrics: weight_kg_night kolonu eklendi")
+        conn.close()
+    except Exception as e:
+        log.warning(f"migrate_body_metrics_weight_log skip: {e}")
 
 consolidate_water_all_dates()
 migrate_body_metrics_weight_log()
