@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Taha Serdem Daily Rapor — Flask + Telegram Bot"""
 
-import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
+import os, sqlite3, threading, asyncio, json, logging, re
 from datetime import datetime, date, timedelta
 from flask import Flask, request, jsonify, render_template
 
@@ -3854,26 +3854,56 @@ def start_telegram_bot():
         tg_touch_heartbeat('stopped', 'telegram polling stopped') if 'tg_touch_heartbeat' in globals() else None
         release_telegram_bot_lock()
 
+# ─── FOOD REGISTRY ─────────────────────────────────────────────────────────────
 
 def ensure_food_registry():
     conn = get_db()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS food_registry (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            calories_per_100g REAL,
-            protein_per_100g REAL,
-            carbs_per_100g REAL,
-            fat_per_100g REAL,
-            fiber_per_100g REAL,
-            unit TEXT DEFAULT 'g',
-            serving_size REAL,
-            serving_unit TEXT,
-            notes TEXT,
-            ts TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit(); conn.close()
+    conn.execute('''CREATE TABLE IF NOT EXISTS food_registry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        calories_per_100 REAL DEFAULT 0,
+        protein_per_100 REAL DEFAULT 0,
+        carbs_per_100 REAL DEFAULT 0,
+        fat_per_100 REAL DEFAULT 0,
+        unit TEXT DEFAULT 'g',
+        serving_size REAL DEFAULT 100,
+        serving_unit TEXT DEFAULT 'g',
+        notes TEXT DEFAULT '',
+        aliases TEXT DEFAULT '',
+        ts TEXT DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.commit()
+    # Seed default foods (INSERT OR IGNORE - safe to re-run)
+    foods = [
+        ('Yasmin Pirinc', 360, 7, 79, 0.6, 'g', 100, 'g', 'Cig agirlik. Yasmin marka pirinc.', 'pirinc,yasmin,rice'),
+        ('Tam Yumurta', 155, 13, 1.1, 11, 'adet', 1, 'adet', 'Carrefour BIO Organik: 1 adet=70kcal,6P,0.5K,5Y. 100g baz deger.', 'yumurta,egg'),
+        ('Sivi Yumurta Beyazi', 58, 10.3, 1.2, 0.8, 'g', 100, 'g', 'Sivi yumurta beyazi, 100g baz', 'yumurta beyazi,egg white'),
+        ('Tavuk Gogsu', 120, 23, 0, 2, 'g', 100, 'g', 'Cig derisiz tavuk gogsu', 'tavuk,chicken,gogus'),
+        ('Cilek', 32, 0.7, 7.7, 0.3, 'g', 100, 'g', '', 'strawberry'),
+        ('Yulaf', 371, 13, 58, 7, 'g', 100, 'g', 'Tam yulaf', 'oat,oats'),
+        ('GymBeam Sprey Yag', 833, 0, 0, 91.7, 'fis', 1.8, 'ml', '1 fis=1.8ml=15kcal, Y:1.65g. Zeytin yagi bazli.', 'fis,sprey yag,gymbeam,olive spray'),
+        ('Kakao', 228, 20, 26, 14, 'g', 100, 'g', 'Saf kakao tozu, sekersiz', 'cocoa,cacao'),
+        ('Kirmizi Elma', 52, 0.3, 14, 0.2, 'g', 100, 'g', '', 'elma,apple'),
+        ('Karisik Yesillik', 20, 2, 3, 0.3, 'g', 100, 'g', 'Marul, roka, ispanak karisimi', 'salata,yesil,greens'),
+        ('Muz', 89, 1.1, 23, 0.3, 'g', 100, 'g', '', 'banana'),
+        ('Badem', 579, 21, 22, 50, 'g', 100, 'g', 'Cig badem', 'almond'),
+        ('Kaju', 553, 18, 30, 44, 'g', 100, 'g', 'Cig kaju', 'cashew'),
+        ('Kuru Kayisi', 241, 3.4, 63, 0.5, 'g', 100, 'g', '', 'kayisi,apricot'),
+        ('Patates', 77, 2, 17, 0.1, 'g', 100, 'g', 'Cig agirlik', 'potato'),
+        ('Salatalik', 15, 0.7, 3.6, 0.1, 'g', 100, 'g', '', 'cucumber'),
+        ('Sekersiz Badem Sutu', 14, 0.5, 0, 1.1, 'ml', 100, 'ml', '', 'badem sutu,almond milk'),
+        ('Keto Ketcap', 41, 2, 6.2, 0.5, 'g', 100, 'g', '20-30g kullanim ihmal edilebilir', 'ketcap,ketchup'),
+        ('Tost Ekmegi', 252, 9.5, 45, 2.1, 'g', 100, 'g', 'Carrefour tost ekmegi. 69g=174kcal', 'ekmek,tost,toast'),
+    ]
+    for f in foods:
+        try:
+            conn.execute("""INSERT OR IGNORE INTO food_registry
+                (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases)
+                VALUES (?,?,?,?,?,?,?,?,?,?)""", f)
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
 
 @app.route('/api/food-registry', methods=['GET'])
 def api_food_registry_list():
@@ -3881,49 +3911,34 @@ def api_food_registry_list():
     conn = get_db()
     rows = conn.execute("SELECT * FROM food_registry ORDER BY name").fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    items = []
+    for r in rows:
+        d = dict(r)
+        s = d.get('serving_size') or 100
+        scale = s / 100.0
+        d['calories_per_serving'] = round((d.get('calories_per_100') or 0) * scale, 1)
+        d['protein_per_serving'] = round((d.get('protein_per_100') or 0) * scale, 1)
+        d['carbs_per_serving'] = round((d.get('carbs_per_100') or 0) * scale, 1)
+        d['fat_per_serving'] = round((d.get('fat_per_100') or 0) * scale, 1)
+        items.append(d)
+    return jsonify(items)
 
 @app.route('/api/food-registry', methods=['POST'])
 def api_food_registry_add():
     ensure_food_registry()
-    data = request.get_json(force=True) or {}
+    data = request.get_json(force=True)
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name required'}), 400
     conn = get_db()
-    conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases) VALUES (?,?,?,?,?,?,?,?,?,?)""",
-        (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases','')))
-    conn.commit()
-    new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-    conn.close()
-    return jsonify({'ok':True,'id':new_id})
-
-@app.route('/api/food-registry/<int:fid>', methods=['PUT'])
-def api_food_registry_update(fid):
-    ensure_food_registry()
-    data = request.get_json(force=True) or {}
-    conn = get_db()
-    conn.execute("""UPDATE food_registry SET name=?,calories_per_100g=?,protein_per_100g=?,carbs_per_100g=?,fat_per_100g=?,fiber_per_100g=?,unit=?,serving_size=?,serving_unit=?,notes=? WHERE id=?""",
-        (data.get('name',''),data.get('calories_per_100g'),data.get('protein_per_100g'),data.get('carbs_per_100g'),data.get('fat_per_100g'),data.get('fiber_per_100g'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),fid))
-    conn.commit(); conn.close()
-    return jsonify({'ok':True})
-
-@app.route('/api/food-registry/<int:fid>', methods=['DELETE'])
-def api_food_registry_delete(fid):
-    ensure_food_registry()
-    conn = get_db()
-    conn.execute("DELETE FROM food_registry WHERE id=?", (fid,))
-    conn.commit(); conn.close()
-    return jsonify({'ok':True})
-
-if __name__ == '__main__':
-    init_db()
-    log.info(f"DB: {DB_PATH}")
-    import sys as _sys
-    telegram_only = ('--telegram-only' in _sys.argv) or (os.environ.get('TELEGRAM_ONLY') == '1')
-    if telegram_only:
-        log.info("Telegram-only mod: site acilmadan bot calisiyor.")
-        start_telegram_bot()
-    else:
-        if TELEGRAM_TOKEN and os.environ.get('DISABLE_EMBEDDED_BOT') != '1':
-            threading.Thread(target=start_telegram_bot, daemon=True).start()
-        log.info(f"http://localhost:{PORT}")
-        app.run(host='0.0.0.0', port=PORT, debug=False)
-
+    conn.execute("""
+        INSERT INTO food_registry
+            (name, calories_per_100, protein_per_100, carbs_per_100, fat_per_100,
+             unit, serving_size, serving_unit, notes, aliases)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """, (
+        name,
+        data.get('calories_per_100') or 0,
+        data.get('protein_per_100') or 0,
+        data.get('carbs_per_100') or 0,
+        data.get('
