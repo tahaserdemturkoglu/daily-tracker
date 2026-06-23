@@ -1232,7 +1232,7 @@ function renderMealList(elId,meals,canDel){
     if(s==='extra') return 'Ekstra';
     return s.charAt(0).toUpperCase()+s.slice(1);
   }
-  const ORDER=['kahvalti','pre-workout','ogle','post-workout','ara','aksam','gece','extra'];
+  const ORDER=['kahvalti','snack','meal1','pre-meal','post-workout'];
   const groups={};
   meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
