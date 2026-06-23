@@ -3899,37 +3899,6 @@ def ensure_food_registry():
         try: conn.execute("ALTER TABLE food_registry ADD COLUMN serving_size REAL DEFAULT 100")
         except: pass
     conn.commit()
-    # Seed default foods (INSERT OR IGNORE - safe to re-run, no duplicates)
-    _foods = [
-        ('Yasmin Pirinc', 360, 7, 79, 0.6, 'g', 100, 'g', 'Cig agirlik', 'pirinc,yasmin,rice'),
-        ('Tam Yumurta', 155, 13, 1.1, 11, 'adet', 1, 'adet', 'Carrefour BIO: 1 adet=70kcal', 'yumurta,egg'),
-        ('Sivi Yumurta Beyazi', 58, 10.3, 1.2, 0.8, 'g', 100, 'g', '100g baz', 'yumurta beyazi,egg white'),
-        ('Tavuk Gogsu', 120, 23, 0, 2, 'g', 100, 'g', 'Cig derisiz', 'tavuk,chicken'),
-        ('Cilek', 32, 0.7, 7.7, 0.3, 'g', 100, 'g', '', 'strawberry'),
-        ('Yulaf', 371, 13, 58, 7, 'g', 100, 'g', 'Tam yulaf', 'oat,oats'),
-        ('GymBeam Sprey Yag', 833, 0, 0, 91.7, 'fis', 1.8, 'ml', '1 fis=1.8ml=15kcal Y:1.65g', 'fis,sprey yag,gymbeam'),
-        ('Kakao', 228, 20, 26, 14, 'g', 100, 'g', 'Saf kakao tozu sekersiz', 'cocoa,cacao'),
-        ('Kirmizi Elma', 52, 0.3, 14, 0.2, 'g', 100, 'g', '', 'elma,apple'),
-        ('Karisik Yesillik', 20, 2, 3, 0.3, 'g', 100, 'g', 'Marul roka ispanak', 'salata,yesil,greens'),
-        ('Muz', 89, 1.1, 23, 0.3, 'g', 100, 'g', '', 'banana'),
-        ('Badem', 579, 21, 22, 50, 'g', 100, 'g', 'Cig badem', 'almond'),
-        ('Kaju', 553, 18, 30, 44, 'g', 100, 'g', 'Cig kaju', 'cashew'),
-        ('Kuru Kayisi', 241, 3.4, 63, 0.5, 'g', 100, 'g', '', 'kayisi,apricot'),
-        ('Patates', 77, 2, 17, 0.1, 'g', 100, 'g', 'Cig agirlik', 'potato'),
-        ('Salatalik', 15, 0.7, 3.6, 0.1, 'g', 100, 'g', '', 'cucumber'),
-        ('Sekersiz Badem Sutu', 14, 0.5, 0, 1.1, 'ml', 100, 'ml', '', 'badem sutu,almond milk'),
-        ('Keto Ketcap', 41, 2, 6.2, 0.5, 'g', 100, 'g', '20-30g ihmal edilir', 'ketcap,ketchup'),
-        ('Tost Ekmegi', 252, 9.5, 45, 2.1, 'g', 100, 'g', 'Carrefour 69g=174kcal', 'ekmek,tost,toast'),
-    ]
-    for _f in _foods:
-        try:
-            if not conn.execute("SELECT 1 FROM food_registry WHERE lower(name)=lower(?)", (_f[0],)).fetchone():
-                conn.execute("""INSERT INTO food_registry
-                    (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,
-                     unit,serving_size,serving_unit,notes,aliases)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)""", _f)
-        except Exception:
-            pass
     conn.commit()
     conn.close()
 
