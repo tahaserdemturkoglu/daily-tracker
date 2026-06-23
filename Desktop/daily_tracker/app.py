@@ -3863,22 +3863,35 @@ def start_telegram_bot():
 
 def ensure_food_registry():
     conn = get_db()
+    # Create table with new schema
     conn.execute('''
         CREATE TABLE IF NOT EXISTS food_registry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            calories_per_100g REAL,
-            protein_per_100g REAL,
-            carbs_per_100g REAL,
-            fat_per_100g REAL,
-            fiber_per_100g REAL,
+            calories_per_100 REAL DEFAULT 0,
+            protein_per_100 REAL DEFAULT 0,
+            carbs_per_100 REAL DEFAULT 0,
+            fat_per_100 REAL DEFAULT 0,
             unit TEXT DEFAULT 'g',
-            serving_size REAL,
-            serving_unit TEXT,
-            notes TEXT,
+            serving_size REAL DEFAULT 100,
+            serving_unit TEXT DEFAULT 'g',
+            notes TEXT DEFAULT '',
+            aliases TEXT DEFAULT '',
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # Migrate old schema (calories_per_100g -> calories_per_100) if needed
+    cols = {r['name'] for r in conn.execute("PRAGMA table_info(food_registry)").fetchall()}
+    if 'calories_per_100g' in cols and 'calories_per_100' not in cols:
+        for col in ['calories_per_100','protein_per_100','carbs_per_100','fat_per_100']:
+            try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} REAL DEFAULT 0")
+            except: pass
+        try:
+            conn.execute("UPDATE food_registry SET calories_per_100=COALESCE(calories_per_100g,0), protein_per_100=COALESCE(protein_per_100g,0), carbs_per_100=COALESCE(carbs_per_100g,0), fat_per_100=COALESCE(fat_per_100g,0)")
+        except: pass
+    if 'aliases' not in cols:
+        try: conn.execute("ALTER TABLE food_registry ADD COLUMN aliases TEXT DEFAULT ''")
+        except: pass
     conn.commit()
     # Seed default foods (INSERT OR IGNORE - safe to re-run, no duplicates)
     _foods = [
