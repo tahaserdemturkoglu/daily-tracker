@@ -1192,15 +1192,15 @@ function renderVitList(elId,vitamins,canDel){
   function vitGroup(v){
     const n=(v.name||'').toLowerCase(), notes=(v.notes||'').toLowerCase();
     if(notes.includes('gece')||notes.includes('night')||NIGHT_KEYS.some(k=>n.includes(k))) return 'GECE STACK';
-    if(notes.includes('ac karna')) return 'AC KARNA STACK';
-    if(notes.includes('kahvalti')||notes.includes('sabah')||MORNING_KEYS.some(k=>n.includes(k))) return 'SABAH STACK';
+    if(notes.includes('ac karna')||notes.includes('aç karna')||notes.includes('ackarna')||notes.includes('aç karna')) return 'AÇ KARNA STACK';
+    if(notes.includes('kahvalti')||notes.includes('kahvaltı')||notes.includes('sabah')||MORNING_KEYS.some(k=>n.includes(k))) return 'SABAH STACK';
     if(notes.includes('pre-workout')||notes.includes('pre workout')) return 'PRE-WORKOUT STACK';
     if(notes.includes('post-workout')||notes.includes('post workout')||notes.includes('creatine')||n.includes('creatine')) return 'POST-WORKOUT';
-    return 'POST-WORKOUT';
+    return 'DİĞER';
   }
   const groups={};
   vitamins.forEach(v=>{const g=vitGroup(v);(groups[g]=groups[g]||[]).push(v);});
-  const GORDER=['AC KARNA STACK','SABAH STACK','PRE-WORKOUT STACK','POST-WORKOUT','GECE STACK'];
+  const GORDER=['AÇ KARNA STACK','SABAH STACK','PRE-WORKOUT STACK','POST-WORKOUT','GECE STACK','DİĞER'];
   const sorted=Object.keys(groups).sort((a,b)=>{const ia=GORDER.indexOf(a)<0?99:GORDER.indexOf(a),ib=GORDER.indexOf(b)<0?99:GORDER.indexOf(b);return ia-ib;});
   el.innerHTML=sorted.map(g=>{
     const rows=groups[g].map(v=>`<div class="vit-item"><span><b>${v.name}</b>${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>${canDel?`<button class="del-btn" onclick="confirmDelVit(${v.id},'${v.name}')">✕</button>`:''}</div>`).join('');
@@ -4253,8 +4253,16 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function renderStack(vits){
     const box=$m('ms-stack-log'); if(!box)return;
     if(!Array.isArray(vits)||!vits.length){box.innerHTML='<div class="list-empty">Bugün takviye kaydı yok.</div>';return;}
-    const order=['Ac Karna Stack','Kahvalti Stack','Sabah Stack','Pre-Workout Stack','Post-Workout Stack','Post-Workout','Gece Stack','Supplement Stack'];
-    const groupOf=v=>{const n=(v.notes||''); return order.find(x=>n.toLowerCase().includes(x.toLowerCase()))||'Post-Workout';};
+    const order=['Aç Karna Stack','Sabah Stack','Pre-Workout Stack','Post-Workout','Gece Stack','Diğer'];
+    const groupOf=v=>{
+      const lower=(v.notes||'').toLowerCase();
+      if(lower.includes('aç karna')||lower.includes('ac karna')||lower.includes('ackarna')) return 'Aç Karna Stack';
+      if(lower.includes('sabah')||lower.includes('kahvalti')||lower.includes('kahvaltı')) return 'Sabah Stack';
+      if(lower.includes('pre-workout')||lower.includes('pre workout')) return 'Pre-Workout Stack';
+      if(lower.includes('post-workout')||lower.includes('post workout')) return 'Post-Workout';
+      if(lower.includes('gece')||lower.includes('night')) return 'Gece Stack';
+      return 'Diğer';
+    };
     const groups={}; vits.forEach(v=>{const g=groupOf(v); (groups[g]=groups[g]||[]).push(v);});
     box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(g=>`<div class="mission-stack-group"><div class="mission-stack-group-title">${g}</div>${groups[g].map(v=>{const raw=String(v.notes||''),reported=/kullanici bildirimi/i.test(raw),detail=raw.split('|').map(x=>x.trim()).filter(x=>x&&!/stack$/i.test(x)&&!/kullanici bildirimi/i.test(x)).join(' · ');return `<div class="mission-stack-item"><b>💊 ${v.name||'Takviye'}</b><span>${[v.amount,v.unit].filter(Boolean).join(' ')||'doz'}${detail?' · '+detail:''}</span>${reported?'<span class="mission-user-badge">Kullanıcı bildirimi</span>':''}</div>`;}).join('')}</div>`).join('');
   }
@@ -5086,7 +5094,10 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const grad = ctx.createLinearGradient(0,0,0,190);
     grad.addColorStop(0,'rgba(20,241,217,.30)');
     grad.addColorStop(1,'rgba(20,241,217,0)');
-    if(dashboardWeightChart) dashboardWeightChart.destroy();
+    const _existing1 = window.Chart && Chart.getChart(canvas);
+    if(_existing1) _existing1.destroy();
+    dashboardWeightChart = null;
+    guardWeightChart = null;
     dashboardWeightChart = new Chart(canvas,{
       type:'line',
       data:{labels,datasets:[{label:'Kilo',data:vals,borderColor:'#14f1d9',backgroundColor:grad,fill:true,tension:.38,borderWidth:3,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:'#f8fafc',pointBorderColor:'#38bdf8',pointBorderWidth:2}]},
@@ -5330,7 +5341,10 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const grad = ctx.createLinearGradient(0,0,0,260);
     grad.addColorStop(0,'rgba(20,241,217,.34)');
     grad.addColorStop(1,'rgba(20,241,217,0)');
-    if(guardWeightChart) guardWeightChart.destroy();
+    const _existing2 = window.Chart && Chart.getChart(canvas);
+    if(_existing2) _existing2.destroy();
+    dashboardWeightChart = null;
+    guardWeightChart = null;
     guardWeightChart = new Chart(canvas,{
       type:'line',
       data:{labels,datasets:[{label:'Kilo',data:vals,borderColor:'#14f1d9',backgroundColor:grad,fill:true,tension:.35,borderWidth:3,pointRadius:4,pointBackgroundColor:'#f8fafc',pointBorderColor:'#38bdf8',pointBorderWidth:2}]},
