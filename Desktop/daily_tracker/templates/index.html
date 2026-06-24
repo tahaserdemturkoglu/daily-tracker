@@ -1217,7 +1217,7 @@ function renderMealList(elId,meals,canDel){
     if(s==='dinner') return 'aksam';
     if(s==='preworkout') return 'pre-workout';
     if(s==='postworkout'||s==='posworkout') return 'post-workout';
-    if(s==='snack') return 'ara';
+    if(s==='snack2') return 'snack2';
     if(s==='night') return 'gece';
     return s;
   }
@@ -1227,6 +1227,7 @@ function renderMealList(elId,meals,canDel){
     if(s==='meal1') return 'Meal 1';
     if(s==='pre') return 'Pre Meal';
     if(s==='post') return 'Post Meal';
+    if(s==='snack2') return 'Snack 2';
     if(s==='pre-workout') return 'Pre-Workout';
     if(s==='ogle') return 'Öğle / Pre Meal';
     if(s==='post-workout') return 'Post-Workout';
@@ -1236,7 +1237,7 @@ function renderMealList(elId,meals,canDel){
     if(s==='extra') return 'Ekstra';
     return s.charAt(0).toUpperCase()+s.slice(1);
   }
-  const ORDER=['kahvalti','snack','meal1','pre-workout-meal','post-workout-meal','snack2'];
+  const ORDER=['kahvalti','snack','meal1','pre','post','snack2'];
   const groups={};
   meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
@@ -4242,8 +4243,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function renderMeals(meals){
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
-    const order=['kahvalti','snack','meal1','pre-workout-meal','post-workout-meal','snack2'];
-    const labels={kahvalti:'Kahvaltı',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
+    const order=['kahvalti','snack','meal1','pre','post','snack2'];
+    const labels={kahvalti:'Kahvaltı',snack:'Snack',meal1:'Meal 1',pre:'Pre Meal',post:'Post Meal',snack2:'Snack 2',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
     const groups={}; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');(groups[key]=groups[key]||[]).push(m);});
     box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
