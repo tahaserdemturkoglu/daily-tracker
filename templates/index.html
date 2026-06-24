@@ -1230,6 +1230,7 @@ function renderMealList(elId,meals,canDel){
     if(s==='aksam') return 'AkÅam';
     if(s==='gece') return 'Gece';
     if(s==='extra') return 'Ekstra';
+    if(s==='snack2') return 'Snack 2';
     return s.charAt(0).toUpperCase()+s.slice(1);
   }
   const ORDER=['kahvalti','snack','meal1','pre','post','snack2'];
@@ -4239,7 +4240,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">BugÃ¼n Ã¶ÄÃ¼n kaydÄ± yok.</div>';return;}
     const order=['kahvalti','snack','meal1','pre','post','snack2'];
-    const labels={kahvalti:'KahvaltÄ±',ogle:'Ana ÃÄÃ¼n',aksam:'AkÅam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'AtÄ±ÅtÄ±rmalÄ±k',extra:'Ek ÃÄÃ¼n'};
+    const labels={kahvalti:'Kahvaltı',snack:'Snack',meal1:'Meal 1',pre:'Pre Meal',post:'Post Meal',snack2:'Snack 2',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
     const groups={}; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('Ã¶','o').replace('Ä±','i');(groups[key]=groups[key]||[]).push(m);});
     box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
