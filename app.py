@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Taha Serdem Daily Rapor — Flask + Telegram Bot | deploy 2026-06-24"""
+"""Taha Serdem Daily Rapor — Flask + Telegram Bot"""
 
 import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
 from datetime import datetime, date, timedelta
