@@ -3,7 +3,14 @@
 
 import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from flask import Flask, request, jsonify, render_template
+
+_TZ_ISTANBUL = ZoneInfo('Europe/Istanbul')
+
+def now_istanbul() -> datetime:
+    """Şu anki Istanbul saatini döndürür. Railway UTC'de çalışır, bu fonksiyon TR saatini verir."""
+    return datetime.now(_TZ_ISTANBUL)
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR    = os.environ.get('DATA_DIR', BASE_DIR)
@@ -39,7 +46,7 @@ def current_shift_info(now=None):
     - Sonraki 2 hafta 21:00-06:00, gun 12:00'de kapanir.
     Sonra 2 haftalik sabah/gece dongusu devam eder.
     """
-    now = now or datetime.now()
+    now = now or now_istanbul()
     base = now.date()
     if base < SHIFT_TRANSITION_DATE:
         return {
@@ -75,8 +82,8 @@ def operation_cutoff_hour(now=None):
 
 
 def operation_date(now=None):
-    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar."""
-    now = now or datetime.now()
+    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir."""
+    now = now or now_istanbul()
     d = now.date()
     if 0 <= now.hour < operation_cutoff_hour(now):
         d = d - timedelta(days=1)
@@ -101,12 +108,10 @@ TRAINING_COLORS = {
 }
 
 def training_day(date_str):
+    # Weekday-based: Mon=Push, Tue=Pull, Wed=Leg, Thu=Upper, Fri=Lower, Sat=Off, Sun=Off
+    WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
     d = date.fromisoformat(date_str)
-    start = date.fromisoformat(CYCLE_START)
-    diff = (d - start).days % 7
-    if diff < 0:
-        diff = (diff + 7) % 7
-    return TRAINING_CYCLE[diff]
+    return WEEKDAY_CYCLE[d.weekday()]
 
 # ─── DATABASE ──────────────────────────────────────────────────────────────────
 def get_db():
@@ -248,13 +253,19 @@ def consolidate_water_all_dates():
 
 def migrate_body_metrics_weight_log():
     """body_metrics'e weight_kg_night kolonu ekle (gece tartisi ayri sakla)."""
-    conn = get_db()
-    existing = {r['name'] for r in conn.execute("PRAGMA table_info(body_metrics)").fetchall()}
-    if 'weight_kg_night' not in existing:
-        conn.execute("ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL")
-        conn.commit()
-        log.info("body_metrics: weight_kg_night kolonu eklendi")
-    conn.close()
+    try:
+        conn = get_db()
+        existing = {r['name'] for r in conn.execute("PRAGMA table_info(body_metrics)").fetchall()}
+        if not existing:
+            conn.close()
+            return  # table doesn't exist yet - init_db will create it
+        if 'weight_kg_night' not in existing:
+            conn.execute("ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL")
+            conn.commit()
+            log.info("body_metrics: weight_kg_night kolonu eklendi")
+        conn.close()
+    except Exception as e:
+        log.warning(f"migrate_body_metrics_weight_log skip: {e}")
 
 consolidate_water_all_dates()
 migrate_body_metrics_weight_log()
@@ -632,6 +643,12 @@ def api_meals_day(date_str):
     conn.close()
     return jsonify([dict(r) for r in rows])
 
+def _num_or_none(v):
+    """0 değerlerini NULL'a dönüştürmez — sadece None/'' → None yapar."""
+    if v is None or v == '': return None
+    try: return float(v)
+    except: return None
+
 @app.route('/api/meals', methods=['POST'])
 def api_meal_save():
     data = request.get_json(force=True) or {}
@@ -639,11 +656,11 @@ def api_meal_save():
     slot = data.get('slot', '').strip() or 'extra'
     title = data.get('title', '').strip()
     description = data.get('description', '').strip()
-    calories = data.get('calories') or None
-    protein_g = data.get('protein_g') or None
-    carbs_g = data.get('carbs_g') or None
-    fat_g = data.get('fat_g') or None
-    fiber_g = data.get('fiber_g') or None
+    calories = _num_or_none(data.get('calories'))
+    protein_g = _num_or_none(data.get('protein_g'))
+    carbs_g = _num_or_none(data.get('carbs_g'))
+    fat_g = _num_or_none(data.get('fat_g'))
+    fiber_g = _num_or_none(data.get('fiber_g'))
     source = data.get('source', '').strip()
     conn = get_db()
     if data.get('replace_existing') and slot != 'extra':
@@ -671,20 +688,23 @@ def api_meal_delete(mid):
 def api_meal_update(mid):
     data = request.get_json(force=True) or {}
     conn = get_db()
+    # Mevcut satırı çek — gönderilmeyen alanlar korunsun
+    existing = conn.execute("SELECT * FROM meal_entries WHERE id=?", (mid,)).fetchone()
+    ex = dict(existing) if existing else {}
     conn.execute("""
         UPDATE meal_entries
         SET slot=?, title=?, description=?, calories=?, protein_g=?, carbs_g=?, fat_g=?, fiber_g=?, source=?
         WHERE id=?
     """, (
-        data.get('slot', '').strip() or 'extra',
-        data.get('title', '').strip(),
-        data.get('description', '').strip(),
-        data.get('calories') or None,
-        data.get('protein_g') or None,
-        data.get('carbs_g') or None,
-        data.get('fat_g') or None,
-        data.get('fiber_g') or None,
-        data.get('source', '').strip(),
+        data.get('slot', ex.get('slot') or '').strip() or ex.get('slot') or 'extra',
+        data['title'].strip() if 'title' in data else (ex.get('title') or ''),
+        data['description'].strip() if 'description' in data else (ex.get('description') or ''),
+        _num_or_none(data['calories']) if 'calories' in data else ex.get('calories'),
+        _num_or_none(data['protein_g']) if 'protein_g' in data else ex.get('protein_g'),
+        _num_or_none(data['carbs_g']) if 'carbs_g' in data else ex.get('carbs_g'),
+        _num_or_none(data['fat_g']) if 'fat_g' in data else ex.get('fat_g'),
+        _num_or_none(data['fiber_g']) if 'fiber_g' in data else ex.get('fiber_g'),
+        data.get('source', ex.get('source') or '').strip(),
         mid
     ))
     conn.commit(); conn.close()
@@ -779,16 +799,23 @@ def api_body_metrics_save():
     data = request.get_json(force=True) or {}
     d = data.get('date') or operation_today()
     weight = data.get('weight_kg')
+    weight_night = data.get('weight_kg_night')
     waist = data.get('waist_cm')
     chest = data.get('chest_cm')
     arm = data.get('arm_cm')
     notes = data.get('notes') or ''
     conn = get_db()
     conn.execute("""
-        INSERT INTO body_metrics (date, weight_kg, waist_cm, chest_cm, arm_cm, notes)
-        VALUES (?,?,?,?,?,?)
-        ON CONFLICT(date) DO UPDATE SET weight_kg=excluded.weight_kg, waist_cm=excluded.waist_cm, chest_cm=excluded.chest_cm, arm_cm=excluded.arm_cm, notes=excluded.notes
-    """, (d, weight, waist, chest, arm, notes))
+        INSERT INTO body_metrics (date, weight_kg, weight_kg_night, waist_cm, chest_cm, arm_cm, notes)
+        VALUES (?,?,?,?,?,?,?)
+        ON CONFLICT(date) DO UPDATE SET
+            weight_kg=COALESCE(excluded.weight_kg, weight_kg),
+            weight_kg_night=COALESCE(excluded.weight_kg_night, weight_kg_night),
+            waist_cm=COALESCE(excluded.waist_cm, waist_cm),
+            chest_cm=COALESCE(excluded.chest_cm, chest_cm),
+            arm_cm=COALESCE(excluded.arm_cm, arm_cm),
+            notes=COALESCE(NULLIF(excluded.notes,''), notes)
+    """, (d, weight, weight_night, waist, chest, arm, notes))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'date': d})
 
@@ -1289,7 +1316,7 @@ def api_training_schedule():
 def api_workout_get(date_str):
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM workout_logs WHERE date=? ORDER BY exercise, set_num", (date_str,)
+        "SELECT * FROM workout_logs WHERE date=? ORDER BY id", (date_str,)
     ).fetchall()
     conn.close()
     # Group by exercise
@@ -1417,18 +1444,31 @@ def tg_report():
     return r.get('report', 'Rapor olusturulamadi.')
 
 def tg_today_summary():
-    today = operation_today()
-    d = json.loads(api_day(today).get_data())
-    sl=d.get('sleep',{}); ex=d.get('exercise',{}); nu=d.get('nutrition',{})
-    w=d.get('work',{}); co=d.get('coaching',{}); mo=d.get('mood',{}); sr=streak_count()
-    td=d.get('training','')
-    lines = [f"BUGUN {operation_date().strftime('%d/%m/%Y')} | {sr} gun | {td}\n"]
+    ctx = _today_ai_context()
+    today = ctx['date']
+    sl = ctx.get('sleep', {}); ex = ctx.get('exercise', {}); mo = ctx.get('mood', {})
+    macros = ctx.get('macros', {}); sr = streak_count()
+    td = ctx.get('training_day', '')
+    w_kg = ctx.get('weight_kg'); w_night = ctx.get('weight_kg_night')
+    steps = ctx.get('steps', 0)
+    lines = [f"BUGUN {today} | {td} | {sr} gun"]
+    if w_kg: lines.append(f"Sabah kilo: {w_kg} kg" + (f" | Gece: {w_night} kg" if w_night else ""))
     lines.append("Uyku: " + (f"{sl.get('hours','?')}s kalite {sl.get('quality','?')}/10" if sl else "-"))
     lines.append("Egzersiz: " + (f"{ex.get('type','?')} {ex.get('duration','?')}dk" if ex else "-"))
-    lines.append("Beslenme: " + (f"{nu.get('calories','?')}kcal su {(nu.get('water_ml',0) or 0)/1000:.1f}L" if nu else "-"))
-    lines.append("Is: " + (f"{w.get('hours','?')}s" if w else "-"))
-    lines.append("Antrenorluk: " + (f"{co.get('sessions','?')} seans" if co else "-"))
-    lines.append("Ruh hali: " + (f"enerji {mo.get('energy','?')} mood {mo.get('mood','?')} stres {mo.get('stress','?')}" if mo else "-"))
+    if steps: lines.append(f"Adim: {steps}")
+    meals = ctx.get('meals', [])
+    if meals:
+        lines.append(f"\nOgunler ({macros.get('calories',0)} kcal | P{macros.get('protein_g',0)}g K{macros.get('carbs_g',0)}g Y{macros.get('fat_g',0)}g Su {ctx.get('water_l',0):.1f}L):")
+        for m in meals:
+            cal_str = f" {int(m['calories'])}kcal" if m.get('calories') else ""
+            desc = m.get('description') or m.get('title') or m.get('slot', '')
+            lines.append(f"  {m.get('slot','')}: {desc}{cal_str}")
+    else:
+        lines.append(f"Beslenme: {macros.get('calories',0)} kcal | P{macros.get('protein_g',0)}g | Su {ctx.get('water_l',0):.1f}L")
+    lines.append("Mood: " + (f"enerji {mo.get('energy','?')} mood {mo.get('mood','?')} stres {mo.get('stress','?')}" if mo else "-"))
+    vits = ctx.get('vitamins', [])
+    if vits:
+        lines.append("Vitamin: " + ", ".join(v['name'] for v in vits))
     return '\n'.join(lines)
 
 async def cmd_ogun(u,c):
@@ -1501,24 +1541,40 @@ async def cmd_vitamin(u,c):
         conn=get_db(); conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit) VALUES (?,?,?,?)",(operation_today(),name,amount,unit)); conn.commit(); conn.close()
         await u.message.reply_text(f"Vitamin: {name} {amount} {unit}")
     except: await u.message.reply_text("Kullanim: /vitamin D3 5000 IU")
-async def cmd_bugun(u,c): await u.message.reply_text(tg_today_summary())
-async def cmd_rapor(u,c): await u.message.reply_text(tg_report())
+async def cmd_bugun(u,c):
+    result = ai_coach_call('Bugünün tam günlük özetini ver: kilo, makrolar (kcal/P/K/Y), vitaminler, su, adım, uyku, antrenman ve kısa koç değerlendirmesi.')
+    reply = result.get('reply') or tg_today_summary()
+    await u.message.reply_text(reply)
+
+async def cmd_rapor(u,c):
+    result = ai_coach_call('Bugünün detaylı beslenme raporunu çıkar: tüm öğünleri ayrı ayrı listele, makro toplamlarını ver, hedeflerden sapmaları belirt ve koç yorumu ekle.')
+    reply = result.get('reply') or tg_report()
+    await u.message.reply_text(reply)
+
 async def cmd_antrenman(u,c):
-    sched = json.loads(api_training_schedule().get_data())['schedule']
-    lines = ["ANTRENMAN PROGRAMI\n"]
-    for s in sched:
-        prefix = ">>> " if s['is_today'] else "    "
-        lines.append(f"{prefix}{s['date']} {s['training']}")
-    await u.message.reply_text('\n'.join(lines))
+    result = ai_coach_call('Bugünkü antrenman gününü belirt ve geçmiş verilerime bakarak bugün için en uygun antrenman planını yap. Progressive overload uygula.')
+    reply = result.get('reply') or ''
+    if not reply:
+        sched = json.loads(api_training_schedule().get_data())['schedule']
+        lines = ["ANTRENMAN PROGRAMI\n"]
+        for s in sched:
+            prefix = ">>> " if s['is_today'] else "    "
+            lines.append(f"{prefix}{s['date']} {s['training']}")
+        reply = '\n'.join(lines)
+    await u.message.reply_text(reply)
+
 async def cmd_hafta(u,c):
-    data = json.loads(api_week().get_data())
-    def avg(lst,key): v=[r[key] for r in lst if r.get(key) is not None]; return round(sum(v)/len(v),1) if v else '-'
-    await u.message.reply_text(
-        f"7 GUNLUK OZET\nUyku: ort {avg(data['sleep'],'hours')}s kalite {avg(data['sleep'],'quality')}/10\n"
-        f"Egzersiz: {len(data['exercise'])}/7 gun\nIs: ort {avg(data['work'],'hours')}s/gun\n"
-        f"Antrenorluk: {sum(r.get('sessions',0) or 0 for r in data['coaching'])} seans\n"
-        f"Enerji: {avg(data['mood'],'energy')}/10 Mood: {avg(data['mood'],'mood')}/10 Stres: {avg(data['mood'],'stress')}/10"
-    )
+    result = ai_coach_call('Son 7 günün özetini ver: kilo trendi, makro ortalamaları, antrenman sıklığı, su ortalaması ve bu hafta için koç değerlendirmesi.')
+    reply = result.get('reply') or ''
+    if not reply:
+        data = json.loads(api_week().get_data())
+        def avg(lst,key): v=[r[key] for r in lst if r.get(key) is not None]; return round(sum(v)/len(v),1) if v else '-'
+        reply = (
+            f"7 GUNLUK OZET\nUyku: ort {avg(data['sleep'],'hours')}s kalite {avg(data['sleep'],'quality')}/10\n"
+            f"Egzersiz: {len(data['exercise'])}/7 gun\n"
+            f"Enerji: {avg(data['mood'],'energy')}/10 Mood: {avg(data['mood'],'mood')}/10 Stres: {avg(data['mood'],'stress')}/10"
+        )
+    await u.message.reply_text(reply)
 async def cmd_streak(u,c): await u.message.reply_text(f"{streak_count()} gunluk seri!")
 
 
@@ -1564,27 +1620,105 @@ def _today_ai_context():
     totals = meal_macro_totals(today)
     conn = get_db()
     try:
-        sleep = conn.execute("SELECT * FROM sleep_logs WHERE date=?", (today,)).fetchone()
+        sleep    = conn.execute("SELECT * FROM sleep_logs    WHERE date=?", (today,)).fetchone()
         exercise = conn.execute("SELECT * FROM exercise_logs WHERE date=?", (today,)).fetchone()
-        nutrition = conn.execute("SELECT * FROM nutrition_logs WHERE date=?", (today,)).fetchone()
-        mood = conn.execute("SELECT * FROM mood_logs WHERE date=?", (today,)).fetchone()
-        vitamins = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
-        note = conn.execute("SELECT note FROM daily_notes WHERE date=?", (today,)).fetchone()
+        mood     = conn.execute("SELECT * FROM mood_logs     WHERE date=?", (today,)).fetchone()
+        vitamins = [dict(r) for r in conn.execute("SELECT name,amount,unit,notes FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
+        note     = conn.execute("SELECT note FROM daily_notes WHERE date=?", (today,)).fetchone()
+        # Su: nutrition_logs'tan SUM (birden fazla satır olabilir)
+        water_row = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (today,)).fetchone()
+        water_ml  = int(water_row['total'] or 0) if water_row else 0
+        # Öğün detayları: meal_entries tablosundan
+        meals = [dict(r) for r in conn.execute(
+            "SELECT slot, title, description, calories, protein_g, carbs_g, fat_g FROM meal_entries WHERE date=? ORDER BY id",
+            (today,)).fetchall()]
+        # Adım ve kilo
+        step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (today,)).fetchone()
+        body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (today,)).fetchone()
     finally:
         conn.close()
-    nutrition_d = dict(nutrition) if nutrition else {}
     ctx = {
         'date': today,
         'training_day': training_day(today),
         'macros': totals,
-        'water_l': round(((nutrition_d.get('water_ml') or 0) / 1000), 2),
+        'water_l': round(water_ml / 1000, 2),
+        'steps': step_row['steps'] if step_row else 0,
+        'weight_kg': body_row['weight_kg'] if body_row else None,
+        'weight_kg_night': body_row['weight_kg_night'] if body_row else None,
         'sleep': dict(sleep) if sleep else {},
         'exercise': dict(exercise) if exercise else {},
         'mood': dict(mood) if mood else {},
         'vitamins': vitamins,
+        'meals': meals,
         'note': note['note'] if note else '',
     }
     return ctx
+
+
+def _week_ai_context():
+    """Son 7 günün kilo, makro, antrenman ve su özetini döndürür."""
+    from datetime import datetime as _dt, timedelta as _td
+    today = operation_today()
+    days = [(_dt.strptime(today, '%Y-%m-%d') - _td(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+    conn = get_db()
+    try:
+        # Kilo geçmişi
+        weights = []
+        for d in days:
+            row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (d,)).fetchone()
+            if row and (row['weight_kg'] or row['weight_kg_night']):
+                w = {'date': d}
+                if row['weight_kg']: w['sabah_kg'] = row['weight_kg']
+                if row['weight_kg_night']: w['gece_kg'] = row['weight_kg_night']
+                if row['weight_kg'] and row['weight_kg_night']:
+                    w['delta'] = round(row['weight_kg_night'] - row['weight_kg'], 2)
+                weights.append(w)
+
+        # Makro geçmişi
+        macro_history = []
+        for d in days:
+            r = conn.execute(
+                "SELECT SUM(calories) as kcal, SUM(protein_g) as p, SUM(carbs_g) as k, SUM(fat_g) as y FROM meal_entries WHERE date=?",
+                (d,)).fetchone()
+            if r and r['kcal']:
+                macro_history.append({'date': d, 'kcal': round(r['kcal'] or 0),
+                                       'protein_g': round(r['p'] or 0), 'carbs_g': round(r['k'] or 0), 'fat_g': round(r['y'] or 0)})
+
+        # Antrenman geçmişi
+        workout_history = []
+        for d in days:
+            rows = conn.execute("SELECT DISTINCT exercise FROM workout_logs WHERE date=? ORDER BY id", (d,)).fetchall()
+            if rows:
+                workout_history.append({'date': d, 'training_day': training_day(d),
+                                         'hareketler': [r['exercise'] for r in rows]})
+
+        # Su geçmişi
+        water_history = []
+        for d in days:
+            r = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (d,)).fetchone()
+            if r and r['total']:
+                water_history.append({'date': d, 'litre': round((r['total'] or 0) / 1000, 2)})
+
+        # Kilo trendi özeti
+        trend_note = ''
+        weights_sorted = sorted(weights, key=lambda x: x['date'])
+        sabah_vals = [w['sabah_kg'] for w in weights_sorted if 'sabah_kg' in w]
+        if len(sabah_vals) >= 3:
+            diff = round(sabah_vals[-1] - sabah_vals[0], 2)
+            trend_note = f"{'+' if diff >= 0 else ''}{diff} kg ({days[-1]} → {days[0]})"
+
+    finally:
+        conn.close()
+
+    return {
+        'period': f'{days[-1]} - {days[0]}',
+        'kilo_gecmisi': weights,
+        'kilo_trendi': trend_note,
+        'makro_gecmisi': macro_history,
+        'antrenman_gecmisi': workout_history,
+        'su_gecmisi': water_history,
+    }
+
 
 TAHA_COACHING_POLICY = """
 TAHA ICIN KALICI KOCLUK HAFIZASI:
@@ -1648,6 +1782,7 @@ GUNLUK LOG SIRASI:
 def _claude_call(user_text):
     import urllib.request, urllib.error
     ctx = _today_ai_context()
+    week_ctx = _week_ai_context()
     system_prompt = (
         TAHA_COACHING_POLICY + "\n" +
         "Sen Taha Serdem'in kişisel antrenman ve günlük performans koçusun. "
@@ -1667,13 +1802,12 @@ def _claude_call(user_text):
         f'Tarih kuralı: Kullanıcı tarih belirtmemişse date={operation_today()} (bugün). '
         f'"Dün" derse date={(operation_date()-timedelta(days=1)).isoformat()}. '
         '"X gün önce" veya "X Haziran" gibi ifadeleri doğru tarihe çevir. '
-        f"Saat baglami: Simdiki yerel saat {datetime.now().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
+        f"Saat baglami: Simdiki yerel saat {now_istanbul().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
         f"Gece/vardiya kayit kurali: aktif gec pencere {current_shift_info().get('late_window')}. Bu pencerede yatmadan once stack, vitamin, ogun, su, adim, kilo ve gun sonu notlari kullanici aksini soylemedikce bir onceki operasyon gunune aittir. 03:30da uyuyacagim/yatacagim gibi ifadeler uyku suresi degildir; sleep hours olarak 3.3 kaydetme. Uyku kaydi icin ancak uyudum/kalktim/uyandim veya baslangic-bitis netse action uret.\n"
         'Bugün: ' + operation_today() + '\n'
-        f"Saat baglami: Simdiki yerel saat {datetime.now().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
-        f"Gece/vardiya kayit kurali: aktif gec pencere {current_shift_info().get('late_window')}. Bu pencerede yatmadan once stack, vitamin, ogun, su, adim, kilo ve gun sonu notlari kullanici aksini soylemedikce bir onceki operasyon gunune aittir. 03:30da uyuyacagim/yatacagim gibi ifadeler uyku suresi degildir; sleep hours olarak 3.3 kaydetme. Uyku kaydi icin ancak uyudum/kalktim/uyandim veya baslangic-bitis netse action uret.\n"
         'Karar baglami: ' + (tg_context_note_for_prompt(user_text) if 'tg_context_note_for_prompt' in globals() else '') + '\n'
-        'Bugünün verisi: ' + json.dumps(ctx, ensure_ascii=False)
+        'Bugünün verisi: ' + json.dumps(ctx, ensure_ascii=False) + '\n'
+        'Son 7 günün özeti: ' + json.dumps(week_ctx, ensure_ascii=False)
     )
     body = {
         'model': ANTHROPIC_MODEL,
@@ -1999,9 +2133,24 @@ def ai_apply_actions(actions):
                 conn.commit(); conn.close()
                 saved.append('hareket')
             elif typ == 'vitamin':
+                vname = (a.get('name') or '').strip()
+                vamount = str(a.get('amount') or '').strip()
+                vunit = (a.get('unit') or '').strip()
+                vnotes = (a.get('notes') or '').strip()
+                # name bossa catalog'dan bul (AI format hatasi icin guvenlik agi)
+                if not vname and 'tg_supplement_catalog' in globals():
+                    notes_lower = vnotes.lower()
+                    for item in tg_supplement_catalog():
+                        if any(k in notes_lower for k in item['keys']):
+                            vname = item['name']
+                            if not vamount:
+                                vamount = item['amount']
+                            if not vunit:
+                                vunit = item['unit']
+                            break
                 conn = get_db()
                 conn.execute("INSERT INTO vitamin_logs (date, name, amount, unit, notes) VALUES (?,?,?,?,?)",
-                             (action_date, a.get('name') or '', str(a.get('amount') or ''), a.get('unit') or '', a.get('notes') or ''))
+                             (action_date, vname, vamount, vunit, vnotes))
                 conn.commit(); conn.close()
                 saved.append('supplement')
             elif typ in ('body_weight', 'weight', 'kilo'):
@@ -2899,7 +3048,7 @@ def tg_touch_heartbeat(status='running', message=''):
     try:
         payload = {
             'status': status,
-            'ts': datetime.now().isoformat(timespec='seconds'),
+            'ts': now_istanbul().isoformat(timespec='seconds'),
             'pid': os.getpid(),
             'message': (message or '')[:180]
         }
@@ -2911,7 +3060,7 @@ def tg_touch_heartbeat(status='running', message=''):
 def tg_effective_log_date(raw_text='', action_type=''):
     """Telegram'da gece 00:00 sonrası yazılan gün-sonu kayıtlarını önceki güne bağla."""
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     today = now.date()
     if any(w in norm for w in ['dun', 'dunku', 'dün']):
         return (today - timedelta(days=1)).isoformat()
@@ -2928,7 +3077,7 @@ def tg_effective_log_date(raw_text='', action_type=''):
 
 def tg_night_casual_reply(raw_text=''):
     """00:00-06:00 arasinda basit sohbeti sabah gibi karsilama."""
-    now = datetime.now()
+    now = now_istanbul()
     if not (0 <= now.hour < operation_cutoff_hour(now)):
         return ''
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
@@ -2953,7 +3102,7 @@ def tg_is_future_bedtime_statement(raw_text):
 
 def tg_weight_context_note(raw_text, action_date):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     cutoff = operation_cutoff_hour(now) if 'operation_cutoff_hour' in globals() else globals().get('OPERATION_DAY_CUTOFF_HOUR', 6)
     if any(w in norm for w in ['ac karna', 'ackarna', 'sabah tarti', 'sabah kilo', 'sabah ac']):
         return 'telegram | sabah ac karna resmi tarti'
@@ -3334,6 +3483,14 @@ def tg_supplement_actions_from_text(raw_text):
                 unit = found.group(2).replace('kapsul','kapsul').replace('olcek','olcek')
         actions.append({'type':'vitamin', 'date':today, 'name':item['name'], 'amount':amount, 'unit':unit, 'notes':f"{tg_stack_label(slot or 'manual')} | {item['note']}", 'stack':slot or 'manual'})
         seen.add(item['name'])
+    # Çinko sabah/kahvaltı stack'te bekleniyor ama alınmadıysa bot notu ekle
+    if slot in ('sabah', 'kahvalti'):
+        wanted_names = set(tg_stack_preset(slot))
+        if 'Cinko' in wanted_names and 'Cinko' not in seen:
+            cinko_item = next((it for it in catalog if it['name'] == 'Cinko'), None)
+            explicitly_excluded = cinko_item and tg_supplement_item_missing(cinko_item, norm)
+            if not explicitly_excluded:
+                actions.append({'type': '_bot_note', 'text': '⚠️ Çinko alınmadı — not edildi'})
     return actions
 
 def tg_merge_deterministic_actions(actions, extra_actions):
@@ -3437,7 +3594,7 @@ def tg_save_meal_template_from_actions(raw_text, actions):
 # TG_BOT_DECISION_CONTEXT_V1
 def tg_decision_context(raw_text=''):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     cutoff = operation_cutoff_hour(now) if 'operation_cutoff_hour' in globals() else globals().get('OPERATION_DAY_CUTOFF_HOUR', 6)
     op_date = tg_effective_log_date(raw_text, 'note') if 'tg_effective_log_date' in globals() else (operation_today() if 'operation_today' in globals() else now.date().isoformat())
     ctx = {
@@ -3496,7 +3653,7 @@ def tg_context_note_for_prompt(raw_text=''):
 
 def tg_context_note_actions_from_text(raw_text=''):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     cutoff = operation_cutoff_hour(now) if 'operation_cutoff_hour' in globals() else globals().get('OPERATION_DAY_CUTOFF_HOUR', 6)
     night_words = ['eve geldim', 'uyuyacagim', 'uyuyacam', 'yatacagim', 'yatacam', 'uyumadan', 'yatmadan', 'vitaminlerimi bugun almayacagim', 'vitamin almayacagim']
     if not (0 <= now.hour < cutoff or any(w in norm for w in night_words)):
@@ -3631,7 +3788,9 @@ async def cmd_chat_ai(u, c):
     supplement_actions = tg_supplement_actions_from_text(raw) if 'tg_supplement_actions_from_text' in globals() else []
     direct_mood_actions = tg_direct_mood_actions_from_text(raw, chat_id) if 'tg_direct_mood_actions_from_text' in globals() else []
     context_note_actions = tg_context_note_actions_from_text(raw) if 'tg_context_note_actions_from_text' in globals() else []
-    supplement_actions = tg_supplement_actions_from_text(raw) if 'tg_supplement_actions_from_text' in globals() else []
+    # Deterministic supplement parser her zaman AI vitamin action'larinin uzerine yazar
+    if supplement_actions:
+        actions = [a for a in actions if not (isinstance(a, dict) and a.get('type') == 'vitamin')]
     if full_day_actions:
         preferred = []
         deterministic_keys = set()
@@ -3676,14 +3835,6 @@ async def cmd_chat_ai(u, c):
     if direct_mood_actions:
         actions = [a for a in actions if not (isinstance(a, dict) and a.get('type') == 'mood')]
         actions = direct_mood_actions + actions
-    if 'tg_merge_deterministic_actions' in globals() and supplement_actions:
-        actions = tg_merge_deterministic_actions(actions, supplement_actions)
-    if 'tg_normalize_action_dates_and_sleep' in globals():
-        before_sleep_count = len([a for a in actions if isinstance(a, dict) and a.get('type') == 'sleep'])
-        actions = tg_normalize_action_dates_and_sleep(raw, actions)
-        after_sleep_count = len([a for a in actions if isinstance(a, dict) and a.get('type') == 'sleep'])
-    else:
-        before_sleep_count = after_sleep_count = 0
     saved = ai_apply_actions(actions)
     if (not result.get('actions')) and basic_actions and 'BaÄŸlantÄ± sorunu' in (result.get('reply') or ''):
         result['reply'] = 'AI baÄŸlantÄ±sÄ± anlÄ±k takÄ±ldÄ± ama temel verileri boÅŸa dÃ¼ÅŸÃ¼rmedim. Kilo/su/adÄ±m ve net makro gÃ¶rdÃ¼ÄŸÃ¼m kayÄ±tlarÄ± sisteme iÅŸledim; detaylÄ± koÃ§ yorumunu tekrar sorabilirsin.'
@@ -3738,6 +3889,9 @@ async def cmd_chat_ai(u, c):
             log.exception("Telegram adim fallback kaydi basarisiz")
 
     reply = result.get('reply') or 'Anladım.'
+    bot_notes = [a.get('text','') for a in actions if isinstance(a, dict) and a.get('type') == '_bot_note']
+    if bot_notes:
+        reply += '\n\n' + '\n'.join(bot_notes)
     if 'before_sleep_count' in locals() and before_sleep_count > after_sleep_count:
         reply += "\n\nUyku notu: uyuyacağım/yatacağım ifadesini saat olarak algılamadım; uyku süresi kaydetmedim. Uyandığında kalkış saatini yazarsan gerçek süreyi işleriz."
     if template_title:
@@ -3848,6 +4002,92 @@ def start_telegram_bot():
     finally:
         tg_touch_heartbeat('stopped', 'telegram polling stopped') if 'tg_touch_heartbeat' in globals() else None
         release_telegram_bot_lock()
+
+
+def ensure_food_registry():
+    conn = get_db()
+    # Create table with new schema
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS food_registry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            calories_per_100 REAL DEFAULT 0,
+            protein_per_100 REAL DEFAULT 0,
+            carbs_per_100 REAL DEFAULT 0,
+            fat_per_100 REAL DEFAULT 0,
+            unit TEXT DEFAULT 'g',
+            serving_size REAL DEFAULT 100,
+            serving_unit TEXT DEFAULT 'g',
+            notes TEXT DEFAULT '',
+            aliases TEXT DEFAULT '',
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    # Migrate old schema (calories_per_100g -> calories_per_100) if needed
+    cols = {r['name'] for r in conn.execute("PRAGMA table_info(food_registry)").fetchall()}
+    if 'calories_per_100g' in cols and 'calories_per_100' not in cols:
+        for col in ['calories_per_100','protein_per_100','carbs_per_100','fat_per_100']:
+            try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} REAL DEFAULT 0")
+            except: pass
+        try:
+            conn.execute("UPDATE food_registry SET calories_per_100=COALESCE(calories_per_100g,0), protein_per_100=COALESCE(protein_per_100g,0), carbs_per_100=COALESCE(carbs_per_100g,0), fat_per_100=COALESCE(fat_per_100g,0)")
+        except: pass
+    if 'aliases' not in cols:
+        try: conn.execute("ALTER TABLE food_registry ADD COLUMN aliases TEXT DEFAULT ''")
+        except: pass
+    if 'unit' not in cols:
+        try: conn.execute("ALTER TABLE food_registry ADD COLUMN unit TEXT DEFAULT 'g'")
+        except: pass
+    if 'serving_size' not in cols:
+        try: conn.execute("ALTER TABLE food_registry ADD COLUMN serving_size REAL DEFAULT 100")
+        except: pass
+    conn.commit()
+    conn.commit()
+    conn.close()
+
+@app.route('/api/food-registry', methods=['GET'])
+def api_food_registry_list():
+    ensure_food_registry()
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM food_registry ORDER BY name").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/food-registry', methods=['POST'])
+def api_food_registry_add():
+    try:
+        ensure_food_registry()
+        data = request.get_json(force=True) or {}
+        if not data.get('name','').strip():
+            return jsonify({'error':'name required'}), 400
+        conn = get_db()
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases','')))
+        conn.commit()
+        new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+        return jsonify({'ok':True,'id':new_id})
+    except Exception as e:
+        import traceback
+        return jsonify({'error':str(e),'trace':traceback.format_exc()}), 500
+
+@app.route('/api/food-registry/<int:fid>', methods=['PUT'])
+def api_food_registry_update(fid):
+    ensure_food_registry()
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    conn.execute("""UPDATE food_registry SET name=?,calories_per_100g=?,protein_per_100g=?,carbs_per_100g=?,fat_per_100g=?,fiber_per_100g=?,unit=?,serving_size=?,serving_unit=?,notes=? WHERE id=?""",
+        (data.get('name',''),data.get('calories_per_100g'),data.get('protein_per_100g'),data.get('carbs_per_100g'),data.get('fat_per_100g'),data.get('fiber_per_100g'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),fid))
+    conn.commit(); conn.close()
+    return jsonify({'ok':True})
+
+@app.route('/api/food-registry/<int:fid>', methods=['DELETE'])
+def api_food_registry_delete(fid):
+    ensure_food_registry()
+    conn = get_db()
+    conn.execute("DELETE FROM food_registry WHERE id=?", (fid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok':True})
 
 if __name__ == '__main__':
     init_db()
