@@ -1253,10 +1253,11 @@ function renderMealList(elId,meals,canDel){
       const desc=(m.description&&m.description!==m.title&&m.description!==m.slot)?m.description:'';
       const nameHtml=desc?`<span class="meal-gram">${desc}</span> ${name}`:name;
       const parts=[];
+      const fmt=v=>+(Math.round(v*10)/10);
       if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
-      if(m.protein_g) parts.push(`<span class="mi-p">P:${Math.round(m.protein_g)}g</span>`);
-      if(m.carbs_g) parts.push(`<span class="mi-k">K:${Math.round(m.carbs_g)}g</span>`);
-      if(m.fat_g) parts.push(`<span class="mi-y">Y:${Math.round(m.fat_g)}g</span>`);
+      if(m.protein_g) parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}g</span>`);
+      if(m.carbs_g!=null&&m.carbs_g!==undefined) parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}g</span>`);
+      if(m.fat_g) parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}g</span>`);
       const macroHtml=parts.length?`<div class="meal-macro-row">${parts.join('')}</div>`:'';
       return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${nameHtml}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${macroHtml}</div>`;
     }).join('');
