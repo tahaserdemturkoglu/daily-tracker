@@ -1723,10 +1723,15 @@ def _week_ai_context():
 TAHA_COACHING_POLICY = """
 TAHA ICIN KALICI KOCLUK HAFIZASI:
 - Turkce, kisa, net ve profesyonel sporcu kocu gibi yaz. Gereksiz tekrar yapma.
-- Her ogunu ayri hesapla: once besin kalemleri, sonra ogun toplami, sonra kisa yorum.
-- Gun sonunda kalori, protein, karbonhidrat ve yag toplamini ver; tahminse tahmin oldugunu soyle.
 - Hatalari durustce belirt ama panik yaptirma.
 - Hedefler: yag kaybi, kas korunumu/kazanimi, performans, akne takibi, sindirim ve genel saglik.
+
+KONUSMA TARZI — EN ONEMLI KURAL:
+- Normal mesajlarda (slash komut degil) KISA ve DOGAL yaz. Madde listesi yapma. 1-3 cumle yeter.
+- Veri kaydedildiyse tek satirda onayla: "Kaydettim." veya "Tamam, islendi." yeterli.
+- Sadece /bugun, /rapor gibi ozel komutlarda yapilandirilmis format kullan.
+- Koç gibi konuş, anket dolduruyor gibi değil. Örnek iyi: "Ağır geçmiş, kaç set yaptın?" Örnek kötü: "Antrenmanın kaydedildi. Detaylar: ..."
+- Veri eksikse tek, kisa bir soru sor. Birden fazla soru sorma.
 
 GENEL HESAP KURALLARI:
 - Tum gramajlar aksi belirtilmedikce cig gramdir.
@@ -1736,9 +1741,9 @@ GENEL HESAP KURALLARI:
 - GymBeam Olive Oil Spray yalniz kullanici fis/basis sayisi soylerse eklenir.
 
 SABIT URUNLER:
-- Carrefour BIO Organik Yumurta: 1 adet = 70 kcal, 6P, 0.5K, 5Y.
+- Carrefour BIO Organik Yumurta: 1 adet = 80 kcal, 7.5P, 0.3K, 4.7Y. (Open Food Facts dogrulandi)
 - Sivi Yumurta Beyazi: 100g = 58 kcal, 10.3P, 1.2K, 0.8Y.
-- Cig Derisiz Tavuk Gogsu: 100g = 120 kcal, 23P, 0K, 2Y.
+- Cig Derisiz Tavuk Gogsu: 100g = 115 kcal, 23P, 0K, 1.5Y. (kullanici onayli deger)
 - Marine tavuk sis: altta kalan yag/sos tuketilmiyor; 300g cig = 390 kcal, 68P, 3K, 10Y.
 - Yasmin Pirinc: 100g cig = 360 kcal, 7P, 79K, 0.6Y.
 - Patates: 100g cig = 77 kcal, 2P, 17K, 0.1Y.
@@ -1746,7 +1751,7 @@ SABIT URUNLER:
 - Cilek: 100g = 32 kcal, 0.7P, 7.7K, 0.3Y.
 - Salatalik: 100g = 15 kcal, 0.7P, 3.6K, 0.1Y.
 - Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y.
-- GymBeam Olive Oil Spray: 1 fis/basis = 15 kcal, 0P, 0K, 1.65Y.
+- GymBeam Olive Oil Spray: 1 fis = 1.5g yag = ~13.5 kcal, 0P, 0K, 1.5Y. (her fis hafifce basilir)
 - Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y; 20-30g kullanim ihmal edilebilir.
 
 STANDART PANCAKE V2:
@@ -4076,8 +4081,8 @@ def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
     conn = get_db()
-    conn.execute("""UPDATE food_registry SET name=?,calories_per_100g=?,protein_per_100g=?,carbs_per_100g=?,fat_per_100g=?,fiber_per_100g=?,unit=?,serving_size=?,serving_unit=?,notes=? WHERE id=?""",
-        (data.get('name',''),data.get('calories_per_100g'),data.get('protein_per_100g'),data.get('carbs_per_100g'),data.get('fat_per_100g'),data.get('fiber_per_100g'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),fid))
+    conn.execute("""UPDATE food_registry SET name=?,calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,unit=?,serving_size=?,serving_unit=?,notes=?,aliases=? WHERE id=?""",
+        (data.get('name',''),data.get('calories_per_100'),data.get('protein_per_100'),data.get('carbs_per_100'),data.get('fat_per_100'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),data.get('aliases',''),fid))
     conn.commit(); conn.close()
     return jsonify({'ok':True})
 
