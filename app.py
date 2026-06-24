@@ -3,7 +3,14 @@
 
 import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from flask import Flask, request, jsonify, render_template
+
+_TZ_ISTANBUL = ZoneInfo('Europe/Istanbul')
+
+def now_istanbul() -> datetime:
+    """Şu anki Istanbul saatini döndürür. Railway UTC'de çalışır, bu fonksiyon TR saatini verir."""
+    return datetime.now(_TZ_ISTANBUL)
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR    = os.environ.get('DATA_DIR', BASE_DIR)
@@ -39,7 +46,7 @@ def current_shift_info(now=None):
     - Sonraki 2 hafta 21:00-06:00, gun 12:00'de kapanir.
     Sonra 2 haftalik sabah/gece dongusu devam eder.
     """
-    now = now or datetime.now()
+    now = now or now_istanbul()
     base = now.date()
     if base < SHIFT_TRANSITION_DATE:
         return {
@@ -75,8 +82,8 @@ def operation_cutoff_hour(now=None):
 
 
 def operation_date(now=None):
-    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar."""
-    now = now or datetime.now()
+    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir."""
+    now = now or now_istanbul()
     d = now.date()
     if 0 <= now.hour < operation_cutoff_hour(now):
         d = d - timedelta(days=1)
@@ -1437,18 +1444,31 @@ def tg_report():
     return r.get('report', 'Rapor olusturulamadi.')
 
 def tg_today_summary():
-    today = operation_today()
-    d = json.loads(api_day(today).get_data())
-    sl=d.get('sleep',{}); ex=d.get('exercise',{}); nu=d.get('nutrition',{})
-    w=d.get('work',{}); co=d.get('coaching',{}); mo=d.get('mood',{}); sr=streak_count()
-    td=d.get('training','')
-    lines = [f"BUGUN {operation_date().strftime('%d/%m/%Y')} | {sr} gun | {td}\n"]
+    ctx = _today_ai_context()
+    today = ctx['date']
+    sl = ctx.get('sleep', {}); ex = ctx.get('exercise', {}); mo = ctx.get('mood', {})
+    macros = ctx.get('macros', {}); sr = streak_count()
+    td = ctx.get('training_day', '')
+    w_kg = ctx.get('weight_kg'); w_night = ctx.get('weight_kg_night')
+    steps = ctx.get('steps', 0)
+    lines = [f"BUGUN {today} | {td} | {sr} gun"]
+    if w_kg: lines.append(f"Sabah kilo: {w_kg} kg" + (f" | Gece: {w_night} kg" if w_night else ""))
     lines.append("Uyku: " + (f"{sl.get('hours','?')}s kalite {sl.get('quality','?')}/10" if sl else "-"))
     lines.append("Egzersiz: " + (f"{ex.get('type','?')} {ex.get('duration','?')}dk" if ex else "-"))
-    lines.append("Beslenme: " + (f"{nu.get('calories','?')}kcal su {(nu.get('water_ml',0) or 0)/1000:.1f}L" if nu else "-"))
-    lines.append("Is: " + (f"{w.get('hours','?')}s" if w else "-"))
-    lines.append("Antrenorluk: " + (f"{co.get('sessions','?')} seans" if co else "-"))
-    lines.append("Ruh hali: " + (f"enerji {mo.get('energy','?')} mood {mo.get('mood','?')} stres {mo.get('stress','?')}" if mo else "-"))
+    if steps: lines.append(f"Adim: {steps}")
+    meals = ctx.get('meals', [])
+    if meals:
+        lines.append(f"\nOgunler ({macros.get('calories',0)} kcal | P{macros.get('protein_g',0)}g K{macros.get('carbs_g',0)}g Y{macros.get('fat_g',0)}g Su {ctx.get('water_l',0):.1f}L):")
+        for m in meals:
+            cal_str = f" {int(m['calories'])}kcal" if m.get('calories') else ""
+            desc = m.get('description') or m.get('title') or m.get('slot', '')
+            lines.append(f"  {m.get('slot','')}: {desc}{cal_str}")
+    else:
+        lines.append(f"Beslenme: {macros.get('calories',0)} kcal | P{macros.get('protein_g',0)}g | Su {ctx.get('water_l',0):.1f}L")
+    lines.append("Mood: " + (f"enerji {mo.get('energy','?')} mood {mo.get('mood','?')} stres {mo.get('stress','?')}" if mo else "-"))
+    vits = ctx.get('vitamins', [])
+    if vits:
+        lines.append("Vitamin: " + ", ".join(v['name'] for v in vits))
     return '\n'.join(lines)
 
 async def cmd_ogun(u,c):
@@ -1584,24 +1604,36 @@ def _today_ai_context():
     totals = meal_macro_totals(today)
     conn = get_db()
     try:
-        sleep = conn.execute("SELECT * FROM sleep_logs WHERE date=?", (today,)).fetchone()
+        sleep    = conn.execute("SELECT * FROM sleep_logs    WHERE date=?", (today,)).fetchone()
         exercise = conn.execute("SELECT * FROM exercise_logs WHERE date=?", (today,)).fetchone()
-        nutrition = conn.execute("SELECT * FROM nutrition_logs WHERE date=?", (today,)).fetchone()
-        mood = conn.execute("SELECT * FROM mood_logs WHERE date=?", (today,)).fetchone()
-        vitamins = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
-        note = conn.execute("SELECT note FROM daily_notes WHERE date=?", (today,)).fetchone()
+        mood     = conn.execute("SELECT * FROM mood_logs     WHERE date=?", (today,)).fetchone()
+        vitamins = [dict(r) for r in conn.execute("SELECT name,amount,unit,notes FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
+        note     = conn.execute("SELECT note FROM daily_notes WHERE date=?", (today,)).fetchone()
+        # Su: nutrition_logs'tan SUM (birden fazla satır olabilir)
+        water_row = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (today,)).fetchone()
+        water_ml  = int(water_row['total'] or 0) if water_row else 0
+        # Öğün detayları: meal_entries tablosundan
+        meals = [dict(r) for r in conn.execute(
+            "SELECT slot, title, description, calories, protein_g, carbs_g, fat_g FROM meal_entries WHERE date=? ORDER BY id",
+            (today,)).fetchall()]
+        # Adım ve kilo
+        step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (today,)).fetchone()
+        body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (today,)).fetchone()
     finally:
         conn.close()
-    nutrition_d = dict(nutrition) if nutrition else {}
     ctx = {
         'date': today,
         'training_day': training_day(today),
         'macros': totals,
-        'water_l': round(((nutrition_d.get('water_ml') or 0) / 1000), 2),
+        'water_l': round(water_ml / 1000, 2),
+        'steps': step_row['steps'] if step_row else 0,
+        'weight_kg': body_row['weight_kg'] if body_row else None,
+        'weight_kg_night': body_row['weight_kg_night'] if body_row else None,
         'sleep': dict(sleep) if sleep else {},
         'exercise': dict(exercise) if exercise else {},
         'mood': dict(mood) if mood else {},
         'vitamins': vitamins,
+        'meals': meals,
         'note': note['note'] if note else '',
     }
     return ctx
@@ -1687,10 +1719,10 @@ def _claude_call(user_text):
         f'Tarih kuralı: Kullanıcı tarih belirtmemişse date={operation_today()} (bugün). '
         f'"Dün" derse date={(operation_date()-timedelta(days=1)).isoformat()}. '
         '"X gün önce" veya "X Haziran" gibi ifadeleri doğru tarihe çevir. '
-        f"Saat baglami: Simdiki yerel saat {datetime.now().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
+        f"Saat baglami: Simdiki yerel saat {now_istanbul().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
         f"Gece/vardiya kayit kurali: aktif gec pencere {current_shift_info().get('late_window')}. Bu pencerede yatmadan once stack, vitamin, ogun, su, adim, kilo ve gun sonu notlari kullanici aksini soylemedikce bir onceki operasyon gunune aittir. 03:30da uyuyacagim/yatacagim gibi ifadeler uyku suresi degildir; sleep hours olarak 3.3 kaydetme. Uyku kaydi icin ancak uyudum/kalktim/uyandim veya baslangic-bitis netse action uret.\n"
         'Bugün: ' + operation_today() + '\n'
-        f"Saat baglami: Simdiki yerel saat {datetime.now().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
+        f"Saat baglami: Simdiki yerel saat {now_istanbul().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
         f"Gece/vardiya kayit kurali: aktif gec pencere {current_shift_info().get('late_window')}. Bu pencerede yatmadan once stack, vitamin, ogun, su, adim, kilo ve gun sonu notlari kullanici aksini soylemedikce bir onceki operasyon gunune aittir. 03:30da uyuyacagim/yatacagim gibi ifadeler uyku suresi degildir; sleep hours olarak 3.3 kaydetme. Uyku kaydi icin ancak uyudum/kalktim/uyandim veya baslangic-bitis netse action uret.\n"
         'Karar baglami: ' + (tg_context_note_for_prompt(user_text) if 'tg_context_note_for_prompt' in globals() else '') + '\n'
         'Bugünün verisi: ' + json.dumps(ctx, ensure_ascii=False)
@@ -2919,7 +2951,7 @@ def tg_touch_heartbeat(status='running', message=''):
     try:
         payload = {
             'status': status,
-            'ts': datetime.now().isoformat(timespec='seconds'),
+            'ts': now_istanbul().isoformat(timespec='seconds'),
             'pid': os.getpid(),
             'message': (message or '')[:180]
         }
@@ -2931,7 +2963,7 @@ def tg_touch_heartbeat(status='running', message=''):
 def tg_effective_log_date(raw_text='', action_type=''):
     """Telegram'da gece 00:00 sonrası yazılan gün-sonu kayıtlarını önceki güne bağla."""
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     today = now.date()
     if any(w in norm for w in ['dun', 'dunku', 'dün']):
         return (today - timedelta(days=1)).isoformat()
@@ -2948,7 +2980,7 @@ def tg_effective_log_date(raw_text='', action_type=''):
 
 def tg_night_casual_reply(raw_text=''):
     """00:00-06:00 arasinda basit sohbeti sabah gibi karsilama."""
-    now = datetime.now()
+    now = now_istanbul()
     if not (0 <= now.hour < operation_cutoff_hour(now)):
         return ''
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
@@ -2973,7 +3005,7 @@ def tg_is_future_bedtime_statement(raw_text):
 
 def tg_weight_context_note(raw_text, action_date):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     cutoff = operation_cutoff_hour(now) if 'operation_cutoff_hour' in globals() else globals().get('OPERATION_DAY_CUTOFF_HOUR', 6)
     if any(w in norm for w in ['ac karna', 'ackarna', 'sabah tarti', 'sabah kilo', 'sabah ac']):
         return 'telegram | sabah ac karna resmi tarti'
@@ -3465,7 +3497,7 @@ def tg_save_meal_template_from_actions(raw_text, actions):
 # TG_BOT_DECISION_CONTEXT_V1
 def tg_decision_context(raw_text=''):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     cutoff = operation_cutoff_hour(now) if 'operation_cutoff_hour' in globals() else globals().get('OPERATION_DAY_CUTOFF_HOUR', 6)
     op_date = tg_effective_log_date(raw_text, 'note') if 'tg_effective_log_date' in globals() else (operation_today() if 'operation_today' in globals() else now.date().isoformat())
     ctx = {
@@ -3524,7 +3556,7 @@ def tg_context_note_for_prompt(raw_text=''):
 
 def tg_context_note_actions_from_text(raw_text=''):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = datetime.now()
+    now = now_istanbul()
     cutoff = operation_cutoff_hour(now) if 'operation_cutoff_hour' in globals() else globals().get('OPERATION_DAY_CUTOFF_HOUR', 6)
     night_words = ['eve geldim', 'uyuyacagim', 'uyuyacam', 'yatacagim', 'yatacam', 'uyumadan', 'yatmadan', 'vitaminlerimi bugun almayacagim', 'vitamin almayacagim']
     if not (0 <= now.hour < cutoff or any(w in norm for w in night_words)):
