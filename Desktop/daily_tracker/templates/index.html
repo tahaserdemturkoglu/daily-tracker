@@ -4237,7 +4237,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if($m('mission-control')) return;
     const dash=$m('page-dashboard'), hero=dash&&dash.querySelector('.hero');
     if(!dash||!hero) return;
-    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board"><div class="mission-board-head"><div><div class="mission-board-title">Haftalık Mission Board</div><div class="mission-board-sub">4 gün önce, bugün ve 2 gün sonrası. Gün kartları ilerleme haritası gibi çalışır.</div></div><div class="mission-type" id="ms-today-type">—</div></div><div class="mission-week-progress"><div class="mission-week-fill" id="ms-week-fill"></div></div><div class="mission-days" id="ms-days"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
+    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub" id="dg-day-label">— günü</div></div><div class="dg-score-wrap"><div class="dg-score" id="dg-score">0%</div><div class="dg-score-label">tamamlandı</div></div></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
   }
   function taskBar(cls,label,value,target){ const p=pct(value,target); return `<div><div class="mission-task-label"><span>${label}</span><span>${p}%</span></div><div class="mission-task ${cls}"><i style="width:${p}%"></i></div></div>`; }
   function renderDayCard(row,t,idx){ const ds=row.date,today=(window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)),sc=scoreDay(row,t),type=row.training_day||'Off',color=typeColors[type]||'#64748b',id='ms-ring-'+idx; setTimeout(()=>ring(id,sc,color),0); return `<div class="mission-day ${ds===today?'today':''}"><div class="mission-date"><b>${dateLabel(ds)}</b><span>${ds===today?'Bugün':dateLabel(ds,{weekday:'short'})}</span></div><div class="mission-type" style="background:${color}">${type}</div><div class="mission-score"><canvas id="${id}"></canvas><span>${sc}%</span></div><div class="mission-tasks">${taskBar('prot','P',row.protein_g||0,t.prot)}${taskBar('water','Su',row.water_ml||0,t.water)}${taskBar('sleep','Uyku',row.sleep_hours||0,7.5)}${taskBar('train','Plan',type==='Off'?80:(row.has_data?100:35),100)}</div></div>`; }
@@ -4276,7 +4276,23 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const totals=(macro&&macro.totals)||{}, cal=Math.round(totals.calories||0), prot=Math.round(totals.protein_g||0), water=(todayData.nutrition&&todayData.nutrition.water_ml)||0, steps=(todayData.steps&&todayData.steps.steps)||0, rem=Math.max(0,(t.cal||3200)-cal);
     if($m('ms-cal')) $m('ms-cal').textContent=fmt(cal); if($m('ms-remain')) $m('ms-remain').textContent=fmt(rem)+' kcal kaldı'; if($m('ms-context')) $m('ms-context').textContent=`Hedef ${fmt(t.cal||3200)} kcal · ${todayData.training_day||todayData.training||'Off'} günü · kayıtlar Telegram ile senkron.`;
     if($m('ms-prot')) $m('ms-prot').textContent=prot+'g'; if($m('ms-water')) $m('ms-water').textContent=(water/1000).toFixed(1)+'L'; if($m('ms-steps')) $m('ms-steps').textContent=fmt(steps);
-    if($m('ms-today-type')){ $m('ms-today-type').textContent=todayData.training_day||todayData.training||'—'; const missionTraining=todayData.training_day||todayData.training; $m('ms-today-type').style.background=typeColors[missionTraining]||'#475569'; }
+    // Goals panel
+    const carbs_val=Math.round(totals.carbs_g||0), fat_val=+(Math.round((totals.fat_g||0)*10)/10);
+    const tProt=+(t.prot||160), tCarb=+(t.carb||200), tFat=+(t.fat||50), tWater=+(t.water||5000)/1000, tSteps=10000, tCal=+(t.cal||1800);
+    const dgGoals=[
+      {id:'kcal',icon:'🔥',name:'Kalori',val:cal,target:tCal,unit:'kcal',color:'#f59e0b',disp:fmt(cal),tdisp:fmt(tCal)+' kcal'},
+      {id:'prot',icon:'💪',name:'Protein',val:prot,target:tProt,unit:'g',color:'#22c55e',disp:prot+'g',tdisp:tProt+'g'},
+      {id:'carb',icon:'🌾',name:'Karbonhidrat',val:carbs_val,target:tCarb,unit:'g',color:'#3b82f6',disp:carbs_val+'g',tdisp:tCarb+'g'},
+      {id:'fat',icon:'🥑',name:'Yağ',val:fat_val,target:tFat,unit:'g',color:'#f97316',disp:fat_val+'g',tdisp:tFat+'g'},
+      {id:'water',icon:'💧',name:'Su',val:+(water/1000).toFixed(2),target:tWater,unit:'L',color:'#06b6d4',disp:(water/1000).toFixed(1)+'L',tdisp:tWater+'L'},
+      {id:'steps',icon:'🦶',name:'Adım',val:steps,target:tSteps,unit:'',color:'#a855f7',disp:fmt(steps),tdisp:fmt(tSteps)+' adım'}
+    ];
+    const totalPct=Math.round(dgGoals.reduce((s,g)=>s+Math.min(100,g.target>0?g.val/g.target*100:0),0)/dgGoals.length);
+    if($m('dg-score')){$m('dg-score').textContent=totalPct+'%';$m('dg-score').style.color=totalPct>=80?'#22c55e':totalPct>=50?'#f59e0b':'#f87171';}
+    const dayLabel=todayData.training_day||todayData.training||'Off';
+    if($m('dg-day-label'))$m('dg-day-label').textContent=dayLabel+' günü';
+    const gl=$m('dg-goals-list');
+    if(gl)gl.innerHTML=dgGoals.map(g=>{const p=Math.min(100,g.target>0?Math.round(g.val/g.target*100):0);return`<div class="dg-row"><div class="dg-icon">${g.icon}</div><div class="dg-bar-wrap"><div class="dg-bar-meta"><span class="dg-bar-name">${g.name}</span><span class="dg-bar-pct">${p}%</span></div><div class="dg-bar-track"><div class="dg-bar-fill" style="width:${p}%;background:${g.color}"></div></div></div><div class="dg-val"><div class="dg-val-main">${g.disp}</div><div class="dg-val-target">/ ${g.tdisp}</div></div></div>`;}).join('');
     const days=Array.from({length:7},(_,i)=>dayIso(i-4));
     const rows=days.map(ds=>{ const r=(summary||[]).find(x=>x.date===ds)||{date:ds,training_day:(typeof training_day_local==='function'?training_day_local(ds):'Off')}; return r; });
     const avg=Math.round(rows.reduce((s,r)=>s+scoreDay(r,t),0)/Math.max(1,rows.length));
@@ -4293,7 +4309,26 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
 <style id="DAILY_DASHBOARD_SCOPE_V1-css">
 #page-dashboard #macro-graph-panel .macro-trend-panel{display:none!important}
-#page-dashboard #mission-control .mission-board{display:none!important}
+#page-dashboard #mission-control .mission-board{display:block}
+#daily-goals-board{display:flex;flex-direction:column;gap:0}
+.dg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.dg-title{font-size:1rem;font-weight:1000;color:var(--text);letter-spacing:-.2px}
+.dg-sub{font-size:.72rem;color:var(--muted);margin-top:3px}
+.dg-score-wrap{text-align:right;flex-shrink:0}
+.dg-score{font-size:1.9rem;font-weight:1000;color:#22c55e;line-height:1}
+.dg-score-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.dg-goals{display:flex;flex-direction:column;gap:12px}
+.dg-row{display:grid;grid-template-columns:26px 1fr 88px;align-items:center;gap:10px}
+.dg-icon{font-size:1.05rem;text-align:center;flex-shrink:0}
+.dg-bar-wrap{min-width:0}
+.dg-bar-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.dg-bar-name{font-size:.74rem;font-weight:800;color:var(--text);letter-spacing:-.01em}
+.dg-bar-pct{font-size:.66rem;font-weight:700;color:var(--muted)}
+.dg-bar-track{height:5px;background:rgba(148,163,184,.12);border-radius:999px;overflow:hidden}
+.dg-bar-fill{height:100%;border-radius:999px;transition:width .55s cubic-bezier(.4,0,.2,1);min-width:0}
+.dg-val{text-align:right;white-space:nowrap}
+.dg-val-main{font-size:.82rem;font-weight:800;color:var(--text);line-height:1.2}
+.dg-val-target{font-size:.65rem;color:var(--muted);margin-top:1px}
 .daily-focus-panel{border:1px solid rgba(59,130,246,.22);background:linear-gradient(180deg,rgba(17,24,39,.86),rgba(2,6,23,.48));border-radius:22px;padding:16px;box-shadow:0 22px 70px rgba(0,0,0,.26);min-height:285px}
 .daily-focus-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
 .daily-focus-title{font-size:1rem;font-weight:1000;color:var(--text);letter-spacing:-.2px}
