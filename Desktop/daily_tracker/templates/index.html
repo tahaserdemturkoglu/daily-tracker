@@ -4237,7 +4237,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if($m('mission-control')) return;
     const dash=$m('page-dashboard'), hero=dash&&dash.querySelector('.hero');
     if(!dash||!hero) return;
-    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub" id="dg-day-label">— günü</div></div><div class="dg-score-wrap"><div class="dg-score" id="dg-score">0%</div><div class="dg-score-label">tamamlandı</div></div></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
+    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div class="dg-head-left"><div class="dg-head-icon">🎯</div><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub">Bugünkü ilerlemen</div></div></div><button class="dg-detail-btn" onclick="showPage&&showPage('ozet')">Detaylar ›</button></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
   }
   function taskBar(cls,label,value,target){ const p=pct(value,target); return `<div><div class="mission-task-label"><span>${label}</span><span>${p}%</span></div><div class="mission-task ${cls}"><i style="width:${p}%"></i></div></div>`; }
   function renderDayCard(row,t,idx){ const ds=row.date,today=(window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)),sc=scoreDay(row,t),type=row.training_day||'Off',color=typeColors[type]||'#64748b',id='ms-ring-'+idx; setTimeout(()=>ring(id,sc,color),0); return `<div class="mission-day ${ds===today?'today':''}"><div class="mission-date"><b>${dateLabel(ds)}</b><span>${ds===today?'Bugün':dateLabel(ds,{weekday:'short'})}</span></div><div class="mission-type" style="background:${color}">${type}</div><div class="mission-score"><canvas id="${id}"></canvas><span>${sc}%</span></div><div class="mission-tasks">${taskBar('prot','P',row.protein_g||0,t.prot)}${taskBar('water','Su',row.water_ml||0,t.water)}${taskBar('sleep','Uyku',row.sleep_hours||0,7.5)}${taskBar('train','Plan',type==='Off'?80:(row.has_data?100:35),100)}</div></div>`; }
@@ -4291,8 +4291,10 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if($m('dg-score')){$m('dg-score').textContent=totalPct+'%';$m('dg-score').style.color=totalPct>=80?'#22c55e':totalPct>=50?'#f59e0b':'#f87171';}
     const dayLabel=todayData.training_day||todayData.training||'Off';
     if($m('dg-day-label'))$m('dg-day-label').textContent=dayLabel+' günü';
+    const motivations=[{t:'Harika! Devam et!',s:'Hedeflerine ulaşmak için istikrar en büyük güçtür.'},{t:'Süper gidiyorsun!',s:'Her adım seni hedefe yaklaştırıyor.'},{t:'Odaklan, kazan!',s:'Bugünkü seçimlerin yarının sonuçları.'},{t:'Devam et!',s:'Tutarlılık, motivasyondan güçlüdür.'}];
+    const mot=motivations[new Date().getDay()%motivations.length];
     const gl=$m('dg-goals-list');
-    if(gl)gl.innerHTML=dgGoals.map(g=>{const p=Math.min(100,g.target>0?Math.round(g.val/g.target*100):0);return`<div class="dg-row"><div class="dg-icon">${g.icon}</div><div class="dg-bar-wrap"><div class="dg-bar-meta"><span class="dg-bar-name">${g.name}</span><span class="dg-bar-pct">${p}%</span></div><div class="dg-bar-track"><div class="dg-bar-fill" style="width:${p}%;background:${g.color}"></div></div></div><div class="dg-val"><div class="dg-val-main">${g.disp}</div><div class="dg-val-target">/ ${g.tdisp}</div></div></div>`;}).join('');
+    if(gl)gl.innerHTML=dgGoals.map(g=>{const p=Math.min(100,g.target>0?Math.round(g.val/g.target*100):0);const pctColor=p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8';return`<div class="dg-row"><div class="dg-icon-wrap" style="background:${g.color}22;border:1px solid ${g.color}33">${g.icon}</div><div class="dg-info"><div class="dg-name">${g.name}</div><div class="dg-vals"><span class="dg-val-cur" style="color:${p>0?g.color:'var(--muted)'}">${g.disp}</span><span class="dg-val-sep">/</span><span class="dg-val-tgt">${g.tdisp}</span></div><div class="dg-bar-track"><div class="dg-bar-fill" style="width:${p}%;background:${g.color};box-shadow:0 0 8px ${g.color}66"></div></div></div><div class="dg-pct-badge" style="color:${pctColor};border-color:${pctColor}22">${p}%</div></div>`;}).join('')+`<div class="dg-footer"><div class="dg-footer-icon">✨</div><div class="dg-footer-text"><div class="dg-footer-title">${mot.t}</div><div class="dg-footer-sub">${mot.s}</div></div><span class="dg-footer-rocket">🚀</span></div>`;
     const days=Array.from({length:7},(_,i)=>dayIso(i-4));
     const rows=days.map(ds=>{ const r=(summary||[]).find(x=>x.date===ds)||{date:ds,training_day:(typeof training_day_local==='function'?training_day_local(ds):'Off')}; return r; });
     const avg=Math.round(rows.reduce((s,r)=>s+scoreDay(r,t),0)/Math.max(1,rows.length));
@@ -4311,26 +4313,37 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 #page-dashboard #macro-graph-panel .macro-trend-panel{display:none!important}
 #page-dashboard #mission-control .mission-board{display:block}
 #daily-goals-board{display:flex;flex-direction:column;gap:0}
-.dg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(148,163,184,.08)}
-.dg-title{font-size:1rem;font-weight:1000;color:var(--text);letter-spacing:-.2px}
-.dg-sub{font-size:.72rem;color:var(--muted);margin-top:3px}
-.dg-score-wrap{text-align:right;flex-shrink:0}
-.dg-score{font-size:1.9rem;font-weight:1000;color:#22c55e;line-height:1;text-shadow:0 0 18px rgba(34,197,94,.35),0 2px 6px rgba(0,0,0,.4)}
-.dg-score-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+/* --- DG HEAD --- */
+.dg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.dg-head-left{display:flex;align-items:center;gap:10px}
+.dg-head-icon{font-size:1.5rem;width:38px;height:38px;border-radius:50%;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(168,85,247,.2)}
+.dg-title{font-size:.95rem;font-weight:900;color:var(--text);letter-spacing:-.2px;line-height:1.2}
+.dg-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+.dg-detail-btn{font-size:.72rem;font-weight:700;color:#a855f7;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:background .15s}
+.dg-detail-btn:hover{background:rgba(168,85,247,.2)}
+/* --- DG ROWS --- */
 .dg-goals{display:flex;flex-direction:column;gap:8px}
-.dg-row{display:grid;grid-template-columns:32px 1fr 88px;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.055);border-radius:12px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.06);transition:transform .18s ease,box-shadow .18s ease}
-.dg-row:hover{transform:translateY(-1px) scale(1.01);box-shadow:0 6px 18px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.09)}
-.dg-icon{font-size:1.1rem;text-align:center;flex-shrink:0;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5))}
-.dg-bar-wrap{min-width:0}
-.dg-bar-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-.dg-bar-name{font-size:.74rem;font-weight:800;color:var(--text);letter-spacing:-.01em}
-.dg-bar-pct{font-size:.66rem;font-weight:700;color:var(--muted)}
-.dg-bar-track{height:6px;background:rgba(0,0,0,.3);border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 4px rgba(0,0,0,.4),inset 0 -1px 0 rgba(255,255,255,.04)}
-.dg-bar-fill{height:100%;border-radius:999px;transition:width .55s cubic-bezier(.4,0,.2,1);min-width:0;position:relative;box-shadow:0 1px 6px rgba(0,0,0,.3)}
-.dg-bar-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:rgba(255,255,255,.18);border-radius:999px}
-.dg-val{text-align:right;white-space:nowrap}
-.dg-val-main{font-size:.82rem;font-weight:800;color:var(--text);line-height:1.2}
-.dg-val-target{font-size:.65rem;color:var(--muted);margin-top:1px}
+.dg-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.07);transition:transform .18s ease,box-shadow .18s ease;position:relative;overflow:hidden}
+.dg-row::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02) 0%,transparent 60%);pointer-events:none}
+.dg-row:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)}
+.dg-icon-wrap{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;box-shadow:0 4px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.12)}
+.dg-info{flex:1;min-width:0}
+.dg-name{font-size:.78rem;font-weight:800;color:var(--text);letter-spacing:-.01em;margin-bottom:2px}
+.dg-vals{font-size:.72rem;margin-bottom:6px}
+.dg-val-cur{font-weight:800}
+.dg-val-sep{color:var(--muted);margin:0 3px}
+.dg-val-tgt{color:var(--muted)}
+.dg-bar-track{height:5px;background:rgba(0,0,0,.35);border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 3px rgba(0,0,0,.35)}
+.dg-bar-fill{height:100%;border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1);position:relative}
+.dg-bar-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:rgba(255,255,255,.2);border-radius:999px}
+.dg-pct-badge{font-size:.78rem;font-weight:800;min-width:44px;padding:4px 8px;border-radius:10px;text-align:center;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+/* --- DG FOOTER --- */
+.dg-footer{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(99,102,241,.08));border:1px solid rgba(168,85,247,.2);border-radius:14px;padding:10px 12px;margin-top:8px;box-shadow:0 4px 12px rgba(168,85,247,.1),inset 0 1px 0 rgba(255,255,255,.06)}
+.dg-footer-icon{font-size:1.3rem;width:36px;height:36px;border-radius:50%;background:rgba(168,85,247,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dg-footer-text{flex:1;min-width:0}
+.dg-footer-title{font-size:.8rem;font-weight:900;color:var(--text)}
+.dg-footer-sub{font-size:.65rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.dg-footer-rocket{font-size:1.6rem;flex-shrink:0}
 .daily-focus-panel{border:1px solid rgba(59,130,246,.22);background:linear-gradient(180deg,rgba(17,24,39,.86),rgba(2,6,23,.48));border-radius:22px;padding:16px;box-shadow:0 22px 70px rgba(0,0,0,.26);min-height:285px}
 .daily-focus-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
 .daily-focus-title{font-size:1rem;font-weight:1000;color:var(--text);letter-spacing:-.2px}
