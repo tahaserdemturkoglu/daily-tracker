@@ -1657,7 +1657,6 @@ async function loadAiInsight(dateStr){
     el.textContent=r.insight||'Analiz alınamadı.';
   }catch(e){el.textContent='Bağlantı hatası.';}
 }
-}
 
 async function renderOzWeekly(){
   const data=await API('/api/summary?days=7');
@@ -4713,7 +4712,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function sumMeals(meals){ return (meals||[]).reduce((a,m)=>{a.cal+=Number(m.calories||0);a.p+=Number(m.protein_g||0);a.c+=Number(m.carbs_g||0);a.f+=Number(m.fat_g||0);return a;},{cal:0,p:0,c:0,f:0}); }
   function mealRows(meals){
     if(!meals||!meals.length) return '<div class="oz-day-empty">Bu günde öğün kaydı yok.</div>';
-    return meals.map(m=>`<div class="oz-day-row"><small>${m.slot||'öğün'}</small><div><b>${m.description&&m.description!==m.title?m.description+' ':''}${m.title||m.description||'Kayıt'}</b><br><em>${[m.protein_g?'P '++(Math.round(m.protein_g*10)/10)+'g':'',m.carbs_g?'K '++(Math.round((m.carbs_g||0)*10)/10)+'g':'',m.fat_g?'Y '++(Math.round(m.fat_g*10)/10)+'g':''].filter(Boolean).join(' · ')}</em></div><strong>${Math.round(Number(m.calories||0))} kcal</strong></div>`).join('');
+    return meals.map(m=>`<div class="oz-day-row"><small>${m.slot||'öğün'}</small><div><b>${m.description&&m.description!==m.title?m.description+' ':''}${m.title||m.description||'Kayıt'}</b><br><em>${[m.protein_g?'P '+(Math.round(m.protein_g*10)/10)+'g':'',m.carbs_g?'K '+(Math.round((m.carbs_g||0)*10)/10)+'g':'',m.fat_g?'Y '+(Math.round(m.fat_g*10)/10)+'g':''].filter(Boolean).join(' · ')}</em></div><strong>${Math.round(Number(m.calories||0))} kcal</strong></div>`).join('');
   }
   function vitRows(vits){
     if(!vits||!vits.length) return '<div class="oz-day-empty">Bu günde supplement kaydı yok.</div>';
