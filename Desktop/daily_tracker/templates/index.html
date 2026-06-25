@@ -5483,7 +5483,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const prev = vals.length >= 2 ? vals[Math.max(0, vals.length-7)] : vals[0];
     const diff = cur - prev;
     const min = Math.min(...vals);
-    setText('dw-current', cur.toFixed(1)+' kg');
+    setText('dw-current', cur.toFixed(2).replace(/\.?0+$/,'')+' kg');
     setText('dw-week', (diff>0?'+':'')+diff.toFixed(1)+' kg');
     setText('dw-low', min.toFixed(1)+' kg');
     setText('dw-count', clean.length);
@@ -5741,7 +5741,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const prev = vals.length >= 2 ? vals[Math.max(0, vals.length-7)] : vals[0];
     const diff = cur - prev;
     const min = Math.min(...vals);
-    setText('dw-current', cur.toFixed(1)+' kg');
+    setText('dw-current', cur.toFixed(2).replace(/\.?0+$/,'')+' kg');
     setText('dw-week', (diff>0?'+':'')+diff.toFixed(1)+' kg');
     setText('dw-low', min.toFixed(1)+' kg');
     setText('dw-count', clean.length);
