@@ -4366,10 +4366,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   }
   window.refreshMissionControl = async function(){
     ensureMissionControl();
-    const t=typeof getT==='function'?getT():{cal:3200,prot:190,water:3500};
     const todayStr=(window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));
     const [todayData,macro,summary,meals]=await Promise.all([API('/api/day/'+todayStr),API('/api/macro/today'),API('/api/summary?days=7'),API('/api/meals/'+todayStr)]);
-    const totals=(macro&&macro.totals)||{}, cal=Math.round(totals.calories||0), prot=Math.round(totals.protein_g||0), water=(todayData.nutrition&&todayData.nutrition.water_ml)||0, steps=(todayData.steps&&todayData.steps.steps)||0, rem=Math.max(0,(t.cal||3200)-cal);
+    const trainingDay=todayData.training_day||todayData.training||(typeof training_day_local==='function'?training_day_local(todayStr):'Off');
+    const t=typeof getT==='function'?getT(trainingDay):{cal:1800,prot:160,water:3500};
+    const totals=(macro&&macro.totals)||{}, cal=Math.round(totals.calories||0), prot=Math.round(totals.protein_g||0), water=(todayData.nutrition&&todayData.nutrition.water_ml)||0, steps=(todayData.steps&&todayData.steps.steps)||0, rem=Math.max(0,(t.cal||1800)-cal);
     if($m('ms-cal')) $m('ms-cal').textContent=fmt(cal); if($m('ms-remain')) $m('ms-remain').textContent=fmt(rem)+' kcal kaldı'; if($m('ms-context')) $m('ms-context').textContent=`Hedef ${fmt(t.cal||3200)} kcal · ${todayData.training_day||todayData.training||'Off'} günü · kayıtlar Telegram ile senkron.`;
     if($m('ms-prot')) $m('ms-prot').textContent=prot+'g'; if($m('ms-water')) $m('ms-water').textContent=(water/1000).toFixed(1)+'L'; if($m('ms-steps')) $m('ms-steps').textContent=fmt(steps);
     // Goals panel
