@@ -4503,7 +4503,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const todayIso=dayOff(0);
       const last7=Array.from({length:7},(_,i)=>dayOff(i-6));
       wgEl.innerHTML=last7.map(ds=>{
-        const r=(summary||[]).find(x=>x.date===ds)||(typeof training_day_local==='function'?{date:ds,training_day:training_day_local(ds)}:{date:ds,training_day:'Off'});
+        const r=(Array.isArray(summary)?summary:[]).find(x=>x.date===ds)||(typeof training_day_local==='function'?{date:ds,training_day:training_day_local(ds)}:{date:ds,training_day:'Off'});
         const type=r.training_day||'Off';const isT=ds===todayIso;const c=TC2[type]||'#475569';
         const dow=new Date(ds+'T12:00:00').getDay();
         const lbl=['Pz','Pt','Sa','Ça','Pe','Cu','Ct'][dow];
@@ -4513,11 +4513,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const monday=(()=>{const d=new Date();d.setDate(d.getDate()-(d.getDay()||7)+1);return d.toISOString().slice(0,10);})();
       const weekDays=Array.from({length:7},(_,i)=>{const d=new Date(monday+'T12:00:00');d.setDate(d.getDate()+i);return d.toISOString().slice(0,10);});
       let trainDone=0,trainLeft=0;
-      weekDays.forEach(ds=>{const r=(summary||[]).find(x=>x.date===ds)||(typeof training_day_local==='function'?{training_day:training_day_local(ds)}:{training_day:'Off'});if((r.training_day||'Off')!=='Off'){ds<=todayDate?trainDone++:trainLeft++;}});
+      weekDays.forEach(ds=>{const r=(Array.isArray(summary)?summary:[]).find(x=>x.date===ds)||(typeof training_day_local==='function'?{training_day:training_day_local(ds)}:{training_day:'Off'});if((r.training_day||'Off')!=='Off'){ds<=todayDate?trainDone++:trainLeft++;}});
       const cntEl=$id('dcw-week-count');if(cntEl)cntEl.textContent=trainDone;
       const remEl=$id('dcw-week-remain');if(remEl)remEl.textContent=trainLeft;
       let streak=0;
-      for(let i=0;i<=30;i++){const ds=dayOff(-i);const r=(summary||[]).find(x=>x.date===ds)||(typeof training_day_local==='function'?{training_day:training_day_local(ds)}:{training_day:'Off'});if((r.training_day||'Off')!=='Off')streak++;else if(i>0)break;}
+      for(let i=0;i<=30;i++){const ds=dayOff(-i);const r=(Array.isArray(summary)?summary:[]).find(x=>x.date===ds)||(typeof training_day_local==='function'?{training_day:training_day_local(ds)}:{training_day:'Off'});if((r.training_day||'Off')!=='Off')streak++;else if(i>0)break;}
       const stEl=$id('dcw-streak');if(stEl)stEl.textContent=streak+'🔥';
     }
     // Weight
@@ -4584,7 +4584,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       return`<div class="dg-row"><div class="dg-icon-wrap" style="background:${g.bg}">${g.icon}</div><div class="dg-info"><div class="dg-name">${g.name}</div><div class="dg-vals"><span class="dg-val-cur" style="color:${over?'#f59e0b':'var(--text)'}">${g.disp}</span><span class="dg-val-sep">/</span><span class="dg-val-tgt">${g.tdisp}</span>${overBadge}</div><div class="dg-bar-track"><div class="dg-bar-fill" style="${barStyle}"></div></div></div>${rightBadge}</div>`;
     }).join('')+`<div class="dg-footer"><div class="dg-footer-icon">✨</div><div class="dg-footer-text"><div class="dg-footer-title">${mot.t}</div><div class="dg-footer-sub">${mot.s}</div></div><span class="dg-footer-rocket">🚀</span></div>`;
     const days=Array.from({length:7},(_,i)=>dayIso(i-4));
-    const rows=days.map(ds=>{ const r=(summary||[]).find(x=>x.date===ds)||{date:ds,training_day:(typeof training_day_local==='function'?training_day_local(ds):'Off')}; return r; });
+    const rows=days.map(ds=>{ const r=(Array.isArray(summary)?summary:[]).find(x=>x.date===ds)||{date:ds,training_day:(typeof training_day_local==='function'?training_day_local(ds):'Off')}; return r; });
     const avg=Math.round(rows.reduce((s,r)=>s+scoreDay(r,t),0)/Math.max(1,rows.length));
     if($m('ms-week-fill')) $m('ms-week-fill').style.width=avg+'%';
     const daysBox=$m('ms-days'); if(daysBox) daysBox.innerHTML=rows.map((r,i)=>renderDayCard(r,t,i)).join('');
