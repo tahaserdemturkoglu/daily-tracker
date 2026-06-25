@@ -4301,6 +4301,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .daily-focus-center b{font-size:2.15rem;color:#f8fafc;line-height:1;font-weight:1000}
 .daily-focus-center span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:900;margin-top:6px}
 .daily-focus-bars{height:205px;position:relative}
+.daily-focus-coach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.daily-focus-coach span{border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.34);border-radius:12px;padding:9px 10px;color:#dbeafe;font-size:.74rem;line-height:1.35;font-weight:800}
 .weekly-summary-trend{margin-top:18px;border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.28);border-radius:16px;padding:14px}
 .weekly-summary-trend-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
 .weekly-summary-trend-title{font-weight:950;color:var(--text);font-size:.98rem}
@@ -4358,6 +4360,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 @media(max-width:1280px){.oz-pro-days{overflow:auto;grid-template-columns:repeat(7,136px);padding-bottom:4px}}
 @media(max-width:760px){.oz-pro-kpis,.oz-day-detail-grid{grid-template-columns:1fr 1fr}.oz-day-lists{grid-template-columns:1fr}.oz-pro-head{display:block}.oz-pro-pill{display:inline-flex;margin-top:10px}}
 @media(max-width:1180px){.daily-focus-grid{grid-template-columns:1fr}.daily-focus-ring,.daily-focus-bars{height:185px}}
+@media(max-width:720px){.daily-focus-coach{grid-template-columns:1fr}}
 </style>
 <script id="DAILY_DASHBOARD_SCOPE_V1">
 (function(){
@@ -4378,8 +4381,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const mc=q('mission-control');
     if(!mc || q('daily-focus-panel')) return;
     const board=mc.querySelector('.mission-board');
-    if(!board) return;
-    board.insertAdjacentHTML('afterend', `<div class="daily-focus-panel" id="daily-focus-panel">
+    const anchor=board || mc.querySelector('.mission-hero') || mc.lastElementChild;
+    if(!anchor) return;
+    anchor.insertAdjacentHTML('afterend', `<div class="daily-focus-panel" id="daily-focus-panel">
       <div class="daily-focus-head">
         <div>
           <div class="daily-focus-title">BugÃÂ¼nÃÂ¼n Makro Paneli</div>
@@ -4406,6 +4410,24 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const macroScore=Math.round((pct(prot,t.prot||200)+pct(carb,t.carb||430)+pct(fat,t.fat||75)+pct(water,(t.water||4000)/1000))/4);
     if(q('daily-focus-score')) q('daily-focus-score').textContent=macroScore+'%';
     if(q('daily-calorie-main')) q('daily-calorie-main').textContent=fmt(cal);
+    const panel=q('daily-focus-panel');
+    if(panel){
+      const title=panel.querySelector('.daily-focus-title');
+      const sub=panel.querySelector('.daily-focus-sub');
+      if(title) title.textContent='Bugunun Analiz Paneli';
+      if(sub) sub.textContent='Kalori, makro, su ve adim bugunun gercek kayitlarindan okunur.';
+      if(!q('daily-focus-coach')) panel.insertAdjacentHTML('beforeend','<div class="daily-focus-coach" id="daily-focus-coach">Kayitlar yukleniyor.</div>');
+    }
+    const steps=Number((today.steps&&today.steps.steps)||0);
+    const coach=q('daily-focus-coach');
+    if(coach){
+      const notes=[];
+      notes.push(cal ? `${fmt(cal)} kcal alindi; hedefe gore ${calPct>=100?'kalori doldu':'hala alan var'}.` : 'Kalori kaydi henuz yok.');
+      notes.push(prot ? `Protein ${fmt(prot)}g; kas koruma tarafi ${prot>=180?'guclu':'takip edilmeli'}.` : 'Protein henuz dusuk gorunuyor.');
+      notes.push(water ? `Su ${water.toFixed(1)}L.` : 'Su kaydi bekleniyor.');
+      if(steps) notes.push(`Adim ${fmt(steps)}.`);
+      coach.innerHTML=notes.map(x=>`<span>${x}</span>`).join('');
+    }
 
     const ring=q('daily-calorie-ring');
     if(ring && window.Chart){
@@ -5566,4 +5588,3 @@ input:focus,select:focus,textarea:focus {
   </div>
   <div id="food-registry-list"></div>
 </div>
-
