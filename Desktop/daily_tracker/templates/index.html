@@ -5575,7 +5575,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
         const next = node.nextElementSibling;
         const tag = (node.tagName || '').toLowerCase();
         const id = node.id || '';
-        if(tag !== 'script' && tag !== 'style' && id !== 'toast' && id !== 'ai-float' && id !== 'daily-command-flow' && id !== 'dashboard-weight-trend'){
+        if(tag !== 'script' && tag !== 'style' && id !== 'toast' && id !== 'ai-float' && id !== 'daily-command-flow' && id !== 'dashboard-weight-trend' && id !== 'dash-combo-widget'){
           node.classList.add('dashboard-duplicate-hidden');
         }
         node = next;
