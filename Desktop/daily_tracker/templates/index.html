@@ -5586,6 +5586,22 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if(keepOrder && panels && keepOrder.nextElementSibling !== panels){
       keepOrder.insertAdjacentElement('afterend', panels);
     }
+
+    // Combo widget'ı mission-hero'nun hemen altına taşı
+    const combo = document.getElementById('dash-combo-widget');
+    const mc3 = document.getElementById('mission-control');
+    if(combo && mc3){
+      combo.classList.remove('dashboard-duplicate-hidden');
+      combo.style.margin = '0 0 10px 0';
+      combo.style.borderRadius = '14px';
+      combo.style.padding = '12px 14px';
+      const goalsBoard = document.getElementById('daily-goals-board');
+      if(goalsBoard && goalsBoard.parentElement === mc3){
+        mc3.insertBefore(combo, goalsBoard);
+      } else {
+        mc3.appendChild(combo);
+      }
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
