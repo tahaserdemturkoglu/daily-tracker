@@ -1539,29 +1539,124 @@ function ozSub(which){
 
 async function loadOzet(){ozSub('daily');}
 
-async function renderOzDaily(){
+let _ozDailyDate=null;
+async function renderOzDaily(dateStr){
+  if(!dateStr)dateStr=today();
+  _ozDailyDate=dateStr;
   const el=$('oz-daily-content');if(!el)return;
-  const [d,meals]=await Promise.all([API('/api/today'),API('/api/meals/'+today())]);
-  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},mo=d.mood||{};
-  const totals=(meals||[]).reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),c:a.c+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{cal:0,p:0,c:0,f:0});
-  const card=(icon,title,content,color)=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px;border-left:3px solid ${color}">
-    <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${icon} ${title}</div>
-    <div style="font-size:.9rem;color:var(--text);line-height:1.7">${content}</div>
-  </div>`;
-  const water=((nu.water_ml||0)/1000).toFixed(1);
+  el.innerHTML='<div class="odl-loading">Yükleniyor...</div>';
+  const [d,meals,t]=await Promise.all([
+    API('/api/today?date='+dateStr),
+    API('/api/meals/'+dateStr),
+    API('/api/settings')
+  ]);
+  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},mo=d.mood||{},vits=d.vitamins||[];
+  const steps=(d.steps||{}).steps||0;
+  const water_ml=nu.water_ml||0;
+  const ml=meals||[];
+  const totals=ml.reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),c:a.c+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{cal:0,p:0,c:0,f:0});
+  const tCal=+(t.target_calories||1800),tProt=+(t.target_protein||160),tWater=+(t.target_water_ml||5000),tSteps=10000;
+  const pct=(v,target)=>Math.min(100,Math.round(v/Math.max(target,1)*100));
+  const pCal=pct(totals.cal,tCal),pProt=pct(totals.p,tProt),pWater=pct(water_ml,tWater),pSteps=pct(steps,tSteps);
+  const score=Math.round((pCal+pProt+pWater+pSteps)/4);
+  const scoreColor=score>=80?'#22c55e':score>=50?'#f59e0b':'#f87171';
+  const isToday=dateStr===today();
+  const prevDate=new Date(dateStr+'T12:00:00'); prevDate.setDate(prevDate.getDate()-1);
+  const nextDate=new Date(dateStr+'T12:00:00'); nextDate.setDate(nextDate.getDate()+1);
+  const prev=prevDate.toISOString().slice(0,10),next=nextDate.toISOString().slice(0,10);
+  const dayLabel=new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'});
+  // Stat card
+  const stat=(icon,label,val,target,p,color,unit)=>`<div class="odl-stat"><div class="odl-stat-top"><div class="odl-stat-icon" style="background:${color}22;color:${color}">${icon}</div><div class="odl-stat-pct" style="color:${p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8'}">${p}%</div></div><div class="odl-stat-val" style="color:${val>0?color:'var(--muted)'}">${val}${unit}</div><div class="odl-stat-tgt">/ ${target}${unit}</div><div class="odl-bar-track"><div class="odl-bar-fill" style="width:${p}%;background:${color}"></div></div></div>`;
+  // Slot labels
+  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',ogle:'🥗 Öğle',öğle:'🥗 Öğle',aksam:'🌙 Akşam',akşam:'🌙 Akşam','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
+  const groups={};
+  ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase().replace(/ö/g,'ö').replace(/ü/g,'ü');(groups[k]=groups[k]||[]).push(m);});
+  const slotOrder=['kahvaltı','kahvalti','snack','ara','ogle','öğle','pre-workout','post-workout','aksam','akşam','extra'];
+  const sortedSlots=[...new Set([...slotOrder.filter(s=>groups[s]),...Object.keys(groups)])];
+  // Supplement groups
+  const suppGroups={};
+  vits.forEach(v=>{const k=v.notes&&v.notes.toLowerCase().includes('gece')?'Gece Stack':v.notes&&v.notes.toLowerCase().includes('kahvalti')?'Sabah Stack':v.notes&&v.notes.toLowerCase().includes('ac karna')||v.notes&&v.notes.toLowerCase().includes('aç karna')?'Aç Karna Stack':v.notes&&v.notes.toLowerCase().includes('pre')?'Pre-Workout':'Diğer';(suppGroups[k]=suppGroups[k]||[]).push(v);});
+
   el.innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      ${card('😴','Uyku',sl.hours?`<b>${fmtSleep(sl.hours)}</b> — Kalite <b>${sl.quality||'?'}/10</b>`:'Kayıt yok','var(--blue)')}
-      ${card('💪','Antrenman',ex.type?`<b>${ex.type}</b> · ${ex.duration||'?'}dk · Yoğunluk ${ex.intensity||'?'}/10`:'Kayıt yok','var(--red)')}
-      ${card('🥩','Beslenme',`<b>${totals.cal} kcal</b> · P ${Math.round(totals.p)}g · K ${Math.round(totals.c)}g · Y ${Math.round(totals.f)}g`,'var(--yellow)')}
-      ${card('💧','Su',`<b>${water}L</b> bugün`,'var(--teal)')}
-      ${card('🧠','Ruh Hali',mo.energy?`Enerji <b>${mo.energy}/10</b> · Mood <b>${mo.mood}/10</b> · Stres <b>${mo.stress}/10</b>`:'Kayıt yok','var(--purple)')}
-      ${card('🏃','Antrenman Günü',`<b style="color:var(--yellow)">${d.training_day||'—'}</b> · Seri: <b>${d.streak||0} gün</b>`,'var(--orange)')}
+  <div class="odl-wrap">
+    <!-- HEADER -->
+    <div class="odl-header">
+      <button class="odl-nav-btn" onclick="renderOzDaily('${prev}')">‹</button>
+      <div class="odl-header-center">
+        <div class="odl-date-label">${dayLabel}</div>
+        <div class="odl-day-type" style="color:${d.training_color||'#64748b'}">${d.training_day||'Off'} · ${d.streak||0} gün seri 🔥</div>
+        ${isToday?'<span class="odl-today-badge">Bugün</span>':''}
+      </div>
+      <button class="odl-nav-btn" onclick="renderOzDaily('${next}')" ${isToday?'disabled':''}>›</button>
     </div>
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
-      <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🍽️ Öğünler</div>
-      ${meals&&meals.length?meals.map(m=>`<div style="padding:6px 0;border-bottom:1px solid var(--border)"><div style="font-size:.84rem;font-weight:700">${m.title||m.slot}</div><div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">${m.calories?`<span style="font-size:.7rem;font-weight:800;color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="font-size:.7rem;color:var(--green)">P:${Math.round(m.protein_g)}g</span>`:''} ${m.carbs_g?`<span style="font-size:.7rem;color:var(--blue)">K:${Math.round(m.carbs_g)}g</span>`:''} ${m.fat_g?`<span style="font-size:.7rem;color:var(--orange)">Y:${Math.round(m.fat_g)}g</span>`:''}</div></div>`).join(''):'<div style="color:var(--muted);font-size:.84rem">Öğün kaydı yok</div>'}
-    </div>`;
+    <!-- SCORE RING -->
+    <div class="odl-score-wrap">
+      <div class="odl-score-ring" style="--score-color:${scoreColor};--score-pct:${score}">
+        <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="7"/><circle cx="40" cy="40" r="34" fill="none" stroke="${scoreColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${2*Math.PI*34}" stroke-dashoffset="${2*Math.PI*34*(1-score/100)}" transform="rotate(-90 40 40)" style="filter:drop-shadow(0 0 6px ${scoreColor}66)"/></svg>
+        <div class="odl-score-inner"><div class="odl-score-num" style="color:${scoreColor}">${score}%</div><div class="odl-score-lbl">günlük skor</div></div>
+      </div>
+    </div>
+    <!-- QUICK STATS -->
+    <div class="odl-stats-grid">
+      ${stat('🔥','Kalori',fmt(Math.round(totals.cal)),fmt(tCal),pCal,'#f59e0b',' kcal')}
+      ${stat('💪','Protein',Math.round(totals.p),tProt,pProt,'#22c55e','g')}
+      ${stat('💧','Su',(water_ml/1000).toFixed(1),(tWater/1000).toFixed(0),pWater,'#06b6d4','L')}
+      ${stat('🦶','Adım',fmt(steps),fmt(tSteps),pSteps,'#a855f7','')}
+    </div>
+    <!-- MEAL TIMELINE -->
+    <div class="odl-section">
+      <div class="odl-section-title">🍽️ Öğün Zaman Çizelgesi</div>
+      ${sortedSlots.length?sortedSlots.map(slot=>{
+        const items=groups[slot]||[];
+        const stot=items.reduce((a,m)=>({c:a.c+(m.calories||0),p:a.p+(m.protein_g||0),k:a.k+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{c:0,p:0,k:0,f:0});
+        return`<div class="odl-timeline-group">
+          <div class="odl-tg-head">
+            <div class="odl-tg-label">${slotLabel[slot]||('🍴 '+slot)}</div>
+            <div class="odl-tg-total"><span style="color:#f59e0b">${fmt(Math.round(stot.c))} kcal</span> <span style="color:#94a3b8">·</span> <span style="color:#22c55e">P${Math.round(stot.p)}g</span></div>
+          </div>
+          ${items.map(m=>`<div class="odl-meal-row"><div class="odl-meal-name">${m.title||m.description||m.slot}</div><div class="odl-meal-desc">${m.description&&m.description!==m.title?m.description:''}</div><div class="odl-meal-macros"><span style="color:#f59e0b">${Math.round(m.calories||0)} kcal</span><span style="color:#22c55e">P${Math.round(m.protein_g||0)}g</span><span style="color:#3b82f6">K${Math.round(m.carbs_g||0)}g</span><span style="color:#f97316">Y${Math.round(m.fat_g||0)}g</span></div></div>`).join('')}
+        </div>`;
+      }).join(''):'<div class="odl-empty">Öğün kaydı yok</div>'}
+    </div>
+    <!-- SUPPLEMENT TIMELINE -->
+    ${Object.keys(suppGroups).length?`<div class="odl-section">
+      <div class="odl-section-title">💊 Takviye Zaman Çizelgesi</div>
+      ${Object.entries(suppGroups).map(([grp,items])=>`<div class="odl-timeline-group">
+        <div class="odl-tg-head"><div class="odl-tg-label">💊 ${grp}</div><div class="odl-tg-total" style="color:#22c55e">${items.length} ürün</div></div>
+        ${items.map(v=>`<div class="odl-meal-row"><div class="odl-meal-name">${v.name}</div><div class="odl-meal-desc">${v.amount} ${v.unit}${v.notes?' · '+v.notes:''}</div><span class="odl-check">✓</span></div>`).join('')}
+      </div>`).join('')}
+    </div>`:''}
+    <!-- ACTIVITY -->
+    <div class="odl-section">
+      <div class="odl-section-title">📊 Günlük Aktivite</div>
+      <div class="odl-activity-grid">
+        <div class="odl-act-card"><div class="odl-act-icon">😴</div><div class="odl-act-label">Uyku</div><div class="odl-act-val">${sl.hours?fmtSleep(sl.hours):'—'}</div>${sl.quality?`<div class="odl-act-sub">Kalite ${sl.quality}/10</div>`:''}</div>
+        <div class="odl-act-card"><div class="odl-act-icon">🏋️</div><div class="odl-act-label">Antrenman</div><div class="odl-act-val">${ex.type||'—'}</div>${ex.duration?`<div class="odl-act-sub">${ex.duration}dk · ${ex.intensity||'?'}/10</div>`:''}</div>
+        <div class="odl-act-card"><div class="odl-act-icon">⚡</div><div class="odl-act-label">Enerji</div><div class="odl-act-val" style="color:${mo.energy>=7?'#22c55e':mo.energy>=5?'#f59e0b':'#f87171'}">${mo.energy||'—'}${mo.energy?'/10':''}</div></div>
+        <div class="odl-act-card"><div class="odl-act-icon">🧠</div><div class="odl-act-label">Mood</div><div class="odl-act-val" style="color:${mo.mood>=7?'#22c55e':mo.mood>=5?'#f59e0b':'#f87171'}">${mo.mood||'—'}${mo.mood?'/10':''}</div></div>
+      </div>
+    </div>
+    <!-- AI INSIGHTS -->
+    <div class="odl-section">
+      <div class="odl-ai-card" id="odl-ai-card">
+        <div class="odl-ai-head"><span class="odl-ai-icon">🤖</span><span class="odl-ai-title">AI Koç Notu</span><button class="odl-ai-refresh" onclick="loadAiInsight('${dateStr}')">↻</button></div>
+        <div class="odl-ai-text" id="odl-ai-text">Analiz yükleniyor...</div>
+      </div>
+    </div>
+  </div>`;
+  // Load AI insight async
+  loadAiInsight(dateStr);
+}
+
+async function loadAiInsight(dateStr){
+  const el=document.getElementById('odl-ai-text');
+  if(!el)return;
+  el.textContent='Analiz yükleniyor...';
+  try{
+    const r=await fetch('/api/ai-insights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:dateStr})}).then(r=>r.json());
+    el.textContent=r.insight||'Analiz alınamadı.';
+  }catch(e){el.textContent='Bağlantı hatası.';}
+}
 }
 
 async function renderOzWeekly(){
@@ -4344,6 +4439,67 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .dg-footer-title{font-size:.8rem;font-weight:900;color:var(--text)}
 .dg-footer-sub{font-size:.65rem;color:var(--muted);margin-top:2px;line-height:1.4}
 .dg-footer-rocket{font-size:1.6rem;flex-shrink:0}
+/* ═══ ÖZET GÜNLÜK YENİ TASARIM ═══ */
+.odl-loading{color:var(--muted);padding:24px;text-align:center}
+.odl-wrap{display:flex;flex-direction:column;gap:14px;padding-bottom:20px}
+/* Header */
+.odl-header{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:12px 16px}
+.odl-nav-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text);border-radius:10px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.odl-nav-btn:hover{background:rgba(255,255,255,.12)}
+.odl-nav-btn:disabled{opacity:.3;cursor:default}
+.odl-header-center{flex:1;text-align:center}
+.odl-date-label{font-size:.85rem;font-weight:800;color:var(--text)}
+.odl-day-type{font-size:.7rem;margin-top:2px}
+.odl-today-badge{display:inline-block;font-size:.6rem;font-weight:800;background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;border-radius:20px;padding:2px 8px;margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+/* Score ring */
+.odl-score-wrap{display:flex;justify-content:center;padding:4px 0}
+.odl-score-ring{position:relative;width:100px;height:100px}
+.odl-score-ring svg{width:100%;height:100%}
+.odl-score-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.odl-score-num{font-size:1.5rem;font-weight:1000;line-height:1}
+.odl-score-lbl{font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+/* Quick stats */
+.odl-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.odl-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 14px;box-shadow:0 4px 12px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.06)}
+.odl-stat-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.odl-stat-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.odl-stat-pct{font-size:.72rem;font-weight:800}
+.odl-stat-val{font-size:1.15rem;font-weight:1000;line-height:1;margin-bottom:2px}
+.odl-stat-tgt{font-size:.65rem;color:var(--muted);margin-bottom:6px}
+.odl-bar-track{height:4px;background:rgba(0,0,0,.3);border-radius:999px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+.odl-bar-fill{height:100%;border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+/* Sections */
+.odl-section{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px 16px}
+.odl-section-title{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+/* Timeline */
+.odl-timeline-group{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.odl-timeline-group:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.odl-tg-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.odl-tg-label{font-size:.8rem;font-weight:800;color:var(--text)}
+.odl-tg-total{font-size:.7rem;display:flex;gap:6px}
+.odl-meal-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.odl-meal-row:last-child{border-bottom:none}
+.odl-meal-name{font-size:.78rem;font-weight:700;color:var(--text);flex:1}
+.odl-meal-desc{font-size:.65rem;color:var(--muted);flex-shrink:0}
+.odl-meal-macros{display:flex;gap:6px;flex-shrink:0}
+.odl-meal-macros span{font-size:.65rem;font-weight:700}
+.odl-check{color:#22c55e;font-size:.8rem;margin-left:auto}
+.odl-empty{color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0}
+/* Activity */
+.odl-activity-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.odl-act-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;text-align:center}
+.odl-act-icon{font-size:1.3rem;margin-bottom:4px}
+.odl-act-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.odl-act-val{font-size:1rem;font-weight:900;color:var(--text)}
+.odl-act-sub{font-size:.62rem;color:var(--muted);margin-top:2px}
+/* AI card */
+.odl-ai-card{background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(99,102,241,.07));border:1px solid rgba(168,85,247,.25);border-radius:14px;padding:14px 16px}
+.odl-ai-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.odl-ai-icon{font-size:1.1rem}
+.odl-ai-title{font-size:.78rem;font-weight:800;color:var(--text);flex:1}
+.odl-ai-refresh{background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.25);color:#a855f7;border-radius:8px;padding:3px 8px;font-size:.75rem;cursor:pointer;transition:background .15s}
+.odl-ai-refresh:hover{background:rgba(168,85,247,.25)}
+.odl-ai-text{font-size:.8rem;color:var(--text);line-height:1.6}
 .daily-focus-panel{border:1px solid rgba(59,130,246,.22);background:linear-gradient(180deg,rgba(17,24,39,.86),rgba(2,6,23,.48));border-radius:22px;padding:16px;box-shadow:0 22px 70px rgba(0,0,0,.26);min-height:285px}
 .daily-focus-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
 .daily-focus-title{font-size:1rem;font-weight:1000;color:var(--text);letter-spacing:-.2px}

@@ -4094,6 +4094,94 @@ def api_food_registry_delete(fid):
     conn.commit(); conn.close()
     return jsonify({'ok':True})
 
+@app.route('/api/ai-insights', methods=['POST'])
+def api_ai_insights():
+    try:
+        data = request.get_json(silent=True) or {}
+        date_str = data.get('date', operation_today())
+        conn = get_db()
+        meals = [dict(r) for r in conn.execute("SELECT * FROM meals WHERE date=? ORDER BY id", (date_str,)).fetchall()]
+        vitamins = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY id", (date_str,)).fetchall()]
+        sleep_row = conn.execute("SELECT * FROM sleep_logs WHERE date=?", (date_str,)).fetchone()
+        exercise_row = conn.execute("SELECT * FROM exercise_logs WHERE date=?", (date_str,)).fetchone()
+        mood_row = conn.execute("SELECT * FROM mood_logs WHERE date=?", (date_str,)).fetchone()
+        water_row = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
+        step_row = conn.execute("SELECT * FROM step_logs WHERE date=?", (date_str,)).fetchone()
+        # last 7 days summary for context
+        week = [dict(r) for r in conn.execute("SELECT date,calories,protein_g,water_ml FROM summary WHERE date>=? AND date<? ORDER BY date", (
+            (operation_date() - timedelta(days=7)).isoformat(), date_str
+        )).fetchall()]
+        conn.close()
+        totals = {
+            'cal': sum(m.get('calories',0) or 0 for m in meals),
+            'prot': sum(m.get('protein_g',0) or 0 for m in meals),
+            'carb': sum(m.get('carbs_g',0) or 0 for m in meals),
+            'fat': sum(m.get('fat_g',0) or 0 for m in meals),
+            'water_ml': int((water_row['total'] or 0) if water_row else 0),
+            'steps': dict(step_row)['steps'] if step_row else 0,
+        }
+        settings_conn = get_db()
+        s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
+        settings_conn.close()
+        targets = {
+            'cal': int(s_rows.get('target_calories', 1800)),
+            'prot': int(s_rows.get('target_protein', 160)),
+            'water': int(s_rows.get('target_water_ml', 5000)),
+            'steps': 10000,
+        }
+        ctx_str = (
+            f"Tarih: {date_str} ({training_day(date_str)} günü)\n"
+            f"Kalori: {totals['cal']} / {targets['cal']} kcal\n"
+            f"Protein: {round(totals['prot'])}g / {targets['prot']}g\n"
+            f"Karb: {round(totals['carb'])}g | Yağ: {round(totals['fat'])}g\n"
+            f"Su: {totals['water_ml']}ml / {targets['water']}ml\n"
+            f"Adım: {totals['steps']} / {targets['steps']}\n"
+            f"Öğünler: {len(meals)} kayıt\n"
+            f"Takviyeler: {len(vitamins)} kayıt\n"
+        )
+        if sleep_row:
+            sl = dict(sleep_row)
+            ctx_str += f"Uyku: {sl.get('hours','?')}s kalite {sl.get('quality','?')}/10\n"
+        if exercise_row:
+            ex = dict(exercise_row)
+            ctx_str += f"Antrenman: {ex.get('type','?')} {ex.get('duration','?')}dk\n"
+        if mood_row:
+            mo = dict(mood_row)
+            ctx_str += f"Enerji: {mo.get('energy','?')}/10 | Mood: {mo.get('mood','?')}/10\n"
+        if week:
+            ctx_str += f"Son 7 gün kalori ort: {round(sum(w.get('calories',0) or 0 for w in week)/max(len(week),1))} kcal\n"
+            ctx_str += f"Son 7 gün protein ort: {round(sum(w.get('protein_g',0) or 0 for w in week)/max(len(week),1))}g\n"
+
+        if not ANTHROPIC_API_KEY:
+            return jsonify({'insight': 'AI modu aktif değil.', 'ok': False})
+
+        import urllib.request, urllib.error
+        body = {
+            'model': ANTHROPIC_MODEL,
+            'max_tokens': 200,
+            'system': (
+                "Sen Taha Serdem'in kişisel performans koçusun. "
+                "Günlük veri özetine bakarak 2-3 cümle, samimi, net ve motive edici bir insight ver. "
+                "Olumlu olanı vurgula, eksik varsa kısa belirt. Türkçe yaz. "
+                "Emoji kullanabilirsin. Sadece insight metni döndür, başka hiçbir şey yazma."
+            ),
+            'messages': [{'role': 'user', 'content': ctx_str}]
+        }
+        req = urllib.request.Request(
+            'https://api.anthropic.com/v1/messages',
+            data=json.dumps(body).encode('utf-8'),
+            headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            payload = json.loads(resp.read().decode('utf-8'))
+        insight = payload['content'][0]['text']
+        return jsonify({'insight': insight, 'ok': True})
+    except Exception as e:
+        log.exception("ai-insights error")
+        return jsonify({'insight': 'Analiz yüklenemedi.', 'ok': False})
+
+
 if __name__ == '__main__':
     init_db()
     log.info(f"DB: {DB_PATH}")
