@@ -749,6 +749,29 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   <div class="page" id="page-ozet">
     <div class="pg-title">Özet</div>
     <div class="pg-sub">Haftalık ve aylık performans analizi</div>
+    <!-- MAKRO PANELİ (donut + bars) -->
+    <div id="ozet-makro-card" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(17,24,39,.78));border:1px solid rgba(59,130,246,.2);border-radius:20px;padding:16px 18px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
+        <div>
+          <div style="font-size:.9rem;font-weight:900;color:var(--text)">Bugünün Makro Paneli</div>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Ana gösterge paneli yalnızca bugünü gösterir</div>
+        </div>
+        <div id="ozm-overall-pill" style="font-size:.78rem;font-weight:800;background:#22c55e;color:#fff;border-radius:999px;padding:5px 13px;flex-shrink:0;box-shadow:0 2px 8px rgba(34,197,94,.4);white-space:nowrap">0%</div>
+      </div>
+      <div style="display:flex;gap:18px;align-items:center">
+        <div style="position:relative;width:100px;height:100px;flex-shrink:0">
+          <svg viewBox="0 0 80 80" style="width:100%;height:100%;transform:rotate(-90deg)">
+            <circle fill="none" stroke="rgba(255,255,255,.08)" stroke-width="10" cx="40" cy="40" r="32"/>
+            <circle id="ozm-donut-ring" fill="none" stroke="#FF7B54" stroke-width="10" stroke-linecap="round" cx="40" cy="40" r="32" stroke-dasharray="0 201" style="transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1)"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1">
+            <div id="ozm-kcal" style="font-size:1.35rem;font-weight:1000;color:var(--text)">0</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;text-align:center">KCAL<br>BUGÜN</div>
+          </div>
+        </div>
+        <div id="ozm-bars" style="flex:1;display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
     <div class="sub-tabs" style="margin-bottom:18px">
       <button class="sub-tab active" onclick="ozSub('daily')">📅 Günlük</button>
       <button class="sub-tab" onclick="ozSub('weekly')">📊 Haftalık</button>
@@ -1537,7 +1560,45 @@ function ozSub(which){
   else renderOzMonthly();
 }
 
-async function loadOzet(){ozSub('daily');}
+async function loadOzet(){ozSub('daily'); refreshOzetMakroCard();}
+
+async function refreshOzetMakroCard(){
+  try{
+    const todayStr=today();
+    const tdStr=typeof training_day_local==='function'?training_day_local(todayStr):'Off';
+    const t=typeof getT==='function'?getT(tdStr):{cal:1800,prot:160,carb:200,fat:50};
+    const [macro,todayData]=await Promise.all([
+      fetch('/api/macro/today').then(r=>r.json()).catch(()=>({})),
+      fetch('/api/day/'+todayStr).then(r=>r.json()).catch(()=>({}))
+    ]);
+    const tot=(macro&&macro.totals)||{};
+    const cal=Math.round(tot.calories||0),prot=Math.round(tot.protein_g||0),carb=Math.round(tot.carbs_g||0),fat=+(Math.round((tot.fat_g||0)*10)/10);
+    const water_ml=(todayData.nutrition&&todayData.nutrition.water_ml)||0;
+    const tCal=+(t.cal||1800),tWater=+(t.water||5000)/1000;
+    // Donut
+    const circ=201.06, pctCal=Math.min(100,tCal>0?cal/tCal*100:0);
+    const ring=document.getElementById('ozm-donut-ring');
+    if(ring) ring.setAttribute('stroke-dasharray',`${(pctCal/100*circ).toFixed(1)} ${circ}`);
+    const knum=document.getElementById('ozm-kcal'); if(knum) knum.textContent=cal.toLocaleString('tr-TR');
+    // Bars
+    const bars=[
+      {icon:'💪',color:'#4ADE80',val:prot,target:+(t.prot||160),disp:prot+'g',tdisp:(t.prot||160)+'g'},
+      {icon:'🌽',color:'#FBBF24',val:carb,target:+(t.carb||200),disp:carb+'g',tdisp:(t.carb||200)+'g'},
+      {icon:'🥑',color:'#A78BFA',val:fat,target:+(t.fat||50),disp:fat+'g',tdisp:(t.fat||50)+'g'},
+      {icon:'💧',color:'#22D3EE',val:+(water_ml/1000).toFixed(2),target:tWater,disp:(water_ml/1000).toFixed(1)+'L',tdisp:tWater+'L'}
+    ];
+    const barsEl=document.getElementById('ozm-bars');
+    if(barsEl) barsEl.innerHTML=bars.map(b=>{
+      const p=Math.min(100,b.target>0?Math.round(b.val/b.target*100):0);
+      return`<div style="display:flex;align-items:center;gap:10px"><div style="font-size:1.1rem;width:22px;text-align:center">${b.icon}</div><div style="flex:1"><div style="height:6px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden"><div style="height:100%;width:${p}%;background:${b.color};border-radius:999px;transition:width .7s cubic-bezier(.4,0,.2,1)"></div></div></div><div style="font-size:.7rem;color:var(--muted);white-space:nowrap;min-width:72px;text-align:right">${b.disp}/${b.tdisp}</div></div>`;
+    }).join('');
+    // Pill
+    const allPcts=[pctCal,...bars.map(b=>Math.min(100,b.target>0?b.val/b.target*100:0))];
+    const overall=Math.round(allPcts.reduce((a,v)=>a+v,0)/allPcts.length);
+    const pill=document.getElementById('ozm-overall-pill');
+    if(pill){pill.textContent=overall+'%';pill.style.background=overall>=80?'#22c55e':overall>=50?'#f59e0b':'#f87171';}
+  }catch(e){}
+}
 
 let _ozDailyDate=null;
 async function renderOzDaily(dateStr){
@@ -4818,86 +4879,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 </script>
 
 <style id="MAKRO_OZET_PANEL-css">
-/* Akış Özeti + Makro Özet yan yana */
-#daily-command-flow{display:flex;flex-direction:column;gap:10px}
-.daily-flow-row{display:flex;gap:10px}
-.daily-flow-row .daily-flow-card{flex:1;min-width:0}
-/* Özet grid */
-.dmo-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 16px;height:100%;box-sizing:border-box}
-.dmo-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.dmo-icon{font-size:1.1rem;width:30px;height:30px;border-radius:8px;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center}
-.dmo-title{font-size:.8rem;font-weight:900;color:var(--text)}
-.dmo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dmo-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:10px 10px 8px;text-align:center}
-.dmo-item-icon{font-size:1.3rem;margin-bottom:4px}
-.dmo-item-val{font-size:1rem;font-weight:900;line-height:1;color:var(--text)}
-.dmo-item-lbl{font-size:.62rem;color:var(--muted);margin-top:3px}
-.dmo-item-warn{display:inline-block;font-size:.58rem;color:#f59e0b;margin-top:3px}
-/* over badge inline */
+/* over badge inline - Günlük Hedefler %100+ */
 .dg-over-badge{display:inline-flex;align-items:center;gap:3px;font-size:.65rem;font-weight:700;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:20px;padding:2px 7px;margin-left:6px;white-space:nowrap}
 </style>
-<script id="MAKRO_OZET_PANEL">
-(function(){
-  if(window.__makroOzetPanel) return;
-  window.__makroOzetPanel=true;
-  const $i=id=>document.getElementById(id);
-
-  function ensureOzetCard(){
-    if($i('dmo-card-wrap')) return;
-    const flow=$i('daily-command-flow');
-    if(!flow) return;
-    // Akış Özeti card ve Koç Notu card'ı bul
-    const cards=[...flow.querySelectorAll('.daily-flow-card')];
-    if(cards.length<1) return;
-    const akisCard=cards[0];
-    const kocCard=cards.find(c=>c.textContent.includes('Koç Notu')||c.textContent.includes('Koc Notu'));
-    // Akış + Özet için wrapper
-    const wrapper=document.createElement('div');
-    wrapper.className='daily-flow-row';
-    wrapper.id='dmo-card-wrap';
-    akisCard.parentNode.insertBefore(wrapper,akisCard);
-    wrapper.appendChild(akisCard);
-    wrapper.insertAdjacentHTML('beforeend',`<div class="daily-flow-card dmo-card" id="dmo-makro-card"><div class="dmo-head"><div class="dmo-icon">📊</div><div class="dmo-title">Özet</div></div><div class="dmo-grid" id="dmo-grid"></div></div>`);
-  }
-
-  window.refreshMakroOzetPanel=async function(totals,todayData,t){
-    ensureOzetCard();
-    if(!totals||!t) return;
-    const cal=Math.round(totals.calories||0),prot=Math.round(totals.protein_g||0),carb=Math.round(totals.carbs_g||0),fat=+(Math.round((totals.fat_g||0)*10)/10);
-    const items=[
-      {icon:'💪',color:'#4ADE80',val:prot,target:+(t.prot||160),unit:'g',label:'Protein'},
-      {icon:'🌽',color:'#FBBF24',val:carb,target:+(t.carb||200),unit:'g',label:'Karb'},
-      {icon:'🥑',color:'#A78BFA',val:fat,target:+(t.fat||50),unit:'g',label:'Yağ'},
-      {icon:'🔥',color:'#FF7B54',val:cal,target:+(t.cal||1800),unit:'kcal',label:'Kalori'}
-    ];
-    const grid=$i('dmo-grid');
-    if(grid) grid.innerHTML=items.map(it=>{
-      const over=it.val>it.target;
-      const excess=over?+(it.val-it.target).toFixed(1):0;
-      const warnHtml=over?`<div class="dmo-item-warn">⚠️ +${excess}${it.unit}</div>`:'';
-      return`<div class="dmo-item"><div class="dmo-item-icon">${it.icon}</div><div class="dmo-item-val" style="color:${over?'#f59e0b':it.color}">${it.val}${it.unit==='kcal'?'':it.unit}</div><div class="dmo-item-lbl">${it.label}</div>${warnHtml}</div>`;
-    }).join('');
-  };
-
-  const oldRefresh=window.refreshMissionControl;
-  if(typeof oldRefresh==='function'){
-    window.refreshMissionControl=async function(){
-      await oldRefresh();
-      // totals ve t değerleri zaten hesaplanmış, yeniden fetch etmeden almak için event tabanlı yaklaşım
-      // basit çözüm: kendi fetch yap
-      try{
-        const todayStr=window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
-        const trainingDay=typeof training_day_local==='function'?training_day_local(todayStr):'Off';
-        const [macro,todayData]=await Promise.all([fetch('/api/macro/today').then(r=>r.json()).catch(()=>({})),fetch('/api/day/'+todayStr).then(r=>r.json()).catch(()=>({}))]);
-        const td=todayData.training_day||todayData.training||trainingDay;
-        const t=typeof getT==='function'?getT(td):{cal:1800,prot:160,carb:200,fat:50};
-        await window.refreshMakroOzetPanel(macro.totals||{},todayData,t);
-      }catch(e){}
-    };
-  }
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{if(typeof window.refreshMissionControl==='function')window.refreshMissionControl();},1300));
-})();
-</script>
 
 
 <script id="OPERATION_DAY_FRONTEND_V1">
