@@ -323,7 +323,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <div class="brand-sub">Daily Rapor</div>
   </div>
   <nav class="nav">
-    <button class="nav-btn active" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>Dashboard</button>
+    <button class="nav-btn active" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>Kontrol Paneli</button>
     <button class="nav-btn" onclick="showPage('log')"><span class="nav-icon">📝</span>Log</button>
     <button class="nav-btn" onclick="showPage('training')"><span class="nav-icon">💪</span>Antrenman</button>
     <button class="nav-btn" onclick="showPage('ozet')"><span class="nav-icon">📈</span>Özet</button>
@@ -1545,6 +1545,8 @@ async function renderOzDaily(dateStr){
   _ozDailyDate=dateStr;
   const el=$('oz-daily-content');if(!el)return;
   el.innerHTML='<div class="odl-loading">Yükleniyor...</div>';
+  const fmt=n=>Number(n||0).toLocaleString('tr-TR');
+  const fmtSleep=h=>{if(!h)return'—';const hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+'s'+(mm?mm+'dk':'');};
   const [d,meals,t]=await Promise.all([
     API('/api/today?date='+dateStr),
     API('/api/meals/'+dateStr),
