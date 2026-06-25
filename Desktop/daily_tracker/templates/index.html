@@ -4396,8 +4396,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const excess=over?+(g.val-g.target).toFixed(1):0;
       const barStyle=over?`width:100%;background:linear-gradient(90deg,#4ADE80,#f59e0b)`:`width:${p}%;background:${g.bar}`;
       const pctColor=over?'#f59e0b':rawPct>=80?'#22c55e':rawPct>=50?g.bar:'var(--muted)';
-      const badge=over?`<div class="dg-pct-badge" style="color:#f59e0b">⚠️ +${excess}${g.extra} fazla</div>`:`<div class="dg-pct-badge" style="color:${pctColor}">${rawPct}%</div>`;
-      return`<div class="dg-row"><div class="dg-icon-wrap" style="background:${g.bg}">${g.icon}</div><div class="dg-info"><div class="dg-name">${g.name}</div><div class="dg-vals"><span class="dg-val-cur" style="color:${over?'#f59e0b':'var(--text)'}">${g.disp}</span><span class="dg-val-sep">/</span><span class="dg-val-tgt">${g.tdisp}</span></div><div class="dg-bar-track"><div class="dg-bar-fill" style="${barStyle}"></div></div></div>${badge}</div>`;
+      const overBadge=over?`<span class="dg-over-badge">⚠️ +${excess}${g.extra} fazla</span>`:'';
+      const rightBadge=`<div class="dg-pct-badge" style="color:${pctColor}">${rawPct}%</div>`;
+      return`<div class="dg-row"><div class="dg-icon-wrap" style="background:${g.bg}">${g.icon}</div><div class="dg-info"><div class="dg-name">${g.name}</div><div class="dg-vals"><span class="dg-val-cur" style="color:${over?'#f59e0b':'var(--text)'}">${g.disp}</span><span class="dg-val-sep">/</span><span class="dg-val-tgt">${g.tdisp}</span>${overBadge}</div><div class="dg-bar-track"><div class="dg-bar-fill" style="${barStyle}"></div></div></div>${rightBadge}</div>`;
     }).join('')+`<div class="dg-footer"><div class="dg-footer-icon">✨</div><div class="dg-footer-text"><div class="dg-footer-title">${mot.t}</div><div class="dg-footer-sub">${mot.s}</div></div><span class="dg-footer-rocket">🚀</span></div>`;
     const days=Array.from({length:7},(_,i)=>dayIso(i-4));
     const rows=days.map(ds=>{ const r=(summary||[]).find(x=>x.date===ds)||{date:ds,training_day:(typeof training_day_local==='function'?training_day_local(ds):'Off')}; return r; });
@@ -4814,80 +4815,85 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 })();
 </script>
 
-<style id="MAKRO_MINI_PANEL-css">
-#daily-macro-mini{margin-bottom:18px}
-.dmm-card{background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(17,24,39,.78));border:1px solid rgba(59,130,246,.2);border-radius:20px;padding:16px 18px}
-.dmm-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
-.dmm-title{font-size:.9rem;font-weight:900;color:var(--text);letter-spacing:-.1px}
-.dmm-sub{font-size:.65rem;color:var(--muted);margin-top:3px}
-.dmm-pill{font-size:.78rem;font-weight:800;background:#22c55e;color:#fff;border-radius:999px;padding:5px 13px;flex-shrink:0;box-shadow:0 2px 8px rgba(34,197,94,.4);white-space:nowrap}
-.dmm-body{display:flex;gap:18px;align-items:center}
-.dmm-donut-wrap{position:relative;width:100px;height:100px;flex-shrink:0}
-.dmm-donut{width:100%;height:100%;transform:rotate(-90deg)}
-.dmm-donut-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:10}
-.dmm-donut-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1)}
-.dmm-donut-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
-.dmm-kcal-num{font-size:1.35rem;font-weight:1000;color:var(--text)}
-.dmm-kcal-lbl{font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;text-align:center}
-.dmm-bars{flex:1;display:flex;flex-direction:column;gap:10px}
-.dmm-bar-row{display:flex;align-items:center;gap:10px}
-.dmm-bar-icon{font-size:1.1rem;width:22px;flex-shrink:0;text-align:center}
-.dmm-bar-info{flex:1}
-.dmm-bar-track{height:6px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
-.dmm-bar-fill{height:100%;border-radius:999px;transition:width .7s cubic-bezier(.4,0,.2,1)}
-.dmm-bar-vals{font-size:.7rem;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:72px;text-align:right}
+<style id="MAKRO_OZET_PANEL-css">
+/* Akış Özeti + Makro Özet yan yana */
+#daily-command-flow{display:flex;flex-direction:column;gap:10px}
+.daily-flow-row{display:flex;gap:10px}
+.daily-flow-row .daily-flow-card{flex:1;min-width:0}
+/* Özet grid */
+.dmo-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 16px;height:100%;box-sizing:border-box}
+.dmo-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.dmo-icon{font-size:1.1rem;width:30px;height:30px;border-radius:8px;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center}
+.dmo-title{font-size:.8rem;font-weight:900;color:var(--text)}
+.dmo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dmo-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:10px 10px 8px;text-align:center}
+.dmo-item-icon{font-size:1.3rem;margin-bottom:4px}
+.dmo-item-val{font-size:1rem;font-weight:900;line-height:1;color:var(--text)}
+.dmo-item-lbl{font-size:.62rem;color:var(--muted);margin-top:3px}
+.dmo-item-warn{display:inline-block;font-size:.58rem;color:#f59e0b;margin-top:3px}
+/* over badge inline */
+.dg-over-badge{display:inline-flex;align-items:center;gap:3px;font-size:.65rem;font-weight:700;color:#f59e0b;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:20px;padding:2px 7px;margin-left:6px;white-space:nowrap}
 </style>
-<script id="MAKRO_MINI_PANEL">
+<script id="MAKRO_OZET_PANEL">
 (function(){
-  if(window.__makroMiniPanel) return;
-  window.__makroMiniPanel=true;
+  if(window.__makroOzetPanel) return;
+  window.__makroOzetPanel=true;
   const $i=id=>document.getElementById(id);
-  const circ=+(2*Math.PI*32).toFixed(2);
 
-  function ensurePanel(){
-    if($i('daily-macro-mini')) return;
-    const anchor=$i('daily-command-flow');
-    if(!anchor) return;
-    anchor.insertAdjacentHTML('afterend',`<section id="daily-macro-mini"><div class="dmm-card"><div class="dmm-head"><div><div class="dmm-title">Bugünün Makro Paneli</div><div class="dmm-sub">Ana gösterge paneli yalnızca bugünü gösterir</div></div><div class="dmm-pill" id="dmm-pill">0%</div></div><div class="dmm-body"><div class="dmm-donut-wrap"><svg viewBox="0 0 80 80" class="dmm-donut"><circle class="dmm-donut-bg" cx="40" cy="40" r="32"/><circle class="dmm-donut-fill" id="dmm-ring" cx="40" cy="40" r="32" stroke="#FF7B54" stroke-dasharray="0 ${circ}"/></svg><div class="dmm-donut-inner"><div class="dmm-kcal-num" id="dmm-kcal">0</div><div class="dmm-kcal-lbl">KCAL<br>BUGÜN</div></div></div><div class="dmm-bars" id="dmm-bars"></div></div></div></section>`);
+  function ensureOzetCard(){
+    if($i('dmo-card-wrap')) return;
+    const flow=$i('daily-command-flow');
+    if(!flow) return;
+    // Akış Özeti card ve Koç Notu card'ı bul
+    const cards=[...flow.querySelectorAll('.daily-flow-card')];
+    if(cards.length<1) return;
+    const akisCard=cards[0];
+    const kocCard=cards.find(c=>c.textContent.includes('Koç Notu')||c.textContent.includes('Koc Notu'));
+    // Akış + Özet için wrapper
+    const wrapper=document.createElement('div');
+    wrapper.className='daily-flow-row';
+    wrapper.id='dmo-card-wrap';
+    akisCard.parentNode.insertBefore(wrapper,akisCard);
+    wrapper.appendChild(akisCard);
+    wrapper.insertAdjacentHTML('beforeend',`<div class="daily-flow-card dmo-card" id="dmo-makro-card"><div class="dmo-head"><div class="dmo-icon">📊</div><div class="dmo-title">Özet</div></div><div class="dmo-grid" id="dmo-grid"></div></div>`);
   }
 
-  window.refreshMakroMiniPanel=async function(){
-    ensurePanel();
-    const todayStr=window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
-    const [macro,todayData]=await Promise.all([
-      fetch('/api/macro/today').then(r=>r.json()).catch(()=>({})),
-      fetch('/api/day/'+todayStr).then(r=>r.json()).catch(()=>({}))
-    ]);
-    const t=typeof getT==='function'?getT():{cal:1800,prot:160,carb:200,fat:50,water:5000};
-    const totals=(macro&&macro.totals)||{};
+  window.refreshMakroOzetPanel=async function(totals,todayData,t){
+    ensureOzetCard();
+    if(!totals||!t) return;
     const cal=Math.round(totals.calories||0),prot=Math.round(totals.protein_g||0),carb=Math.round(totals.carbs_g||0),fat=+(Math.round((totals.fat_g||0)*10)/10);
-    const water_ml=(todayData.nutrition&&todayData.nutrition.water_ml)||0;
-    const tCal=+(t.cal||1800),tProt=+(t.prot||160),tCarb=+(t.carb||200),tFat=+(t.fat||50),tWater=+(t.water||5000)/1000;
-    const pctCal=Math.min(100,tCal>0?cal/tCal*100:0);
-    const ring=$i('dmm-ring');
-    if(ring) ring.setAttribute('stroke-dasharray',`${(pctCal/100*circ).toFixed(1)} ${circ}`);
-    const knum=$i('dmm-kcal'); if(knum) knum.textContent=cal.toLocaleString('tr-TR');
-    const bars=[
-      {icon:'💪',color:'#4ADE80',val:prot,target:tProt,disp:prot+'g',tdisp:tProt+'g'},
-      {icon:'🌽',color:'#FBBF24',val:carb,target:tCarb,disp:carb+'g',tdisp:tCarb+'g'},
-      {icon:'🥑',color:'#A78BFA',val:fat,target:tFat,disp:fat+'g',tdisp:tFat+'g'},
-      {icon:'💧',color:'#22D3EE',val:+(water_ml/1000).toFixed(2),target:tWater,disp:(water_ml/1000).toFixed(1)+'L',tdisp:tWater+'L'}
+    const items=[
+      {icon:'💪',color:'#4ADE80',val:prot,target:+(t.prot||160),unit:'g',label:'Protein'},
+      {icon:'🌽',color:'#FBBF24',val:carb,target:+(t.carb||200),unit:'g',label:'Karb'},
+      {icon:'🥑',color:'#A78BFA',val:fat,target:+(t.fat||50),unit:'g',label:'Yağ'},
+      {icon:'🔥',color:'#FF7B54',val:cal,target:+(t.cal||1800),unit:'kcal',label:'Kalori'}
     ];
-    const barsEl=$i('dmm-bars');
-    if(barsEl) barsEl.innerHTML=bars.map(b=>{const p=Math.min(100,b.target>0?Math.round(b.val/b.target*100):0);return`<div class="dmm-bar-row"><div class="dmm-bar-icon">${b.icon}</div><div class="dmm-bar-info"><div class="dmm-bar-track"><div class="dmm-bar-fill" style="width:${p}%;background:${b.color}"></div></div></div><div class="dmm-bar-vals">${b.disp}/${b.tdisp}</div></div>`;}).join('');
-    const allPcts=[pctCal,...bars.map(b=>Math.min(100,b.target>0?b.val/b.target*100:0))];
-    const overall=Math.round(allPcts.reduce((a,v)=>a+v,0)/allPcts.length);
-    const pill=$i('dmm-pill'); if(pill){pill.textContent=overall+'%';pill.style.background=overall>=80?'#22c55e':overall>=50?'#f59e0b':'#f87171';}
+    const grid=$i('dmo-grid');
+    if(grid) grid.innerHTML=items.map(it=>{
+      const over=it.val>it.target;
+      const excess=over?+(it.val-it.target).toFixed(1):0;
+      const warnHtml=over?`<div class="dmo-item-warn">⚠️ +${excess}${it.unit}</div>`:'';
+      return`<div class="dmo-item"><div class="dmo-item-icon">${it.icon}</div><div class="dmo-item-val" style="color:${over?'#f59e0b':it.color}">${it.val}${it.unit==='kcal'?'':it.unit}</div><div class="dmo-item-lbl">${it.label}</div>${warnHtml}</div>`;
+    }).join('');
   };
 
   const oldRefresh=window.refreshMissionControl;
   if(typeof oldRefresh==='function'){
     window.refreshMissionControl=async function(){
       await oldRefresh();
-      await window.refreshMakroMiniPanel();
+      // totals ve t değerleri zaten hesaplanmış, yeniden fetch etmeden almak için event tabanlı yaklaşım
+      // basit çözüm: kendi fetch yap
+      try{
+        const todayStr=window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+        const trainingDay=typeof training_day_local==='function'?training_day_local(todayStr):'Off';
+        const [macro,todayData]=await Promise.all([fetch('/api/macro/today').then(r=>r.json()).catch(()=>({})),fetch('/api/day/'+todayStr).then(r=>r.json()).catch(()=>({}))]);
+        const td=todayData.training_day||todayData.training||trainingDay;
+        const t=typeof getT==='function'?getT(td):{cal:1800,prot:160,carb:200,fat:50};
+        await window.refreshMakroOzetPanel(macro.totals||{},todayData,t);
+      }catch(e){}
     };
   }
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(window.refreshMakroMiniPanel,1200));
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{if(typeof window.refreshMissionControl==='function')window.refreshMissionControl();},1300));
 })();
 </script>
 
