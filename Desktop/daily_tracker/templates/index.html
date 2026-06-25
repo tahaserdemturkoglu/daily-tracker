@@ -5587,13 +5587,17 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       keepOrder.insertAdjacentElement('afterend', panels);
     }
 
-    // Combo widget'ı mission-panels'ın hemen altına taşı
+    // Combo widget'ı mission-hero'nun içine (sol sütun alt kısmına) taşı
     const combo = document.getElementById('dash-combo-widget');
-    if(combo && panels){
+    const missionHero = document.querySelector('#mission-control .mission-hero');
+    if(combo && missionHero && !missionHero.contains(combo)){
       combo.classList.remove('dashboard-duplicate-hidden');
-      if(panels.nextElementSibling !== combo){
-        panels.insertAdjacentElement('afterend', combo);
-      }
+      combo.style.marginTop = '10px';
+      combo.style.borderRadius = '12px';
+      combo.style.padding = '10px 12px';
+      combo.style.background = 'rgba(255,255,255,.04)';
+      combo.style.border = '1px solid rgba(255,255,255,.08)';
+      missionHero.appendChild(combo);
     }
   }
 
