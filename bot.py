@@ -1432,10 +1432,15 @@ def today_full_log():
     return {'ogunler': meals, 'setler': sets, 'vitaminler': vits}
 
 
+def tg_mentions_water(raw_text):
+    norm = _tg_norm(raw_text or '') if '_tg_norm' in globals() else (raw_text or '').lower()
+    return bool(re.search(r'\b(?:su|suyu|suyumu|water)\b', norm))
+
+
 def tg_water_actions_from_text(raw_text):
     text = raw_text or ''
     norm = _tg_norm(text) if '_tg_norm' in globals() else text.lower()
-    if not any(w in norm for w in ['su', 'water']):
+    if not tg_mentions_water(norm):
         return []
     m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)\s*(?:su|water)\b', norm)
     if not m:
@@ -1459,7 +1464,7 @@ def tg_water_actions_from_text(raw_text):
 
 def tg_has_explicit_water_amount(raw_text):
     norm = _tg_norm(raw_text or '') if '_tg_norm' in globals() else (raw_text or '').lower()
-    if not any(w in norm for w in ['su', 'water']):
+    if not tg_mentions_water(norm):
         return False
     return bool(
         re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)\s*(?:su|water)\b', norm) or
@@ -1613,12 +1618,20 @@ def tg_known_food_update_from_text(raw_text):
     for food, title_hint, hints in food_hints:
         if not any(h in n for h in hints):
             continue
+        food_amount = None
+        for hint in hints:
+            m_food = re.search(rf'(\d+(?:[\.,]\d+)?)\s*(?:g|gr|gram)\s*(?:cig\s*)?{re.escape(hint)}', n)
+            if not m_food:
+                m_food = re.search(rf'{re.escape(hint)}[^\d]{{0,20}}(\d+(?:[\.,]\d+)?)\s*(?:g|gr|gram)\b', n)
+            if m_food:
+                food_amount = m_food.group(1)
+                break
         grams = re.findall(r'(\d+(?:[\.,]\d+)?)\s*(?:g|gr|gram)\b', n)
         if not grams:
             continue
         # Duzeltme cumlelerinde son gram genelde net tuketilen miktardir:
         # "77g yerine 54g", "23gr cikar 54gr yedim".
-        amt = float(grams[-1].replace(',', '.'))
+        amt = float((food_amount or grams[-1]).replace(',', '.'))
         macro = _macro_for_known_food(food, amt)
         if not macro:
             continue
@@ -2370,7 +2383,7 @@ async def cmd_chat_ai(u, c):
         return
 
     # Su sifirla kisayolu
-    if any(w in n for w in ['su','suyu','suyumu']) and any(w in n for w in ['sifirla','temizle','bosalt','hepsini sil','kaydi sil']):
+    if tg_mentions_water(raw) and any(w in n for w in ['sifirla','temizle','bosalt','hepsini sil','kaydi sil']):
         today = operation_today()
         conn = get_db()
         water_consolidate(conn, today, 0)
@@ -2384,10 +2397,10 @@ async def cmd_chat_ai(u, c):
     # Herhangi bir Claude cagrisından ONCE yakala — en güvenilir yol
     _su_set_trigger = (
         any(w in n for w in ['toplam','hepsini sil','oncekini sil','sil toplam']) and
-        any(w in n for w in ['su','ml','litre','lt']) and
+        tg_mentions_water(raw) and
         re.search(r'\d', n)
     ) or (
-        any(w in n for w in ['su','suyu','suyumu']) and
+        tg_mentions_water(raw) and
         any(w in n for w in ['olsun','olarak kaydet','yap ','yaz ','degistir','guncelle','set et','sadece']) and
         re.search(r'\d', n)
     )
@@ -2409,7 +2422,7 @@ async def cmd_chat_ai(u, c):
                 return
 
     # Su azalt kisayolu
-    if any(w in n for w in ['su','suyu']) and any(w in n for w in ['azalt','cikart','eksilt','yanlis']):
+    if tg_mentions_water(raw) and any(w in n for w in ['azalt','cikart','eksilt','yanlis']):
         m = re.search(r'(\d+(?:[.,]\d+)?)\s*(ml|l|litre|lt)?', n)
         if m:
             val  = float(m.group(1).replace(',','.'))
