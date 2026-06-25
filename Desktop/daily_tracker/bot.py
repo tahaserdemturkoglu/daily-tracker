@@ -2196,6 +2196,111 @@ async def night_check(context):
 async def cmd_streak(u, c):
     await u.message.reply_text(f"{streak_count()} gunluk seri!")
 
+def bulk_log_parse(raw_text):
+    """
+    Cok satirli toplu log mesajini parse eder.
+    Her satiri ayri tanir: adim, su, stack, supplement, vb.
+    Returns (actions, stack_results, descriptions, unhandled) veya None.
+    """
+    lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+    if len(lines) < 2:
+        return None
+
+    today = operation_today()
+    actions = []
+    stack_results = []
+    descriptions = []
+    unhandled = []
+
+    for line in lines:
+        norm = norm_tr(line)
+        handled = False
+
+        # Adim: "9000 adim", "9.000 adim", "9bin adim"
+        m = re.search(r'(\d[\d.]*)\s*(bin\s*)?adim', norm)
+        if m:
+            try:
+                steps_str = m.group(1).replace('.', '')
+                steps = int(float(steps_str))
+                if m.group(2):
+                    steps *= 1000
+                actions.append({'type': 'steps', 'date': today, 'steps': steps})
+                descriptions.append(f"\U0001f463 Adim: {steps:,}")
+                handled = True
+            except (ValueError, OverflowError):
+                pass
+
+        # Su: "5l su", "2.5 litre", "500ml"
+        if not handled:
+            wm = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:l\b|lt\b|litre\b|liter\b)', norm)
+            if wm:
+                val = float(wm.group(1).replace(',', '.'))
+                ml = int(val * 1000)
+                actions.append({'type': 'water_set', 'date': today, 'water_ml': ml})
+                descriptions.append(f"\U0001f4a7 Su: {val}L")
+                handled = True
+            elif re.search(r'\d+\s*ml', norm):
+                wm2 = re.search(r'(\d+)\s*ml', norm)
+                ml = int(wm2.group(1))
+                actions.append({'type': 'water', 'date': today, 'water_ml': ml})
+                descriptions.append(f"\U0001f4a7 Su: +{ml}ml")
+                handled = True
+
+        # Stack: "gece stack alindi", "pre-workout stack tamam"
+        if not handled and 'stack' in norm:
+            stack_acts = supplement_actions_from_stack_text(line)
+            if stack_acts:
+                saved = save_stack_actions(stack_acts)
+                lbl = stack_label(stack_acts[0].get('stack', ''))
+                stack_results.append((lbl, saved))
+                if saved:
+                    descriptions.append(f"\U0001f48a {lbl}: {', '.join(saved)}")
+                else:
+                    descriptions.append(f"\U0001f48a {lbl}: zaten kayitli")
+                handled = True
+
+        # Tekil supplement: "5g creatine", "kreatin 5gr alindi"
+        if not handled:
+            for item in supplement_catalog():
+                keys_to_check = item['keys'] + [norm_tr(item['name'])]
+                if any(norm_tr(k) in norm for k in keys_to_check):
+                    dose_m = re.search(r'(\d+(?:[.,]\d+)?)\s*(g|gr|gram|mg|kapsul|tablet|damla)', norm)
+                    if dose_m:
+                        amount = dose_m.group(1).replace(',', '.')
+                        unit_raw = dose_m.group(2)
+                        unit = 'g' if unit_raw in ('g', 'gr', 'gram') else unit_raw
+                    else:
+                        amount = item['amount']
+                        unit = item['unit']
+                    actions.append({
+                        'type': 'vitamin',
+                        'date': today,
+                        'name': item['name'],
+                        'amount': str(amount),
+                        'unit': unit,
+                        'notes': 'toplu log'
+                    })
+                    descriptions.append(f"\U0001f48a {item['name']}: {amount} {unit}")
+                    handled = True
+                    break
+
+        # Adim alternatif: "X steps"
+        if not handled:
+            m2 = re.search(r'(\d+)\s*step', norm)
+            if m2:
+                steps = int(m2.group(1))
+                actions.append({'type': 'steps', 'date': today, 'steps': steps})
+                descriptions.append(f"\U0001f463 Adim: {steps:,}")
+                handled = True
+
+        if not handled:
+            unhandled.append(line)
+
+    if not descriptions:
+        return None
+    return actions, stack_results, descriptions, unhandled
+
+
 # Konusma gecmisi (chat_id -> son 6 mesaj)
 _chat_history: dict = {}
 
@@ -2251,6 +2356,22 @@ async def cmd_chat_ai(u, c):
         add_history(chat_id, 'bot', reply)
         await u.message.reply_text(reply)
         return
+
+    # TOPLU LOG: 2+ satirli mesajlari her satir icin ayri isle
+    if '\n' in raw:
+        bulk = bulk_log_parse(raw)
+        if bulk:
+            bulk_actions, _bulk_stacks, bulk_descs, unhandled = bulk
+            apply_actions(bulk_actions)
+            reply_lines = ['✅ Toplu log kaydedildi:\n']
+            reply_lines.extend(bulk_descs)
+            if unhandled:
+                reply_lines.append(f"\n⚠️ Tanimlanamadi: {', '.join(unhandled[:3])}")
+            reply = '\n'.join(reply_lines)
+            add_history(chat_id, 'user', raw)
+            add_history(chat_id, 'bot', reply)
+            await u.message.reply_text(reply)
+            return
 
     # "Tüm vitaminler tamam" kisayolu — template'lerden direkt log at
     # Net stack kisayolu: ac karna/sabah/gece/pre/post stack AI'ya birakilmaz.
