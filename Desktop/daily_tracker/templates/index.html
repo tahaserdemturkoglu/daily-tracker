@@ -4333,7 +4333,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if($m('mission-control')) return;
     const dash=$m('page-dashboard'), hero=dash&&dash.querySelector('.hero');
     if(!dash||!hero) return;
-    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div class="dg-head-left"><div class="dg-head-icon">🎯</div><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub">Bugünkü ilerlemen</div></div></div><button class="dg-detail-btn" onclick="showPage&&showPage('ozet')">Detaylar ›</button></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
+    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div class="dg-head-left"><div class="dg-head-icon">🎯</div><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub">Bugünkü yarışın</div></div></div><div class="dg-pct-pill" id="dg-overall-pct">0%</div></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
   }
   function taskBar(cls,label,value,target){ const p=pct(value,target); return `<div><div class="mission-task-label"><span>${label}</span><span>${p}%</span></div><div class="mission-task ${cls}"><i style="width:${p}%"></i></div></div>`; }
   function renderDayCard(row,t,idx){ const ds=row.date,today=(window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)),sc=scoreDay(row,t),type=row.training_day||'Off',color=typeColors[type]||'#64748b',id='ms-ring-'+idx; setTimeout(()=>ring(id,sc,color),0); return `<div class="mission-day ${ds===today?'today':''}"><div class="mission-date"><b>${dateLabel(ds)}</b><span>${ds===today?'Bugün':dateLabel(ds,{weekday:'short'})}</span></div><div class="mission-type" style="background:${color}">${type}</div><div class="mission-score"><canvas id="${id}"></canvas><span>${sc}%</span></div><div class="mission-tasks">${taskBar('prot','P',row.protein_g||0,t.prot)}${taskBar('water','Su',row.water_ml||0,t.water)}${taskBar('sleep','Uyku',row.sleep_hours||0,7.5)}${taskBar('train','Plan',type==='Off'?80:(row.has_data?100:35),100)}</div></div>`; }
@@ -4376,21 +4376,28 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const carbs_val=Math.round(totals.carbs_g||0), fat_val=+(Math.round((totals.fat_g||0)*10)/10);
     const tProt=+(t.prot||160), tCarb=+(t.carb||200), tFat=+(t.fat||50), tWater=+(t.water||5000)/1000, tSteps=10000, tCal=+(t.cal||1800);
     const dgGoals=[
-      {id:'kcal',icon:'🔥',name:'Kalori',val:cal,target:tCal,unit:'kcal',color:'#f59e0b',disp:fmt(cal),tdisp:fmt(tCal)+' kcal'},
-      {id:'prot',icon:'💪',name:'Protein',val:prot,target:tProt,unit:'g',color:'#22c55e',disp:prot+'g',tdisp:tProt+'g'},
-      {id:'carb',icon:'🌾',name:'Karbonhidrat',val:carbs_val,target:tCarb,unit:'g',color:'#3b82f6',disp:carbs_val+'g',tdisp:tCarb+'g'},
-      {id:'fat',icon:'🥑',name:'Yağ',val:fat_val,target:tFat,unit:'g',color:'#f97316',disp:fat_val+'g',tdisp:tFat+'g'},
-      {id:'water',icon:'💧',name:'Su',val:+(water/1000).toFixed(2),target:tWater,unit:'L',color:'#06b6d4',disp:(water/1000).toFixed(1)+'L',tdisp:tWater+'L'},
-      {id:'steps',icon:'🦶',name:'Adım',val:steps,target:tSteps,unit:'',color:'#a855f7',disp:fmt(steps),tdisp:fmt(tSteps)+' adım'}
+      {id:'kcal',icon:'🔥',name:'Kalori',val:cal,target:tCal,unit:'kcal',bar:'#FF7B54',bg:'linear-gradient(135deg,#ef4444,#f97316)',disp:fmt(cal)+' kcal',tdisp:fmt(tCal)+' kcal',extra:'kcal'},
+      {id:'prot',icon:'💪',name:'Protein',val:prot,target:tProt,unit:'g',bar:'#4ADE80',bg:'linear-gradient(135deg,#16a34a,#22c55e)',disp:prot+'g',tdisp:tProt+'g',extra:'g'},
+      {id:'carb',icon:'🌽',name:'Karbonhidrat',val:carbs_val,target:tCarb,unit:'g',bar:'#FBBF24',bg:'linear-gradient(135deg,#d97706,#fbbf24)',disp:carbs_val+'g',tdisp:tCarb+'g',extra:'g'},
+      {id:'fat',icon:'🥑',name:'Yağ',val:fat_val,target:tFat,unit:'g',bar:'#A78BFA',bg:'linear-gradient(135deg,#7c3aed,#a78bfa)',disp:fat_val+'g',tdisp:tFat+'g',extra:'g'},
+      {id:'water',icon:'💧',name:'Su',val:+(water/1000).toFixed(2),target:tWater,unit:'L',bar:'#22D3EE',bg:'linear-gradient(135deg,#0284c7,#22d3ee)',disp:(water/1000).toFixed(1)+'L',tdisp:tWater+'L',extra:'L'},
+      {id:'steps',icon:'👟',name:'Adım',val:steps,target:tSteps,unit:'',bar:'#F472B6',bg:'linear-gradient(135deg,#9333ea,#f472b6)',disp:fmt(steps),tdisp:fmt(tSteps),extra:'adım'}
     ];
     const totalPct=Math.round(dgGoals.reduce((s,g)=>s+Math.min(100,g.target>0?g.val/g.target*100:0),0)/dgGoals.length);
-    if($m('dg-score')){$m('dg-score').textContent=totalPct+'%';$m('dg-score').style.color=totalPct>=80?'#22c55e':totalPct>=50?'#f59e0b':'#f87171';}
-    const dayLabel=todayData.training_day||todayData.training||'Off';
-    if($m('dg-day-label'))$m('dg-day-label').textContent=dayLabel+' günü';
+    const pill=$m('dg-overall-pct');if(pill){pill.textContent=totalPct+'%';pill.style.background=totalPct>=80?'#22c55e':totalPct>=50?'#f59e0b':'#f87171';}
     const motivations=[{t:'Harika! Devam et!',s:'Hedeflerine ulaşmak için istikrar en büyük güçtür.'},{t:'Süper gidiyorsun!',s:'Her adım seni hedefe yaklaştırıyor.'},{t:'Odaklan, kazan!',s:'Bugünkü seçimlerin yarının sonuçları.'},{t:'Devam et!',s:'Tutarlılık, motivasyondan güçlüdür.'}];
     const mot=motivations[new Date().getDay()%motivations.length];
     const gl=$m('dg-goals-list');
-    if(gl)gl.innerHTML=dgGoals.map(g=>{const p=Math.min(100,g.target>0?Math.round(g.val/g.target*100):0);const pctColor=p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8';return`<div class="dg-row"><div class="dg-icon-wrap" style="background:${g.color}22;border:1px solid ${g.color}33">${g.icon}</div><div class="dg-info"><div class="dg-name">${g.name}</div><div class="dg-vals"><span class="dg-val-cur" style="color:${p>0?g.color:'var(--muted)'}">${g.disp}</span><span class="dg-val-sep">/</span><span class="dg-val-tgt">${g.tdisp}</span></div><div class="dg-bar-track"><div class="dg-bar-fill" style="width:${p}%;background:${g.color};box-shadow:0 0 8px ${g.color}66"></div></div></div><div class="dg-pct-badge" style="color:${pctColor};border-color:${pctColor}22">${p}%</div></div>`;}).join('')+`<div class="dg-footer"><div class="dg-footer-icon">✨</div><div class="dg-footer-text"><div class="dg-footer-title">${mot.t}</div><div class="dg-footer-sub">${mot.s}</div></div><span class="dg-footer-rocket">🚀</span></div>`;
+    if(gl)gl.innerHTML=dgGoals.map(g=>{
+      const rawPct=g.target>0?Math.round(g.val/g.target*100):0;
+      const over=rawPct>100;
+      const p=Math.min(100,rawPct);
+      const excess=over?+(g.val-g.target).toFixed(1):0;
+      const barStyle=over?`width:100%;background:linear-gradient(90deg,#4ADE80,#f59e0b)`:`width:${p}%;background:${g.bar}`;
+      const pctColor=over?'#f59e0b':rawPct>=80?'#22c55e':rawPct>=50?g.bar:'var(--muted)';
+      const badge=over?`<div class="dg-pct-badge" style="color:#f59e0b">⚠️ +${excess}${g.extra} fazla</div>`:`<div class="dg-pct-badge" style="color:${pctColor}">${rawPct}%</div>`;
+      return`<div class="dg-row"><div class="dg-icon-wrap" style="background:${g.bg}">${g.icon}</div><div class="dg-info"><div class="dg-name">${g.name}</div><div class="dg-vals"><span class="dg-val-cur" style="color:${over?'#f59e0b':'var(--text)'}">${g.disp}</span><span class="dg-val-sep">/</span><span class="dg-val-tgt">${g.tdisp}</span></div><div class="dg-bar-track"><div class="dg-bar-fill" style="${barStyle}"></div></div></div>${badge}</div>`;
+    }).join('')+`<div class="dg-footer"><div class="dg-footer-icon">✨</div><div class="dg-footer-text"><div class="dg-footer-title">${mot.t}</div><div class="dg-footer-sub">${mot.s}</div></div><span class="dg-footer-rocket">🚀</span></div>`;
     const days=Array.from({length:7},(_,i)=>dayIso(i-4));
     const rows=days.map(ds=>{ const r=(summary||[]).find(x=>x.date===ds)||{date:ds,training_day:(typeof training_day_local==='function'?training_day_local(ds):'Off')}; return r; });
     const avg=Math.round(rows.reduce((s,r)=>s+scoreDay(r,t),0)/Math.max(1,rows.length));
@@ -4412,30 +4419,27 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 /* --- DG HEAD --- */
 .dg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .dg-head-left{display:flex;align-items:center;gap:10px}
-.dg-head-icon{font-size:1.5rem;width:38px;height:38px;border-radius:50%;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(168,85,247,.2)}
-.dg-title{font-size:.95rem;font-weight:900;color:var(--text);letter-spacing:-.2px;line-height:1.2}
+.dg-head-icon{font-size:1.4rem;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(99,102,241,.35)}
+.dg-title{font-size:1rem;font-weight:900;color:var(--text);letter-spacing:-.2px;line-height:1.2}
 .dg-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
-.dg-detail-btn{font-size:.72rem;font-weight:700;color:#a855f7;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:background .15s}
-.dg-detail-btn:hover{background:rgba(168,85,247,.2)}
+.dg-pct-pill{font-size:.78rem;font-weight:800;background:#22c55e;color:#fff;border-radius:999px;padding:5px 13px;box-shadow:0 2px 8px rgba(34,197,94,.4)}
 /* --- DG ROWS --- */
-.dg-goals{display:flex;flex-direction:column;gap:8px}
-.dg-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.07);transition:transform .18s ease,box-shadow .18s ease;position:relative;overflow:hidden}
-.dg-row::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.02) 0%,transparent 60%);pointer-events:none}
-.dg-row:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1)}
-.dg-icon-wrap{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;box-shadow:0 4px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.12)}
+.dg-goals{display:flex;flex-direction:column;gap:9px}
+.dg-row{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:12px 14px;transition:transform .18s ease,box-shadow .18s ease}
+.dg-row:hover{transform:translateY(-1px);background:rgba(255,255,255,.07)}
+.dg-icon-wrap{width:50px;height:50px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.5rem;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 .dg-info{flex:1;min-width:0}
-.dg-name{font-size:.78rem;font-weight:800;color:var(--text);letter-spacing:-.01em;margin-bottom:2px}
-.dg-vals{font-size:.72rem;margin-bottom:6px}
-.dg-val-cur{font-weight:800}
-.dg-val-sep{color:var(--muted);margin:0 3px}
-.dg-val-tgt{color:var(--muted)}
-.dg-bar-track{height:5px;background:rgba(0,0,0,.35);border-radius:999px;overflow:hidden;box-shadow:inset 0 2px 3px rgba(0,0,0,.35)}
-.dg-bar-fill{height:100%;border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1);position:relative}
-.dg-bar-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:rgba(255,255,255,.2);border-radius:999px}
-.dg-pct-badge{font-size:.78rem;font-weight:800;min-width:44px;padding:4px 8px;border-radius:10px;text-align:center;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.dg-name{font-size:.7rem;font-weight:600;color:var(--muted);letter-spacing:.02em;margin-bottom:3px}
+.dg-vals{font-size:.88rem;margin-bottom:7px;line-height:1}
+.dg-val-cur{font-weight:900;color:var(--text)}
+.dg-val-sep{color:var(--muted);margin:0 4px;font-weight:400}
+.dg-val-tgt{color:var(--muted);font-weight:500}
+.dg-bar-track{height:5px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+.dg-bar-fill{height:100%;border-radius:999px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.dg-pct-badge{font-size:.75rem;font-weight:800;min-width:38px;text-align:right;flex-shrink:0;color:var(--muted)}
 /* --- DG FOOTER --- */
-.dg-footer{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(99,102,241,.08));border:1px solid rgba(168,85,247,.2);border-radius:14px;padding:10px 12px;margin-top:8px;box-shadow:0 4px 12px rgba(168,85,247,.1),inset 0 1px 0 rgba(255,255,255,.06)}
-.dg-footer-icon{font-size:1.3rem;width:36px;height:36px;border-radius:50%;background:rgba(168,85,247,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dg-footer{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(168,85,247,.08));border:1px solid rgba(99,102,241,.2);border-radius:14px;padding:11px 14px;margin-top:8px}
+.dg-footer-icon{font-size:1.3rem;width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .dg-footer-text{flex:1;min-width:0}
 .dg-footer-title{font-size:.8rem;font-weight:900;color:var(--text)}
 .dg-footer-sub{font-size:.65rem;color:var(--muted);margin-top:2px;line-height:1.4}
@@ -4806,6 +4810,83 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     };
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{ if(typeof window.refreshMissionControl==='function') window.refreshMissionControl(); ensureProMissionBoard(); ensureWeeklyTrend(); },1100));
+})();
+</script>
+
+<style id="MAKRO_MINI_PANEL-css">
+#daily-macro-mini{margin-bottom:18px}
+.dmm-card{background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(17,24,39,.78));border:1px solid rgba(59,130,246,.2);border-radius:20px;padding:16px 18px}
+.dmm-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
+.dmm-title{font-size:.9rem;font-weight:900;color:var(--text);letter-spacing:-.1px}
+.dmm-sub{font-size:.65rem;color:var(--muted);margin-top:3px}
+.dmm-pill{font-size:.78rem;font-weight:800;background:#22c55e;color:#fff;border-radius:999px;padding:5px 13px;flex-shrink:0;box-shadow:0 2px 8px rgba(34,197,94,.4);white-space:nowrap}
+.dmm-body{display:flex;gap:18px;align-items:center}
+.dmm-donut-wrap{position:relative;width:100px;height:100px;flex-shrink:0}
+.dmm-donut{width:100%;height:100%;transform:rotate(-90deg)}
+.dmm-donut-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:10}
+.dmm-donut-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1)}
+.dmm-donut-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.dmm-kcal-num{font-size:1.35rem;font-weight:1000;color:var(--text)}
+.dmm-kcal-lbl{font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;text-align:center}
+.dmm-bars{flex:1;display:flex;flex-direction:column;gap:10px}
+.dmm-bar-row{display:flex;align-items:center;gap:10px}
+.dmm-bar-icon{font-size:1.1rem;width:22px;flex-shrink:0;text-align:center}
+.dmm-bar-info{flex:1}
+.dmm-bar-track{height:6px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+.dmm-bar-fill{height:100%;border-radius:999px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.dmm-bar-vals{font-size:.7rem;color:var(--muted);white-space:nowrap;flex-shrink:0;min-width:72px;text-align:right}
+</style>
+<script id="MAKRO_MINI_PANEL">
+(function(){
+  if(window.__makroMiniPanel) return;
+  window.__makroMiniPanel=true;
+  const $i=id=>document.getElementById(id);
+  const circ=+(2*Math.PI*32).toFixed(2);
+
+  function ensurePanel(){
+    if($i('daily-macro-mini')) return;
+    const anchor=$i('daily-command-flow');
+    if(!anchor) return;
+    anchor.insertAdjacentHTML('afterend',`<section id="daily-macro-mini"><div class="dmm-card"><div class="dmm-head"><div><div class="dmm-title">Bugünün Makro Paneli</div><div class="dmm-sub">Ana gösterge paneli yalnızca bugünü gösterir</div></div><div class="dmm-pill" id="dmm-pill">0%</div></div><div class="dmm-body"><div class="dmm-donut-wrap"><svg viewBox="0 0 80 80" class="dmm-donut"><circle class="dmm-donut-bg" cx="40" cy="40" r="32"/><circle class="dmm-donut-fill" id="dmm-ring" cx="40" cy="40" r="32" stroke="#FF7B54" stroke-dasharray="0 ${circ}"/></svg><div class="dmm-donut-inner"><div class="dmm-kcal-num" id="dmm-kcal">0</div><div class="dmm-kcal-lbl">KCAL<br>BUGÜN</div></div></div><div class="dmm-bars" id="dmm-bars"></div></div></div></section>`);
+  }
+
+  window.refreshMakroMiniPanel=async function(){
+    ensurePanel();
+    const todayStr=window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const [macro,todayData]=await Promise.all([
+      fetch('/api/macro/today').then(r=>r.json()).catch(()=>({})),
+      fetch('/api/day/'+todayStr).then(r=>r.json()).catch(()=>({}))
+    ]);
+    const t=typeof getT==='function'?getT():{cal:1800,prot:160,carb:200,fat:50,water:5000};
+    const totals=(macro&&macro.totals)||{};
+    const cal=Math.round(totals.calories||0),prot=Math.round(totals.protein_g||0),carb=Math.round(totals.carbs_g||0),fat=+(Math.round((totals.fat_g||0)*10)/10);
+    const water_ml=(todayData.nutrition&&todayData.nutrition.water_ml)||0;
+    const tCal=+(t.cal||1800),tProt=+(t.prot||160),tCarb=+(t.carb||200),tFat=+(t.fat||50),tWater=+(t.water||5000)/1000;
+    const pctCal=Math.min(100,tCal>0?cal/tCal*100:0);
+    const ring=$i('dmm-ring');
+    if(ring) ring.setAttribute('stroke-dasharray',`${(pctCal/100*circ).toFixed(1)} ${circ}`);
+    const knum=$i('dmm-kcal'); if(knum) knum.textContent=cal.toLocaleString('tr-TR');
+    const bars=[
+      {icon:'💪',color:'#4ADE80',val:prot,target:tProt,disp:prot+'g',tdisp:tProt+'g'},
+      {icon:'🌽',color:'#FBBF24',val:carb,target:tCarb,disp:carb+'g',tdisp:tCarb+'g'},
+      {icon:'🥑',color:'#A78BFA',val:fat,target:tFat,disp:fat+'g',tdisp:tFat+'g'},
+      {icon:'💧',color:'#22D3EE',val:+(water_ml/1000).toFixed(2),target:tWater,disp:(water_ml/1000).toFixed(1)+'L',tdisp:tWater+'L'}
+    ];
+    const barsEl=$i('dmm-bars');
+    if(barsEl) barsEl.innerHTML=bars.map(b=>{const p=Math.min(100,b.target>0?Math.round(b.val/b.target*100):0);return`<div class="dmm-bar-row"><div class="dmm-bar-icon">${b.icon}</div><div class="dmm-bar-info"><div class="dmm-bar-track"><div class="dmm-bar-fill" style="width:${p}%;background:${b.color}"></div></div></div><div class="dmm-bar-vals">${b.disp}/${b.tdisp}</div></div>`;}).join('');
+    const allPcts=[pctCal,...bars.map(b=>Math.min(100,b.target>0?b.val/b.target*100:0))];
+    const overall=Math.round(allPcts.reduce((a,v)=>a+v,0)/allPcts.length);
+    const pill=$i('dmm-pill'); if(pill){pill.textContent=overall+'%';pill.style.background=overall>=80?'#22c55e':overall>=50?'#f59e0b':'#f87171';}
+  };
+
+  const oldRefresh=window.refreshMissionControl;
+  if(typeof oldRefresh==='function'){
+    window.refreshMissionControl=async function(){
+      await oldRefresh();
+      await window.refreshMakroMiniPanel();
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(window.refreshMakroMiniPanel,1200));
 })();
 </script>
 
@@ -5226,13 +5307,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
           <div class="daily-flow-metric"><b id="df-stack">0</b><span>Takviye</span></div>
           <div class="daily-flow-metric"><b id="df-water">0.0L</b><span>Su</span></div>
         </div>
-      </div>
-      <div class="daily-flow-card">
-        <div class="daily-flow-head">
-          <div><div class="daily-flow-title">Hedef Nabzi</div><div class="daily-flow-sub">Kalori, protein, su ve adim tek kompakt takipte.</div></div>
-          <div class="daily-flow-pill" id="df-score">0%</div>
-        </div>
-        <div class="daily-flow-bars" id="df-bars"></div>
       </div>
       <div class="daily-flow-card">
         <div class="daily-flow-head">
