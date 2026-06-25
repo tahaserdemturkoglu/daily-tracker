@@ -581,7 +581,7 @@ GENEL HESAP KURALLARI:
 SABIT URUNLER:
 - Carrefour BIO Organik Yumurta: 1 adet = 70 kcal, 6P, 0.5K, 5Y.
 - Sivi Yumurta Beyazi: 100g = 58 kcal, 10.3P, 1.2K, 0.8Y.
-- Cig Derisiz Tavuk Gogsu: 100g = 120 kcal, 23P, 0K, 2Y.
+- Cig Derisiz Tavuk Gogsu: 100g = 115 kcal, 23P, 0K, 1.5Y.
 - Marine tavuk sis: altta kalan yag/sos tuketilmiyor; 300g cig = 390 kcal, 68P, 3K, 10Y.
 - Yasmin Pirinc: 100g cig = 360 kcal, 7P, 79K, 0.6Y.
 - Patates: 100g cig = 77 kcal, 2P, 17K, 0.1Y.
@@ -591,6 +591,23 @@ SABIT URUNLER:
 - Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y.
 - GymBeam Olive Oil Spray: 1 fis/basis = 15 kcal, 0P, 0K, 1.65Y.
 - Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y; 20-30g kullanim ihmal edilebilir.
+--- SABÃÂ°T ÃÂRÃÂN DEÃÂERLERÃÂ° (bunlarÃÂ± kullan, yeniden hesaplama) ---
+Carrefour BIO Organik Yumurta: 1 adet = 70 kcal, 6P, 0.5K, 5Y
+Sivi Yumurta Beyazi: 100g = 58 kcal, 10.3P, 1.2K, 0.8Y
+Cig Derisiz Tavuk Gogsu: 100g = 115 kcal, 23P, 0K, 1.5Y
+Marine Tavuk Sis (altta kalan sos yenmiyor): 300g cig = 390 kcal, 68P, 3K, 10Y
+Yasmin Pirinc cig: 100g = 360 kcal, 7P, 79K, 0.6Y
+Patates cig: 100g = 77 kcal, 2P, 17K, 0.1Y
+Carrefour Tost Ekmegi: 100g = 252 kcal, 9.5P, 45K, 2.1Y
+Cilek: 100g = 32 kcal, 0.7P, 7.7K, 0.3Y
+Salatalik: 100g = 15 kcal, 0.7P, 3.6K, 0.1Y
+Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y
+GymBeam Olive Oil Spray: 1 fis = 15 kcal, 0P, 0K, 1.65Y (yalnizca kullanici fis sayisi verirse)
+Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y (20-30g ihmal edilebilir)
+Badem: 1 adet ~1.2g = 7 kcal, 0.25P, 0.25K, 0.54Y
+Kaju: 1 adet ~1.5g = 9 kcal, 0.25P, 0.5K, 0.62Y
+Nutella: 100g = 535 kcal, 6P, 57K, 30Y
+Pancake V2: 4 yumurta + 200g sivi yumurta beyazi + 25g yulaf + 50g kuru kayisi + 200g cilek + 50ml sekersiz badem sutu + 6g kakao + 2 fis GymBeam
 
 STANDART PANCAKE V2:
 - 4 yumurta, 200g sivi yumurta beyazi, 25g yulaf, 50g kuru kayisi, 200g cilek, 50ml sekersiz badem sutu, 6g kakao, 2 fis GymBeam.
@@ -1418,14 +1435,16 @@ def today_full_log():
 def tg_water_actions_from_text(raw_text):
     text = raw_text or ''
     norm = _tg_norm(text) if '_tg_norm' in globals() else text.lower()
-    if not any(w in norm for w in ['su', 'water', 'ml', 'litre', 'lt']):
+    if not any(w in norm for w in ['su', 'water']):
         return []
-    m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)?', norm)
+    m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)\s*(?:su|water)\b', norm)
+    if not m:
+        m = re.search(r'\b(?:su|water)\b[^\d]{0,20}(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)\b', norm)
     if not m:
         return []
     val = float(m.group(1).replace(',', '.'))
     unit = (m.group(2) or '').lower()
-    ml = int(val * 1000) if unit in ('l', 'lt', 'litre') or (not unit and val <= 10) else int(val)
+    ml = int(val * 1000) if unit in ('l', 'lt', 'litre') else int(val)
     if ml <= 0:
         return []
     date = operation_today()
@@ -1438,10 +1457,20 @@ def tg_water_actions_from_text(raw_text):
     return [{'type': 'water_set' if is_total else 'water', 'date': date, 'water_ml': ml}]
 
 
+def tg_has_explicit_water_amount(raw_text):
+    norm = _tg_norm(raw_text or '') if '_tg_norm' in globals() else (raw_text or '').lower()
+    if not any(w in norm for w in ['su', 'water']):
+        return False
+    return bool(
+        re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)\s*(?:su|water)\b', norm) or
+        re.search(r'\b(?:su|water)\b[^\d]{0,20}(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)\b', norm)
+    )
+
+
 def tg_slot_from_text(raw_text):
     """Kullanicinin yazdigi slot adini DB key'ine cevir (guncel slot sistemi)."""
     n = _tg_norm(raw_text) if '_tg_norm' in globals() else (raw_text or '').lower()
-    if any(w in n for w in ['kahvalti', 'sabah yemek']):
+    if any(w in n for w in ['kahvalti', 'sabah']):
         return 'kahvalti'
     if any(w in n for w in ['snack 2', 'snack2', '2. snack', 'ikinci snack']):
         return 'snack2'
@@ -1453,7 +1482,27 @@ def tg_slot_from_text(raw_text):
         return 'post-workout-meal'
     if any(w in n for w in ['pre workout meal', 'pre-workout meal', 'pre meal', 'antrenman oncesi yemek']):
         return 'pre-workout-meal'
+    if any(w in n for w in ['pre-workout', 'pre workout', ' pre ']):
+        return 'pre-workout'
+    if any(w in n for w in ['post-workout', 'post workout', ' post ']):
+        return 'post-workout'
     return 'extra'
+
+
+def tg_slot_near_match(norm_text, start, end, fallback='extra'):
+    before = norm_text[max(0, start - 80):start]
+    after = norm_text[end:end + 30]
+    pre_pos = max(before.rfind('pre meal'), before.rfind('pre-workout'), before.rfind('pre workout'), before.rfind(' pre '))
+    post_pos = max(before.rfind('post meal'), before.rfind('post-workout'), before.rfind('post workout'), before.rfind(' post '))
+    if post_pos > pre_pos and post_pos >= 0:
+        return 'post-workout'
+    if pre_pos >= 0:
+        return 'pre-workout'
+    near = before + ' ' + after
+    local = tg_slot_from_text(near)
+    return local if local != 'extra' else fallback
+
+
 def _macro_for_known_food(name, amount):
     name_n = _tg_norm(name) if '_tg_norm' in globals() else str(name).lower()
     amount = float(amount or 0)
@@ -1476,7 +1525,7 @@ def _macro_for_known_food(name, amount):
         return (round(g * 360 / 100), round(g * 7 / 100, 1), round(g * 79 / 100, 1), round(g * 0.6 / 100, 1), f"Yasmin Pirinc ({g:g}g cig)")
     if 'tavuk' in name_n:
         g = amount
-        return (round(g * 120 / 100), round(g * 23 / 100, 1), 0, round(g * 2 / 100, 1), f"Tavuk Gogsu ({g:g}g cig)")
+        return (round(g * 115 / 100), round(g * 23 / 100, 1), 0, round(g * 1.5 / 100, 1), f"Tavuk Gogsu ({g:g}g cig)")
     if 'muz' in name_n:
         g = amount
         return (round(g * 89 / 100), round(g * 1.1 / 100, 1), round(g * 22.8 / 100, 1), round(g * 0.3 / 100, 1), f"Muz ({g:g}g)")
@@ -1505,6 +1554,15 @@ def tg_known_food_actions_from_text(raw_text):
         (r'(\d+(?:[\.,]\d+)?)\s*g(?:r|ram)?\s*(?:marine\s*)?tavuk', 'tavuk'),
         (r'(\d+(?:[\.,]\d+)?)\s*g(?:r|ram)?\s*muz', 'muz'),
         (r'(\d+(?:[\.,]\d+)?)\s*(?:fis|fıs)\s*(?:gymbeam|spray|yag|yağ)?', 'gymbeam spray'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*(?:bizim\s*)?(?:tost\s*)?ekmek', 'tost ekmegi'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*tost', 'tost ekmegi'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*cilek', 'cilek'),
+        (r'(\d+(?:[\.,]\d+)?)\s*g(?:r|ram)?\s*ÃÂ§ilek', 'cilek'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*salatal', 'salatalik'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*(?:yasmin\s*)?pirin', 'pirinc'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*(?:marine\s*)?tavuk', 'tavuk'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:er\s*)?g(?:r|ram)?\s*muz', 'muz'),
+        (r'(\d+(?:[\.,]\d+)?)\s*(?:fis|fÃÂ±s)\s*(?:gymbeam|spray|yag|yaÃÂ)?', 'gymbeam spray'),
     ]
     actions = []
     seen = set()
@@ -1514,17 +1572,26 @@ def tg_known_food_actions_from_text(raw_text):
             macro = _macro_for_known_food(name, amt)
             if not macro:
                 continue
-            key = (name, amt)
+            item_slot = tg_slot_near_match(n, m.start(), m.end(), slot)
+            key = (name, amt, m.start(), item_slot)
             if key in seen:
                 continue
             seen.add(key)
             kcal, p, c, f, title = macro
             actions.append({
-                'type': 'meal', 'date': date, 'slot': slot, 'title': title,
+                'type': 'meal', 'date': date, 'slot': item_slot, 'title': title,
                 'description': f'{amt:g} {"adet" if name == "yumurta" else "g/fis"} sabit hesap',
                 'calories': kcal, 'protein_g': p, 'carbs_g': c, 'fat_g': f,
                 'source': 'telegram-fixed-food'
             })
+    if 'pre' in n and 'post' in n:
+        chicken_actions = [a for a in actions if 'Tavuk Gogsu' in (a.get('title') or '')]
+        chicken_slots = {a.get('slot') for a in chicken_actions}
+        if len(chicken_actions) == 1 and {'pre-workout', 'post-workout'} - chicken_slots:
+            clone = dict(chicken_actions[0])
+            clone['slot'] = next(iter({'pre-workout', 'post-workout'} - chicken_slots))
+            clone['description'] = (clone.get('description') or '') + ' | pre/post cift kayit'
+            actions.append(clone)
     return actions
 
 
@@ -2476,6 +2543,11 @@ async def cmd_chat_ai(u, c):
     except Exception:
         log.exception("Deterministik Telegram aksiyonlari basarisiz")
     actions = merge_actions_no_duplicates(actions, fixed_actions)
+    if not tg_has_explicit_water_amount(raw):
+        actions = [
+            a for a in actions
+            if not (isinstance(a, dict) and a.get('type') in ('water', 'water_set', 'update_water'))
+        ]
     saved    = apply_actions(actions)
 
     template_title = ''
@@ -2571,6 +2643,7 @@ async def cmd_photo(u, c):
             "o gune uygun antrenmani yaz\n"
             "- Vucud fotografiysa: durusu, kas gelisimini, genel yorumu paylas\n"
             "- Yemek fotografiysa besinleri ayri ayri analiz et; caption kayit istiyorsa ayri meal actionlari olustur.\n"
+            "- Tavuk gogsu cig 100g = 115 kcal, 23P, 0K, 1.5Y olarak hesaplanir.\n"
             "- Kayit istenmediyse actions bos kalsin. Belirsizlik yuksekse once tek net soru sor.\n"
             "SADECE gecerli JSON dondur:\n"
             '{"reply":"...","actions":[{"type":"meal","date":"YYYY-MM-DD","slot":"kahvalti|ogle|aksam|ara","title":"Besin ve miktar","description":"cig/pismis ve hazirlama","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0,"estimated":true,"source":"visual-estimate"}]}'
