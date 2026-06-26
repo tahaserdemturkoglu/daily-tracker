@@ -4448,8 +4448,10 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
     const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',snack:'Snack 1',meal1:'Meal 1',pre:'Pre Meal',post:'Post Meal',snack2:'Snack 2',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
+    const MEAL_ORDER=['kahvalti','kahvaltı','pre_meal','snack','post','meal1','aksam','snack2','extra'];
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
-    box.innerHTML=groupOrder.map(key=>{
+    const sortedOrder=[...new Set([...MEAL_ORDER.filter(s=>groups[s]),...groupOrder])];
+    box.innerHTML=sortedOrder.map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
       return `<div class="mission-meal-stack"><div class="mission-meal-stack-head"><div class="mission-meal-stack-title">${labels[key]||key}</div><div class="mission-meal-stack-total">${Math.round(cal)} kcal · P ${Math.round(p)} · K ${Math.round(c)} · Y ${Math.round(f)}</div></div>${rows.map(m=>`<div class="mission-meal-stack-row"><b>${m.description&&m.description!==m.title?m.description+' ':''}${m.title||m.description||'Kayıt'}</b><span style="display:flex;gap:5px;align-items:center">${m.calories?`<span style="color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="color:var(--green);font-size:.75em">P:${Math.round(m.protein_g)}</span>`:''} ${m.carbs_g?`<span style="color:var(--blue);font-size:.75em">K:${Math.round(m.carbs_g)}</span>`:''} ${m.fat_g?`<span style="color:var(--orange);font-size:.75em">Y:${Math.round(m.fat_g)}</span>`:''}</span></div>`).join('')}</div>`;
     }).join('');
