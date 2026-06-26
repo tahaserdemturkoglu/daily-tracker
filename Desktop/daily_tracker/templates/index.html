@@ -5058,6 +5058,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     next = next.replace('/api/day/' + encodedCalendar, '/api/day/' + encodedOp);
     next = next.replace('date=' + calendar, 'date=' + op);
     next = next.replace('date=' + encodedCalendar, 'date=' + encodedOp);
+    // /api/today ve /api/macro/today icin date param ekle
+    if(/\/api\/today(\?|$)/.test(next)) next = next.replace(/\/api\/today(\?.*)?$/, '/api/today?date=' + op);
+    if(/\/api\/macro\/today(\?|$)/.test(next)) next = next.replace(/\/api\/macro\/today(\?.*)?$/, '/api/macro/today?date=' + op);
+    if(/\/api\/vitamins\/today(\?|$)/.test(next)) next = next.replace(/\/api\/vitamins\/today(\?.*)?$/, '/api/vitamins/today?date=' + op);
+    if(/\/api\/meals\/today(\?|$)/.test(next)) next = next.replace(/\/api\/meals\/today(\?.*)?$/, '/api/meals/today?date=' + op);
     if(next === raw) return input;
     if(typeof input === 'string') return next;
     try { return new Request(next, input); } catch(e) { return next; }
