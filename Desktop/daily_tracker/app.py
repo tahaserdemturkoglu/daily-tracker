@@ -606,6 +606,25 @@ def api_steps_delete():
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'date': d, 'deleted': deleted})
 
+@app.route('/api/body', methods=['POST'])
+def api_body_save():
+    data = request.get_json(force=True) or {}
+    d = data.get('date', operation_today())
+    kg = data.get('weight_kg')
+    kg_night = data.get('weight_kg_night')
+    conn = get_db()
+    existing = conn.execute("SELECT date FROM body_metrics WHERE date=?", (d,)).fetchone()
+    if existing:
+        if kg_night is not None:
+            conn.execute("UPDATE body_metrics SET weight_kg_night=? WHERE date=?", (kg_night, d))
+        if kg is not None:
+            conn.execute("UPDATE body_metrics SET weight_kg=? WHERE date=?", (kg, d))
+    else:
+        conn.execute("INSERT INTO body_metrics (date, weight_kg, weight_kg_night) VALUES (?,?,?)",
+                     (d, kg, kg_night))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': d})
+
 @app.route('/api/vitamin', methods=['POST'])
 def api_vitamin():
     data = request.get_json(force=True) or {}
