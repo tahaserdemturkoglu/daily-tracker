@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Antrenman · Taha Serdem</title>
+<style>
+:root {
+  --bg:      #080c14;
+  --bg2:     #0f1623;
+  --bg3:     #161f2e;
+  --bg4:     #1e2a3d;
+  --bg5:     #253248;
+  --border:  #1e293b;
+  --border2: #2d3f58;
+  --text:    #f1f5f9;
+  --muted:   #64748b;
+  --muted2:  #94a3b8;
+  --chest:   #10b981;
+  --shoulder:#ec4899;
+  --back:    #8b5cf6;
+  --arm:     #f59e0b;
+  --leg:     #3b82f6;
+  --core:    #ef4444;
+  --primary: #6366f1;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+  --blue:    #3b82f6;
+  --r:12px;--r2:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+.top-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;gap:16px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.brand-icon{width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.brand-name{font-size:17px;font-weight:700;letter-spacing:-.3px;}
+.week-strip{display:flex;gap:6px;flex:1;justify-content:center;}
+.week-day{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;transition:all .2s;min-width:64px;}
+.week-day:hover{border-color:var(--border2);background:var(--bg4);}
+.week-day.today{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary);}
+.week-day.active{background:var(--primary);border-color:var(--primary);}
+.week-day-name{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);}
+.week-day.active .week-day-name,.week-day.today .week-day-name{color:#fff;}
+.week-day-split{font-size:11px;font-weight:700;color:var(--text);}
+.week-day.active .week-day-split{color:#fff;}
+.week-day.off .week-day-split{color:var(--muted);}
+.week-day.push .week-day-split{color:#f97316;}
+.week-day.pull .week-day-split{color:#8b5cf6;}
+.week-day.leg .week-day-split{color:#3b82f6;}
+.week-day.upper .week-day-split{color:#10b981;}
+.week-day.lower .week-day-split{color:#ec4899;}
+.nav-right{display:flex;gap:10px;flex-shrink:0;}
+.nav-btn{padding:9px 14px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--muted2);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;}
+.nav-btn:hover{border-color:var(--primary);color:var(--primary);}
+.nav-btn.finish{background:var(--success);border-color:var(--success);color:#fff;}
+
+.main{max-width:980px;margin:0 auto;padding:22px 20px 60px;}
+.layout{display:flex;gap:20px;align-items:flex-start;}
+.main-col{flex:1;min-width:0;}
+
+.page-header{margin-bottom:20px;}
+.ph-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+.ph-left h1{font-size:28px;font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.day-badge{background:var(--danger);color:#fff;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:700;}
+.ph-meta{display:flex;align-items:center;gap:12px;color:var(--muted2);font-size:13px;}
+.stat-cards{display:flex;gap:12px;flex-wrap:wrap;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;min-width:110px;flex:1;}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+.stat-value{font-size:22px;font-weight:800;}
+.stat-value.blue{color:var(--blue);}
+.stat-value.green{color:var(--success);}
+.stat-value.orange{color:var(--warning);}
+.stat-value.purple{color:var(--primary);}
+
+.global-progress{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:20px;}
+.gp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.gp-label{font-size:13px;font-weight:600;}
+.gp-pct{font-size:13px;color:var(--muted2);}
+.gp-track{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.gp-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .5s ease;}
+
+.exercise-list{display:flex;flex-direction:column;gap:14px;}
+.ex-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:box-shadow .2s;}
+.ex-card:hover{box-shadow:0 4px 24px rgba(0,0,0,.4);}
+.ex-card.done{border-color:rgba(16,185,129,.3);}
+
+.ex-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;}
+.ex-header-click{display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;flex-wrap:wrap;}
+.ex-num{width:26px;height:26px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted2);flex-shrink:0;}
+.ex-name{font-size:16px;font-weight:700;}
+.muscle-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.muscle-badge.shoulder{background:rgba(236,72,153,.15);color:var(--shoulder);}
+.muscle-badge.chest{background:rgba(16,185,129,.15);color:var(--chest);}
+.muscle-badge.back{background:rgba(139,92,246,.15);color:var(--back);}
+.muscle-badge.arm{background:rgba(245,158,11,.15);color:var(--arm);}
+.muscle-badge.leg{background:rgba(59,130,246,.15);color:var(--leg);}
+.muscle-badge.core{background:rgba(239,68,68,.15);color:var(--core);}
+.ex-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.ex-setcount{font-size:12px;color:var(--muted2);}
+.collapse-icon{color:var(--muted);font-size:14px;transition:transform .2s;cursor:pointer;}
+.ex-card.collapsed .collapse-icon{transform:rotate(180deg);}
+.del-ex-btn{width:28px;height:28px;border-radius:50%;border:none;background:transparent;color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s;}
+.ex-card:hover .del-ex-btn{opacity:1;}
+.del-ex-btn:hover{background:rgba(239,68,68,.15);color:var(--danger);}
+
+.ex-progress-wrap{height:3px;background:var(--bg3);}
+.ex-progress-fill{height:100%;transition:width .3s;}
+.ex-progress-fill.shoulder{background:var(--shoulder);}
+.ex-progress-fill.chest{background:var(--chest);}
+.ex-progress-fill.back{background:var(--back);}
+.ex-progress-fill.arm{background:var(--arm);}
+.ex-progress-fill.leg{background:var(--leg);}
+.ex-progress-fill.core{background:var(--core);}
+
+.pr-banner{display:flex;align-items:center;gap:8px;padding:8px 18px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:12px;color:var(--muted2);flex-wrap:wrap;}
+.pr-banner strong{color:var(--warning);}
+.pr-new{display:inline-block;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:.3px;animation:shimmer 2s infinite;}
+@keyframes shimmer{0%,100%{opacity:1;}50%{opacity:.7;}}
+
+/* ── SET TABLE ── */
+/* cols: #(28px) | tip(1fr) | kg(110px) | rep(76px) | actions(68px) */
+.set-body{padding:14px 18px;}
+.set-body.hidden{display:none;}
+.tbl-head{display:grid;grid-template-columns:28px 1fr 110px 76px 68px;gap:10px;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.tbl-head span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+
+/* ── NORMAL SET ROW ── */
+.set-row{display:grid;grid-template-columns:28px 1fr 110px 76px 68px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);transition:all .15s;}
+.set-row:last-of-type{border-bottom:none;}
+.set-row.done-row{background:rgba(16,185,129,.06);border-radius:var(--r2);padding:7px 10px;margin:2px -10px 4px;border:1px solid rgba(16,185,129,.2);}
+.set-row.incomplete-row{opacity:.55;}
+.set-row.incomplete-row:hover{opacity:1;}
+.set-num{font-size:13px;font-weight:700;color:var(--muted2);text-align:center;}
+
+/* ── DROP SET — alt set, parent'a bağlı ── */
+/*
+  Veri modeli: her set { id, type, weight, reps, done, drops:[] }
+  drops: [{ id, weight, reps, done }, ...]
+  Drops SADECE parent setinin hemen altında gösterilir.
+  Aynı parent'tan N drop = N kez ağırlık düşürüldü (double/triple drop set)
+*/
+.set-group{position:relative;}
+/* dikey bağlantı çizgisi */
+.set-group.has-drops::after{
+  content:'';
+  position:absolute;
+  left:13px; top:20px; bottom:12px;
+  width:2px;
+  background:linear-gradient(to bottom, rgba(245,158,11,.6), rgba(245,158,11,.08));
+  border-radius:1px;
+  pointer-events:none;
+}
+.set-group .anchor-row{position:relative;}
+/* drop satırları girintili + amber */
+.drop-row{
+  display:grid;
+  grid-template-columns:28px 1fr 110px 76px 68px;
+  gap:10px;align-items:center;
+  padding:7px 0 7px 14px;
+  border-bottom:1px solid rgba(245,158,11,.1);
+  transition:all .15s;
+  position:relative;
+}
+.drop-row:last-child{border-bottom:none;}
+.drop-row::before{
+  /* küçük yatay bağlantı oku */
+  content:'';
+  position:absolute;
+  left:13px; top:50%;
+  width:8px; height:2px;
+  background:rgba(245,158,11,.5);
+  transform:translateY(-50%);
+}
+.drop-row.done-drop{background:rgba(245,158,11,.1);border-radius:0 var(--r2) var(--r2) 0;border-left:2px solid rgba(245,158,11,.4);}
+.drop-row.incomplete-drop{opacity:.5;}
+.drop-row.incomplete-drop:hover{opacity:1;}
+.drop-chip{
+  display:inline-flex;align-items:center;gap:2px;
+  background:rgba(245,158,11,.18);color:var(--warning);
+  font-size:9px;font-weight:900;padding:2px 5px;border-radius:4px;
+  letter-spacing:.3px;white-space:nowrap;
+}
+/* drop ağırlık input normal input stiliyle aynı ama amber border */
+.drop-row .num-wrap input{border-color:rgba(245,158,11,.25);}
+.drop-row .num-wrap input:focus{border-color:var(--warning);}
+
+/* ── SUPERSET — drop set stiliyle aynı dil, mavi renk ── */
+/* Her tur: A satırı → yatay ok → B satırı, sol dikey mavi çizgi */
+.ss-group{position:relative;}
+.ss-group::after{
+  content:'';
+  position:absolute;
+  left:13px; top:20px; bottom:12px;
+  width:2px;
+  background:linear-gradient(to bottom, rgba(59,130,246,.6), rgba(59,130,246,.08));
+  border-radius:1px;
+  pointer-events:none;
+}
+/* A satırı — normal set gibi, sol kenarda SS chip */
+.ss-a-row{
+  display:grid;
+  grid-template-columns:28px 1fr 110px 76px 68px;
+  gap:10px;align-items:center;
+  padding:7px 0;
+  border-bottom:1px solid rgba(59,130,246,.1);
+  transition:all .15s;
+}
+.ss-a-row.done-ss{background:rgba(16,185,129,.06);border-radius:var(--r2) var(--r2) 0 0;padding:7px 10px;margin:2px -10px 0;border:1px solid rgba(16,185,129,.2);border-bottom:1px solid rgba(59,130,246,.15) !important;}
+.ss-a-row.incomplete-ss{opacity:.55;}
+.ss-a-row.incomplete-ss:hover{opacity:1;}
+/* B satırı — girintili + mavi arka plan */
+.ss-b-row{
+  display:grid;
+  grid-template-columns:28px 1fr 110px 76px 68px;
+  gap:10px;align-items:center;
+  padding:7px 0 7px 14px;
+  background:rgba(59,130,246,.05);
+  border-bottom:1px solid rgba(59,130,246,.08);
+  transition:all .15s;
+  position:relative;
+}
+.ss-b-row:last-of-type{border-bottom:none;}
+.ss-b-row::before{
+  content:'';
+  position:absolute;
+  left:13px; top:50%;
+  width:8px; height:2px;
+  background:rgba(59,130,246,.5);
+  transform:translateY(-50%);
+}
+.ss-b-row.done-ss{background:rgba(16,185,129,.06);border-radius:0 0 var(--r2) var(--r2);padding:7px 10px 7px 14px;margin:0 -10px 4px;border:1px solid rgba(16,185,129,.2);border-top:none !important;}
+.ss-b-row.incomplete-ss{opacity:.5;}
+.ss-b-row.incomplete-ss:hover{opacity:1;}
+/* SS chip — mavi, drop chip ile aynı format */
+.ss-chip{
+  display:inline-flex;align-items:center;gap:2px;
+  background:rgba(59,130,246,.18);color:#60a5fa;
+  font-size:9px;font-weight:900;padding:2px 5px;border-radius:4px;
+  letter-spacing:.3px;white-space:nowrap;
+}
+.ss-b-chip{
+  display:inline-flex;align-items:center;gap:2px;
+  background:rgba(59,130,246,.12);color:#60a5fa;
+  font-size:9px;font-weight:900;padding:2px 5px;border-radius:4px;
+  letter-spacing:.3px;white-space:nowrap;
+}
+.ss-b-row .num-wrap input{border-color:rgba(59,130,246,.2);}
+.ss-b-row .num-wrap input:focus{border-color:var(--blue);}
+.ss-tur-sep{height:6px;}
+.ss-set-btn{width:22px;height:22px;border-radius:50%;border:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;opacity:0;}
+.set-row:hover .ss-set-btn{opacity:1;}
+.ss-set-btn.active{color:#60a5fa;opacity:1;}
+.ss-set-btn:hover{background:rgba(59,130,246,.15);color:#60a5fa;opacity:1 !important;}
+
+/* type toggles */
+.type-btns{display:flex;gap:3px;flex-wrap:wrap;}
+.t-btn{padding:5px 7px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:10px;font-weight:800;cursor:pointer;transition:all .15s;}
+.t-btn:hover{border-color:var(--border2);color:var(--muted2);}
+.t-btn.on.wu{background:var(--warning);border-color:var(--warning);color:#000;}
+.t-btn.on.ws{background:var(--blue);border-color:var(--blue);color:#fff;}
+.t-btn.on.bo{background:var(--success);border-color:var(--success);color:#fff;}
+
+/* inputs */
+.num-wrap{display:flex;align-items:center;gap:5px;}
+.num-wrap input{width:62px;padding:8px 10px;border-radius:var(--r2);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-weight:700;text-align:center;transition:border-color .15s;}
+.num-wrap input:focus{outline:none;border-color:var(--primary);background:var(--bg4);}
+.num-unit{font-size:11px;color:var(--muted);white-space:nowrap;}
+
+/* row actions */
+.row-actions{display:flex;align-items:center;gap:3px;}
+.done-btn{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s;color:transparent;}
+.done-btn:hover{border-color:var(--success);color:var(--success);}
+.done-btn.on{background:var(--success);border-color:var(--success);color:#fff;}
+.del-set-btn{width:22px;height:22px;border-radius:50%;border:none;background:transparent;color:transparent;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.set-row:hover .del-set-btn,
+.drop-row:hover .del-set-btn{color:var(--muted);}
+.del-set-btn:hover{background:rgba(239,68,68,.15);color:var(--danger) !important;}
+/* per-set drop button: sadece hover'da görünür */
+.add-drop-btn{
+  width:20px;height:20px;border-radius:4px;border:none;
+  background:transparent;color:transparent;font-size:11px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+.set-row:hover .add-drop-btn{color:rgba(245,158,11,.7);}
+.add-drop-btn:hover{background:rgba(245,158,11,.15);color:var(--warning) !important;}
+
+/* add buttons */
+.add-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.add-btn{padding:9px 14px;border-radius:var(--r2);border:1px dashed var(--border);background:transparent;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;}
+.add-btn.normal{color:var(--primary);}
+.add-btn.normal:hover{border-color:var(--primary);background:rgba(99,102,241,.06);}
+.add-btn.super{color:var(--blue);}
+.add-btn.super:hover{border-color:var(--blue);background:rgba(59,130,246,.06);}
+.add-btn.danger{color:var(--danger);border-color:rgba(239,68,68,.25);}
+.add-btn.danger:hover{border-color:var(--danger);background:rgba(239,68,68,.06);}
+
+.add-exercise-wrap{margin-top:16px;}
+.add-ex-btn{width:100%;padding:14px;border-radius:var(--r);border:2px dashed var(--border2);background:transparent;color:var(--muted2);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.add-ex-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,.04);}
+
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:500px;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-head h3{font-size:16px;font-weight:700;}
+.modal-close{background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.modal-close:hover{color:var(--text);background:var(--bg3);}
+.modal-search{padding:12px 20px;border-bottom:1px solid var(--border);}
+.modal-search input{width:100%;padding:10px 14px;border-radius:var(--r2);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;}
+.modal-search input:focus{outline:none;border-color:var(--primary);}
+.modal-list{overflow-y:auto;padding:8px 0;}
+.modal-ex{padding:12px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .15s;}
+.modal-ex:hover{background:var(--bg3);}
+.modal-ex-name{font-size:14px;font-weight:600;}
+
+/* hareket sırası */
+.order-panel{width:210px;flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:sticky;top:74px;max-height:calc(100vh - 90px);overflow-y:auto;}
+.order-panel h4{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;}
+.order-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:opacity .15s;}
+.order-item:last-child{border-bottom:none;}
+.order-item:hover{opacity:.7;}
+.order-item.done-ex .oi-num{background:var(--success);color:#fff;}
+.oi-num{width:20px;height:20px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--muted2);flex-shrink:0;}
+.oi-name{font-size:11px;font-weight:600;color:var(--muted2);line-height:1.3;flex:1;}
+.oi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.oi-dot.back{background:var(--back);}
+.oi-dot.chest{background:var(--chest);}
+.oi-dot.shoulder{background:var(--shoulder);}
+.oi-dot.arm{background:var(--arm);}
+.oi-dot.leg{background:var(--leg);}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg4);border:1px solid var(--border2);border-radius:30px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--text);z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.success{border-color:var(--success);color:var(--success);}
+
+@media(max-width:860px){.order-panel{display:none;}}
+@media(max-width:640px){
+  .tbl-head,.set-row,.drop-row{grid-template-columns:24px 1fr 96px 64px 58px;}
+  .num-wrap input{width:50px;padding:7px 8px;font-size:12px;}
+  .t-btn{padding:4px 5px;font-size:9px;}
+  .main{padding:16px 14px 60px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="brand">
+    <div class="brand-icon">🏋️</div>
+    <span class="brand-name">Antrenman</span>
+  </div>
+  <div class="week-strip" id="weekStrip"></div>
+  <div class="nav-right">
+    <button class="nav-btn" onclick="showToast('📊 Geçmiş yakında')">📊 Geçmiş</button>
+    <button class="nav-btn finish" onclick="finishWorkout()">✓ Bitir</button>
+  </div>
+</nav>
+
+<main class="main">
+<div class="layout">
+<div class="main-col">
+
+  <div class="page-header">
+    <div class="ph-top">
+      <div class="ph-left">
+        <h1 id="dayTitle">Upper <span class="day-badge" id="exCountBadge">9 egzersiz</span></h1>
+        <div class="ph-meta">
+          <span>📅 26 Haziran Cuma</span>
+          <span id="timerDisplay">⏱ 00:00</span>
+        </div>
+      </div>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="stat-label">Set</div><div class="stat-value blue" id="statSets">0/32</div></div>
+        <div class="stat-card"><div class="stat-label">Hacim</div><div class="stat-value green" id="statVolume">0 kg</div></div>
+        <div class="stat-card"><div class="stat-label">PR</div><div class="stat-value orange" id="statPR">0</div></div>
+        <div class="stat-card"><div class="stat-label">%</div><div class="stat-value purple" id="statPct">0%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="global-progress">
+    <div class="gp-head">
+      <span class="gp-label" id="gpLabel">0 / 0 set tamamlandı</span>
+      <span class="gp-pct" id="gpPct">0%</span>
+    </div>
+    <div class="gp-track"><div class="gp-fill" id="gpFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="exercise-list" id="exerciseList"></div>
+
+  <div class="add-exercise-wrap">
+    <button class="add-ex-btn" onclick="openModal('add')">＋ Egzersiz Ekle</button>
+  </div>
+
+</div>
+
+<aside class="order-panel">
+  <h4>📋 Hareket Sırası</h4>
+  <div id="orderList"></div>
+</aside>
+</div>
+</main>
+
+<div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Egzersiz Seç</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-search">
+      <input type="text" id="modalSearch" placeholder="Ara..." oninput="filterModal(this.value)">
+    </div>
+    <div class="modal-list" id="modalList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  VERİ MODELİ
+//
+//  Exercise: { id, name, muscle, muscleLabel, pr, sets[], superset? }
+//
+//  Set tipleı:
+//    'wu' = Warm Up    → ısınma seti, PR'a sayılmaz
+//    'ws' = Working Set → ana çalışma seti
+//    'bo' = Back Off   → son çalışma setinden sonra düşük ağırlık
+//
+//  Set: { id, type:'wu'|'ws'|'bo', weight, reps, done, drops:[] }
+//
+//  DROP SET — set.drops[] dizisinde tutulur:
+//    Drop: { id, weight, reps, done }
+//    - drop = o setin devamı, ağırlık düşürüldü, DİNLENMEDEN devam
+//    - parent setten bağımsız OLAMAZ
+//    - her sete N tane drop eklenebilir (double/triple drop set)
+//    - drop'ların kendi tipi yoktur — parent setin tipidir
+//
+//  SUPERSET — set seviyesinde tanımlanır:
+//    s.ss = { name, muscle, muscleLabel, weight, reps }
+//    Sadece seçilen setlere B satırı eklenir
+//    Her "tur" = A seti → hemen → B seti → dinlen
+// ═══════════════════════════════════════════════
+
+const EXERCISE_DB = [
+  {name:'Chest Supported Row',           muscle:'back',     muscleLabel:'Sırt'},
+  {name:'Lat Pulldown',                  muscle:'back',     muscleLabel:'Sırt'},
+  {name:'Lat Pullover Relaxing',         muscle:'back',     muscleLabel:'Sırt'},
+  {name:'Cable Row',                     muscle:'back',     muscleLabel:'Sırt'},
+  {name:'Face Pull',                     muscle:'back',     muscleLabel:'Arka Omuz'},
+  {name:'Cable Lower Chest Press',       muscle:'chest',    muscleLabel:'Göğüs'},
+  {name:'Low to High Single DB Fly',     muscle:'chest',    muscleLabel:'Göğüs'},
+  {name:'Incline DB Press',              muscle:'chest',    muscleLabel:'Göğüs'},
+  {name:'Pec Deck Fly',                  muscle:'chest',    muscleLabel:'Göğüs'},
+  {name:'Lateral Raise',                 muscle:'shoulder', muscleLabel:'Omuz'},
+  {name:'Overhead Press',                muscle:'shoulder', muscleLabel:'Omuz'},
+  {name:'Chest Supported Rear Delt Row', muscle:'shoulder', muscleLabel:'Arka Omuz'},
+  {name:'Oturarak Front Raise',          muscle:'shoulder', muscleLabel:'Ön Omuz'},
+  {name:'Cable Triceps Extension',       muscle:'arm',      muscleLabel:'Triceps'},
+  {name:'Preacher Curl',                 muscle:'arm',      muscleLabel:'Biceps'},
+  {name:'Skull Crusher',                 muscle:'arm',      muscleLabel:'Triceps'},
+  {name:'Hammer Curl',                   muscle:'arm',      muscleLabel:'Biceps'},
+  {name:'Squat',                         muscle:'leg',      muscleLabel:'Bacak'},
+  {name:'Romanian Deadlift',             muscle:'leg',      muscleLabel:'Bacak'},
+  {name:'Leg Press',                     muscle:'leg',      muscleLabel:'Bacak'},
+  {name:'Leg Curl',                      muscle:'leg',      muscleLabel:'Bacak'},
+];
+
+const INITIAL = [
+  {
+    id:'e1', name:'Chest Supported Row', muscle:'back', muscleLabel:'Sırt',
+    pr:{weight:22,reps:10,label:'22kg × 10'},
+    sets:[
+      {id:'s1', type:'wu', weight:12, reps:10, done:true,  drops:[]},
+      {id:'s2', type:'wu', weight:16, reps:8,  done:true,  drops:[]},
+      {id:'s3', type:'ws', weight:20, reps:10, done:true,  drops:[]},
+      {id:'s4', type:'ws', weight:22, reps:10, done:true,  drops:[]},
+      {id:'s5', type:'bo', weight:16, reps:12, done:true,  drops:[]},
+    ]
+  },
+  {
+    id:'e2', name:'Lat Pulldown', muscle:'back', muscleLabel:'Sırt',
+    pr:{weight:59,reps:10,label:'59kg × 10'},
+    sets:[
+      {id:'s6', type:'wu', weight:32, reps:10, done:true,  drops:[]},
+      {id:'s7', type:'ws', weight:45, reps:12, done:true,  drops:[]},
+      {id:'s8', type:'ws', weight:59, reps:10, done:false, drops:[]},
+    ]
+  },
+  {
+    id:'e3', name:'Lat Pullover Relaxing', muscle:'back', muscleLabel:'Sırt',
+    pr:{weight:32,reps:12,label:'32kg × 12'},
+    sets:[
+      {id:'s9',  type:'ws', weight:27, reps:12, done:false, drops:[]},
+      {id:'s10', type:'ws', weight:32, reps:12, done:false, drops:[]},
+    ]
+  },
+  {
+    id:'e4', name:'Cable Lower Chest Press', muscle:'chest', muscleLabel:'Göğüs',
+    pr:{weight:46,reps:10,label:'46kg × 10'},
+    sets:[
+      {id:'s11', type:'wu', weight:21, reps:12, done:false, drops:[]},
+      {id:'s12', type:'ws', weight:32, reps:10, done:false, drops:[
+        // Drop set örneği: 32kg bitti → 24kg devam (dinlenmeden)
+        {id:'sd1', weight:24, reps:12, done:false}
+      ]},
+      {id:'s14', type:'ws', weight:46, reps:10, done:false, drops:[]},
+    ]
+  },
+  {
+    id:'e5', name:'Low to High Single DB Fly', muscle:'chest', muscleLabel:'Göğüs',
+    pr:{weight:8,reps:12,label:'8kg × 12'},
+    sets:[
+      {id:'s15', type:'ws', weight:8, reps:11, done:false, drops:[]},
+      {id:'s16', type:'ws', weight:8, reps:12, done:false, drops:[]},
+      {id:'s17', type:'ws', weight:8, reps:12, done:false, drops:[]},
+    ]
+  },
+  {
+    id:'e6', name:'Lateral Raise', muscle:'shoulder', muscleLabel:'Omuz',
+    pr:{weight:12,reps:13,label:'12kg × 13'},
+    sets:[
+      {id:'s18', type:'wu', weight:8,  reps:15, done:false, drops:[]},
+      {id:'s19', type:'ws', weight:12, reps:10, done:false, drops:[]},
+      {id:'s20', type:'ws', weight:12, reps:12, done:false, drops:[]},
+      {id:'s21', type:'ws', weight:12, reps:13, done:false, drops:[]},
+    ]
+  },
+  {
+    id:'e7', name:'Chest Supported Rear Delt Row', muscle:'shoulder', muscleLabel:'Arka Omuz',
+    pr:{weight:6,reps:11,label:'6kg × 11'},
+    sets:[
+      {id:'s22', type:'ws', weight:6, reps:10, done:false, drops:[], ss:{name:'Oturarak Front Raise', muscle:'shoulder', muscleLabel:'Ön Omuz', weight:12, reps:10}},
+      {id:'s23', type:'ws', weight:6, reps:11, done:false, drops:[], ss:{name:'Oturarak Front Raise', muscle:'shoulder', muscleLabel:'Ön Omuz', weight:12, reps:10}},
+    ]
+  },
+  {
+    id:'e8', name:'Cable Triceps Extension', muscle:'arm', muscleLabel:'Triceps',
+    pr:{weight:46,reps:10,label:'46kg × 10'},
+    sets:[
+      {id:'s24', type:'wu', weight:23, reps:10, done:false, drops:[]},
+      {id:'s25', type:'ws', weight:32, reps:10, done:false, drops:[]},
+      {id:'s26', type:'ws', weight:46, reps:8,  done:false, drops:[
+        // Double drop: 46→32→20 (yorgunluk düşürme tekniği)
+        {id:'sd2', weight:32, reps:12, done:false},
+        {id:'sd3', weight:20, reps:15, done:false},
+      ]},
+    ]
+  },
+  {
+    id:'e9', name:'Preacher Curl', muscle:'arm', muscleLabel:'Biceps',
+    pr:{weight:12,reps:10,label:'12kg × 10'},
+    sets:[
+      {id:'s28', type:'ws', weight:8,  reps:10, done:false, drops:[]},
+      {id:'s29', type:'ws', weight:12, reps:9,  done:false, drops:[]},
+      {id:'s30', type:'ws', weight:12, reps:10, done:false, drops:[]},
+    ]
+  },
+];
+
+let exercises = JSON.parse(JSON.stringify(INITIAL));
+let idCounter = 200;
+let startTime = null;
+let timerInterval = null;
+let modalMode = 'add';
+let modalTargetEid = null;
+
+// ── RENDER ──
+function render() {
+  const list = document.getElementById('exerciseList');
+  list.innerHTML = '';
+  exercises.forEach((ex, i) => list.appendChild(buildCard(ex, i)));
+  updateTotals();
+  renderOrderPanel();
+}
+
+function renderOrderPanel() {
+  const ol = document.getElementById('orderList');
+  if (!ol) return;
+  ol.innerHTML = exercises.map((ex, i) => {
+    const allDone = ex.sets.length > 0 && ex.sets.every(s => s.done);
+    return `<div class="order-item${allDone?' done-ex':''}" onclick="scrollToEx('${ex.id}')">
+      <div class="oi-num">${allDone?'✓':i+1}</div>
+      <span class="oi-name">${ex.name}${ex.superset?` <span style="font-size:9px;color:#60a5fa">SS</span>`:''}</span>
+      <div class="oi-dot ${ex.muscle}"></div>
+    </div>`;
+  }).join('');
+}
+
+function scrollToEx(eid) {
+  const el = document.querySelector(`.ex-card[data-id="${eid}"]`);
+  if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── BUILD CARD ──
+function buildCard(ex, idx) {
+  const doneSets = ex.sets.filter(s=>s.done).length;
+  const totalSets= ex.sets.length;
+  const pct      = totalSets ? Math.round(doneSets/totalSets*100) : 0;
+  const isAllDone= doneSets===totalSets && totalSets>0;
+  const prHit    = isPRHit(ex);
+
+  const card = document.createElement('div');
+  card.className = 'ex-card' + (isAllDone?' done':'');
+  card.dataset.id = ex.id;
+
+  card.innerHTML = `
+    <div class="ex-header">
+      <div class="ex-header-click" onclick="toggleCard('${ex.id}')">
+        <div class="ex-num">${idx+1}</div>
+        <span class="ex-name">${ex.name}</span>
+        <span class="muscle-badge ${ex.muscle}">${ex.muscleLabel}</span>
+        ${isAllDone?`<span style="font-size:11px;color:var(--success);font-weight:700;">✓ Tamam</span>`:''}
+      </div>
+      <div class="ex-right">
+        <span class="ex-setcount">${doneSets}/${totalSets}</span>
+        <button class="del-ex-btn" onclick="deleteExercise('${ex.id}')">🗑</button>
+        <span class="collapse-icon" onclick="toggleCard('${ex.id}')">▲</span>
+      </div>
+    </div>
+    <div class="ex-progress-wrap">
+      <div class="ex-progress-fill ${ex.muscle}" style="width:${pct}%"></div>
+    </div>
+    ${buildPRBanner(ex, prHit)}
+    <div class="set-body" id="body_${ex.id}">
+      ${buildNormalSets(ex)}
+      <div class="add-btns">
+        <button class="add-btn normal" onclick="addSet('${ex.id}')">＋ Set Ekle</button>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+// ── PR BANNER ──
+function buildPRBanner(ex, prHit) {
+  if (!ex.pr) return '';
+  const bestSet = ex.sets
+    .filter(s => s.done && s.weight && s.reps && (s.type==='ws'||s.type==='bo'))
+    .sort((a,b) => (b.weight*b.reps)-(a.weight*a.reps))[0];
+  let diff = '';
+  if (bestSet) {
+    const parts = [];
+    const wd = bestSet.weight - ex.pr.weight;
+    const rd = bestSet.reps - ex.pr.reps;
+    if (wd>0) parts.push(`<span style="color:var(--success)">+${wd}kg</span>`);
+    else if (wd<0) parts.push(`<span style="color:var(--danger)">${wd}kg</span>`);
+    if (rd>0) parts.push(`<span style="color:var(--success)">+${rd} rep</span>`);
+    else if (rd<0) parts.push(`<span style="color:var(--danger)">${rd} rep</span>`);
+    if (parts.length) diff = `&nbsp;&nbsp;${parts.join(' ')}`;
+  }
+  const ssPR = ex.superset?.pr ? `&nbsp;&nbsp;<span style="color:#60a5fa">🔗</span> <strong>${ex.superset.pr.label}</strong>` : '';
+  return `<div class="pr-banner">
+    📌 Önceki: <strong>${ex.pr.label}</strong>${diff}
+    ${prHit?'<span class="pr-new">YENİ PR!</span>':''}${ssPR}
+  </div>`;
+}
+
+// ── NORMAL SETS ──
+function buildNormalSets(ex) {
+  let html = `<div class="tbl-head"><span>#</span><span>Tip</span><span>Ağırlık</span><span>Tekrar</span><span></span></div>`;
+  ex.sets.forEach((s, i) => {
+    const hasDrops = s.drops && s.drops.length > 0;
+    const statusCls = s.done ? 'done-row' : 'incomplete-row';
+    if (hasDrops) {
+      html += `<div class="set-group has-drops">
+        <div class="anchor-row">
+          ${anchorRowHtml(ex, s, i+1)}
+        </div>
+        ${s.drops.map(d => dropRowHtml(ex, s, d)).join('')}
+      </div>`;
+    } else {
+      html += `<div class="set-group">${anchorRowHtml(ex, s, i+1)}</div>`;
+    }
+  });
+  return html;
+}
+
+function anchorRowHtml(ex, s, num) {
+  const statusCls = s.done ? 'done-row' : 'incomplete-row';
+  const ssBtn = s.ss
+    ? `<button class="ss-set-btn active" onclick="removeSetSuperset('${ex.id}','${s.id}')" title="Superset kaldır">🔗</button>`
+    : `<button class="ss-set-btn" onclick="openModal('superset','${ex.id}','${s.id}')" title="Bu sete superset ekle">🔗</button>`;
+  const bRow = s.ss ? `
+    <div class="ss-b-row">
+      <span class="ss-b-chip">→ B</span>
+      <span style="font-size:10px;color:#60a5fa;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${s.ss.name}</span>
+      <div class="num-wrap"><input type="number" value="${s.ss.weight||''}" placeholder="0" onchange="updateSetSS('${ex.id}','${s.id}','weight',this.value)" min="0" step=".5"><span class="num-unit">kg</span></div>
+      <div class="num-wrap"><input type="number" value="${s.ss.reps||''}" placeholder="0" onchange="updateSetSS('${ex.id}','${s.id}','reps',this.value)" min="0"><span class="num-unit">rep</span></div>
+      <div class="row-actions"></div>
+    </div>` : '';
+  return `
+    <div class="ss-group">
+      <div class="set-row ${statusCls}" data-sid="${s.id}" data-eid="${ex.id}">
+        <span class="set-num">${num}</span>
+        ${typeButtons(s.type, ex.id, s.id)}
+        <div class="num-wrap"><input type="number" value="${s.weight||''}" placeholder="0" onchange="updateSet('${ex.id}','${s.id}','weight',this.value)" min="0" step=".5"><span class="num-unit">kg</span></div>
+        <div class="num-wrap"><input type="number" value="${s.reps||''}" placeholder="0" onchange="updateSet('${ex.id}','${s.id}','reps',this.value)" min="0"><span class="num-unit">rep</span></div>
+        <div class="row-actions">
+          ${ssBtn}
+          <button class="add-drop-btn" onclick="addDrop('${ex.id}','${s.id}')" title="Drop set ekle">▼</button>
+          <button class="del-set-btn" onclick="deleteSet('${ex.id}','${s.id}')">✕</button>
+        </div>
+      </div>
+      ${bRow}
+    </div>`;
+}
+
+function dropRowHtml(ex, s, d) {
+  const statusCls = d.done ? 'done-drop' : 'incomplete-drop';
+  const ssBtn = d.ss
+    ? `<button class="ss-set-btn active" onclick="removeDropSuperset('${ex.id}','${s.id}','${d.id}')" title="Superset kaldır">🔗</button>`
+    : `<button class="ss-set-btn" onclick="openModal('superset','${ex.id}','${s.id}','${d.id}')" title="Bu drop'a superset ekle">🔗</button>`;
+  const bRow = d.ss ? `
+    <div class="ss-b-row" style="margin-left:8px;">
+      <span class="ss-b-chip">→ B</span>
+      <span style="font-size:10px;color:#60a5fa;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${d.ss.name}</span>
+      <div class="num-wrap"><input type="number" value="${d.ss.weight||''}" placeholder="0" onchange="updateDropSS('${ex.id}','${s.id}','${d.id}','weight',this.value)" min="0" step=".5"><span class="num-unit">kg</span></div>
+      <div class="num-wrap"><input type="number" value="${d.ss.reps||''}" placeholder="0" onchange="updateDropSS('${ex.id}','${s.id}','${d.id}','reps',this.value)" min="0"><span class="num-unit">rep</span></div>
+      <div class="row-actions"></div>
+    </div>` : '';
+  return `
+    <div class="ss-group">
+      <div class="drop-row ${statusCls}" data-did="${d.id}" data-sid="${s.id}" data-eid="${ex.id}">
+        <span class="drop-chip">▼DROP</span>
+        <span style="font-size:10px;color:var(--warning);font-weight:700;">ağırlık düşür</span>
+        <div class="num-wrap"><input type="number" value="${d.weight||''}" placeholder="0" onchange="updateDrop('${ex.id}','${s.id}','${d.id}','weight',this.value)" min="0" step=".5"><span class="num-unit">kg</span></div>
+        <div class="num-wrap"><input type="number" value="${d.reps||''}" placeholder="0" onchange="updateDrop('${ex.id}','${s.id}','${d.id}','reps',this.value)" min="0"><span class="num-unit">rep</span></div>
+        <div class="row-actions">
+          ${ssBtn}
+          <button class="del-set-btn" onclick="deleteDrop('${ex.id}','${s.id}','${d.id}')">✕</button>
+        </div>
+      </div>
+      ${bRow}
+    </div>`;
+}
+
+// ── SUPERSET SETS ──
+// Drop set stiliyle aynı görsel dil:
+//   A satırı (ss-chip ile) → mavi dikey çizgi → B satırı (girintili)
+//   Turlar arası hafif boşluk, sol dikey çizgi ss-group::after ile çizilir
+function buildSupersetSets(ex) {
+  let html = `<div class="tbl-head"><span>#</span><span>Tip</span><span>Ağırlık</span><span>Tekrar</span><span></span></div>`;
+  let wsNum = 0;
+  ex.sets.forEach((s, i) => {
+    const isWS = s.type === 'ws';
+    if (isWS) wsNum++;
+    const aCls = s.done ? 'done-ss' : 'incomplete-ss';
+    const bCls = s.done ? 'done-ss' : 'incomplete-ss';
+    if (isWS) {
+      html += `
+        <div class="ss-group">
+          <div class="ss-a-row ${aCls}" data-sid="${s.id}" data-eid="${ex.id}">
+            <span class="ss-chip">Tur ${wsNum}<br>A</span>
+            ${typeButtons(s.type, ex.id, s.id)}
+            <div class="num-wrap"><input type="number" value="${s.weight||''}" placeholder="0" onchange="updateSet('${ex.id}','${s.id}','weight',this.value)" min="0" step=".5"><span class="num-unit">kg</span></div>
+            <div class="num-wrap"><input type="number" value="${s.reps||''}" placeholder="0" onchange="updateSet('${ex.id}','${s.id}','reps',this.value)" min="0"><span class="num-unit">rep</span></div>
+            <div class="row-actions">
+              <button class="del-set-btn" onclick="deleteSet('${ex.id}','${s.id}')">✕</button>
+            </div>
+          </div>
+          <div class="ss-b-row ${bCls}">
+            <span class="ss-b-chip">→ B</span>
+            <span style="font-size:10px;color:#60a5fa;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.superset.name}</span>
+            <div class="num-wrap"><input type="number" value="${s.ssWeight||''}" placeholder="0" onchange="updateSet('${ex.id}','${s.id}','ssWeight',this.value)" min="0" step=".5"><span class="num-unit">kg</span></div>
+            <div class="num-wrap"><input type="number" value="${s.ssReps||''}" placeholder="0" onchange="updateSet('${ex.id}','${s.id}','ssReps',this.value)" min="0"><span class="num-unit">rep</span></div>
+            <div class="row-actions"></div>
+          </div>
+        </div>
+        ${i < ex.sets.length-1 ? '<div class="ss-tur-sep"></div>' : ''}`;
+    } else {
+      // WU ve BO setleri normal satır olarak göster
+      html += anchorRowHtml(ex, s, i+1);
+    }
+  });
+  return html;
+}
+
+function typeButtons(active, eid, sid) {
+  return `<div class="type-btns">
+    ${[['wu','W'],['ws','WS'],['bo','BO']].map(([k,l]) =>
+      `<button class="t-btn ${k}${active===k?' on':''}" onclick="setType('${eid}','${sid}','${k}')">${l}</button>`
+    ).join('')}
+  </div>`;
+}
+
+// ── ACTIONS ──
+function toggleCard(eid) {
+  const body = document.getElementById('body_'+eid);
+  const card = document.querySelector(`.ex-card[data-id="${eid}"]`);
+  if (body && card) { body.classList.toggle('hidden'); card.classList.toggle('collapsed'); }
+}
+
+function toggleDone(eid, sid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  s.done = !s.done;
+  if (s.done && !timerInterval) startTimer();
+  render();
+  if (s.done && isPRHit(ex)) showToast('🏆 YENİ PR! '+ex.name,'success');
+}
+
+function toggleDropDone(eid, sid, did) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  const d = s.drops.find(d=>d.id===did); if (!d) return;
+  d.done = !d.done;
+  if (d.done && !timerInterval) startTimer();
+  render();
+}
+
+function updateSet(eid, sid, field, val) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  s[field] = parseFloat(val) || 0;
+  updateTotals();
+}
+
+function updateDrop(eid, sid, did, field, val) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  const d = s.drops.find(d=>d.id===did); if (!d) return;
+  d[field] = parseFloat(val) || 0;
+  updateTotals();
+}
+
+function setType(eid, sid, type) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  s.type = type; render();
+}
+
+function addSet(eid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  ex.sets.push({id:'s'+(++idCounter), type:'ws', weight:null, reps:null, done:false, drops:[]});
+  render(); showToast('＋ Set eklendi');
+}
+
+// DROP SET: sete bağlı olarak eklenir
+function addDrop(eid, sid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  if (!s.drops) s.drops = [];
+  s.drops.push({id:'d'+(++idCounter), weight:null, reps:null, done:false});
+  render();
+  showToast('▼ Drop set eklendi — ağırlığı düşür ve devam et');
+}
+
+function deleteDrop(eid, sid, did) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  s.drops = s.drops.filter(d=>d.id!==did);
+  render(); showToast('Drop silindi');
+}
+
+function deleteSet(eid, sid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  if (ex.sets.length <= 1) { showToast('⚠️ Son set silinemez'); return; }
+  ex.sets = ex.sets.filter(s=>s.id!==sid);
+  render(); showToast('🗑 Set silindi');
+}
+
+function deleteExercise(eid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  if (!confirm(`"${ex.name}" egzersizini sil?`)) return;
+  exercises = exercises.filter(e=>e.id!==eid);
+  render(); showToast('🗑 '+ex.name+' silindi');
+}
+
+function addSSRound(eid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex||!ex.superset) return;
+  ex.sets.push({id:'s'+(++idCounter), type:'ws', weight:null, reps:null, done:false, ssWeight:null, ssReps:null, drops:[]});
+  render(); showToast('🔗 Tur eklendi');
+}
+
+function removeSuperset(eid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  if (!confirm('Supersetı kaldır?')) return;
+  delete ex.superset;
+  ex.sets.forEach(s => { delete s.ssWeight; delete s.ssReps; });
+  render(); showToast('Superset kaldırıldı');
+}
+
+// ── TOTALS ──
+function allSetsDone(ex) {
+  return ex.sets.every(s => {
+    if (!s.done) return false;
+    if (s.drops) return s.drops.every(d => d.done);
+    return true;
+  });
+}
+
+function calcVolume(ex) {
+  return ex.sets.reduce((acc, s) => {
+    const v = s.done ? (s.weight||0)*(s.reps||0) : 0;
+    const vss = (ex.superset && s.done) ? (s.ssWeight||0)*(s.ssReps||0) : 0;
+    const vd = (s.drops||[]).reduce((a,d) => a + (d.done ? (d.weight||0)*(d.reps||0) : 0), 0);
+    return acc + v + vss + vd;
+  }, 0);
+}
+
+function countSets(ex) {
+  // her drop da ayrı "set" sayılır istatistikte
+  return ex.sets.reduce((a,s) => a + 1 + (s.drops||[]).length, 0);
+}
+
+function countDone(ex) {
+  return ex.sets.reduce((a,s) => {
+    const d = s.done ? 1 : 0;
+    const dd = (s.drops||[]).filter(d=>d.done).length;
+    return a + d + dd;
+  }, 0);
+}
+
+function isPRHit(ex) {
+  if (!ex.pr) return false;
+  return ex.sets.some(s =>
+    s.done && (s.type==='ws'||s.type==='bo') &&
+    s.weight >= ex.pr.weight && s.reps >= ex.pr.reps
+  );
+}
+
+function updateTotals() {
+  let total=0, done=0, vol=0, prs=0;
+  exercises.forEach(ex => {
+    total += countSets(ex);
+    done  += countDone(ex);
+    vol   += calcVolume(ex);
+    if (isPRHit(ex)) prs++;
+  });
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('statSets').textContent   = done+'/'+total;
+  document.getElementById('statVolume').textContent = vol>=1000?(vol/1000).toFixed(1)+'t':vol.toLocaleString('tr')+' kg';
+  document.getElementById('statPR').textContent     = prs;
+  document.getElementById('statPct').textContent    = pct+'%';
+  document.getElementById('gpLabel').textContent    = done+' / '+total+' set tamamlandı';
+  document.getElementById('gpPct').textContent      = pct+'%';
+  document.getElementById('gpFill').style.width     = pct+'%';
+  document.getElementById('exCountBadge').textContent = exercises.length+' egzersiz';
+}
+
+// ── TIMER ──
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const s = Math.floor((Date.now()-startTime)/1000);
+    document.getElementById('timerDisplay').textContent =
+      '⏱ '+Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');
+  }, 1000);
+}
+
+// ── WEEK STRIP ──
+const WEEK_PLAN = [
+  {day:'Pzt', split:'push',  label:'Push'},
+  {day:'Sal', split:'pull',  label:'Pull'},
+  {day:'Çar', split:'leg',   label:'Leg'},
+  {day:'Per', split:'upper', label:'Upper'},
+  {day:'Cum', split:'lower', label:'Lower'},
+  {day:'Cmt', split:'off',   label:'Off'},
+  {day:'Paz', split:'off',   label:'Off'},
+];
+const SPLIT_LABELS={push:'Push',pull:'Pull',leg:'Leg',upper:'Upper',lower:'Lower',off:'Off'};
+
+function buildWeekStrip() {
+  const todayDow = (new Date().getDay()+6)%7; // 0=Pzt
+  const strip = document.getElementById('weekStrip');
+  strip.innerHTML = WEEK_PLAN.map((d,i) => {
+    const isToday = i === todayDow;
+    return `<div class="week-day ${d.split}${isToday?' today':''}" data-split="${d.split}" onclick="selectSplit('${d.split}','${d.label}')">
+      <span class="week-day-name">${d.day}</span>
+      <span class="week-day-split">${d.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectSplit(split, label) {
+  document.querySelectorAll('.week-day').forEach(d => d.classList.remove('active'));
+  document.querySelector(`.week-day[data-split="${split}"]`)?.classList.add('active');
+  document.getElementById('dayTitle').childNodes[0].textContent = label + ' ';
+}
+
+buildWeekStrip();
+// Bugünün split'ini aktif yap
+const todayIdx = (new Date().getDay()+6)%7;
+const todayPlan = WEEK_PLAN[todayIdx];
+selectSplit(todayPlan.split, todayPlan.label);
+
+// ── MODAL ──
+let modalTargetSid = null;
+let modalTargetDid = null;
+function openModal(mode, eid, sid, did) {
+  modalMode = mode; modalTargetEid = eid||null; modalTargetSid = sid||null; modalTargetDid = did||null;
+  document.getElementById('modalTitle').textContent = mode==='superset' ? 'Superset Partner Seç' : 'Egzersiz Ekle';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  document.getElementById('modalSearch').value = '';
+  filterModal('');
+  setTimeout(()=>document.getElementById('modalSearch').focus(),100);
+}
+function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+function filterModal(q) {
+  const list = document.getElementById('modalList');
+  list.innerHTML = EXERCISE_DB
+    .filter(e => e.name.toLowerCase().includes(q.toLowerCase()) || e.muscleLabel.toLowerCase().includes(q.toLowerCase()))
+    .map(e => `<div class="modal-ex" onclick="onModalSelect('${e.name}','${e.muscle}','${e.muscleLabel}')">
+      <span class="modal-ex-name">${e.name}</span>
+      <span class="muscle-badge ${e.muscle}">${e.muscleLabel}</span>
+    </div>`).join('');
+}
+function onModalSelect(name, muscle, muscleLabel) {
+  closeModal();
+  if (modalMode==='superset') applySuperset(modalTargetEid, modalTargetSid, modalTargetDid, name, muscle, muscleLabel);
+  else addExercise(name, muscle, muscleLabel);
+}
+function applySuperset(eid, sid, did, pName, pMuscle, pMuscleLabel) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  if (did) {
+    // drop set'e SS ekle
+    const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+    const d = s.drops.find(d=>d.id===did); if (!d) return;
+    d.ss = {name:pName, muscle:pMuscle, muscleLabel:pMuscleLabel, weight:null, reps:null};
+  } else {
+    // normal set'e SS ekle
+    const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+    s.ss = {name:pName, muscle:pMuscle, muscleLabel:pMuscleLabel, weight:null, reps:null};
+  }
+  render(); showToast(`🔗 + ${pName}`);
+}
+function removeSetSuperset(eid, sid) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  delete s.ss;
+  render(); showToast('Superset kaldırıldı');
+}
+function removeDropSuperset(eid, sid, did) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  const d = s.drops.find(d=>d.id===did); if (!d) return;
+  delete d.ss;
+  render(); showToast('Superset kaldırıldı');
+}
+function updateSetSS(eid, sid, field, val) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s||!s.ss) return;
+  s.ss[field] = parseFloat(val) || 0;
+}
+function updateDropSS(eid, sid, did, field, val) {
+  const ex = exercises.find(e=>e.id===eid); if (!ex) return;
+  const s = ex.sets.find(s=>s.id===sid); if (!s) return;
+  const d = s.drops.find(d=>d.id===did); if (!d||!d.ss) return;
+  d.ss[field] = parseFloat(val) || 0;
+}
+function addExercise(name, muscle, muscleLabel) {
+  const newEx = {
+    id:'e'+(++idCounter), name, muscle, muscleLabel, pr:null,
+    sets:[{id:'s'+(++idCounter), type:'ws', weight:null, reps:null, done:false, drops:[]}]
+  };
+  exercises.push(newEx); render();
+  showToast('➕ '+name+' eklendi');
+  setTimeout(()=>{
+    const el=document.querySelector(`.ex-card[data-id="${newEx.id}"]`);
+    if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
+}
+
+// ── FINISH ──
+function finishWorkout() {
+  const done  = exercises.reduce((a,e)=>a+countDone(e),0);
+  const total = exercises.reduce((a,e)=>a+countSets(e),0);
+  const vol   = exercises.reduce((a,e)=>a+calcVolume(e),0);
+  const mins  = startTime ? Math.floor((Date.now()-startTime)/60000) : 0;
+  showToast(`✅ ${done}/${total} set · ${vol.toLocaleString('tr')} kg · ${mins} dk`,'success');
+}
+
+// ── TOAST ──
+let toastTimer=null;
+function showToast(msg,type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show'+(type?' '+type:'');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+render();
+</script>
+</body>
+</html>

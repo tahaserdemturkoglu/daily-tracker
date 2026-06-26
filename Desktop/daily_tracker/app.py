@@ -346,6 +346,10 @@ def no_cache_headers(response):
 def index():
     return render_template('index.html')
 
+@app.route('/training')
+def training():
+    return render_template('training_proto.html')
+
 @app.route('/api/today')
 def api_today():
     today = request.args.get('date') or operation_today()

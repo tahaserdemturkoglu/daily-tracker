@@ -1407,6 +1407,81 @@ def claude_call(user_text, history=None):
         log.exception("Claude cevap hatasi")
         return {'reply': f'Baglanti sorunu: {e}', 'actions': []}
 
+def last_split_workout(split_name):
+    """Son aynı split gününün antrenmanını DB'den çek, formatlanmış Telegram metni döndür."""
+    WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT date FROM workout_logs WHERE training_day=? ORDER BY date DESC LIMIT 1",
+        (split_name,)
+    ).fetchall()
+    if not rows:
+        conn.close()
+        return None, None
+    last_date = rows[0]['date']
+    sets = conn.execute(
+        "SELECT exercise, set_type, weight, reps, notes FROM workout_logs WHERE date=? ORDER BY id",
+        (last_date,)
+    ).fetchall()
+    conn.close()
+
+    # Egzersiz sırasını koru, gruplama
+    seen_order = []
+    groups = {}
+    for s in sets:
+        ex = s['exercise']
+        if ex not in groups:
+            groups[ex] = []
+            seen_order.append(ex)
+        groups[ex].append(s)
+
+    SPLIT_EMOJI = {'Push':'💪','Pull':'🏋️','Leg':'🦵','Upper':'⬆️','Lower':'⬇️'}
+    emoji = SPLIT_EMOJI.get(split_name, '🏋️')
+    lines = [f"{emoji} Son {split_name} | {last_date}"]
+    lines.append('━' * 28)
+
+    for i, ex in enumerate(seen_order, 1):
+        ex_sets = groups[ex]
+        # SS partner varsa başlığa ekle
+        ss_partner = next((s['notes'].replace('SS: ','') for s in ex_sets if s['notes'] and s['notes'].startswith('SS: ')), None)
+        ss_b = any(s['notes'] == 'SS-B' for s in ex_sets if s['notes'])
+        if ss_b:
+            continue  # SS-B'yi ayrı yazdırmıyoruz, A ile birlikte çıkıyor
+        header = f"{i}. {ex}"
+        if ss_partner:
+            header += f" 🔗 {ss_partner}"
+        lines.append(header)
+
+        wu, ws, bo, drop = [], [], [], []
+        ss_b_sets = groups.get(ss_partner, []) if ss_partner else []
+        ss_idx = 0
+        for s in ex_sets:
+            w = s['weight']
+            r = s['reps']
+            n = s['notes'] or ''
+            tag = f"{w}×{r}" if w else f"BW×{r}"
+            if s['set_type'] == 'Warm Up':
+                wu.append(tag)
+            elif s['set_type'] == 'Back Off Set':
+                bo.append(tag)
+            elif s['set_type'] == 'Drop Set':
+                drop.append(f"↓{tag}")
+            else:
+                if ss_partner and ss_idx < len(ss_b_sets):
+                    sb = ss_b_sets[ss_idx]
+                    sb_tag = f"{sb['weight']}×{sb['reps']}" if sb['weight'] else f"BW×{sb['reps']}"
+                    ws.append(f"{tag}/{sb_tag}")
+                    ss_idx += 1
+                else:
+                    ws.append(tag)
+
+        if wu:   lines.append(f"  WU: {' | '.join(wu)}")
+        if ws:   lines.append(f"  WS: {' | '.join(ws)}{' '+' '.join(drop) if drop else ''}")
+        if bo:   lines.append(f"  BO: {' | '.join(bo)}")
+
+    return last_date, '\n'.join(lines)
+
+
 def today_full_log():
     """Bugün kaydedilen tüm girdileri Claude'a ver — silme/düzeltme için."""
     today = operation_today()
@@ -2775,6 +2850,27 @@ async def cmd_chat_ai(u, c):
         else:
             conn.close()
             reply = "Bugün silinecek takviye/vitamin kaydı bulunamadı."
+        add_history(chat_id, 'user', raw)
+        add_history(chat_id, 'bot', reply)
+        await u.message.reply_text(reply)
+        return
+    # ── ANTRENMAN GEÇMİŞİ KISAYOLU ───────────────────────────────────────────
+    # "antrenman", "idman", "ne yapıyorum" → loglamak değil sorgu → direkt DB'den getir
+    _is_workout_query = (
+        any(w in n for w in ['antrenman', 'idman', 'training', 'bugun ne yapiyorum', 'bugun ne var'])
+        and not any(w in n for w in ['yaptim', 'yapti', 'kg', 'tekrar', 'set ', 'rep ', 'kaydet', 'kayit'])
+    )
+    if _is_workout_query:
+        WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
+        today_split = WEEKDAY_CYCLE[operation_date().weekday()]
+        if today_split == 'Off':
+            reply = "🛌 Bugün Off day. Dinlen."
+        else:
+            last_date, formatted = last_split_workout(today_split)
+            if formatted:
+                reply = formatted
+            else:
+                reply = f"📋 {today_split} day için henüz geçmiş kayıt yok. İlk antrenman bu olacak!"
         add_history(chat_id, 'user', raw)
         add_history(chat_id, 'bot', reply)
         await u.message.reply_text(reply)
