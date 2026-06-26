@@ -2326,6 +2326,27 @@ async def cmd_chat_ai(u, c):
     await u.message.chat.send_action('typing')
     n = norm_tr(raw)
 
+    # GUN SONU RAPORU — dogal dil tetikleyicileri
+    _gun_sonu_triggers = [
+        'gun sonu', 'gunu kapat', 'gunu bitir', 'gunun ozeti', 'bugunun ozeti',
+        'bugun nasıldi', 'nasıldi bugun', 'bugun nasildi', 'nasildi bugun',
+        'bugun nasil gecti', 'gun nasil gecti', 'gun nasıldi',
+        'gunluk rapor', 'gunluk ozet', 'rapor ver', 'ozet ver',
+        'bugunum nasil', 'bugunku ozet', 'ne kadar yedim', 'bugun ne yedim',
+        'gunu degerlendir', 'gunu degerlendır', 'gunu kapat', 'gunu sonlandir',
+        'kapat gunu', 'gece raporu', 'aksam raporu', 'sabah raporu',
+        'gun bitti', 'gunumu kapat', 'gunumu bitir', 'gunumu degerlendir',
+        'bugun nasil oldu', 'nasil oldu bugun', 'gun sonu ozet',
+        'daily summary', 'todays summary', 'how was today',
+        'bugun iyi miydi', 'bugun kotu muydu', 'bugun iyiydi mi',
+    ]
+    if any(t in n for t in _gun_sonu_triggers):
+        reply = today_summary()
+        add_history(chat_id, 'user', raw)
+        add_history(chat_id, 'bot', reply)
+        await u.message.reply_text(reply)
+        return
+
     stack_update_reply = stack_update_from_text(raw)
     if stack_update_reply:
         add_history(chat_id, 'user', raw)
