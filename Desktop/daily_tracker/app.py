@@ -348,7 +348,7 @@ def index():
 
 @app.route('/api/today')
 def api_today():
-    today = operation_today()
+    today = request.args.get('date') or operation_today()
     ensure_step_logs_table()
     ensure_body_metrics_table()
     conn = get_db()
@@ -360,12 +360,12 @@ def api_today():
     water_row = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (today,)).fetchone()
     water_ml_total = int(water_row['total'] or 0) if water_row else 0
     conn.close()
-    nutrition = db_today('nutrition_logs')
+    nutrition = db_date('nutrition_logs', today)
     nutrition['water_ml'] = water_ml_total  # SUM ile dogru toplam
     return jsonify({
-        'sleep': db_today('sleep_logs'), 'exercise': db_today('exercise_logs'),
-        'nutrition': nutrition, 'work': db_today('work_logs'),
-        'coaching': db_today('coaching_logs'), 'mood': db_today('mood_logs'),
+        'sleep': db_date('sleep_logs', today), 'exercise': db_date('exercise_logs', today),
+        'nutrition': nutrition, 'work': db_date('work_logs', today),
+        'coaching': db_date('coaching_logs', today), 'mood': db_date('mood_logs', today),
         'vitamins': vitamins,
         'steps': dict(step_row) if step_row else {'date': today, 'steps': 0, 'notes': ''},
         'body': dict(body_row) if body_row else {'date': today, 'weight_kg': None, 'waist_cm': None, 'chest_cm': None, 'arm_cm': None, 'notes': ''},
@@ -722,7 +722,7 @@ def meal_macro_totals(date_str):
 
 @app.route('/api/macro/today')
 def api_macro_today():
-    today = operation_today()
+    today = request.args.get('date') or operation_today()
     return jsonify({'date': today, 'totals': meal_macro_totals(today), 'meals': api_meals_day(today).get_json()})
 
 
