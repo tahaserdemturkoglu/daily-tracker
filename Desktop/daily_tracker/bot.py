@@ -747,13 +747,13 @@ def stack_slot_from_text(raw_text):
 
 def stack_label(slot):
     return {
-        "ac-karna": "Ac Karna Stack",
+        "ac-karna": "Aç Karna Stack",
         "sabah": "Sabah Stack",
-        "kahvalti": "Kahvalti Stack",
-        "ogle": "Ogle Stack",
+        "kahvalti": "Sabah Stack",
+        "ogle": "Öğle Stack",
         "gece": "Gece Stack",
         "pre-workout": "Pre-Workout Stack",
-        "post-workout": "Post-Workout Stack",
+        "post-workout": "Post-Workout",
     }.get(slot, "Supplement Stack")
 
 def supplement_catalog():
