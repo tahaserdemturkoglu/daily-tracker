@@ -2196,6 +2196,155 @@ async def night_check(context):
 async def cmd_streak(u, c):
     await u.message.reply_text(f"{streak_count()} gunluk seri!")
 
+def parse_workout_log(raw_text):
+    """
+    Taha'nin antrenman formatini parse eder:
+      DD.MM.YYYY [optional text]
+      [N-]Egzersiz Adi (notlar)
+      Warm up / Working set / Back off set
+      agirlik-tekrar [agirlik-tekrar ...]
+      ...
+    Returns (date_str, result_sets) or None.
+    result_sets: list of {'exercise', 'weight', 'reps', 'set_type', 'set_num'}
+    """
+    # Tek satir gelirse numarali egzersiz + set tipi kelimelerinden once newline ekle
+    raw_text = raw_text.strip()
+    if '\n' not in raw_text and re.match(r'\d{2}\.\d{2}\.\d{4}', raw_text):
+        raw_text = re.sub(r'\s+(\d+)-((?!\d)[A-Za-z])', r'\n\1-\2', raw_text)
+        for kw in ['Back off set','Back off','Working set','Workimg set','Working','Warm up']:
+            raw_text = re.sub(r'\s+(' + re.escape(kw) + r')(\s|$)', r'\n\1\2', raw_text, flags=re.IGNORECASE)
+
+    lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+    if not lines:
+        return None
+
+    # Ilk satir tarih icermeli: DD.MM.YYYY
+    date_match = re.match(r'(\d{2})\.(\d{2})\.(\d{4})', lines[0])
+    if not date_match:
+        return None
+    day, month, year = date_match.groups()
+    date_str = f"{year}-{month}-{day}"
+
+    # Ilk satirin geri kalanini isle (tarihten sonra egzersiz numarasi gelebilir)
+    first_rest = lines[0][date_match.end():].strip()
+    # "Warm up" / "isınma" vs. kelimesini bas kisimdan at
+    first_rest = re.sub(r'^(warm\s*up|isinma|ısınma)\s*', '', first_rest, flags=re.IGNORECASE).strip()
+    processing = ([first_rest] if first_rest else []) + lines[1:]
+
+    SET_TYPE_MAP = [
+        ('back off set', 'Back Off Set'), ('back off', 'Back Off Set'),
+        ('backoff set',  'Back Off Set'), ('backoff',  'Back Off Set'),
+        ('working set',  'Working Set'),  ('workimg set', 'Working Set'),
+        ('work set',     'Working Set'),  ('working',  'Working Set'),
+        ('warm up',      'Warm Up'),      ('warmup',   'Warm Up'),
+        ('isinma',       'Warm Up'),      ('ısınma',   'Warm Up'),
+        ('drop set',     'Drop Set'),
+    ]
+
+    current_exercise = None
+    current_set_type = 'Working Set'
+    set_counters = {}   # exercise -> count
+    result_sets = []
+
+    for line in processing:
+        norm = norm_tr(line.lower().strip())
+
+        # Set tipi mi? (tam eslesme veya inline: "Warm up 12-10")
+        matched_type = None
+        inline_rest = None
+        for key, val in SET_TYPE_MAP:
+            if norm == key or norm == key + ':':
+                matched_type = val
+                break
+            if norm.startswith(key + ' ') or norm.startswith(key + '\t'):
+                matched_type = val
+                inline_rest = line[len(key):].strip()
+                break
+        if matched_type:
+            current_set_type = matched_type
+            if not inline_rest:
+                continue
+            # inline set verisi var, asagida isle
+            norm = norm_tr(inline_rest.lower())
+
+        # Numarali egzersiz: "1-Chest Supported Row" / "1. ..." / "1) ..."
+        ex_match = re.match(r'^(\d+)[\-\.\)]\s*(.+)', line)
+        if ex_match:
+            ex_raw = ex_match.group(2).strip()
+            # Parantez icindeki aciklamayi at: "(Upper Back)" vs.
+            ex_name = re.sub(r'\s*\([^)]*\)', '', ex_raw).strip()
+            current_exercise = ex_name
+            current_set_type = 'Working Set'
+            continue
+
+        # Set verisi: agirlik-tekrar ciftleri
+        # Format: "20-10 22-10" veya superset "6-10/12-10"
+        if current_exercise is None:
+            continue
+
+        set_iter = re.finditer(r'(\d+(?:\.\d+)?)-(\d+)(?:/(\d+(?:\.\d+)?)-(\d+))?', norm)
+        for m in set_iter:
+            w1, r1 = m.group(1), m.group(2)
+            w2, r2 = m.group(3), m.group(4)
+
+            set_counters[current_exercise] = set_counters.get(current_exercise, 0) + 1
+            result_sets.append({
+                'exercise': current_exercise,
+                'weight': w1,
+                'reps': r1,
+                'set_type': current_set_type,
+                'set_num': set_counters[current_exercise]
+            })
+
+            # Superset: ikinci egzersiz
+            if w2 and r2:
+                if '/' in current_exercise:
+                    ex2 = current_exercise.split('/', 1)[1].strip()
+                else:
+                    ex2 = current_exercise + ' B'
+                set_counters[ex2] = set_counters.get(ex2, 0) + 1
+                result_sets.append({
+                    'exercise': ex2,
+                    'weight': w2,
+                    'reps': r2,
+                    'set_type': current_set_type,
+                    'set_num': set_counters[ex2]
+                })
+
+    if not result_sets:
+        return None
+    return date_str, result_sets
+
+
+def save_workout_log(date_str, result_sets):
+    """
+    Parse edilmis antrenman setlerini workout_logs tablosuna kaydeder.
+    Ayni gun icin mevcut kayitlari once siler (temiz reimport).
+    Returns (summary_lines, training_day_name).
+    """
+    td_name = training_day(date_str)
+    conn = get_db()
+
+    # Ayni gun icin mevcut workout kayitlarini temizle
+    conn.execute("DELETE FROM workout_logs WHERE date=?", (date_str,))
+
+    saved_exercises = {}
+    for s in result_sets:
+        ex = s['exercise']
+        weight_str = f"{s['weight']} kg" if s['weight'] else ''
+        conn.execute(
+            "INSERT INTO workout_logs (date, training_day, exercise, set_num, weight, reps, set_type) VALUES (?,?,?,?,?,?,?)",
+            (date_str, td_name, ex, s['set_num'], weight_str, s['reps'], s['set_type'])
+        )
+        saved_exercises[ex] = saved_exercises.get(ex, 0) + 1
+
+    conn.commit()
+    conn.close()
+
+    summary = [f"  💪 {ex}: {cnt} set" for ex, cnt in saved_exercises.items()]
+    return summary, td_name
+
+
 def bulk_log_parse(raw_text):
     """
     Cok satirli toplu log mesajini parse eder.
@@ -2377,6 +2526,24 @@ async def cmd_chat_ai(u, c):
         add_history(chat_id, 'bot', reply)
         await u.message.reply_text(reply)
         return
+
+    # ANTRENMAN LOG: DD.MM.YYYY + numarali egzersizler formatini yakala
+    if '\n' in raw:
+        workout = parse_workout_log(raw)
+        if workout:
+            w_date, w_sets = workout
+            w_summary, w_tdname = save_workout_log(w_date, w_sets)
+            ex_count = len({s['exercise'] for s in w_sets})
+            set_count = len(w_sets)
+            reply_lines = [
+                f"✅ Antrenman kaydedildi — {w_date} ({w_tdname})",
+                f"📊 {ex_count} egzersiz, {set_count} set\n"
+            ] + w_summary
+            reply = '\n'.join(reply_lines)
+            add_history(chat_id, 'user', raw)
+            add_history(chat_id, 'bot', reply)
+            await u.message.reply_text(reply)
+            return
 
     # TOPLU LOG: 2+ satirli mesajlari her satir icin ayri isle
     if '\n' in raw:
