@@ -949,11 +949,10 @@ def save_stack_actions(actions):
             d = a.get("date") or operation_today()
             if not name:
                 continue
-            # Cinko gun asiri — kaydetme, uyar
+            # Cinko gun asiri — uyar ama yine de kaydet
             if any(k in name.lower() for k in ('cinko', 'zinc')):
                 if not zinc_due_for_date(d):
-                    saved.append("⚠️ Cinko: dun aldin, bugun atliyorum (gun asiri)")
-                    continue
+                    saved.append("⚠️ Cinko: bugun almana gerek yoktu (gun asiri), ama kaydediyorum")
             already = conn.execute(
                 "SELECT id FROM vitamin_logs WHERE date=? AND lower(name)=lower(?)",
                 (d, name)
@@ -1695,11 +1694,10 @@ def apply_actions(actions):
             elif typ in ('vitamin', 'supplement', 'takviye'):
                 name = (a.get('name') or '').strip()
                 if name:
-                    # Cinko gun asiri kontrol
+                    # Cinko gun asiri — uyar ama yine de kaydet
                     if any(k in name.lower() for k in ('cinko', 'zinc')):
                         if not zinc_due_for_date(d):
-                            saved.append("⚠️ Cinko: dun aldin, bugun atliyorum (gun asiri)")
-                            continue
+                            saved.append("⚠️ Cinko: bugun almana gerek yoktu (gun asiri), ama kaydediyorum")
                     conn = get_db()
                     # Aynı gün aynı isimde zaten varsa ekleme (duplikasyon engeli)
                     already = conn.execute(
