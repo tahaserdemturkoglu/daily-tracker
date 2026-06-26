@@ -591,6 +591,8 @@ SABIT URUNLER:
 - Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y.
 - GymBeam Olive Oil Spray: 1 fis/basis = 15 kcal, 0P, 0K, 1.65Y.
 - Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y; 20-30g kullanim ihmal edilebilir.
+- Skyr Yogurt (Piatnica Skyr Naturalny): 100g = 64 kcal, 12P, 4.1K, 0Y. "yogurt" veya "skyr" yazarsa bu urun.
+- Tavuk Baharati (Malets Gourmet Amber Noble Warm Poultry Blend): 100g = 286 kcal, 18.1P, 50.4K, 8.2Y. Kullanim genellikle 3-5g; "tavuk baharati" yazarsa bu urun.
 
 STANDART PANCAKE V2:
 - 4 yumurta, 200g sivi yumurta beyazi, 25g yulaf, 50g kuru kayisi, 200g cilek, 50ml sekersiz badem sutu, 6g kakao, 2 fis GymBeam.
