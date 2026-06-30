@@ -626,13 +626,17 @@ Salatalik: 100g = 15 kcal, 0.7P, 3.6K, 0.1Y
 STANDART PANCAKE V2:
 - 4 yumurta, 200g sivi yumurta beyazi, 25g yulaf, 50g kuru kayisi, 200g cilek, 50ml sekersiz badem sutu, 6g kakao, 2 fis GymBeam.
 
-SUPPLEMENT SISTEMI:
-- Ac karna stack: NAC 600mg + Garden of Life Once Daily Men's Probiotic.
-- Sabah/kahvalti stack: Kolajen, D3+K2 4000 IU, Omega-3 3 kapsul, Magtein, Goz vitamini, B Complex, C Vitamini 1000mg, Theanine. Cinko sadece kullanici acikca alindigini soylediginde kaydedilir.
-- Gece stack: Magnesium Glycinate, Glycine, Melatonin, gerektiginde Theanine, KSM-66 Ashwagandha.
-- Cinko 50mg yuksek doz; gun asiri takip edilir, her gun sart gibi yazma.
-- Kullanici 'stack alindi' derse ilgili stackteki urunleri tek tek vitamin kaydi olarak isle.
-- Kullanici 'haric/eksik/yok' derse o supplementi stackten dus.
+SUPPLEMENT SISTEMI (MASTER SPEC v1.0):
+Stackler:
+1. Ac Karna Stack: NOW NAC 600mg (1 kapsul), Garden of Life Probiotic (1 kapsul)
+2. Sabah Stack: Life Extension Mega EPA/DHA (3 kapsul), Thorne D+K2 (4 damla), Life Extension B-Complex (1 kapsul), Life Extension MacuGuard (1 kapsul), California Gold C (1 kapsul), NOW Magtein (1 kapsul), NOW L-Theanine Double Strength (1 kapsul), ON Collagen (1 olcek), NOW Zinc Picolinate 50mg (1 kapsul - GUN ASIRI)
+3. Pre Workout Stack: Elektrolit (8g), Citrulline (8g), Taurine (2g), Beta Alanine (2g)
+4. Post Workout Stack: Creatine Monohydrate (5g)
+5. Gece Stack: Magnesium Glycinate (3 kapsul), KSM-66 Ashwagandha (1 kapsul), Glycine (3 kapsul), Melatonin (3 kapsul), NOW L-Theanine Double Strength (1 kapsul)
+CINKO: Gun asiri; kullanici acikca "cinko alindı/almadim" demezse Sabah Stack'te cinkoyu exclude et.
+OVERRIDE: "ama/fakat X kapsul/g URUN" → o urun icin doz override.
+EKSTRA: "+ X g/kapsul URUN" → stack'e ekstra ekle.
+Snapshot: Gecmis kayitlar degismez.
 
 AKNE VE CILT:
 - Whey, yogurt, protein puding ve yuksek seker akne acisindan takip edilir.
@@ -686,9 +690,25 @@ METIN VE FOTOGRAF ANALIZ KURALLARI:
 - Kayit istenirse her besin icin ayri meal action olustur. Gorsel/standart tahminde estimated=true; etiket, kullanici makrosu veya brand-fixed kaynakta estimated=false yaz.
 - source alani: user-label, brand-fixed, product-data, standard-reference veya visual-estimate degerlerinden biri olsun.
 
+OGUN GOSTERIM FORMATI (KESIN KURAL):
+Her ogun/besin ciktisinda asagidaki format kullanilir:
+  Kahvalti
+  510 kcal · P39 · K37 · Y24
+  210 g Carrefour BIO Yumurta
+  288 kcal · P26 · K3 · Y19
+  20 g Kakao
+  62 kcal · P5 · K3 · Y2
+Kural:
+- Ayirici: · (nokta degil, orta nokta)
+- Makro sirasi DAIMA: kcal · P · K · Y
+- Ogun basligi kullanicinin yazdigi sekilde korunur (Kahvalti, Pre Meal, Meal1 vb.)
+- Ogun basligi asla degistirilmez (Ogle, Aksam gibi standart isimlere donusturme)
+- Grams: "210 g Urun Adi" formatinda (g oncesi bosluk)
+- Urun adi daima resmi isimle (YASMiN Pirinci, Skyr Yogurt vb.)
+
 CEVAP SIRASI:
-1) Besin kalemleri ve miktarlari 2) Her kalemin kcal/P/K/Y degeri
-3) Ogun toplami 4) Tahmin guveni (yuksek/orta/dusuk) ve en buyuk belirsizlik
+1) Besin kalemleri ve miktarlari 2) Her kalemin kcal/P/K/Y degeri (· format)
+3) Ogun toplami (· format) 4) Tahmin guveni (yuksek/orta/dusuk)
 5) Taha'nin hedeflerine uygun 1-3 cumle koc yorumu.
 """
 
@@ -970,6 +990,167 @@ def supplement_actions_from_stack_text(raw_text):
             "stack": slot,
         })
     return actions
+
+STACK_NAME_MAP = {
+    'ac karna': 'Aç Karna Stack',
+    'ackarna':  'Aç Karna Stack',
+    'fasted':   'Aç Karna Stack',
+    'sabah':    'Sabah Stack',
+    'kahvalti': 'Sabah Stack',
+    'pre':      'Pre Workout Stack',
+    'preworkout':'Pre Workout Stack',
+    'antrenman oncesi': 'Pre Workout Stack',
+    'post':     'Post Workout Stack',
+    'postworkout':'Post Workout Stack',
+    'antrenman sonrasi':'Post Workout Stack',
+    'creatine': 'Post Workout Stack',
+    'kreatin':  'Post Workout Stack',
+    'gece':     'Gece Stack',
+    'night':    'Gece Stack',
+}
+
+def detect_stack_name(norm_text):
+    """Metinden stack ismini belirle."""
+    for key, val in STACK_NAME_MAP.items():
+        if key in norm_text:
+            return val
+    return None
+
+def parse_stack_overrides(norm_text, stack_name):
+    """Override ve ekstra ürünleri metin'den çıkar.
+    Örnek: 'gece stack ama 2 kapsül melatonin' → {Melatonin: {dose:2}}
+    Örnek: 'sabah stack + 2 g taurine' → extras: [{name:Taurine, dose:2, unit:g}]
+    Örnek: 'sabah stack + çinko alınmadı' → {Zinc: {taken:0}}
+    """
+    overrides = {}
+    extras = []
+
+    # Çinko alınmadı özel kuralı
+    if any(w in norm_text for w in ['cinko alinmadi','cinko yok','cinko almadim','cinko haric','cinkosuz']):
+        overrides['NOW Zinc Picolinate 50mg'] = {'taken': 0, 'note': 'kullanici almadim dedi'}
+
+    # "ama/fakat/ancak X kapsül/g URUN" → override
+    import re as _re
+    ama_pattern = _re.findall(r'(?:ama|fakat|ancak|sadece)\s+(\d+(?:[.,]\d+)?)\s*(kapsul|kapsül|g|gr|damla|ml|tablet)\s+(\w+(?:\s+\w+)?)', norm_text)
+    for m in ama_pattern:
+        dose_val, unit_val, prod_hint = m
+        prod_hint = prod_hint.strip()
+        overrides[prod_hint] = {'dose': float(dose_val.replace(',','.')), 'unit': unit_val, 'note': 'override'}
+
+    # "+ X g/kapsul URUN" → ekstra
+    extra_pattern = _re.findall(r'\+\s*(\d+(?:[.,]\d+)?)\s*(kapsul|kapsül|g|gr|damla|ml|tablet)\s+(\w+(?:\s+\w+)?)', norm_text)
+    for m in extra_pattern:
+        dose_val, unit_val, prod_hint = m
+        extras.append({'name': prod_hint.strip(), 'dose': float(dose_val.replace(',','.')), 'unit': unit_val})
+
+    return overrides, extras
+
+async def _handle_stack_shortcut(raw_text, norm_text, today):
+    """Stack kısa yolunu işle. Kayıt başarılıysa cevap metni döner, değilse None."""
+    import aiohttp as _aio
+    stack_name = detect_stack_name(norm_text)
+    if not stack_name or 'stack' not in norm_text:
+        return None
+
+    overrides, extras = parse_stack_overrides(norm_text, stack_name)
+
+    # API çağrısı
+    try:
+        import json as _json, urllib.request as _ur
+        payload = _json.dumps({'stack_name': stack_name, 'date': today,
+                               'overrides': overrides, 'extras': extras}).encode()
+        req = _ur.Request('http://localhost:5000/api/supplements/log',
+                          data=payload, headers={'Content-Type':'application/json'}, method='POST')
+        with _ur.urlopen(req, timeout=5) as resp:
+            result = _json.loads(resp.read())
+    except Exception as e:
+        # Fallback: direkt DB
+        result = _log_stack_direct(stack_name, today, overrides, extras)
+
+    if not result.get('ok'):
+        return None
+
+    # Zinc durumu kontrol
+    zinc_note = ''
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT rule_data FROM supplement_rules WHERE product_name='NOW Zinc Picolinate 50mg'").fetchone()
+        conn.close()
+        if row:
+            import json as _json
+            last_d = _json.loads(row['rule_data'] or '{}').get('last_date')
+            if last_d:
+                from datetime import date as _date, timedelta as _td
+                diff = (_date.fromisoformat(today) - _date.fromisoformat(last_d)).days
+                if diff == 1:
+                    zinc_note = '\n⚠️ Çinko: Dün alındı, yarın al.'
+                elif diff >= 2:
+                    zinc_note = '\n💊 Çinko: Bugün alma günü ✓'
+    except: pass
+
+    # Stack items listele
+    conn = get_db()
+    stack_row = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
+    items = []
+    if stack_row:
+        items = [dict(r) for r in conn.execute(
+            "SELECT product_name,dose,unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num",
+            (stack_row['id'],)).fetchall()]
+    conn.close()
+
+    lines = [f'✅ {stack_name} kaydedildi:']
+    for item in items:
+        pname = item['product_name']
+        ov = overrides.get(pname, {})
+        if ov.get('taken') == 0:
+            lines.append(f'  ✗ {pname} — alınmadı')
+        else:
+            dose = ov.get('dose', item['dose'])
+            unit = ov.get('unit', item['unit'])
+            suffix = ' ⟵ override' if pname in overrides else ''
+            lines.append(f'  💊 {pname}: {dose} {unit}{suffix}')
+    for ex in extras:
+        lines.append(f'  ➕ {ex["name"]}: {ex["dose"]} {ex["unit"]} (ekstra)')
+
+    if zinc_note:
+        lines.append(zinc_note)
+
+    return '\n'.join(lines)
+
+def _log_stack_direct(stack_name, today, overrides, extras):
+    """API erişilmezse direkt DB'ye yaz (fallback)."""
+    try:
+        conn = get_db()
+        stack = conn.execute("SELECT * FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
+        if not stack:
+            conn.close()
+            return {'ok': False}
+        conn.execute("INSERT INTO supplement_logs (date,stack_id,stack_name_snapshot,completed) VALUES (?,?,?,1)",
+                     (today, stack['id'], stack_name))
+        log_id = conn.execute("SELECT last_insert_rowid() as lid").fetchone()['lid']
+        items = conn.execute("SELECT * FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num", (stack['id'],)).fetchall()
+        import json as _json
+        for item in items:
+            pname = item['product_name']
+            ov = overrides.get(pname, {})
+            taken = ov.get('taken', 1)
+            dose = ov.get('dose', item['dose'])
+            unit = ov.get('unit', item['unit'])
+            conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,?,?)",
+                         (log_id, pname, dose, unit, taken, ov.get('note','')))
+            if taken:
+                conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+                             (today, pname, str(dose), unit, f'stack:{stack_name}'))
+            if pname == 'NOW Zinc Picolinate 50mg' and taken:
+                conn.execute("UPDATE supplement_rules SET rule_data=? WHERE product_name=?",
+                             (_json.dumps({'last_date': today}), pname))
+        for ex in extras:
+            conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+                         (today, ex['name'], str(ex.get('dose','')), ex.get('unit',''), f'extra:{stack_name}'))
+        conn.commit(); conn.close()
+        return {'ok': True}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
 
 def save_stack_actions(actions):
     saved = []
@@ -2677,22 +2858,12 @@ async def cmd_chat_ai(u, c):
 
     # "Tüm vitaminler tamam" kisayolu — template'lerden direkt log at
     # Net stack kisayolu: ac karna/sabah/gece/pre/post stack AI'ya birakilmaz.
-    stack_actions = supplement_actions_from_stack_text(raw)
-    if stack_actions:
-        saved_names = save_stack_actions(stack_actions)
-        water_actions = tg_water_actions_from_text(raw) if 'tg_water_actions_from_text' in globals() else []
-        water_saved = apply_actions(water_actions) if water_actions else []
-        slot = stack_actions[0].get('stack') or 'stack'
-        label = stack_label(slot)
-        if saved_names:
-            reply = '✅ ' + label + ' kaydedildi:\n' + '\n'.join(f'  💊 {x}' for x in saved_names)
-        else:
-            reply = '✅ ' + label + ' zaten bugun kayitli gorunuyor.'
-        if water_saved:
-            reply += '\n💧 Su da işlendi: ' + ', '.join(water_saved)
+    # Yeni supplement sistem: API tabanlı snapshot + override + ekstra
+    _stack_result = await _handle_stack_shortcut(raw, n, operation_today())
+    if _stack_result:
         add_history(chat_id, 'user', raw)
-        add_history(chat_id, 'bot', reply)
-        await u.message.reply_text(reply)
+        add_history(chat_id, 'bot', _stack_result)
+        await u.message.reply_text(_stack_result)
         return
 
     # "TÃ¼m vitaminler tamam" kisayolu â€” template'lerden direkt log at

@@ -161,6 +161,59 @@ def init_db():
             date TEXT NOT NULL, name TEXT, amount TEXT, unit TEXT, notes TEXT,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS supplement_products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            brand TEXT DEFAULT '',
+            form TEXT DEFAULT 'kapsul',
+            default_dose REAL DEFAULT 1,
+            default_unit TEXT DEFAULT 'kapsul',
+            notes TEXT DEFAULT '',
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS supplement_stacks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            category TEXT DEFAULT 'custom',
+            active INTEGER DEFAULT 1,
+            order_num INTEGER DEFAULT 99,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS supplement_stack_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stack_id INTEGER NOT NULL,
+            product_name TEXT NOT NULL,
+            dose REAL DEFAULT 1,
+            unit TEXT DEFAULT 'kapsul',
+            order_num INTEGER DEFAULT 99,
+            FOREIGN KEY(stack_id) REFERENCES supplement_stacks(id)
+        );
+        CREATE TABLE IF NOT EXISTS supplement_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            stack_id INTEGER,
+            stack_name_snapshot TEXT NOT NULL,
+            completed INTEGER DEFAULT 1,
+            notes TEXT DEFAULT '',
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS supplement_log_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            log_id INTEGER NOT NULL,
+            product_name_snapshot TEXT NOT NULL,
+            dose_snapshot REAL,
+            unit_snapshot TEXT,
+            taken INTEGER DEFAULT 1,
+            override_note TEXT DEFAULT '',
+            FOREIGN KEY(log_id) REFERENCES supplement_logs(id)
+        );
+        CREATE TABLE IF NOT EXISTS supplement_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name TEXT NOT NULL UNIQUE,
+            rule_type TEXT NOT NULL,
+            rule_data TEXT DEFAULT '',
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS daily_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL UNIQUE, note TEXT,
@@ -4195,6 +4248,255 @@ def api_food_registry_migrate_spec():
             updated.append(f'MISSING:{match_name}')
     conn.commit(); conn.close()
     return jsonify({'ok':True, 'updated': updated})
+
+# ─── SUPPLEMENT SYSTEM ─────────────────────────────────────────────────────────
+
+def ensure_supplement_tables():
+    """Supplement tablolarinin varligini garanti et."""
+    conn = get_db()
+    cols_products = {r['name'] for r in conn.execute("PRAGMA table_info(supplement_products)").fetchall()}
+    cols_stacks   = {r['name'] for r in conn.execute("PRAGMA table_info(supplement_stacks)").fetchall()}
+    # Tables created in init_db; here we just verify
+    conn.close()
+
+def seed_supplement_data():
+    """Master Spec v1.0 supplement ürünleri ve stacklerini yükle (yoksa)."""
+    conn = get_db()
+    # Check if already seeded
+    existing = conn.execute("SELECT COUNT(*) as c FROM supplement_stacks").fetchone()['c']
+    if existing > 0:
+        conn.close()
+        return
+
+    # Products
+    PRODUCTS = [
+        ('NOW NAC 600mg',                  'NOW',                 'kapsul',  1, 'kapsul'),
+        ('Garden of Life Probiotic',       'Garden of Life',      'kapsul',  1, 'kapsul'),
+        ('Life Extension Mega EPA/DHA',    'Life Extension',      'kapsul',  3, 'kapsul'),
+        ('Thorne Vitamin D + K2',          'Thorne',              'damla',   4, 'damla'),
+        ('Life Extension B-Complex',       'Life Extension',      'kapsul',  1, 'kapsul'),
+        ('Life Extension MacuGuard',       'Life Extension',      'kapsul',  1, 'kapsul'),
+        ('California Gold Nutrition C',    'California Gold Nutrition', 'kapsul', 1, 'kapsul'),
+        ('NOW Magtein',                    'NOW',                 'kapsul',  1, 'kapsul'),
+        ('NOW L-Theanine Double Strength', 'NOW',                 'kapsul',  1, 'kapsul'),
+        ('Optimum Nutrition Collagen',     'Optimum Nutrition',   'olcek',   1, 'ölçek'),
+        ('NOW Zinc Picolinate 50mg',       'NOW',                 'kapsul',  1, 'kapsul'),
+        ('Elektrolit',                     '',                    'g',       8, 'g'),
+        ('Citrulline',                     '',                    'g',       8, 'g'),
+        ('Taurine',                        '',                    'g',       2, 'g'),
+        ('Beta Alanine',                   '',                    'g',       2, 'g'),
+        ('Creatine Monohydrate',           '',                    'g',       5, 'g'),
+        ('Magnesium Glycinate',            '',                    'kapsul',  3, 'kapsul'),
+        ('KSM-66 Ashwagandha',            '',                    'kapsul',  1, 'kapsul'),
+        ('Glycine',                        '',                    'kapsul',  3, 'kapsul'),
+        ('Melatonin',                      '',                    'kapsul',  3, 'kapsul'),
+    ]
+    for name, brand, form, dose, unit in PRODUCTS:
+        try:
+            conn.execute("INSERT INTO supplement_products (name,brand,form,default_dose,default_unit) VALUES (?,?,?,?,?)",
+                         (name, brand, form, dose, unit))
+        except: pass
+
+    # Stacks
+    STACKS = [
+        ('Aç Karna Stack',   'fasted',     1, [
+            ('NOW NAC 600mg',                  1, 'kapsul'),
+            ('Garden of Life Probiotic',       1, 'kapsul'),
+        ]),
+        ('Sabah Stack',      'morning',    2, [
+            ('Life Extension Mega EPA/DHA',    3, 'kapsul'),
+            ('Thorne Vitamin D + K2',          4, 'damla'),
+            ('Life Extension B-Complex',       1, 'kapsul'),
+            ('Life Extension MacuGuard',       1, 'kapsul'),
+            ('California Gold Nutrition C',    1, 'kapsul'),
+            ('NOW Magtein',                    1, 'kapsul'),
+            ('NOW L-Theanine Double Strength', 1, 'kapsul'),
+            ('Optimum Nutrition Collagen',     1, 'ölçek'),
+            ('NOW Zinc Picolinate 50mg',       1, 'kapsul'),
+        ]),
+        ('Pre Workout Stack','preworkout', 3, [
+            ('Elektrolit',    8, 'g'),
+            ('Citrulline',    8, 'g'),
+            ('Taurine',       2, 'g'),
+            ('Beta Alanine',  2, 'g'),
+        ]),
+        ('Post Workout Stack','postworkout',4, [
+            ('Creatine Monohydrate', 5, 'g'),
+        ]),
+        ('Gece Stack',       'night',      5, [
+            ('Magnesium Glycinate',            3, 'kapsul'),
+            ('KSM-66 Ashwagandha',            1, 'kapsul'),
+            ('Glycine',                        3, 'kapsul'),
+            ('Melatonin',                      3, 'kapsul'),
+            ('NOW L-Theanine Double Strength', 1, 'kapsul'),
+        ]),
+    ]
+    for sname, cat, order, items in STACKS:
+        conn.execute("INSERT INTO supplement_stacks (name,category,active,order_num) VALUES (?,?,1,?)",
+                     (sname, cat, order))
+        sid = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (sname,)).fetchone()['id']
+        for i, (pname, dose, unit) in enumerate(items):
+            conn.execute("INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
+                         (sid, pname, dose, unit, i+1))
+
+    # Rules
+    conn.execute("INSERT OR IGNORE INTO supplement_rules (product_name,rule_type,rule_data) VALUES (?,?,?)",
+                 ('NOW Zinc Picolinate 50mg', 'every_other_day', '{}'))
+
+    conn.commit()
+    conn.close()
+
+try:
+    seed_supplement_data()
+except Exception as e:
+    import logging; logging.getLogger('daily').warning(f"supplement seed failed: {e}")
+
+# ── API ──────────────────────────────────────────────────────────────────────
+
+@app.route('/api/supplements/stacks', methods=['GET'])
+def api_supplement_stacks():
+    conn = get_db()
+    stacks = [dict(r) for r in conn.execute(
+        "SELECT * FROM supplement_stacks WHERE active=1 ORDER BY order_num, name").fetchall()]
+    for s in stacks:
+        items = conn.execute(
+            "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num",
+            (s['id'],)).fetchall()
+        s['items'] = [dict(i) for i in items]
+    conn.close()
+    return jsonify(stacks)
+
+@app.route('/api/supplements/today', methods=['GET'])
+def api_supplements_today():
+    today = operation_today()
+    conn = get_db()
+    logs = [dict(r) for r in conn.execute(
+        "SELECT * FROM supplement_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
+    for log in logs:
+        items = conn.execute(
+            "SELECT * FROM supplement_log_items WHERE log_id=?", (log['id'],)).fetchall()
+        log['items'] = [dict(i) for i in items]
+    # Zinc status
+    zinc_rule = conn.execute("SELECT rule_data FROM supplement_rules WHERE product_name='NOW Zinc Picolinate 50mg' AND rule_type='every_other_day'").fetchone()
+    last_zinc = None
+    if zinc_rule:
+        import json as _json
+        try: last_zinc = _json.loads(zinc_rule['rule_data'] or '{}').get('last_date')
+        except: pass
+    zinc_today = True  # default: take today
+    if last_zinc:
+        from datetime import date as _date, timedelta as _td
+        last_d = _date.fromisoformat(last_zinc)
+        diff = (_date.fromisoformat(today) - last_d).days
+        zinc_today = diff >= 2  # every other day
+    conn.close()
+    return jsonify({'date': today, 'logs': logs, 'zinc': {'take_today': zinc_today, 'last_date': last_zinc}})
+
+@app.route('/api/supplements/log', methods=['POST'])
+def api_supplements_log():
+    """Stack tamamlandı olarak kaydet. Override ve ekstra destekler."""
+    import json as _json
+    data = request.get_json(force=True) or {}
+    today = data.get('date', operation_today())
+    stack_name = data.get('stack_name', '').strip()
+    overrides  = data.get('overrides', {})   # {product_name: {dose, unit, taken}}
+    extras     = data.get('extras', [])       # [{name, dose, unit}]
+    notes      = data.get('notes', '')
+
+    conn = get_db()
+    stack = conn.execute("SELECT * FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
+    if not stack:
+        conn.close()
+        return jsonify({'ok': False, 'error': f'Stack bulunamadı: {stack_name}'}), 404
+
+    # Snapshot log
+    conn.execute("INSERT INTO supplement_logs (date,stack_id,stack_name_snapshot,completed,notes) VALUES (?,?,?,1,?)",
+                 (today, stack['id'], stack_name, notes))
+    log_id = conn.execute("SELECT last_insert_rowid() as lid").fetchone()['lid']
+
+    # Items (snapshot with overrides)
+    items = conn.execute("SELECT * FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num", (stack['id'],)).fetchall()
+    for item in items:
+        pname = item['product_name']
+        ov = overrides.get(pname, {})
+        dose   = ov.get('dose',  item['dose'])
+        unit   = ov.get('unit',  item['unit'])
+        taken  = ov.get('taken', 1)
+        ov_note = ov.get('note', '')
+        conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,?,?)",
+                     (log_id, pname, dose, unit, taken, ov_note))
+        # Zinc last date update
+        if pname == 'NOW Zinc Picolinate 50mg' and taken:
+            rd = _json.dumps({'last_date': today})
+            conn.execute("UPDATE supplement_rules SET rule_data=? WHERE product_name='NOW Zinc Picolinate 50mg'", (rd,))
+        # Also log to vitamin_logs for backward compat
+        if taken:
+            conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+                         (today, pname, str(dose), unit, f'stack:{stack_name}'))
+
+    # Extras
+    for ex in extras:
+        ename = ex.get('name', '')
+        edose = ex.get('dose', '')
+        eunit = ex.get('unit', '')
+        conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,1,'extra')",
+                     (log_id, ename, edose, eunit))
+        conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+                     (today, ename, str(edose), eunit, f'extra:{stack_name}'))
+
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'log_id': log_id, 'stack': stack_name, 'date': today})
+
+@app.route('/api/supplements/zinc', methods=['GET'])
+def api_supplements_zinc():
+    import json as _json
+    conn = get_db()
+    row = conn.execute("SELECT rule_data FROM supplement_rules WHERE product_name='NOW Zinc Picolinate 50mg'").fetchone()
+    conn.close()
+    last_date = None
+    if row:
+        try: last_date = _json.loads(row['rule_data'] or '{}').get('last_date')
+        except: pass
+    today = operation_today()
+    take_today = True
+    if last_date:
+        from datetime import date as _date
+        diff = (_date.fromisoformat(today) - _date.fromisoformat(last_date)).days
+        take_today = diff >= 2
+    return jsonify({'take_today': take_today, 'last_date': last_date, 'today': today})
+
+@app.route('/api/supplements/stacks', methods=['POST'])
+def api_supplement_stack_create():
+    data = request.get_json(force=True) or {}
+    name = data.get('name','').strip()
+    if not name:
+        return jsonify({'ok':False, 'error':'Stack adı gerekli'}), 400
+    items = data.get('items', [])
+    conn = get_db()
+    conn.execute("INSERT OR IGNORE INTO supplement_stacks (name,category,active,order_num) VALUES (?,?,1,99)",
+                 (name, data.get('category','custom')))
+    sid = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (name,)).fetchone()['id']
+    for i, item in enumerate(items):
+        conn.execute("INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
+                     (sid, item.get('name',''), item.get('dose',1), item.get('unit','kapsul'), i+1))
+    conn.commit(); conn.close()
+    return jsonify({'ok':True, 'stack_id': sid})
+
+@app.route('/api/supplements/compliance', methods=['GET'])
+def api_supplements_compliance():
+    """Son 7 günlük stack uyum oranı."""
+    conn = get_db()
+    from datetime import date as _date, timedelta as _td
+    today = _date.fromisoformat(operation_today())
+    result = []
+    for i in range(7):
+        d = (today - _td(days=i)).isoformat()
+        logs = conn.execute("SELECT stack_name_snapshot FROM supplement_logs WHERE date=?", (d,)).fetchall()
+        result.append({'date': d, 'stacks_logged': [r['stack_name_snapshot'] for r in logs], 'count': len(logs)})
+    conn.close()
+    return jsonify(result)
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route('/api/ai-insights', methods=['POST'])
 def api_ai_insights():
