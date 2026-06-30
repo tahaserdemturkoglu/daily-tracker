@@ -1118,6 +1118,7 @@ function toggleTheme(){const h=document.documentElement,themes=['dark','light','
 const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight_goal:0,steps:10000};
 // TEK KAYNAK — öğün sırası buradan yönetilir
 const G_SLOT_ORDER=['kahvalti','kahvaltı','meal1','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','ara','ogle','öğle','aksam','akşam','gece','extra'];
+function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
 function getT(training_day){
   try{
     const t={...DEF,...JSON.parse(localStorage.getItem('targets')||'{}')};
@@ -1468,7 +1469,7 @@ function renderVitList(elId,vitamins,canDel){
   const GORDER=['AÇ KARNA STACK','SABAH STACK','PRE-WORKOUT STACK','POST-WORKOUT','GECE STACK','DİĞER'];
   const sorted=Object.keys(groups).sort((a,b)=>{const ia=GORDER.indexOf(a)<0?99:GORDER.indexOf(a),ib=GORDER.indexOf(b)<0?99:GORDER.indexOf(b);return ia-ib;});
   el.innerHTML=sorted.map(g=>{
-    const rows=groups[g].map(v=>`<div class="vit-item"><span><b>${v.name}</b>${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>${canDel?`<button class="del-btn" onclick="confirmDelVit(${v.id},'${v.name}')">✕</button>`:''}</div>`).join('');
+    const rows=groups[g].map(v=>`<div class="vit-item"><span><b>${v.name}</b>${v.amount?' '+fmtAmt(v.amount):''}${v.unit?' '+v.unit:''}</span>${canDel?`<button class="del-btn" onclick="confirmDelVit(${v.id},'${v.name}')">✕</button>`:''}</div>`).join('');
     return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">💊 ${g}</span></div>${rows}</div>`;
   }).join('');
 }
