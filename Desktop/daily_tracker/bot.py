@@ -39,6 +39,26 @@ CYCLE_START       = _cfg.get('CYCLE_START', date.today().isoformat())
 TRAINING_CYCLE    = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
 OPERATION_DAY_CUTOFF_HOUR = int(os.environ.get('OPERATION_DAY_CUTOFF_HOUR', _cfg.get('OPERATION_DAY_CUTOFF_HOUR', 6)))
 
+# ─── VARSAYILAN ÜRÜN SİSTEMİ ─────────────────────────────────────────────────
+# Kullanıcı generic isim yazarsa otomatik resmi ürüne yönlendir
+DEFAULT_PRODUCTS = {
+    'patates':  'Mączyste Patates',
+    'potato':   'Mączyste Patates',
+    'pirinç':   'YASMİN Pirinci',
+    'pirinc':   'YASMİN Pirinci',
+    'rice':     'YASMİN Pirinci',
+    'yoğurt':   'Skyr Yoğurt',
+    'yogurt':   'Skyr Yoğurt',
+    'yumurta':  'Carrefour BIO Yumurta',
+    'egg':      'Carrefour BIO Yumurta',
+    'tavuk':    'Tavuk Göğsü',
+    'chicken':  'Tavuk Göğsü',
+}
+
+# Çiğ gramaj gerektiren ürünler (kullanıcı "pişmiş" demediği sürece)
+RAW_BY_DEFAULT = {'pirinç','pirinc','rice','patates','potato','tavuk','chicken','et','meat','hindi','turkey','balik','balık','fish'}
+# ──────────────────────────────────────────────────────────────────────────────
+
 # SHIFT_AWARE_OPERATION_DAY_V1
 SHIFT_TRANSITION_DATE = date(2026, 6, 22)
 SHIFT_BLOCK_DAYS = 14
@@ -572,27 +592,36 @@ TAHA ICIN KALICI KOCLUK HAFIZASI:
 - Hedefler: yag kaybi, kas korunumu/kazanimi, performans, akne takibi, sindirim ve genel saglik.
 
 GENEL HESAP KURALLARI:
-- Tum gramajlar aksi belirtilmedikce cig gramdir.
-- Tavuk, pirinc, patates, et ve hindi cig agirlik uzerinden hesaplanir.
-- Pismis agirlik kullanma; kullanici ozellikle pismis derse belirt.
+- Tum gramajlar aksi belirtilmedikce CIG gramdir. Pisirmis diyene kadar cig hesapla.
+- Cig kabul edilenler: pirinc, patates, tavuk, et, hindi, balik. Kullanici "pismis" demezse cig kullan.
 - Ekstra yag belirtilmedikce eklenmez.
-- GymBeam Olive Oil Spray yalniz kullanici fis/basis sayisi soylerse eklenir.
+- GymBeam Sprey Yag yalniz kullanici fis/basis sayisi soylerse eklenir.
 
-SABIT URUNLER:
-- Carrefour BIO Organik Yumurta: 1 adet = 70 kcal, 6P, 0.5K, 5Y.
-- Sivi Yumurta Beyazi: 100g = 58 kcal, 10.3P, 1.2K, 0.8Y.
-- Cig Derisiz Tavuk Gogsu: 100g = 120 kcal, 23P, 0K, 2Y.
-- Marine tavuk sis: altta kalan yag/sos tuketilmiyor; 300g cig = 390 kcal, 68P, 3K, 10Y.
-- Yasmin Pirinc: 100g cig = 360 kcal, 7P, 79K, 0.6Y.
-- Patates: 100g cig = 77 kcal, 2P, 17K, 0.1Y.
-- Carrefour Tost Ekmegi: 100g = 252 kcal, 9.5P, 45K, 2.1Y. 69g = 174 kcal, 6.6P, 31.1K, 1.4Y.
-- Cilek: 100g = 32 kcal, 0.7P, 7.7K, 0.3Y.
-- Salatalik: 100g = 15 kcal, 0.7P, 3.6K, 0.1Y.
-- Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y.
-- GymBeam Olive Oil Spray: 1 fis/basis = 15 kcal, 0P, 0K, 1.65Y.
-- Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y; 20-30g kullanim ihmal edilebilir.
-- Skyr Yogurt (Piatnica Skyr Naturalny): 100g = 64 kcal, 12P, 4.1K, 0Y. "yogurt" veya "skyr" yazarsa bu urun.
-- Tavuk Baharati (Malets Gourmet Amber Noble Warm Poultry Blend): 100g = 286 kcal, 18.1P, 50.4K, 8.2Y. Kullanim genellikle 3-5g; "tavuk baharati" yazarsa bu urun.
+VARSAYILAN URUN ESLESTIRMESI (kullanici generic isim yazarsa bu urune yon):
+- "pirinc" / "pirinç" / "rice" = YASMiN Pirinci (PROD-010)
+- "patates" / "potato" = Maczyste Patates (PROD-011)
+- "yogurt" / "yoğurt" = Skyr Yogurt (PROD-013)
+- "yumurta" / "egg" = Carrefour BIO Yumurta (PROD-008)
+- "tavuk" / "chicken" = Tavuk Gogsu
+
+KAYITLI URUNLER VE RESMI MAKROLARI (MASTER SPEC v1.0):
+PROD-001 Dondurulmus Patates: 100g = 99 kcal, 1.9P, 15K, 3.1Y
+PROD-002 GymBeam Sprey Yag: 1 fis = 15 kcal, 0P, 0K, 1.65Y
+PROD-003 Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y
+PROD-004 Salatalik Tursusu: 100g = 18 kcal, 0.9P, 1.92K, 0Y
+PROD-005 Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y (20-30g kullanim ihmal edilebilir)
+PROD-006 Sivi Yumurta Aki: 100g = 58 kcal, 10.3P, 1.2K, 0.8Y
+PROD-007 Carrefour Tam Tahilli Tost Ekmegi: 100g = 252 kcal, 9.5P, 45K, 2.1Y
+PROD-008 Carrefour BIO Yumurta: 1 adet = 70 kcal, 6P, 0.5K, 5Y [source=manual]
+PROD-009 Kakao: 100g = 309 kcal, 24P, 13K, 11Y
+PROD-010 YASMiN Pirinci: 100g CIG = 346 kcal, 7.6P, 77K, 0.5Y
+PROD-011 Maczyste Patates: 100g CIG = 77 kcal, 2P, 17K, 0.1Y [source=manual]
+PROD-012 Cikolatali Protein Bar 33%: 1 bar (50g) = 193 kcal, 16.5P, 11.5K, 9Y
+PROD-013 Skyr Yogurt: 100g = 64 kcal, 12P, 4.1K, 0Y | 150g = 96 kcal, 18P, 6.2K, 0Y
+PROD-014 Tavuk Baharati: 100g = 286 kcal, 18.1P, 50.4K, 8.2Y | 5g = 14 kcal (gram belirtilmezse hesaplama yapma)
+Tavuk Gogsu (cig): 100g = 115 kcal, 23P, 0K, 1.5Y
+Cilek: 100g = 32 kcal, 0.7P, 7.7K, 0.3Y
+Salatalik: 100g = 15 kcal, 0.7P, 3.6K, 0.1Y
 
 STANDART PANCAKE V2:
 - 4 yumurta, 200g sivi yumurta beyazi, 25g yulaf, 50g kuru kayisi, 200g cilek, 50ml sekersiz badem sutu, 6g kakao, 2 fis GymBeam.

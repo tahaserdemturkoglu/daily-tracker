@@ -4034,24 +4034,29 @@ def start_telegram_bot():
 
 def ensure_food_registry():
     conn = get_db()
-    # Create table with new schema
+    # Create table with full schema
     conn.execute('''
         CREATE TABLE IF NOT EXISTS food_registry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id TEXT DEFAULT '',
             name TEXT NOT NULL,
+            official_name TEXT DEFAULT '',
             calories_per_100 REAL DEFAULT 0,
             protein_per_100 REAL DEFAULT 0,
             carbs_per_100 REAL DEFAULT 0,
             fat_per_100 REAL DEFAULT 0,
             unit TEXT DEFAULT 'g',
+            base_unit TEXT DEFAULT '100g',
             serving_size REAL DEFAULT 100,
             serving_unit TEXT DEFAULT 'g',
+            is_raw INTEGER DEFAULT 0,
             notes TEXT DEFAULT '',
             aliases TEXT DEFAULT '',
+            source TEXT DEFAULT '',
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # Migrate old schema (calories_per_100g -> calories_per_100) if needed
+    # Migrate old schema
     cols = {r['name'] for r in conn.execute("PRAGMA table_info(food_registry)").fetchall()}
     if 'calories_per_100g' in cols and 'calories_per_100' not in cols:
         for col in ['calories_per_100','protein_per_100','carbs_per_100','fat_per_100']:
@@ -4060,16 +4065,12 @@ def ensure_food_registry():
         try:
             conn.execute("UPDATE food_registry SET calories_per_100=COALESCE(calories_per_100g,0), protein_per_100=COALESCE(protein_per_100g,0), carbs_per_100=COALESCE(carbs_per_100g,0), fat_per_100=COALESCE(fat_per_100g,0)")
         except: pass
-    if 'aliases' not in cols:
-        try: conn.execute("ALTER TABLE food_registry ADD COLUMN aliases TEXT DEFAULT ''")
-        except: pass
-    if 'unit' not in cols:
-        try: conn.execute("ALTER TABLE food_registry ADD COLUMN unit TEXT DEFAULT 'g'")
-        except: pass
-    if 'serving_size' not in cols:
-        try: conn.execute("ALTER TABLE food_registry ADD COLUMN serving_size REAL DEFAULT 100")
-        except: pass
-    conn.commit()
+    for col, defval in [('aliases',"TEXT DEFAULT ''"),('unit',"TEXT DEFAULT 'g'"),('serving_size','REAL DEFAULT 100'),
+                        ('product_id',"TEXT DEFAULT ''"),('official_name',"TEXT DEFAULT ''"),
+                        ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''")]:
+        if col not in cols:
+            try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} {defval}")
+            except: pass
     conn.commit()
     conn.close()
 
@@ -4116,6 +4117,84 @@ def api_food_registry_delete(fid):
     conn.execute("DELETE FROM food_registry WHERE id=?", (fid,))
     conn.commit(); conn.close()
     return jsonify({'ok':True})
+
+@app.route('/api/food-registry/migrate-spec', methods=['POST'])
+def api_food_registry_migrate_spec():
+    """Master spec v1.0 ürün düzeltmeleri — isimleri, macroları ve meta alanları güncelle."""
+    ensure_food_registry()
+    conn = get_db()
+    # product_id, official_name, base_unit, is_raw, source, correct macros
+    SPEC = [
+        # (match_by_name, updates_dict)
+        ('Yasmin Pirinç', {'product_id':'PROD-010','official_name':'YASMİN Pirinci','name':'YASMİN Pirinci',
+                           'calories_per_100':346,'protein_per_100':7.6,'carbs_per_100':77,'fat_per_100':0.5,
+                           'base_unit':'100g_raw','is_raw':1,'source':'etiket',
+                           'aliases':'pirinç,pirinc,yasmin,yasmin pirinci,yasemin,jasmin rice,rice'}),
+        ('Patates',       {'product_id':'PROD-011','official_name':'Mączyste Patates','name':'Mączyste Patates',
+                           'calories_per_100':77,'protein_per_100':2,'carbs_per_100':17,'fat_per_100':0.1,
+                           'base_unit':'100g_raw','is_raw':1,'source':'manual',
+                           'aliases':'patates,potato,maczyste,mączyste patates'}),
+        ('Skyr Yogurt',   {'product_id':'PROD-013','official_name':'Skyr Yoğurt','name':'Skyr Yoğurt',
+                           'calories_per_100':64,'protein_per_100':12,'carbs_per_100':4.1,'fat_per_100':0,
+                           'base_unit':'100g','is_raw':0,'source':'etiket',
+                           'aliases':'yoğurt,yogurt,skyr,skyr yogurt'}),
+        ('Sıvı Yumurta Beyazı', {'product_id':'PROD-006','official_name':'Sıvı Yumurta Akı','name':'Sıvı Yumurta Akı',
+                                  'calories_per_100':58,'protein_per_100':10.3,'carbs_per_100':1.2,'fat_per_100':0.8,
+                                  'base_unit':'100g','is_raw':0,'source':'etiket',
+                                  'aliases':'syb,sıvı yumurta,liquid egg white,egg white,sivi yumurta,sıvı yumurta akı,likit yumurta'}),
+        ('Kakao',         {'product_id':'PROD-009','official_name':'Kakao','name':'Kakao',
+                           'calories_per_100':309,'protein_per_100':24,'carbs_per_100':13,'fat_per_100':11,
+                           'base_unit':'100g','is_raw':0,'source':'etiket','aliases':'cocoa,cacao,kakao'}),
+        ('Carrefour Tost Ekmeği', {'product_id':'PROD-007','official_name':'Carrefour Tam Tahıllı Tost Ekmeği',
+                                    'name':'Carrefour Tam Tahıllı Tost Ekmeği',
+                                    'calories_per_100':252,'protein_per_100':9.5,'carbs_per_100':45,'fat_per_100':2.1,
+                                    'base_unit':'100g','serving_size':23,'is_raw':0,'source':'etiket',
+                                    'aliases':'tost ekmeği,ekmek,carrefour tost,tost,tost ekmegi,tam tahıllı tost'}),
+        ('Donmus Patates',{'product_id':'PROD-001','official_name':'Dondurulmuş Patates','name':'Dondurulmuş Patates',
+                           'calories_per_100':99,'protein_per_100':1.9,'carbs_per_100':15,'fat_per_100':3.1,
+                           'base_unit':'100g','is_raw':0,'source':'etiket',
+                           'aliases':'donmuş patates,donmus patates,frozen potato,kartofle'}),
+        ('GymBeam Sprey Yag', {'product_id':'PROD-002','official_name':'GymBeam Sprey Yağ','name':'GymBeam Sprey Yağ',
+                                'calories_per_100':15,'protein_per_100':0,'carbs_per_100':0,'fat_per_100':1.65,
+                                'base_unit':'1fis','serving_size':1,'serving_unit':'fıs','is_raw':0,'source':'etiket',
+                                'aliases':'gymbeam,sprey yağ,sprey yag,olive oil spray,fıs,yağ'}),
+        ('Şekersiz Badem Sütü', {'product_id':'PROD-003','official_name':'Şekersiz Badem Sütü',
+                                   'calories_per_100':14,'protein_per_100':0.5,'carbs_per_100':0,'fat_per_100':1.1,
+                                   'base_unit':'100ml','is_raw':0,'source':'etiket',
+                                   'aliases':'şekersiz badem sütü,badem sutu,almond milk,sekersiz badem sutu'}),
+        ('Kornişon Turşu', {'product_id':'PROD-004','official_name':'Salatalık Turşusu','name':'Salatalık Turşusu',
+                             'calories_per_100':18,'protein_per_100':0.9,'carbs_per_100':1.92,'fat_per_100':0,
+                             'base_unit':'100g','is_raw':0,'source':'etiket',
+                             'aliases':'turşu,kornişon,pickle,tursu,kornison,salatalık turşusu'}),
+        ('Keto Ketçap',   {'product_id':'PROD-005','official_name':'Keto Ketçap',
+                           'calories_per_100':41,'protein_per_100':2,'carbs_per_100':6.2,'fat_per_100':0.5,
+                           'base_unit':'100g','is_raw':0,'source':'etiket','aliases':'ketçap,keto ketçap,ketchup,ketcap'}),
+        ('Carrefour BIO Yumurta', {'product_id':'PROD-008','official_name':'Carrefour BIO Yumurta',
+                                    'calories_per_100':137,'protein_per_100':12.4,'carbs_per_100':1.3,'fat_per_100':9.1,
+                                    'base_unit':'1adet','serving_size':1,'serving_unit':'adet','is_raw':0,'source':'manual',
+                                    'aliases':'yumurta,carrefour yumurta,bio yumurta,tam yumurta,carrefour bio'}),
+        ('Go On Nutrition Protein 33% Bar Sutlu', {'product_id':'PROD-012','official_name':'Çikolatalı Protein Bar 33%',
+                                                    'name':'Çikolatalı Protein Bar 33%',
+                                                    'calories_per_100':386,'protein_per_100':33,'carbs_per_100':23,'fat_per_100':18,
+                                                    'base_unit':'1bar','serving_size':50,'serving_unit':'g','is_raw':0,'source':'etiket',
+                                                    'aliases':'protein bar,go on,go on nutrition,bar,çikolatalı protein bar,1 bar'}),
+        ('Tavuk Baharati', {'product_id':'PROD-014','official_name':'Tavuk Baharatı','name':'Tavuk Baharatı',
+                            'calories_per_100':286,'protein_per_100':18.1,'carbs_per_100':50.4,'fat_per_100':8.2,
+                            'base_unit':'100g','serving_size':5,'serving_unit':'g','is_raw':0,'source':'etiket',
+                            'aliases':'tavuk baharatı,baharat,tavuk baharati'}),
+    ]
+    updated = []
+    for match_name, upd in SPEC:
+        row = conn.execute("SELECT id FROM food_registry WHERE name=?", (match_name,)).fetchone()
+        if row:
+            sets = ', '.join(f"{k}=?" for k in upd)
+            vals = list(upd.values()) + [row['id']]
+            conn.execute(f"UPDATE food_registry SET {sets} WHERE id=?", vals)
+            updated.append(upd.get('official_name', match_name))
+        else:
+            updated.append(f'MISSING:{match_name}')
+    conn.commit(); conn.close()
+    return jsonify({'ok':True, 'updated': updated})
 
 @app.route('/api/ai-insights', methods=['POST'])
 def api_ai_insights():
