@@ -1500,7 +1500,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
-  const ORDER=['kahvalti','meal1','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','ara','aksam','gece','extra'];
+  const ORDER=['kahvalti','pre_meal','meal1','pre_snack','post_meal','post_snack','snack','snack2','ara','aksam','gece','extra'];
   const groups={};
   meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
@@ -1979,10 +1979,10 @@ async function renderOzDaily(dateStr){
   // Stat card
   const stat=(icon,label,val,target,p,color,unit)=>`<div class="odl-stat"><div class="odl-stat-top"><div class="odl-stat-icon" style="background:${color}22;color:${color}">${icon}</div><div class="odl-stat-pct" style="color:${p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8'}">${p}%</div></div><div class="odl-stat-val" style="color:${val>0?color:'var(--muted)'}">${val}${unit}</div><div class="odl-stat-tgt">/ ${target}${unit}</div><div class="odl-bar-track"><div class="odl-bar-fill" style="width:${p}%;background:${color}"></div></div></div>`;
   // Slot labels
-  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',ogle:'🥗 Öğle',öğle:'🥗 Öğle',aksam:'🌙 Akşam',akşam:'🌙 Akşam','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
+  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍽️ Meal 1',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🥗 Öğle',öğle:'🥗 Öğle',aksam:'🌙 Akşam',akşam:'🌙 Akşam','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
   const groups={};
   ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase().replace(/ö/g,'ö').replace(/ü/g,'ü');(groups[k]=groups[k]||[]).push(m);});
-  const slotOrder=['kahvaltı','kahvalti','pre_meal','snack','post','post-workout','ara','ogle','öğle','pre-workout','aksam','akşam','extra'];
+  const slotOrder=['kahvaltı','kahvalti','pre_meal','meal1','pre_snack','post_meal','post_snack','snack','snack2','ara','ogle','öğle','aksam','akşam','gece','extra'];
   const sortedSlots=[...new Set([...slotOrder.filter(s=>groups[s]),...Object.keys(groups)])];
   // Supplement groups
   const suppGroups={};
@@ -4861,8 +4861,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function renderMeals(meals){
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
-    const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',snack:'Snack 1',meal1:'Meal 1',pre:'Pre Meal',post:'Post Meal',snack2:'Snack 2',ogle:'Ana Öğün',aksam:'Akşam','pre-workout':'Pre-Workout','post-workout':'Post-Workout',ara:'Atıştırmalık',extra:'Ek Öğün'};
-    const MEAL_ORDER=['kahvalti','kahvaltı','pre_meal','snack','post','meal1','aksam','snack2','extra'];
+    const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ogle:'Öğle',aksam:'Akşam','pre-workout':'Pre Meal','post-workout':'Post Meal',ara:'Atıştırmalık',extra:'Ekstra'};
+    const MEAL_ORDER=['kahvalti','kahvaltı','pre_meal','meal1','pre_snack','post_meal','post_snack','snack','snack2','ara','aksam','gece','extra'];
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
     const sortedOrder=[...new Set([...MEAL_ORDER.filter(s=>groups[s]),...groupOrder])];
     box.innerHTML=sortedOrder.map(key=>{
@@ -4889,9 +4889,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function hexRgb(hex){try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `${r},${g},${b}`;}catch(e){return '100,116,139';}}
   async function renderComboWidget(meals,summary,todayData,trainingDay){
     const $id=id=>document.getElementById(id);
-    const SLOT_ORDER=['kahvalti','pre_meal','snack','post','meal1','aksam','snack2','extra'];
-    const SLOT_LABELS={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',snack:'Snack 1',snack2:'Snack 2',meal1:'Öğle',aksam:'Akşam',pre:'Pre Meal',post:'Post Meal',extra:'Diğer'};
-    const SLOT_COLORS={kahvalti:'#f59e0b',pre_meal:'#f97316',snack:'#22c55e',snack2:'#16a34a',meal1:'#3b82f6',aksam:'#a78bfa',pre:'#ef4444',post:'#06b6d4',extra:'#64748b'};
+    const SLOT_ORDER=['kahvalti','pre_meal','meal1','pre_snack','post_meal','post_snack','snack','snack2','ara','aksam','gece','extra'];
+    const SLOT_LABELS={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ara:'Atıştırmalık',aksam:'Akşam',gece:'Gece',extra:'Ekstra'};
+    const SLOT_COLORS={kahvalti:'#f59e0b',pre_meal:'#f97316',meal1:'#3b82f6',pre_snack:'#22c55e',post_meal:'#06b6d4',post_snack:'#a78bfa',snack:'#22c55e',snack2:'#16a34a',aksam:'#a78bfa',gece:'#6366f1',extra:'#64748b'};
     const TC2={Push:'#dc2626',Pull:'#0ea5e9',Leg:'#f59e0b',Upper:'#8b5cf6',Lower:'#22c55e',Off:'#475569'};
     function slotKey(raw){const s=String(raw||'extra').toLowerCase().replace(/ı/g,'i').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ç/g,'c').replace(/ğ/g,'g');if(/kahv|breakfast/.test(s))return 'kahvalti';if(/^snack2/.test(s))return 'snack2';if(/^snack|^ara|atistirma/.test(s))return 'snack';if(/meal1|ogle|ana/.test(s))return 'meal1';if(/aksam|dinner/.test(s))return 'aksam';if(s==='pre_meal')return 'pre_meal';if(/^pre/.test(s))return 'pre';if(/^post/.test(s))return 'post';return 'extra';}
     function dayOff(offset){const d=new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000);d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10);}
