@@ -485,6 +485,60 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         </div>
       </div>
     </div>
+    <!-- HEDEFLER SATIRI -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:8px" id="dash-goals-row">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
+        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">KAL.HDF</div>
+        <div style="font-size:.82rem;font-weight:900;color:var(--yellow)" id="dash-goal-cal">—</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
+        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">PROT.HDF</div>
+        <div style="font-size:.82rem;font-weight:900;color:var(--teal)" id="dash-goal-prot">—</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
+        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">KARB.HDF</div>
+        <div style="font-size:.82rem;font-weight:900;color:var(--yellow)" id="dash-goal-carb">—</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
+        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">YAĞ.HDF</div>
+        <div style="font-size:.82rem;font-weight:900;color:var(--purple)" id="dash-goal-fat">—</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
+        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">SU.HDF</div>
+        <div style="font-size:.82rem;font-weight:900;color:var(--blue)" id="dash-goal-water">—</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
+        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">ADIM.HDF</div>
+        <div style="font-size:.82rem;font-weight:900;color:#a78bfa" id="dash-goal-steps">—</div>
+      </div>
+    </div>
+    <!-- ADIM + KİLO YAN YANA -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px">
+        <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">👟 Adım Takibi</div>
+        <div style="font-size:1.35rem;font-weight:900;color:#a78bfa" id="dash-step-val">—</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:2px" id="dash-step-rem">— kaldı</div>
+        <div style="background:rgba(255,255,255,.06);border-radius:4px;margin-top:6px;height:4px">
+          <div id="dash-step-bar" style="background:#a78bfa;height:4px;border-radius:4px;width:0%;transition:width .4s"></div>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px">
+        <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">⚖️ Kilo Takibi</div>
+        <div style="font-size:1.35rem;font-weight:900;color:var(--green)" id="dash-w-today">—</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">7 gün ort: <span id="dash-w-7avg" style="color:#e2e8f0">—</span></div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:1px">30 gün trend: <span id="dash-w-trend" style="font-weight:700">—</span></div>
+      </div>
+    </div>
+    <!-- SUPPLEMENT DURUMU -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-top:8px">
+      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">💊 Supplement Durumu</div>
+      <div id="dash-supp-status" style="display:grid;grid-template-columns:1fr 1fr;gap:4px"></div>
+    </div>
+    <!-- AI RAPORU -->
+    <div id="dash-ai-report" style="background:var(--bg3);border:1px solid rgba(251,191,36,.2);border-radius:12px;padding:10px 12px;margin-top:8px;display:none">
+      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">🤖 Günlük AI Raporu</div>
+      <div id="dash-ai-items"></div>
+    </div>
     <!-- BOTTOM -->
     <div class="bottom-grid">
       <div class="card ct ct-purple">
@@ -1061,7 +1115,7 @@ function toggleTheme(){const h=document.documentElement,themes=['dark','light','
 (()=>{const t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;})();
 
 /* SETTINGS */
-const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight_goal:0};
+const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight_goal:0,steps:10000};
 function getT(training_day){
   try{
     const t={...DEF,...JSON.parse(localStorage.getItem('targets')||'{}')};
@@ -1312,6 +1366,81 @@ async function loadDashboard(){
   renderVitList('d-vit-list',d.vitamins||[],false);
   const meals=await API('/api/meals/'+today());
   renderMealList('d-meal-list',meals,false);
+  // Extra widgets
+  loadDashboardExtra(d,t,cal,wml).catch(e=>console.warn('dashExtra:',e));
+}
+
+async function loadDashboardExtra(d,t,cal,wml){
+  // ── Hedefler satırı ──
+  if($('dash-goal-cal'))sv('dash-goal-cal',(t.cal||0).toLocaleString('tr-TR')+' kcal');
+  if($('dash-goal-prot'))sv('dash-goal-prot',(t.prot||0)+'g');
+  if($('dash-goal-carb'))sv('dash-goal-carb',(t.carb||0)+'g');
+  if($('dash-goal-fat'))sv('dash-goal-fat',(t.fat||0)+'g');
+  if($('dash-goal-water'))sv('dash-goal-water',((t.water||0)/1000).toFixed(1)+'L');
+  if($('dash-goal-steps'))sv('dash-goal-steps',(t.steps||10000).toLocaleString('tr-TR'));
+
+  // ── Adım Takibi ──
+  const steps=d.steps?.steps||0;
+  const stepGoal=t.steps||10000;
+  if($('dash-step-val'))sv('dash-step-val',steps?steps.toLocaleString('tr-TR'):'—');
+  const stepRem=Math.max(0,stepGoal-steps);
+  if($('dash-step-rem'))sv('dash-step-rem',steps>=stepGoal?'✓ Hedef tamamlandı':stepRem.toLocaleString('tr-TR')+' adım kaldı');
+  if($('dash-step-bar'))$('dash-step-bar').style.width=Math.min(100,Math.round(steps/(stepGoal||1)*100))+'%';
+
+  // ── Kilo: bugün + 7 gün ort + 30 gün trend ──
+  try{
+    const bm30=await API('/api/body/metrics?days=30');
+    const rows=Array.isArray(bm30)?bm30.filter(r=>r.weight_kg):[];
+    const todayW=rows.find(r=>r.date===today())?.weight_kg;
+    const last7=rows.slice(-7).filter(r=>r.weight_kg);
+    const avg7=last7.length?Math.round(last7.reduce((s,r)=>s+r.weight_kg,0)/last7.length*10)/10:null;
+    const first=rows[0]?.weight_kg,last=rows[rows.length-1]?.weight_kg;
+    const trend30=first&&last?Math.round((last-first)*10)/10:null;
+    if($('dash-w-today'))sv('dash-w-today',todayW?todayW+'kg':'—');
+    if($('dash-w-7avg'))sv('dash-w-7avg',avg7?avg7+'kg':'—');
+    if($('dash-w-trend')){
+      const el=$('dash-w-trend');
+      if(trend30!=null){el.textContent=(trend30>0?'+':'')+trend30+'kg';el.style.color=trend30<=0?'var(--green)':'var(--red3)';}
+      else{el.textContent='—';el.style.color='var(--muted)';}
+    }
+  }catch(e){}
+
+  // ── Supplement Durumu per-stack ──
+  try{
+    const suppData=await API('/api/supplements/today');
+    const logged=(suppData?.logged||[]).map(l=>(l.stack_name||'').toLowerCase());
+    const STACKS=[
+      {name:'Aç Karna Stack',key:'aç karna'},
+      {name:'Sabah Stack',key:'sabah'},
+      {name:'Pre Workout',key:'pre-workout'},
+      {name:'Post Workout',key:'post-workout'},
+      {name:'Gece Stack',key:'gece'},
+    ];
+    const el=$('dash-supp-status');
+    if(el){
+      el.innerHTML=STACKS.map(s=>{
+        const done=logged.some(l=>l.includes(s.key));
+        return `<div style="display:flex;align-items:center;gap:5px;font-size:.75rem;padding:4px 7px;background:${done?'rgba(74,222,128,.07)':'rgba(255,255,255,.03)'};border:1px solid ${done?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};border-radius:7px">
+          <span style="color:${done?'#4ade80':'#94a3b8'};font-weight:700">${done?'✓':'✗'}</span>
+          <span style="color:${done?'#e2e8f0':'#94a3b8'}">${s.name}</span>
+        </div>`;
+      }).join('');
+    }
+  }catch(e){}
+
+  // ── AI Raporu tam liste ──
+  try{
+    const aiR=await API('/api/ai-report/'+today());
+    const el=$('dash-ai-report'),el2=$('dash-ai-items');
+    if(el&&el2&&aiR?.items?.length){
+      el.style.display='';
+      el2.innerHTML=aiR.items.map(it=>`<div style="display:flex;align-items:flex-start;gap:6px;font-size:.78rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'};flex-shrink:0">${it.type==='ok'?'✓':'⚠'}</span>
+        <span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.text}</span>
+      </div>`).join('');
+      if(aiR.suggestions?.length)el2.innerHTML+=`<div style="font-size:.72rem;color:var(--muted);margin-top:6px;padding-top:5px;border-top:1px solid rgba(255,255,255,.06)">💡 ${aiR.suggestions.join(' · ')}</div>`;
+    }
+  }catch(e){}
 }
 
 /* ═══════════════════════════════════════════════════
