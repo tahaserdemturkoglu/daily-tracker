@@ -1113,6 +1113,19 @@ def api_template_delete(tid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+@app.route('/api/templates/<int:tid>', methods=['PUT','PATCH'])
+def api_template_update(tid):
+    d = request.json or {}
+    fields = ['title','kind','category','description','amount','unit','notes',
+              'calories','protein_g','carbs_g','fat_g']
+    sets = ', '.join(f"{f}=?" for f in fields if f in d)
+    vals = [d[f] for f in fields if f in d] + [tid]
+    if not sets: return jsonify({'ok': False, 'error': 'no fields'}), 400
+    conn = get_db()
+    conn.execute(f"UPDATE quick_templates SET {sets} WHERE id=?", vals)
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
 @app.route('/api/note', methods=['POST'])
 def api_note():
     data = request.get_json(force=True) or {}
