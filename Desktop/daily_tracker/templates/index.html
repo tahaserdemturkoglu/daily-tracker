@@ -599,6 +599,22 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           </div>
           <button class="btn btn-green" onclick="saveBody()">Kaydet</button>
         </div>
+        <div class="card ct ct-purple">
+          <div class="card-head"><span class="card-icon">👟</span><div><div class="card-name">Adım</div><div class="card-sub" id="steps-cur">Kayıt yok</div></div></div>
+          <div class="form-row" style="align-items:flex-end;gap:8px">
+            <div class="fg"><label>Adım Sayısı</label><input type="number" id="steps-input" placeholder="10000" min="0" step="100"></div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <button class="btn btn-purple btn-sm" onclick="saveSteps('set')">Kaydet</button>
+              <button class="btn btn-sm" style="background:rgba(255,255,255,.07);font-size:.7rem" onclick="saveSteps('add')">+ Ekle</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            <button class="w-btn" onclick="quickSteps(1000)">+1K</button>
+            <button class="w-btn" onclick="quickSteps(2000)">+2K</button>
+            <button class="w-btn" onclick="quickSteps(5000)">+5K</button>
+            <button class="w-btn" onclick="quickSteps(10000)">10K</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="sub-sec" id="sub-beslenme">
@@ -685,6 +701,15 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div class="card ct ct-indigo">
           <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Bugünkü Öğünler</div></div></div>
           <div class="meal-list" id="meal-today-list"><div class="list-empty">Kayıt yok</div></div>
+        </div>
+        <div class="card ct ct-blue" id="meal-order-card">
+          <div class="card-head"><span class="card-icon">↕️</span><div><div class="card-name">Öğün Sırası</div><div class="card-sub" id="meal-order-sub">Sürükle veya ok ile sırala</div></div>
+            <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadMealOrder()">↻</button>
+          </div>
+          <div id="meal-order-list" style="display:flex;flex-direction:column;gap:4px;min-height:40px">
+            <div style="color:var(--muted);font-size:.8rem;padding:8px">Yükleniyor...</div>
+          </div>
+          <button class="btn btn-blue btn-sm" style="margin-top:8px;font-size:.75rem" onclick="saveMealOrder()">💾 Sırayı Kaydet</button>
         </div>
       </div>
     </div>
@@ -1245,6 +1270,10 @@ async function loadDashboard(){
     const st=d.steps?.steps||0;
     sv('mb-steps',st?st.toLocaleString('tr-TR'):'—');
   }
+  if($('steps-cur')){
+    const st=d.steps?.steps||0;
+    $('steps-cur').textContent=st?st.toLocaleString('tr-TR')+' adım':'Kayıt yok';
+  }
   // Supplement durumu
   if($('mb-supp-row')){
     try{
@@ -1550,37 +1579,38 @@ async function loadLogPage(){
   sv('water-cur',((nu.water_ml||0)/1000).toFixed(1)+'L bugün');
   await Promise.all([loadVitamins(),loadTodayMeals(),loadQuickPicks(),loadMealTitles()]);
   setMealMode('db');
+  if(typeof loadMealOrder==='function') loadMealOrder();
 }
 
-async function loadMealTitles(){
+const SLOT_DISPLAY={
+  kahvalti:'☕ Kahvaltı', kahvaltı:'☕ Kahvaltı',
+  meal1:'🍽️ Meal 1',
+  pre_meal:'🥗 Pre Meal',    pre_snack:'🍎 Pre Snack',
+  post_meal:'💪 Post Meal',  post_snack:'🌙 Post Snack',
+  snack:'🍎 Snack',          snack2:'🍎 Snack 2',
+  aksam:'🌙 Akşam',          gece:'🌙 Gece',
+  extra:'✨ Ekstra',
+};
+async function loadMealTitles(dateStr){
   const sel=$('nu-slot');if(!sel)return;
   const cur=sel.value;
-  // Canonical slot listesi — G_SLOT_ORDER ile senkron, API kirliliginden bagımsız
-  const CANONICAL=[
-    {key:'kahvalti', label:'☕ Kahvaltı'},
-    {key:'meal1',    label:'🍽️ Meal 1'},
-    {key:'pre_meal', label:'🥗 Pre Meal'},
-    {key:'pre_snack',label:'🍎 Pre Snack'},
-    {key:'post_meal',label:'💪 Post Meal'},
-    {key:'post_snack',label:'🌙 Post Snack'},
-    {key:'snack',    label:'🍎 Snack'},
-    {key:'gece',     label:'🌙 Gece'},
-  ];
-  // Bugün kayıtlı slotları çek — aktif olanları vurgula
-  let activeSlots=new Set();
-  try{
-    const meals=await API('/api/meals/'+today());
-    if(Array.isArray(meals)) meals.forEach(m=>{
-      const s=(m.slot||'').toLowerCase().replace(/ö/g,'o').replace(/ü/g,'u').replace(/ı/g,'i');
-      activeSlots.add(s);
-    });
-  }catch(e){}
-  sel.innerHTML='<option value="">-- Seç --</option>'+
-    CANONICAL.map(c=>{
-      const isActive=activeSlots.has(c.key)||activeSlots.has(c.key.replace('_',''));
-      return `<option value="${c.key}" ${isActive?'style="color:#4ade80;font-weight:700"':''}>${c.label}${isActive?' ●':''}</option>`;
-    }).join('');
-  if(cur)sel.value=cur;
+  const d=dateStr||(typeof selectedNutritionDate==='function'?selectedNutritionDate():today());
+  let meals=[];
+  try{ meals=await API('/api/meals/'+d)||[]; }catch(e){}
+  // O güne ait unique slotları G_SLOT_ORDER sırasında çek
+  const seen=new Set(), orderedSlots=[];
+  G_SLOT_ORDER.forEach(key=>{
+    if(!seen.has(key) && meals.some(m=>(m.slot||'').toLowerCase()===key||(m.slot||'').toLowerCase()===key.replace('_',''))){
+      seen.add(key); orderedSlots.push(key);
+    }
+  });
+  if(!orderedSlots.length){
+    sel.innerHTML='<option value="">-- Seç (bugün kayıt yok) --</option>';
+  } else {
+    sel.innerHTML='<option value="">-- Seç --</option>'+
+      orderedSlots.map(k=>`<option value="${k}">${SLOT_DISPLAY[k]||k}</option>`).join('');
+  }
+  if(cur && orderedSlots.includes(cur)) sel.value=cur;
 }
 
 function getMealSlot(){
@@ -1689,6 +1719,90 @@ async function saveSleep(){const h=parseFloat($('sl-hours').value);if(!h)return 
 async function saveExercise(){const t=$('ex-type').value.trim();if(!t)return toast('Tür gir',false);await POST('/api/log/exercise',{type:t,duration:parseInt($('ex-dur').value)||null,intensity:parseInt($('ex-int').value)});toast('Egzersiz kaydedildi');loadLogPage();}
 async function saveMood(){await POST('/api/log/mood',{energy:+$('mo-energy').value,mood:+$('mo-mood').value,stress:+$('mo-stress').value});toast('Ruh hali kaydedildi');loadLogPage();}
 async function saveBody(){const p={weight_kg:parseFloat($('bm-kg').value)||null,waist_cm:parseFloat($('bm-waist').value)||null,chest_cm:parseFloat($('bm-chest').value)||null,arm_cm:parseFloat($('bm-arm').value)||null};if(!Object.values(p).some(Boolean))return toast('Değer gir',false);await POST('/api/body/metrics',p);toast('Ölçüm kaydedildi');}
+async function saveSteps(mode='set'){
+  const v=parseInt($('steps-input').value)||0;
+  if(!v)return toast('Adım sayısı gir',false);
+  const r=await POST('/api/steps',{steps:v,mode});
+  if(r?.ok){
+    const total=r.steps||v;
+    if($('steps-cur'))$('steps-cur').textContent=total.toLocaleString('tr-TR')+' adım';
+    if($('mb-steps'))sv('mb-steps',total.toLocaleString('tr-TR'));
+    if($('h-steps'))sv('h-steps',total.toLocaleString('tr-TR'));
+    $('steps-input').value='';
+    toast(mode==='add'?'+'+v.toLocaleString('tr-TR')+' adım eklendi':'Adım kaydedildi: '+total.toLocaleString('tr-TR'));
+  }
+}
+async function quickSteps(v){
+  const mode=v===10000?'set':'add';
+  const r=await POST('/api/steps',{steps:v,mode});
+  if(r?.ok){
+    const total=r.steps||v;
+    if($('steps-cur'))$('steps-cur').textContent=total.toLocaleString('tr-TR')+' adım';
+    if($('mb-steps'))sv('mb-steps',total.toLocaleString('tr-TR'));
+    if($('h-steps'))sv('h-steps',total.toLocaleString('tr-TR'));
+    toast(mode==='add'?'+'+v.toLocaleString('tr-TR')+' adım':'10K adım hedefi kaydedildi');
+  }
+}
+
+// ── ÖĞÜN SIRASI ──────────────────────────────────────────────────────────────
+let _mealOrderData=[];
+async function loadMealOrder(){
+  const el=$('meal-order-list');if(!el)return;
+  const d=typeof selectedNutritionDate==='function'?selectedNutritionDate():today();
+  const meals=await API('/api/meals/'+d)||[];
+  // Slot bazlı grupla, G_SLOT_ORDER sırasına göre
+  const groups={};
+  meals.forEach(m=>{const k=(m.slot||'extra').toLowerCase();(groups[k]=groups[k]||[]).push(m);});
+  const ordered=[...new Set([...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups)])];
+  _mealOrderData=ordered.map(k=>({key:k,label:SLOT_DISPLAY[k]||k,items:groups[k]||[]}));
+  renderMealOrderList();
+  if($('meal-order-sub'))$('meal-order-sub').textContent=ordered.length+' öğün grubu';
+}
+function renderMealOrderList(){
+  const el=$('meal-order-list');if(!el)return;
+  if(!_mealOrderData.length){el.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:8px">Bu tarihte öğün yok</div>';return;}
+  el.innerHTML=_mealOrderData.map((g,i)=>`
+    <div class="mol-row" data-idx="${i}" draggable="true"
+      ondragstart="molDragStart(event,${i})" ondragover="molDragOver(event)" ondrop="molDrop(event,${i})" ondragend="molDragEnd()"
+      style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 10px;cursor:grab;user-select:none">
+      <span style="color:var(--muted);font-size:.8rem;min-width:18px;text-align:center">${i+1}</span>
+      <span style="flex:1;font-size:.82rem;font-weight:700">${g.label}</span>
+      <span style="color:var(--muted);font-size:.72rem">${g.items.length} kayıt</span>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <button onclick="molMove(${i},-1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;line-height:1" ${i===0?'disabled':''}>▲</button>
+        <button onclick="molMove(${i},1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;line-height:1" ${i===_mealOrderData.length-1?'disabled':''}>▼</button>
+      </div>
+    </div>`).join('');
+  // Drag & drop handlers
+  let _dragIdx=null;
+  window.molDragStart=(e,i)=>{_dragIdx=i;e.currentTarget.style.opacity='.4';};
+  window.molDragOver=(e)=>{e.preventDefault();};
+  window.molDrop=(e,i)=>{e.preventDefault();if(_dragIdx===null||_dragIdx===i)return;const item=_mealOrderData.splice(_dragIdx,1)[0];_mealOrderData.splice(i,0,item);renderMealOrderList();};
+  window.molDragEnd=()=>{_dragIdx=null;};
+}
+function molMove(i,dir){
+  const j=i+dir;
+  if(j<0||j>=_mealOrderData.length)return;
+  [_mealOrderData[i],_mealOrderData[j]]=[_mealOrderData[j],_mealOrderData[i]];
+  renderMealOrderList();
+}
+async function saveMealOrder(){
+  if(!_mealOrderData.length)return toast('Önce öğün yükle',false);
+  const d=typeof selectedNutritionDate==='function'?selectedNutritionDate():today();
+  // Her slot'un tüm kayıtlarını yeni sıraya göre güncelle
+  let ok=true;
+  for(let i=0;i<_mealOrderData.length;i++){
+    const g=_mealOrderData[i];
+    for(const m of g.items){
+      // slot adını canonical'a çevir — sıralama için display_order alanı yoksa slot'u güncelliyoruz
+      // Şimdilik slot adını koruyup display_order olarak index gönder
+      const r=await fetch('/api/meals/'+m.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({display_order:i})}).then(r=>r.json()).catch(()=>({ok:false}));
+      if(!r?.ok) ok=false;
+    }
+  }
+  toast(ok?'Sıra kaydedildi ✓':'Kısmen kaydedildi',ok);
+  if(ok) loadMealOrder();
+}
 async function saveWork(){const h=parseFloat($('wo-h').value);if(!h)return toast('Saat gir',false);await POST('/api/log/work',{hours:h,tasks:$('wo-tasks').value.trim()});toast('İş kaydedildi');}
 async function saveCoaching(){const s=parseInt($('co-s').value);if(!s)return toast('Seans gir',false);await POST('/api/log/coaching',{sessions:s,clients:$('co-c').value.trim()});toast('Antrenörlük kaydedildi');}
 async function saveNote(){const n=$('note-txt').value.trim();if(!n)return toast('Not gir',false);await POST('/api/note',{note:n});toast('Not kaydedildi');}
@@ -4315,7 +4429,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     }
     const formCard=document.querySelector('#nu-slot')?.closest('.card');
     if(formCard && !$('nu-date-inline')){
-      formCard.querySelector('.card-head')?.insertAdjacentHTML('afterend', `<div class="fg" id="nu-date-inline" style="margin-bottom:8px"><label>Kayıt Tarihi</label><input type="date" id="nu-date" value="${today()}" onchange="const d=document.getElementById('nu-log-date'); if(d){d.value=this.value; loadMealEntries();}"></div>`);
+      formCard.querySelector('.card-head')?.insertAdjacentHTML('afterend', `<div class="fg" id="nu-date-inline" style="margin-bottom:8px"><label>Kayıt Tarihi</label><input type="date" id="nu-date" value="${today()}" onchange="const d=document.getElementById('nu-log-date'); if(d){d.value=this.value; loadMealEntries();} loadMealTitles(this.value);"></div>`);
     }
   }
   function selectedNutritionDate(){

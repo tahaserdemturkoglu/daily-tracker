@@ -917,13 +917,23 @@ def api_meal_delete(mid):
     return jsonify({'ok': True, 'deleted': deleted})
 
 
-@app.route('/api/meals/<int:mid>', methods=['PUT'])
+@app.route('/api/meals/<int:mid>', methods=['PUT','PATCH'])
 def api_meal_update(mid):
     data = request.get_json(force=True) or {}
     conn = get_db()
     # Mevcut satırı çek — gönderilmeyen alanlar korunsun
     existing = conn.execute("SELECT * FROM meal_entries WHERE id=?", (mid,)).fetchone()
     ex = dict(existing) if existing else {}
+    # display_order için kolon yoksa ekle
+    try:
+        conn.execute("ALTER TABLE meal_entries ADD COLUMN display_order INTEGER DEFAULT 99")
+        conn.commit()
+    except: pass
+    # PATCH: sadece display_order güncellemesi
+    if 'display_order' in data and len(data) == 1:
+        conn.execute("UPDATE meal_entries SET display_order=? WHERE id=?", (int(data['display_order']), mid))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
     conn.execute("""
         UPDATE meal_entries
         SET slot=?, title=?, description=?, calories=?, protein_g=?, carbs_g=?, fat_g=?, fiber_g=?, source=?
