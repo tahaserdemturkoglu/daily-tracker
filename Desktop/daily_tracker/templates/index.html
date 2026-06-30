@@ -2041,6 +2041,7 @@ async function ozShowDayLog(dateStr){
   if(Array.isArray(meals)&&meals.length){
     renderMealList('oz-day-meal-list',meals,false);
   }
+}
 
 async function renderOzMonthly(){
   const data=await API('/api/summary?days=30');
