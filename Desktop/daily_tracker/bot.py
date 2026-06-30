@@ -1730,20 +1730,26 @@ def tg_water_actions_from_text(raw_text):
 
 
 def tg_slot_from_text(raw_text):
-    """Kullanicinin yazdigi slot adini DB key'ine cevir (guncel slot sistemi)."""
-    n = _tg_norm(raw_text) if '_tg_norm' in globals() else (raw_text or '').lower()
-    if any(w in n for w in ['kahvalti', 'sabah yemek']):
+    """Kullanicinin yazdigi slot adini DB key'ine cevir — G_SLOT_ORDER canonical adlari kullan."""
+    n = norm_tr(raw_text) if 'norm_tr' in globals() else (raw_text or '').lower()
+    if any(w in n for w in ['kahvalti', 'kahvaltı', 'sabah yemek', 'breakfast']):
         return 'kahvalti'
+    if any(w in n for w in ['meal 1', 'meal1', '1. ogun', 'birinci ogun', 'ana ogun', 'ogle']):
+        return 'meal1'
+    if any(w in n for w in ['pre snack', 'presnack', 'antrenman oncesi atistirma']):
+        return 'pre_snack'
+    if any(w in n for w in ['pre meal', 'premeal', 'pre workout meal', 'antrenman oncesi yemek']):
+        return 'pre_meal'
+    if any(w in n for w in ['post snack', 'postsnack', 'antrenman sonrasi atistirma']):
+        return 'post_snack'
+    if any(w in n for w in ['post meal', 'postmeal', 'post workout meal', 'antrenman sonrasi yemek']):
+        return 'post_meal'
     if any(w in n for w in ['snack 2', 'snack2', '2. snack', 'ikinci snack']):
         return 'snack2'
     if any(w in n for w in ['snack', 'atistirma', 'ara ogun']):
         return 'snack'
-    if any(w in n for w in ['meal1', 'meal 1', '1. ogun', 'birinci ogun']):
-        return 'meal1'
-    if any(w in n for w in ['post workout meal', 'post-workout meal', 'post meal', 'antrenman sonrasi yemek']):
-        return 'post-workout-meal'
-    if any(w in n for w in ['pre workout meal', 'pre-workout meal', 'pre meal', 'antrenman oncesi yemek']):
-        return 'pre-workout-meal'
+    if any(w in n for w in ['gece', 'aksam', 'akşam']):
+        return 'aksam'
     return 'extra'
 def _macro_for_known_food(name, amount):
     name_n = _tg_norm(name) if '_tg_norm' in globals() else str(name).lower()

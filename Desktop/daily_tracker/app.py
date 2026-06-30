@@ -721,25 +721,35 @@ def api_vitamin_update(vid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+CANONICAL_SLOTS = [
+    ('TITLE-001', 'Kahvaltı',   1),
+    ('TITLE-002', 'Meal 1',     2),
+    ('TITLE-003', 'Pre Meal',   3),
+    ('TITLE-004', 'Pre Snack',  4),
+    ('TITLE-005', 'Post Meal',  5),
+    ('TITLE-006', 'Post Snack', 6),
+    ('TITLE-007', 'Snack',      7),
+    ('TITLE-008', 'Gece',       8),
+]
+
 def seed_meal_titles():
-    """Varsayılan öğün başlıklarını yükle (yoksa)."""
+    """Canonical öğün slot listesini yükle — kirli kayıtları sil, canonical'i uygula."""
     conn = get_db()
-    existing = conn.execute("SELECT COUNT(*) as c FROM meal_titles").fetchone()['c']
-    if existing == 0:
-        defaults = [
-            ('TITLE-001', 'Kahvaltı', 1),
-            ('TITLE-002', 'Meal 1',   2),
-            ('TITLE-003', 'Meal 2',   3),
-            ('TITLE-004', 'Pre Meal', 4),
-            ('TITLE-005', 'Snack 1',  5),
-            ('TITLE-006', 'Post Workout', 6),
-            ('TITLE-007', 'Gece',     7),
-        ]
-        for tid, name, order in defaults:
+    # Canonical title_id setini belirle
+    canonical_ids = {t[0] for t in CANONICAL_SLOTS}
+    # Canonical olmayan (kullanıcı eklediği kirli) kayıtları sil
+    conn.execute("DELETE FROM meal_titles WHERE title_id NOT IN ({})".format(
+        ','.join('?' for _ in canonical_ids)), list(canonical_ids))
+    # Eksik canonical'leri ekle / order_num'ı güncelle
+    for tid, name, order in CANONICAL_SLOTS:
+        existing = conn.execute("SELECT id FROM meal_titles WHERE title_id=?", (tid,)).fetchone()
+        if existing:
+            conn.execute("UPDATE meal_titles SET name=?, order_num=? WHERE title_id=?", (name, order, tid))
+        else:
             try:
                 conn.execute("INSERT INTO meal_titles (title_id,name,order_num) VALUES (?,?,?)", (tid, name, order))
             except: pass
-        conn.commit()
+    conn.commit()
     conn.close()
 
 try:
@@ -789,16 +799,6 @@ def api_meal_from_food_registry():
     food_name = (data.get('food_name') or '').strip()
     amount = float(data.get('amount') or 100)
     unit = (data.get('unit') or 'g').strip()
-
-    # Auto-save slot to meal_titles
-    if slot:
-        conn = get_db()
-        try:
-            conn.execute("INSERT OR IGNORE INTO meal_titles (title_id,name,order_num) VALUES (?,?,99)",
-                         (f"TITLE-{slot[:6].upper()}", slot))
-            conn.commit()
-        except: pass
-        conn.close()
 
     # Besin DB'den makroları çek
     conn = get_db()
@@ -896,12 +896,6 @@ def api_meal_save():
     fiber_g = _num_or_none(data.get('fiber_g'))
     source = data.get('source', '').strip()
     conn = get_db()
-    # Auto-save slot to meal_titles
-    if slot and slot != 'extra':
-        try:
-            conn.execute("INSERT OR IGNORE INTO meal_titles (title_id,name,order_num) VALUES (?,?,99)",
-                         (f"TITLE-USR-{slot[:8].upper().replace(' ','-')}", slot))
-        except: pass
     if data.get('replace_existing') and slot != 'extra':
         conn.execute("DELETE FROM meal_entries WHERE date=? AND slot=?", (d, slot))
     if title or description or calories or protein_g or carbs_g or fat_g:

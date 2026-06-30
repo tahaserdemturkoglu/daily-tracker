@@ -1553,10 +1553,33 @@ async function loadLogPage(){
 }
 
 async function loadMealTitles(){
-  const titles=await API('/api/meal-titles')||[];
   const sel=$('nu-slot');if(!sel)return;
   const cur=sel.value;
-  sel.innerHTML='<option value="">-- Seç --</option>'+titles.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  // Canonical slot listesi — G_SLOT_ORDER ile senkron, API kirliliginden bagımsız
+  const CANONICAL=[
+    {key:'kahvalti', label:'☕ Kahvaltı'},
+    {key:'meal1',    label:'🍽️ Meal 1'},
+    {key:'pre_meal', label:'🥗 Pre Meal'},
+    {key:'pre_snack',label:'🍎 Pre Snack'},
+    {key:'post_meal',label:'💪 Post Meal'},
+    {key:'post_snack',label:'🌙 Post Snack'},
+    {key:'snack',    label:'🍎 Snack'},
+    {key:'gece',     label:'🌙 Gece'},
+  ];
+  // Bugün kayıtlı slotları çek — aktif olanları vurgula
+  let activeSlots=new Set();
+  try{
+    const meals=await API('/api/meals/'+today());
+    if(Array.isArray(meals)) meals.forEach(m=>{
+      const s=(m.slot||'').toLowerCase().replace(/ö/g,'o').replace(/ü/g,'u').replace(/ı/g,'i');
+      activeSlots.add(s);
+    });
+  }catch(e){}
+  sel.innerHTML='<option value="">-- Seç --</option>'+
+    CANONICAL.map(c=>{
+      const isActive=activeSlots.has(c.key)||activeSlots.has(c.key.replace('_',''));
+      return `<option value="${c.key}" ${isActive?'style="color:#4ade80;font-weight:700"':''}>${c.label}${isActive?' ●':''}</option>`;
+    }).join('');
   if(cur)sel.value=cur;
 }
 
@@ -2126,53 +2149,12 @@ async function renderOzWeekly(){
 }
 
 async function ozShowDayLog(dateStr){
-  const logDiv=$('oz-day-log');
-  if(!logDiv)return;
-  logDiv.style.display='block';
-  logDiv.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:10px 0">Yükleniyor...</div>';
-  const [d,meals,aiReport]=await Promise.all([
-    API('/api/day/'+dateStr),
-    API('/api/meals/'+dateStr),
-    API('/api/ai-report/'+dateStr)
-  ]);
-  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},mo=d.mood||{};
-  const totCal=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.calories||0),0):0;
-  const totP=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.protein_g||0),0):0;
-  const totC=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.carbs_g||0),0):0;
-  const totF=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.fat_g||0),0):0;
-  const steps=d.steps?.steps||0;
-  const vits=d.vitamins||[];
-  // AI raporu satırları
-  let aiHtml='';
-  if(aiReport?.items?.length){
-    aiHtml=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin:8px 0">
-      <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:5px">🤖 AI Raporu</div>
-      ${aiReport.items.map(it=>`<div style="display:flex;gap:5px;font-size:.75rem;padding:2px 0"><span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.type==='ok'?'✓':'⚠'}</span><span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.text}</span></div>`).join('')}
-      ${aiReport.suggestions?.length?`<div style="font-size:.7rem;color:var(--muted);margin-top:5px">Öneri: ${aiReport.suggestions.join(' ')}</div>`:''}
-    </div>`;
-  }
-  logDiv.innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <b style="font-size:.9rem">${new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</b>
-      <span style="background:${d.color||'#333'};color:#fff;padding:2px 8px;border-radius:5px;font-size:.65rem;font-weight:900">${d.training||'—'}</span>
-    </div>
-    ${totCal?`<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.75rem;margin-bottom:8px">
-      <span>🔥<b style="color:var(--yellow)">${Math.round(totCal)}</b>kcal</span>
-      <span>P<b style="color:#4ade80">${Math.round(totP)}g</b></span>
-      <span>K<b style="color:#60a5fa">${Math.round(totC)}g</b></span>
-      <span>Y<b style="color:#f97316">${Math.round(totF)}g</b></span>
-      ${nu.water_ml?`<span>💧<b style="color:#22d3ee">${(nu.water_ml/1000).toFixed(1)}L</b></span>`:''}
-      ${steps?`<span>👟<b>${steps.toLocaleString('tr-TR')}</b></span>`:''}
-      ${sl.hours?`<span>😴<b>${sl.hours}s</b></span>`:''}
-      ${ex.type?`<span>🏋️<b>${ex.type}</b></span>`:''}
-    </div>`:'<div style="color:var(--muted);font-size:.75rem">Kayıt yok</div>'}
-    ${aiHtml}
-    ${vits.length?`<div style="margin-bottom:6px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;font-weight:800">💊 </span>${vits.map(v=>`<span style="background:rgba(180,77,255,.15);color:var(--purple);border-radius:5px;padding:2px 7px;font-size:.72rem;margin:2px;display:inline-block">${v.name}${v.amount?' '+fmtAmt(v.amount):''}</span>`).join('')}</div>`:''}
-    <div id="oz-day-meal-list" style="margin-top:6px"></div>
-    <button class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:.7rem" onclick="$('oz-day-log').style.display='none'">Kapat</button>`;
-  if(Array.isArray(meals)&&meals.length){
-    renderMealList('oz-day-meal-list',meals,false);
-  }
+  // Günlük sekmesine geç ve tam renderOzDaily view'ı kullan
+  ozSub('daily');
+  await renderOzDaily(dateStr);
+  // Sayfayı özet bölümünün üstüne kaydır
+  const ozEl=document.getElementById('oz-daily-content');
+  if(ozEl) ozEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 async function renderOzMonthly(){
