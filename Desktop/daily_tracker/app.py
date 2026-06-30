@@ -268,6 +268,12 @@ def init_db():
             sort_order INTEGER DEFAULT 0,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS daily_ai_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL UNIQUE,
+            report_json TEXT NOT NULL,
+            generated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS workout_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
@@ -1180,7 +1186,141 @@ def api_day(date_str):
         'training': td,
         'color': TRAINING_COLORS[td],
         'date': date_str,
+        'steps': dict(step_row) if step_row else {'date': date_str, 'steps': 0},
     })
+
+@app.route('/api/ai-report/<date_str>', methods=['GET'])
+def api_ai_report_get(date_str):
+    """AI günlük raporu — varsa döndür, yoksa oluştur."""
+    conn = get_db()
+    row = conn.execute("SELECT report_json FROM daily_ai_reports WHERE date=?", (date_str,)).fetchone()
+    if row:
+        conn.close()
+        import json as _j
+        return jsonify(_j.loads(row['report_json']))
+    conn.close()
+    return api_ai_report_generate(date_str)
+
+@app.route('/api/ai-report/<date_str>/generate', methods=['POST','GET'])
+def api_ai_report_generate(date_str):
+    """AI raporu üret ve sakla."""
+    import json as _j
+    conn = get_db()
+    # Veri topla
+    meals = conn.execute("SELECT * FROM meal_entries WHERE date=?", (date_str,)).fetchall()
+    nutrition = conn.execute("SELECT * FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
+    step_row = conn.execute("SELECT steps FROM step_logs WHERE date=? LIMIT 1", (date_str,)).fetchone()
+    supp_logs = conn.execute("SELECT stack_name_snapshot FROM supplement_logs WHERE date=?", (date_str,)).fetchall()
+    exercise = conn.execute("SELECT * FROM exercise_logs WHERE date=?", (date_str,)).fetchone()
+    sleep_row = conn.execute("SELECT hours FROM sleep_logs WHERE date=?", (date_str,)).fetchone()
+    conn.close()
+
+    total_cal  = sum(m['calories'] or 0 for m in meals)
+    total_prot = sum(m['protein_g'] or 0 for m in meals)
+    total_carb = sum(m['carbs_g'] or 0 for m in meals)
+    total_fat  = sum(m['fat_g'] or 0 for m in meals)
+    water_ml   = int(nutrition['water_ml'] if nutrition and nutrition['water_ml'] else 0)
+    steps      = int(step_row['steps'] if step_row else 0)
+    stacks_done = [r['stack_name_snapshot'] for r in supp_logs]
+    has_exercise = bool(exercise and exercise['type'])
+    sleep_h = float(sleep_row['hours']) if sleep_row and sleep_row['hours'] else 0
+
+    # Hedefler (Taha için sabit)
+    CAL_TARGET  = (2800, 3400)
+    PROT_TARGET = 180
+    WATER_TARGET = 3000
+    STEP_TARGET  = 10000
+    SLEEP_TARGET = (7, 9)
+
+    items = []
+    # Protein
+    if total_prot >= PROT_TARGET:
+        items.append({'type':'ok', 'text': f'Protein hedefi tamamlandı ({round(total_prot)}g / {PROT_TARGET}g)'})
+    elif total_prot > 0:
+        deficit = round(PROT_TARGET - total_prot)
+        items.append({'type':'warn', 'text': f'Protein hedefi eksik — {deficit}g daha gerekiyor ({round(total_prot)}g / {PROT_TARGET}g)'})
+
+    # Kalori
+    if total_cal:
+        if CAL_TARGET[0] <= total_cal <= CAL_TARGET[1]:
+            items.append({'type':'ok', 'text': f'Kalori hedefi uygun ({round(total_cal)} kcal)'})
+        elif total_cal < CAL_TARGET[0]:
+            items.append({'type':'warn', 'text': f'Kalori düşük — {round(CAL_TARGET[0]-total_cal)} kcal eksik ({round(total_cal)} kcal)'})
+        else:
+            items.append({'type':'warn', 'text': f'Kalori fazla — hedefin {round(total_cal-CAL_TARGET[1])} kcal üstünde ({round(total_cal)} kcal)'})
+
+    # Su
+    if water_ml >= WATER_TARGET:
+        items.append({'type':'ok', 'text': f'Su hedefi tamamlandı ({water_ml/1000:.1f}L)'})
+    elif water_ml > 0:
+        remain = round((WATER_TARGET - water_ml) / 100) * 100
+        items.append({'type':'warn', 'text': f'Su tüketimi düşük — {remain}ml daha içilebilir ({water_ml/1000:.1f}L / {WATER_TARGET/1000:.1f}L)'})
+    else:
+        items.append({'type':'warn', 'text': f'Su kaydı yok — günlük {WATER_TARGET/1000:.1f}L hedefine ulaş'})
+
+    # Adım
+    if steps >= STEP_TARGET:
+        items.append({'type':'ok', 'text': f'Adım hedefi tamamlandı ({steps:,} adım)'})
+    elif steps > 0:
+        items.append({'type':'warn', 'text': f'Adım hedefi tamamlanmadı ({steps:,} / {STEP_TARGET:,} adım)'})
+    else:
+        items.append({'type':'warn', 'text': f'Adım kaydı yok — {STEP_TARGET:,} adım hedefi'})
+
+    # Supplement
+    key_stacks = ['Sabah Stack', 'Pre Workout Stack', 'Post Workout Stack']
+    done_stacks = [s for s in key_stacks if any(s.lower() in d.lower() for d in stacks_done)]
+    miss_stacks = [s for s in key_stacks if s not in done_stacks]
+    if done_stacks:
+        items.append({'type':'ok', 'text': f'Supplement: {", ".join(done_stacks)}'})
+    if miss_stacks:
+        items.append({'type':'warn', 'text': f'Eksik supplement: {", ".join(miss_stacks)}'})
+
+    # Antrenman
+    if has_exercise:
+        items.append({'type':'ok', 'text': f'Antrenman tamamlandı ({exercise["type"]})'})
+
+    # Uyku
+    if sleep_h:
+        if SLEEP_TARGET[0] <= sleep_h <= SLEEP_TARGET[1]:
+            items.append({'type':'ok', 'text': f'Uyku hedefi uygun ({sleep_h}s)'})
+        elif sleep_h < SLEEP_TARGET[0]:
+            items.append({'type':'warn', 'text': f'Uyku yetersiz ({sleep_h}s / hedef {SLEEP_TARGET[0]}s)'})
+
+    # Öneri
+    suggestions = []
+    if water_ml < WATER_TARGET and water_ml > 0:
+        remain_l = (WATER_TARGET - water_ml) / 1000
+        suggestions.append(f'{remain_l:.1f}L daha su içilebilir.')
+    if steps < STEP_TARGET and steps > 0:
+        suggestions.append(f'{STEP_TARGET - steps:,} adım daha atılabilir.')
+    if total_prot < PROT_TARGET and total_prot > 0:
+        suggestions.append(f'{round(PROT_TARGET - total_prot)}g protein eksik — tavuk veya yumurta eklenebilir.')
+
+    report = {
+        'date': date_str,
+        'items': items,
+        'suggestions': suggestions,
+        'summary': {
+            'calories': round(total_cal),
+            'protein': round(total_prot, 1),
+            'carbs': round(total_carb, 1),
+            'fat': round(total_fat, 1),
+            'water_ml': water_ml,
+            'steps': steps,
+            'stacks_done': stacks_done,
+            'has_exercise': has_exercise,
+            'sleep_hours': sleep_h,
+        },
+        'generated_at': operation_today(),
+    }
+    conn2 = get_db()
+    try:
+        conn2.execute("INSERT OR REPLACE INTO daily_ai_reports (date, report_json, generated_at) VALUES (?,?,CURRENT_TIMESTAMP)",
+                      (date_str, _j.dumps(report, ensure_ascii=False)))
+        conn2.commit()
+    except: pass
+    finally: conn2.close()
+    return jsonify(report)
 
 @app.route('/api/report/today')
 def api_report():

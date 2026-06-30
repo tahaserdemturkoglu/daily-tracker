@@ -557,7 +557,10 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <span>P <b id="mb-prot" style="color:#00e5ff">—</b>g</span>
             <span>K <b id="mb-carb" style="color:#ffb800">—</b>g</span>
             <span>Y <b id="mb-fat" style="color:#ff6b6b">—</b>g</span>
+            <span>👟 <b id="mb-steps" style="color:#a78bfa">—</b></span>
+            <span id="mb-supp-row" style="display:none">💊 <b id="mb-supp" style="color:#34d399">—</b></span>
           </div>
+          <div id="daily-ai-report-bar" style="display:none;font-size:.72rem;padding:5px 8px;background:rgba(255,255,255,.04);border-radius:7px;margin-bottom:8px"></div>
           <div class="water-btns">
             <button class="w-btn" onclick="addWater(200)">+200ml</button>
             <button class="w-btn" onclick="addWater(330)">+330ml</button>
@@ -885,6 +888,12 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div class="trend-head"><div class="trend-title">Kalori (7 gün)</div></div>
         <canvas id="oz-cal-chart" height="100"></canvas>
       </div>
+      <!-- GÜN SEÇİMİ → TAM LOG GÖRÜNÜMÜ -->
+      <div style="margin-top:16px">
+        <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:8px">📅 Gün Seç — Tam Log Görünümü</div>
+        <div id="oz-day-selector" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+        <div id="oz-day-log" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;min-height:40px;display:none"></div>
+      </div>
     </div>
     <!-- AYLIK -->
     <div id="oz-monthly" class="oz-sub" style="display:none">
@@ -1174,6 +1183,34 @@ async function loadDashboard(){
 
   // Su kartı makro özeti
   if($('mb-cal')){sv('mb-cal',cal.toLocaleString('tr-TR'));sv('mb-prot',prot);sv('mb-carb',carb);sv('mb-fat',fat);}
+  // Adım
+  if($('mb-steps')){
+    const st=d.steps?.steps||0;
+    sv('mb-steps',st?st.toLocaleString('tr-TR'):'—');
+  }
+  // Supplement durumu
+  if($('mb-supp-row')){
+    try{
+      const suppData=await API('/api/supplements/today');
+      const done=(suppData?.logged||[]).map(l=>l.stack_name).join(', ');
+      if(done){$('mb-supp-row').style.display='';sv('mb-supp',done);}
+    }catch(e){}
+  }
+  // AI raporu özet bar
+  try{
+    const aiR=await API('/api/ai-report/'+today());
+    const aiBar=$('daily-ai-report-bar');
+    if(aiBar&&aiR?.items?.length){
+      const warns=aiR.items.filter(i=>i.type==='warn');
+      const oks=aiR.items.filter(i=>i.type==='ok');
+      aiBar.style.display='flex';
+      aiBar.style.flexWrap='wrap';
+      aiBar.style.gap='6px';
+      aiBar.innerHTML=(oks.map(i=>`<span style="color:#4ade80">✓ ${i.text.split('—')[0].trim()}</span>`).slice(0,2))
+        .concat(warns.map(i=>`<span style="color:#fbbf24">⚠ ${i.text.split('—')[0].trim()}</span>`).slice(0,2))
+        .join('');
+    }
+  }catch(e){}
   sv('d-cal',cal.toLocaleString('tr-TR'));
   sv('d-remain',Math.max(0,t.cal-cal).toLocaleString('tr-TR')+' kcal kaldı');
   sv('d-target-txt','Hedef: '+t.cal.toLocaleString('tr-TR')+' kcal');
@@ -1304,8 +1341,8 @@ function renderVitList(elId,vitamins,canDel){
     return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">💊 ${g}</span></div>${rows}</div>`;
   }).join('');
 }
-function renderMealList(elId,meals,canDel){
-  const el=$(elId);if(!el)return;
+function renderMealList(elId,meals,canDel,elOverride){
+  const el=elOverride||(typeof elId==='string'?$(elId):elId);if(!el)return;
   if(!Array.isArray(meals)||!meals.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
   function normSlot(s){
     s=(s||'extra').toLowerCase().trim();
@@ -1943,7 +1980,67 @@ async function renderOzWeekly(){
     ]);
     mkOzChart('oz-cal-chart','bar',labels,[{label:'Kalori',data:vals('calories',0),backgroundColor:'rgba(255,184,0,.5)',borderColor:'#ffb800',borderWidth:1.5}]);
   },100);
+  // Gün seçim butonları
+  const daySelEl=$('oz-day-selector');
+  if(daySelEl){
+    daySelEl.innerHTML=data.map(d=>{
+      const lbl=new Date(d.date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric'});
+      const isT=d.date===today();
+      return `<button class="btn btn-sm" onclick="ozShowDayLog('${d.date}')" style="font-size:.72rem;padding:5px 10px;background:${isT?'var(--accent)':'rgba(255,255,255,.07)'};color:${isT?'#fff':'var(--text)'}">
+        ${isT?'📍 ':''}${lbl}${d.has_data?` <span style="color:#4ade80;font-size:.65rem">●</span>`:''}
+      </button>`;
+    }).join('');
+  }
 }
+
+async function ozShowDayLog(dateStr){
+  const logDiv=$('oz-day-log');
+  if(!logDiv)return;
+  logDiv.style.display='block';
+  logDiv.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:10px 0">Yükleniyor...</div>';
+  const [d,meals,aiReport]=await Promise.all([
+    API('/api/day/'+dateStr),
+    API('/api/meals/'+dateStr),
+    API('/api/ai-report/'+dateStr)
+  ]);
+  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},mo=d.mood||{};
+  const totCal=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.calories||0),0):0;
+  const totP=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.protein_g||0),0):0;
+  const totC=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.carbs_g||0),0):0;
+  const totF=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.fat_g||0),0):0;
+  const steps=d.steps?.steps||0;
+  const vits=d.vitamins||[];
+  // AI raporu satırları
+  let aiHtml='';
+  if(aiReport?.items?.length){
+    aiHtml=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin:8px 0">
+      <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:5px">🤖 AI Raporu</div>
+      ${aiReport.items.map(it=>`<div style="display:flex;gap:5px;font-size:.75rem;padding:2px 0"><span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.type==='ok'?'✓':'⚠'}</span><span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.text}</span></div>`).join('')}
+      ${aiReport.suggestions?.length?`<div style="font-size:.7rem;color:var(--muted);margin-top:5px">Öneri: ${aiReport.suggestions.join(' ')}</div>`:''}
+    </div>`;
+  }
+  logDiv.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <b style="font-size:.9rem">${new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</b>
+      <span style="background:${d.color||'#333'};color:#fff;padding:2px 8px;border-radius:5px;font-size:.65rem;font-weight:900">${d.training||'—'}</span>
+    </div>
+    ${totCal?`<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.75rem;margin-bottom:8px">
+      <span>🔥<b style="color:var(--yellow)">${Math.round(totCal)}</b>kcal</span>
+      <span>P<b style="color:#4ade80">${Math.round(totP)}g</b></span>
+      <span>K<b style="color:#60a5fa">${Math.round(totC)}g</b></span>
+      <span>Y<b style="color:#f97316">${Math.round(totF)}g</b></span>
+      ${nu.water_ml?`<span>💧<b style="color:#22d3ee">${(nu.water_ml/1000).toFixed(1)}L</b></span>`:''}
+      ${steps?`<span>👟<b>${steps.toLocaleString('tr-TR')}</b></span>`:''}
+      ${sl.hours?`<span>😴<b>${sl.hours}s</b></span>`:''}
+      ${ex.type?`<span>🏋️<b>${ex.type}</b></span>`:''}
+    </div>`:'<div style="color:var(--muted);font-size:.75rem">Kayıt yok</div>'}
+    ${aiHtml}
+    ${vits.length?`<div style="margin-bottom:6px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;font-weight:800">💊 </span>${vits.map(v=>`<span style="background:rgba(180,77,255,.15);color:var(--purple);border-radius:5px;padding:2px 7px;font-size:.72rem;margin:2px;display:inline-block">${v.name}${v.amount?' '+v.amount:''}</span>`).join('')}</div>`:''}
+    <div id="oz-day-meal-list" style="margin-top:6px"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:.7rem" onclick="$('oz-day-log').style.display='none'">Kapat</button>`;
+  if(Array.isArray(meals)&&meals.length){
+    renderMealList('oz-day-meal-list',meals,false);
+  }
 
 async function renderOzMonthly(){
   const data=await API('/api/summary?days=30');
@@ -2003,30 +2100,80 @@ async function getVitDays(y,m){
 }
 
 async function showDayPanel(dateStr){
-  const [d,meals]=await Promise.all([API('/api/day/'+dateStr),API('/api/meals/'+dateStr)]);
-  const panel=$('day-panel');panel.style.display='block';
+  const panel=$('day-panel');
+  panel.style.display='block';
+  panel.innerHTML=`<div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">Yükleniyor...</div>`;
+  const [d,meals,aiReport]=await Promise.all([
+    API('/api/day/'+dateStr),
+    API('/api/meals/'+dateStr),
+    API('/api/ai-report/'+dateStr)
+  ]);
   const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},w=d.work||{},mo=d.mood||{};
   const totCal=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.calories||0),0):0;
   const totP=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.protein_g||0),0):0;
+  const totC=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.carbs_g||0),0):0;
+  const totF=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.fat_g||0),0):0;
   const vits=d.vitamins||[];
+  const steps=d.steps?.steps||0;
+
+  // Meal listesi - slot gruplu
+  let mealHtml='';
+  if(Array.isArray(meals)&&meals.length){
+    // renderMealList ile aynı format
+    const tmpEl=document.createElement('div');
+    renderMealList(tmpEl.id||'_tmp_',meals,false,tmpEl);
+    mealHtml=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin:10px 0 6px">🍽️ Öğünler</div>
+      <div id="day-panel-meals"></div>`;
+  }
+
+  // AI raporu
+  let aiHtml='';
+  if(aiReport&&aiReport.items){
+    const rows=aiReport.items.map(it=>`
+      <div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;font-size:.78rem">
+        <span style="font-size:.9rem;flex-shrink:0">${it.type==='ok'?'✓':'⚠'}</span>
+        <span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.text}</span>
+      </div>`).join('');
+    const suggs=aiReport.suggestions?.length?`<div style="margin-top:6px;font-size:.72rem;color:var(--muted)"><b>Öneri:</b> ${aiReport.suggestions.join(' ')}</div>`:'';
+    aiHtml=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin:10px 0">
+      <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:6px">🤖 AI Raporu</div>
+      ${rows}${suggs}
+    </div>`;
+  }
+
   panel.innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <div style="font-size:1rem;font-weight:900">${new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
       <div style="background:${d.color||'#333'};color:#fff;padding:3px 12px;border-radius:6px;font-size:.72rem;font-weight:900;text-transform:uppercase">${d.training||'—'}</div>
     </div>
+    <!-- Özet makro satırı -->
+    ${totCal?`<div style="display:flex;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.04);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:.78rem">
+      <span>🔥 <b style="color:var(--yellow)">${Math.round(totCal)}</b> kcal</span>
+      <span>P <b style="color:#4ade80">${Math.round(totP)}g</b></span>
+      <span>K <b style="color:#60a5fa">${Math.round(totC)}g</b></span>
+      <span>Y <b style="color:#f97316">${Math.round(totF)}g</b></span>
+      ${nu.water_ml?`<span>💧 <b style="color:#22d3ee">${(nu.water_ml/1000).toFixed(1)}L</b></span>`:''}
+      ${steps?`<span>👟 <b>${steps.toLocaleString('tr-TR')}</b></span>`:''}
+    </div>`:''}
+    <!-- Diğer veriler -->
     <div class="day-data-grid">
       ${sl.hours?`<div class="day-data-item"><div class="day-lbl">Uyku</div><div class="day-val">${fmtSleep(sl.hours)} / ${sl.quality||'?'}/10</div></div>`:''}
-      ${ex.type?`<div class="day-data-item"><div class="day-lbl">Egzersiz</div><div class="day-val">${ex.type} ${ex.duration||''}dk</div></div>`:''}
-      ${totCal?`<div class="day-data-item"><div class="day-lbl">Kalori</div><div class="day-val">${Math.round(totCal)} kcal</div></div>`:''}
-      ${totP?`<div class="day-data-item"><div class="day-lbl">Protein</div><div class="day-val">${Math.round(totP)}g</div></div>`:''}
-      ${nu.water_ml?`<div class="day-data-item"><div class="day-lbl">Su</div><div class="day-val">${(nu.water_ml/1000).toFixed(1)}L</div></div>`:''}
-      ${w.hours?`<div class="day-data-item"><div class="day-lbl">İş</div><div class="day-val">${w.hours}s</div></div>`:''}
+      ${ex.type?`<div class="day-data-item"><div class="day-lbl">Egzersiz</div><div class="day-val">${ex.type} ${ex.duration?ex.duration+'dk':''}</div></div>`:''}
       ${mo.energy?`<div class="day-data-item"><div class="day-lbl">Enerji/Mood</div><div class="day-val">${mo.energy}/${mo.mood||'?'}</div></div>`:''}
+      ${w.hours?`<div class="day-data-item"><div class="day-lbl">İş</div><div class="day-val">${w.hours}s</div></div>`:''}
     </div>
+    <!-- AI raporu -->
+    ${aiHtml}
+    <!-- Supplementler -->
     ${vits.length?`<div style="margin-bottom:8px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:5px">💊 Takviyeler</div>${vits.map(v=>`<span style="display:inline-block;background:rgba(180,77,255,.15);border:1px solid rgba(180,77,255,.3);color:var(--purple);border-radius:6px;padding:3px 9px;font-size:.75rem;font-weight:700;margin:2px">${v.name}${v.amount?' '+v.amount:''}${v.unit?' '+v.unit:''}</span>`).join('')}</div>`:''}
-    ${Array.isArray(meals)&&meals.length?`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:6px">🍽️ Öğünler</div>${meals.map(m=>`<div style="padding:5px 0;border-bottom:1px solid var(--border)"><div style="font-size:.82rem;font-weight:700">${m.title||m.slot}</div><div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">${m.calories?`<span style="font-size:.69rem;font-weight:800;color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="font-size:.69rem;color:var(--green)">P:${+(Math.round(m.protein_g*10)/10)}g</span>`:''} ${m.carbs_g?`<span style="font-size:.69rem;color:var(--blue)">K:${+(Math.round((m.carbs_g||0)*10)/10)}g</span>`:''} ${m.fat_g?`<span style="font-size:.69rem;color:var(--orange)">Y:${+(Math.round(m.fat_g*10)/10)}g</span>`:''}</div></div>`).join('')}`:''}
+    <!-- Öğünler -->
+    ${mealHtml}
     ${d.note?`<div style="margin-top:10px;font-size:.82rem;color:var(--muted);font-style:italic">"${d.note}"</div>`:''}
     <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="$('day-panel').style.display='none'">Kapat ✕</button>`;
+  // Öğünleri slot gruplu render et
+  if(Array.isArray(meals)&&meals.length){
+    renderMealList('day-panel-meals',meals,false);
+  }
 }
 
 /* ═══════════════════════════════════════════════════
