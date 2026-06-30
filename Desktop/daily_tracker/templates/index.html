@@ -570,19 +570,48 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
           </div>
         </div>
-        <div class="card ct ct-teal">
+        <div class="card ct ct-teal" style="position:relative">
           <div class="card-head"><span class="card-icon">🍽️</span><div><div class="card-name">Öğün Ekle</div></div></div>
-          <div class="form-row"><div class="fg"><label>Öğün</label><select id="nu-slot"><option>kahvaltı</option><option>öğle</option><option>akşam</option><option>ara öğün</option><option>pre-workout</option><option>post-workout</option><option>extra</option></select></div></div>
-          <div class="form-row"><div class="fg"><label>Yemek adı</label><input type="text" id="nu-title" placeholder="Pankek Kahvaltısı"></div></div>
-          <div class="form-row">
-            <div class="fg"><label>Kalori</label><input type="number" id="nu-cal" placeholder="500"></div>
-            <div class="fg"><label>Protein (g)</label><input type="number" id="nu-prot" step=".1" placeholder="30"></div>
+          <div class="form-row" style="align-items:flex-end;gap:6px">
+            <div class="fg" style="flex:2">
+              <label>Öğün Başlığı</label>
+              <select id="nu-slot" style="width:100%"><option value="">-- Seç --</option></select>
+            </div>
+            <div class="fg" style="flex:1.5">
+              <label>Yeni Başlık</label>
+              <input type="text" id="nu-slot-new" placeholder="Pre Meal..." style="width:100%">
+            </div>
           </div>
-          <div class="form-row">
-            <div class="fg"><label>Karb (g)</label><input type="number" id="nu-carb" step=".1" placeholder="60"></div>
-            <div class="fg"><label>Yağ (g)</label><input type="number" id="nu-fat" step=".1" placeholder="10"></div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button class="btn btn-sm" id="nu-mode-db" onclick="setMealMode('db')" style="flex:1;background:var(--accent);color:#fff">📦 Besin DB</button>
+            <button class="btn btn-sm" id="nu-mode-manual" onclick="setMealMode('manual')" style="flex:1;background:rgba(255,255,255,.08)">✏️ Manuel</button>
           </div>
-          <button class="btn btn-teal" onclick="saveMeal()">Kaydet</button>
+          <div id="nu-db-mode">
+            <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap">
+              <div class="fg" style="flex:3;position:relative">
+                <label>Ürün Ara</label>
+                <input type="text" id="nu-food-search" placeholder="patates, tavuk, pirinç..." oninput="foodSearch(this.value)" autocomplete="off" style="width:100%">
+                <div id="nu-food-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
+              </div>
+              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="nu-food-amount" value="100" min="1" step="1" oninput="updateFoodPreview()" style="width:100%"></div>
+              <div class="fg" style="flex:0.8"><label>Birim</label><input type="text" id="nu-food-unit" value="g" style="width:100%"></div>
+            </div>
+            <div id="nu-food-preview" style="font-size:.75rem;color:#60a5fa;padding:4px 0;min-height:18px"></div>
+            <input type="hidden" id="nu-food-id"><input type="hidden" id="nu-food-name">
+            <button class="btn btn-teal" onclick="saveMealFromDB()">Ekle</button>
+          </div>
+          <div id="nu-manual-mode" style="display:none">
+            <div class="form-row"><div class="fg"><label>Ürün Adı</label><input type="text" id="nu-title" placeholder="Tavuk Göğsü"></div></div>
+            <div class="form-row">
+              <div class="fg"><label>kcal</label><input type="number" id="nu-cal" placeholder="200"></div>
+              <div class="fg"><label>P (g)</label><input type="number" id="nu-prot" step=".1" placeholder="30"></div>
+            </div>
+            <div class="form-row">
+              <div class="fg"><label>K (g)</label><input type="number" id="nu-carb" step=".1" placeholder="0"></div>
+              <div class="fg"><label>Y (g)</label><input type="number" id="nu-fat" step=".1" placeholder="5"></div>
+            </div>
+            <button class="btn btn-teal" onclick="saveMeal()">Kaydet</button>
+          </div>
           <div id="qm-btns" style="margin-top:8px"></div>
         </div>
         <div class="card ct ct-purple">
@@ -1350,8 +1379,103 @@ async function loadLogPage(){
   if($('sl-hours')&&sl.hours)$('sl-hours').value=sl.hours;
   if($('wo-h')&&w.hours)$('wo-h').value=w.hours;
   sv('water-cur',((nu.water_ml||0)/1000).toFixed(1)+'L bugün');
-  await Promise.all([loadVitamins(),loadTodayMeals(),loadQuickPicks()]);
+  await Promise.all([loadVitamins(),loadTodayMeals(),loadQuickPicks(),loadMealTitles()]);
+  setMealMode('db');
 }
+
+async function loadMealTitles(){
+  const titles=await API('/api/meal-titles')||[];
+  const sel=$('nu-slot');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">-- Seç --</option>'+titles.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+function getMealSlot(){
+  const newVal=($('nu-slot-new')?.value||'').trim();
+  const selVal=($('nu-slot')?.value||'').trim();
+  return newVal||selVal||'extra';
+}
+
+function setMealMode(mode){
+  const dbDiv=$('nu-db-mode'),manDiv=$('nu-manual-mode');
+  const dbBtn=$('nu-mode-db'),manBtn=$('nu-mode-manual');
+  if(mode==='db'){
+    if(dbDiv)dbDiv.style.display='';
+    if(manDiv)manDiv.style.display='none';
+    if(dbBtn)dbBtn.style.background='var(--accent)';
+    if(manBtn)manBtn.style.background='rgba(255,255,255,.08)';
+  }else{
+    if(dbDiv)dbDiv.style.display='none';
+    if(manDiv)manDiv.style.display='';
+    if(dbBtn)dbBtn.style.background='rgba(255,255,255,.08)';
+    if(manBtn)manBtn.style.background='var(--accent)';
+  }
+}
+
+let _foodList=null;
+async function foodSearch(q){
+  const res=$('nu-food-results');if(!res)return;
+  q=(q||'').trim().toLowerCase();
+  if(!q){res.style.display='none';return;}
+  if(!_foodList)_foodList=await API('/api/food-registry')||[];
+  const matches=_foodList.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)||(f.aliases||'').toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){res.style.display='none';return;}
+  res.innerHTML=matches.map(f=>`<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background=''">
+    <b>${f.official_name||f.name}</b>
+    <span style="color:var(--muted);font-size:.75rem;margin-left:8px">${f.calories_per_100||0} kcal · P${f.protein_per_100||0} K${f.carbs_per_100||0} Y${f.fat_per_100||0}/100g</span>
+  </div>`).join('');
+  res.style.display='block';
+  // Store data for preview
+  res._data=matches;
+}
+
+function selectFood(id,name){
+  $('nu-food-id').value=id;
+  $('nu-food-name').value=name;
+  $('nu-food-search').value=name;
+  $('nu-food-results').style.display='none';
+  updateFoodPreview();
+}
+
+function nu_slot_changed(v){/* optional hook */}
+
+function updateFoodPreview(){
+  const id=parseInt($('nu-food-id').value);
+  if(!id||!_foodList)return;
+  const food=_foodList.find(f=>f.id===id);
+  if(!food)return;
+  const amount=parseFloat($('nu-food-amount').value)||100;
+  const r=amount/100;
+  const kcal=Math.round((food.calories_per_100||0)*r);
+  const p=Math.round((food.protein_per_100||0)*r*10)/10;
+  const k=Math.round((food.carbs_per_100||0)*r*10)/10;
+  const y=Math.round((food.fat_per_100||0)*r*10)/10;
+  $('nu-food-preview').textContent=`${amount}g → ${kcal} kcal · P ${p}g · K ${k}g · Y ${y}g`;
+}
+
+async function saveMealFromDB(){
+  const slot=getMealSlot();
+  const foodId=parseInt($('nu-food-id').value)||0;
+  const foodName=$('nu-food-name').value.trim();
+  if(!foodId&&!foodName)return toast('Ürün seç',false);
+  if(!slot||slot==='-- Seç --')return toast('Öğün başlığı seç',false);
+  const amount=parseFloat($('nu-food-amount').value)||100;
+  const unit=$('nu-food-unit').value.trim()||'g';
+  // Yeni başlık varsa kaydet
+  const newTitle=($('nu-slot-new')?.value||'').trim();
+  if(newTitle){await POST('/api/meal-titles',{name:newTitle});await loadMealTitles();$('nu-slot-new').value='';}
+  const r=await POST('/api/meals/from-food-registry',{slot,food_id:foodId||undefined,food_name:foodName||undefined,amount,unit});
+  if(r.ok===false){toast(r.error||'Hata',false);return;}
+  toast(`${r.item?.name||foodName} eklendi · ${r.item?.kcal||'?'} kcal`);
+  $('nu-food-search').value='';$('nu-food-id').value='';$('nu-food-name').value='';$('nu-food-preview').textContent='';
+  loadTodayMeals();loadDashboard();
+}
+
+document.addEventListener('click',function(e){
+  const res=$('nu-food-results');
+  if(res&&!res.contains(e.target)&&e.target.id!=='nu-food-search')res.style.display='none';
+});
 async function loadFoodRegistry(){const items=await API('/api/food-registry')||[];const el=document.getElementById('food-registry-list');if(!el)return;if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}el.innerHTML=items.map(f=>`<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px"><span style="flex:2;font-weight:700;font-size:.9rem">${f.name}</span><span style="color:var(--yellow);font-size:.8rem">${f.calories_per_100||0} kcal/100g</span><span style="color:var(--green);font-size:.8rem">P:${f.protein_per_100||0}g</span><span style="color:var(--blue);font-size:.8rem">K:${f.carbs_per_100||0}g</span><span style="color:var(--orange);font-size:.8rem">Y:${f.fat_per_100||0}g</span><span style="color:var(--muted);font-size:.75rem">${f.notes||''}</span><button class="del-btn" onclick="delFoodItem(${f.id})">✕</button></div>`).join('');}
 async function addFoodItem(){const name=(document.getElementById('fr-name').value||'').trim();if(!name)return;await POST('/api/food-registry',{name,calories_per_100:+document.getElementById('fr-cal').value||0,protein_per_100:+document.getElementById('fr-p').value||0,carbs_per_100:+document.getElementById('fr-k').value||0,fat_per_100:+document.getElementById('fr-y').value||0,unit:document.getElementById('fr-unit')?.value||'g',serving_size:+document.getElementById('fr-serving')?.value||100,serving_unit:document.getElementById('fr-unit')?.value||'g',notes:document.getElementById('fr-notes').value,aliases:''});['fr-name','fr-cal','fr-p','fr-k','fr-y','fr-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});loadFoodRegistry();}
 async function delFoodItem(id){await DEL('/api/food-registry/'+id);loadFoodRegistry();}
@@ -1381,7 +1505,20 @@ async function addWater(ml){const cur=await API('/api/today');const now=(cur.nut
 async function addWaterManual(){const l=parseFloat($('water-m').value);if(!l||l<=0)return toast('Litre gir',false);await addWater(Math.round(l*1000));$('water-m').value='';}
 async function setWaterTotal(ml){const total=Math.max(0,Math.round(Number(ml)||0));await POST('/api/log/nutrition',{date:today(),water_ml:total});sv('water-cur',(total/1000).toFixed(1)+'L bugün');if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();else loadDashboard();return total;}
 async function setWaterManualTotal(){const raw=String($('water-m').value||'').replace(',','.');const l=parseFloat(raw);if(!Number.isFinite(l)||l<0)return toast('Toplam litreyi gir',false);const total=await setWaterTotal(l*1000);$('water-m').value='';toast('Su toplamı '+(total/1000).toFixed(1)+'L olarak ayarlandı');}
-async function saveMeal(){const title=$('nu-title').value.trim();if(!title)return toast('Yemek adı gir',false);const slot=$('nu-slot').value,cal=parseInt($('nu-cal').value)||null,prot=parseFloat($('nu-prot').value)||null,carb=parseFloat($('nu-carb').value)||null,fat=parseFloat($('nu-fat').value)||null;await POST('/api/meals',{slot,title,description:title,calories:cal,protein_g:prot,carbs_g:carb,fat_g:fat,source:'web'});toast('Öğün kaydedildi');['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>$(id).value='');loadTodayMeals();loadDashboard();}
+async function saveMeal(){
+  const title=($('nu-title')?.value||'').trim();
+  if(!title)return toast('Ürün adı gir',false);
+  const slot=getMealSlot();
+  if(!slot||slot==='-- Seç --')return toast('Öğün başlığı seç',false);
+  const cal=parseInt($('nu-cal')?.value)||null,prot=parseFloat($('nu-prot')?.value)||null,carb=parseFloat($('nu-carb')?.value)||null,fat=parseFloat($('nu-fat')?.value)||null;
+  // Yeni başlık varsa kaydet
+  const newTitle=($('nu-slot-new')?.value||'').trim();
+  if(newTitle){await POST('/api/meal-titles',{name:newTitle});await loadMealTitles();$('nu-slot-new').value='';}
+  await POST('/api/meals',{slot,title,description:title,calories:cal,protein_g:prot,carbs_g:carb,fat_g:fat,source:'web'});
+  toast('Öğün kaydedildi');
+  ['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>{if($(id))$(id).value='';});
+  loadTodayMeals();loadDashboard();
+}
 async function saveVitamin(){const name=$('vit-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim()});toast(name+' eklendi');['vit-name','vit-amount','vit-unit'].forEach(id=>$(id).value='');loadVitamins();loadDashboard();}
 
 /* ═══════════════════════════════════════════════════

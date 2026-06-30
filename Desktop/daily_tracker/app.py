@@ -236,6 +236,13 @@ def init_db():
             notes TEXT,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS meal_titles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title_id TEXT UNIQUE,
+            name TEXT NOT NULL UNIQUE,
+            order_num INTEGER DEFAULT 99,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS meal_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
@@ -708,6 +715,150 @@ def api_vitamin_update(vid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+def seed_meal_titles():
+    """Varsayılan öğün başlıklarını yükle (yoksa)."""
+    conn = get_db()
+    existing = conn.execute("SELECT COUNT(*) as c FROM meal_titles").fetchone()['c']
+    if existing == 0:
+        defaults = [
+            ('TITLE-001', 'Kahvaltı', 1),
+            ('TITLE-002', 'Meal 1',   2),
+            ('TITLE-003', 'Meal 2',   3),
+            ('TITLE-004', 'Pre Meal', 4),
+            ('TITLE-005', 'Snack 1',  5),
+            ('TITLE-006', 'Post Workout', 6),
+            ('TITLE-007', 'Gece',     7),
+        ]
+        for tid, name, order in defaults:
+            try:
+                conn.execute("INSERT INTO meal_titles (title_id,name,order_num) VALUES (?,?,?)", (tid, name, order))
+            except: pass
+        conn.commit()
+    conn.close()
+
+try:
+    seed_meal_titles()
+except Exception as _e:
+    import logging; logging.getLogger('daily').warning(f"meal_titles seed failed: {_e}")
+
+@app.route('/api/meal-titles', methods=['GET'])
+def api_meal_titles_list():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM meal_titles ORDER BY order_num, name").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/meal-titles', methods=['POST'])
+def api_meal_titles_add():
+    data = request.get_json(force=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'error': 'name gerekli'}), 400
+    conn = get_db()
+    existing = conn.execute("SELECT id,title_id FROM meal_titles WHERE name=?", (name,)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({'ok': True, 'id': existing['id'], 'title_id': existing['title_id'], 'existing': True})
+    # Auto-generate title_id
+    last = conn.execute("SELECT title_id FROM meal_titles ORDER BY id DESC LIMIT 1").fetchone()
+    num = 1
+    if last and last['title_id']:
+        try: num = int(last['title_id'].split('-')[1]) + 1
+        except: pass
+    tid = f"TITLE-{num:03d}"
+    order = data.get('order_num', 99)
+    conn.execute("INSERT INTO meal_titles (title_id,name,order_num) VALUES (?,?,?)", (tid, name, order))
+    conn.commit()
+    row = conn.execute("SELECT id FROM meal_titles WHERE name=?", (name,)).fetchone()
+    conn.close()
+    return jsonify({'ok': True, 'id': row['id'], 'title_id': tid})
+
+@app.route('/api/meals/from-food-registry', methods=['POST'])
+def api_meal_from_food_registry():
+    """Besin DB'den ürün seçerek loga ekle — makroları otomatik hesapla."""
+    data = request.get_json(force=True) or {}
+    d = data.get('date', operation_today())
+    slot = (data.get('slot') or '').strip()
+    food_id = data.get('food_id')
+    food_name = (data.get('food_name') or '').strip()
+    amount = float(data.get('amount') or 100)
+    unit = (data.get('unit') or 'g').strip()
+
+    # Auto-save slot to meal_titles
+    if slot:
+        conn = get_db()
+        try:
+            conn.execute("INSERT OR IGNORE INTO meal_titles (title_id,name,order_num) VALUES (?,?,99)",
+                         (f"TITLE-{slot[:6].upper()}", slot))
+            conn.commit()
+        except: pass
+        conn.close()
+
+    # Besin DB'den makroları çek
+    conn = get_db()
+    if food_id:
+        food = conn.execute("SELECT * FROM food_registry WHERE id=?", (food_id,)).fetchone()
+    elif food_name:
+        food = conn.execute(
+            "SELECT * FROM food_registry WHERE name=? OR official_name=?", (food_name, food_name)
+        ).fetchone()
+        if not food:
+            # aliases içinde ara
+            all_foods = conn.execute("SELECT * FROM food_registry").fetchall()
+            food = next((f for f in all_foods
+                         if food_name.lower() in (f['aliases'] or '').lower()), None)
+    else:
+        food = None
+
+    if not food:
+        conn.close()
+        return jsonify({'ok': False, 'error': f'Ürün bulunamadı: {food_name}'}), 404
+
+    food = dict(food)
+    # Makro hesaplama (100g bazından)
+    ratio = amount / 100.0
+    kcal = round((food.get('calories_per_100') or 0) * ratio, 1)
+    prot = round((food.get('protein_per_100') or 0) * ratio, 1)
+    carb = round((food.get('carbs_per_100') or 0) * ratio, 1)
+    fat  = round((food.get('fat_per_100') or 0) * ratio, 1)
+
+    official_name = food.get('official_name') or food.get('name')
+    description = f"{amount} {unit} {official_name}"
+
+    conn.execute("""
+        INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,source)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    """, (d, slot, official_name, description, kcal, prot, carb, fat, 'food_registry'))
+    conn.commit(); conn.close()
+
+    return jsonify({
+        'ok': True, 'date': d, 'slot': slot,
+        'item': {'name': official_name, 'amount': amount, 'unit': unit,
+                 'kcal': kcal, 'protein': prot, 'carbs': carb, 'fat': fat}
+    })
+
+@app.route('/api/meals/from-template/<int:tid>', methods=['POST'])
+def api_meal_from_template(tid):
+    """Şablonu bugünün loguna ekle."""
+    data = request.get_json(force=True) or {}
+    d = data.get('date', operation_today())
+    slot = (data.get('slot') or '').strip()
+    conn = get_db()
+    tmpl = conn.execute("SELECT * FROM quick_templates WHERE id=? AND kind='meal'", (tid,)).fetchone()
+    if not tmpl:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Şablon bulunamadı'}), 404
+    tmpl = dict(tmpl)
+    use_slot = slot or tmpl.get('category') or tmpl.get('title') or 'extra'
+    conn.execute("""
+        INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,source)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """, (d, use_slot, tmpl.get('title',''), tmpl.get('description',''),
+          tmpl.get('calories'), tmpl.get('protein_g'), tmpl.get('carbs_g'),
+          tmpl.get('fat_g'), tmpl.get('fiber_g'), f'template:{tid}'))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': d, 'slot': use_slot})
+
 @app.route('/api/meals/today')
 def api_meals_today():
     return api_meals_day(operation_today())
@@ -739,6 +890,12 @@ def api_meal_save():
     fiber_g = _num_or_none(data.get('fiber_g'))
     source = data.get('source', '').strip()
     conn = get_db()
+    # Auto-save slot to meal_titles
+    if slot and slot != 'extra':
+        try:
+            conn.execute("INSERT OR IGNORE INTO meal_titles (title_id,name,order_num) VALUES (?,?,99)",
+                         (f"TITLE-USR-{slot[:8].upper().replace(' ','-')}", slot))
+        except: pass
     if data.get('replace_existing') and slot != 'extra':
         conn.execute("DELETE FROM meal_entries WHERE date=? AND slot=?", (d, slot))
     if title or description or calories or protein_g or carbs_g or fat_g:
