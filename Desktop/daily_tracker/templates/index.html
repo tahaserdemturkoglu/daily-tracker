@@ -1489,6 +1489,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='meal1') return 'Meal 1';
     if(s==='pre_meal'||s==='pre'||s==='pre-workout') return 'Pre Meal';
     if(s==='post_meal'||s==='post'||s==='post-workout') return 'Post Meal';
+    if(s==='pre_snack') return 'Pre Snack';
     if(s==='post_snack') return 'Post Snack';
     if(s==='snack') return 'Snack';
     if(s==='snack2') return 'Snack 2';
@@ -1499,7 +1500,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
-  const ORDER=['kahvalti','pre_meal','snack','post','meal1','snack2'];
+  const ORDER=['kahvalti','meal1','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','ara','aksam','gece','extra'];
   const groups={};
   meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
