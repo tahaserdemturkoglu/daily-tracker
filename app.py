@@ -4906,4 +4906,27 @@ def api_ai_insights():
         with urllib.request.urlopen(req, timeout=15) as resp:
             payload = json.loads(resp.read().decode('utf-8'))
         insight = payload['content'][0]['text']
-        return jsonify({'insight': insight, 
+        return jsonify({'insight': insight, 'ok': True})
+    except Exception as e:
+        log.exception("ai-insights error")
+        err_msg = str(e)
+        import urllib.error as _ue
+        if isinstance(e, _ue.HTTPError):
+            try: err_msg = e.read().decode('utf-8', errors='ignore')[:300]
+            except: pass
+        return jsonify({'insight': f'Analiz yuklenemedi: {err_msg}', 'ok': False, 'error': err_msg})
+
+
+if __name__ == '__main__':
+    init_db()
+    log.info(f"DB: {DB_PATH}")
+    import sys as _sys
+    telegram_only = ('--telegram-only' in _sys.argv) or (os.environ.get('TELEGRAM_ONLY') == '1')
+    if telegram_only:
+        log.info("Telegram-only mod: site acilmadan bot calisiyor.")
+        start_telegram_bot()
+    else:
+        if TELEGRAM_TOKEN and os.environ.get('DISABLE_EMBEDDED_BOT') != '1':
+            threading.Thread(target=start_telegram_bot, daemon=True).start()
+        log.info(f"http://localhost:{PORT}")
+        app.run(host='0.0.0.0', port=PORT, debug=False)
