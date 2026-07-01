@@ -5008,6 +5008,15 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       if(lower.includes('pre-workout')||lower.includes('pre workout')) return 'Pre-Workout Stack';
       if(lower.includes('post-workout')||lower.includes('post workout')) return 'Post-Workout';
       if(lower.includes('gece')||lower.includes('night')) return 'Gece Stack';
+      // Fallback: name-based pattern matching when notes is empty
+      const name=(v.name||'').toLowerCase();
+      if(name.includes('nac')||name.includes('probiotic')||name.includes('probiyotik')) return 'Aç Karna Stack';
+      if(name.includes('epa')||name.includes('dha')||name.includes('omega')||
+         name.includes('vitamin d')||name.includes('d + k')||name.includes('d3')||name.includes('k2')||
+         name.includes('b-complex')||name.includes('b complex')||name.includes('vitamin c')||
+         name.includes('magtein')||name.includes('magnesium')||name.includes('theanine')||
+         name.includes('collagen')||name.includes('zinc')||name.includes('çinko')) return 'Sabah Stack';
+      if(name.includes('kreatin')||name.includes('creatine')||name.includes('citrulline')||name.includes('sitrulin')) return 'Pre-Workout Stack';
       return 'Diğer';
     };
     const groups={}; vits.forEach(v=>{const g=groupOf(v); (groups[g]=groups[g]||[]).push(v);});
