@@ -872,6 +872,10 @@ def api_meals_today():
 @app.route('/api/meals/<date_str>')
 def api_meals_day(date_str):
     conn = get_db()
+    try:
+        conn.execute("ALTER TABLE meal_entries ADD COLUMN display_order INTEGER DEFAULT 99")
+        conn.commit()
+    except: pass
     rows = conn.execute("SELECT * FROM meal_entries WHERE date=? ORDER BY COALESCE(display_order,99), id", (date_str,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
