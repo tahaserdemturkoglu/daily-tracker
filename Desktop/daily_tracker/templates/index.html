@@ -178,22 +178,23 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:4px;transition:color .15s;flex-shrink:0}
 .del-btn:hover{color:var(--red)}
 .meal-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
-.meal-slot-group{display:flex;flex-direction:column;gap:0;margin-bottom:14px;background:#0d1526;border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.45)}
-.meal-slot-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)}
+.meal-slot-group{position:relative;display:flex;flex-direction:column;gap:0;margin-bottom:16px;background:linear-gradient(158deg,#1a2740 0%,#0f1a2e 46%,#0a1322 100%);border:1px solid rgba(120,150,210,.16);border-top-color:rgba(170,195,255,.4);border-radius:14px;overflow:hidden;box-shadow:0 32px 60px -18px rgba(0,0,0,.7),0 2px 0 rgba(255,255,255,.04) inset,0 40px 80px -40px rgba(120,150,220,.35)}
+.meal-slot-group .rim{position:absolute;top:18px;bottom:18px;left:0;width:2px;border-radius:2px;background:linear-gradient(180deg,rgba(150,183,255,0) 0%,rgba(150,183,255,.95) 46%,rgba(150,183,255,.7) 60%,rgba(150,183,255,0) 100%);box-shadow:0 0 12px 1px rgba(150,183,255,.5),0 0 34px 5px rgba(120,150,220,.22);pointer-events:none}
+.meal-slot-header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 18px 12px;border-bottom:1px solid #2a3a58}
 .meal-slot-name{font-size:.85rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#fff}
-.meal-slot-total{font-size:.74rem;font-weight:600;color:rgba(255,255,255,.7)}
-.meal-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04);background:transparent;transition:background .12s}
+.meal-slot-total{font-size:.8rem;font-weight:800;color:#f3c778;text-shadow:0 0 18px rgba(232,180,90,.4);white-space:nowrap}
+.meal-item{display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(42,58,88,.5);background:transparent;transition:background .12s}
 .meal-item:last-child{border-bottom:none}
 .meal-item:hover{background:rgba(255,255,255,.03)}
 .meal-item-head{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.meal-name{font-weight:400;font-size:.83rem;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.meal-name{font-weight:600;font-size:.9rem;color:#eef3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
 .meal-desc{display:none}
 .meal-gram{font-size:.78em;color:var(--teal);font-weight:700;margin-right:4px;opacity:.85}
-.meal-macro-row{display:flex;gap:5px;flex-wrap:nowrap;align-items:center;flex-shrink:0}
-.mi-kcal{font-size:.8rem;font-weight:700;color:#f59e0b;padding:0 4px;background:none;border-radius:0;min-width:62px;text-align:right}
-.mi-p{font-size:.65rem;font-weight:700;color:#4ade80;background:#14532d;padding:2px 6px;border-radius:20px;border:none}
-.mi-k{font-size:.65rem;font-weight:700;color:#60a5fa;background:#1e3a5f;padding:2px 6px;border-radius:20px;border:none}
-.mi-y{font-size:.65rem;font-weight:700;color:#fb923c;background:#7c2d12;padding:2px 6px;border-radius:20px;border:none}
+.meal-macro-row{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;flex-shrink:0}
+.mi-kcal{font-size:.82rem;font-weight:800;color:#f3c778;padding:0 4px;background:none;border-radius:0;min-width:64px;text-align:right;text-shadow:0 0 14px rgba(232,180,90,.35)}
+.mi-p{font-size:.68rem;font-weight:800;color:#f2879b;background:rgba(242,135,155,.13);padding:3px 7px;border-radius:8px;border:none}
+.mi-k{font-size:.68rem;font-weight:800;color:#5cc9a7;background:rgba(92,201,167,.13);padding:3px 7px;border-radius:8px;border:none}
+.mi-y{font-size:.68rem;font-weight:800;color:#e8b45a;background:rgba(232,180,90,.13);padding:3px 7px;border-radius:8px;border:none}
 .meal-macro{font-size:.72rem;color:var(--muted);margin-top:3px}
 .list-empty{color:var(--muted);font-size:.8rem;padding:6px 0;font-style:italic}
 
@@ -646,6 +647,10 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
           </div>
         </div>
+        <div class="card ct ct-indigo">
+          <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Bugünkü Öğünler</div></div></div>
+          <div class="meal-list" id="meal-today-list"><div class="list-empty">Kayıt yok</div></div>
+        </div>
         <div class="card ct ct-blue" id="meal-order-card">
           <div class="card-head"><span class="card-icon">↕️</span><div><div class="card-name">Öğün Sırası</div><div class="card-sub" id="meal-order-sub">Sürükle veya ok ile sırala</div></div>
             <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadMealOrder()">↻</button>
@@ -709,10 +714,6 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           </div>
           <button class="btn btn-purple" onclick="saveVitamin()">Ekle</button>
           <div class="vit-list" id="vit-list"><div class="list-empty">Kayıt yok</div></div>
-        </div>
-        <div class="card ct ct-indigo">
-          <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Bugünkü Öğünler</div></div></div>
-          <div class="meal-list" id="meal-today-list"><div class="list-empty">Kayıt yok</div></div>
         </div>
       </div>
     </div>
@@ -1535,10 +1536,9 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
-  const ORDER=G_SLOT_ORDER;
-  const groups={};
-  meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
-  el.innerHTML=Object.keys(groups).sort((a,b)=>{const ia=ORDER.indexOf(a)<0?99:ORDER.indexOf(a),ib=ORDER.indexOf(b)<0?99:ORDER.indexOf(b);return ia-ib;}).map(function(slot){
+  const groups={},slotOrder=[];
+  meals.forEach(m=>{const k=normSlot(m.slot);if(!groups[k]){groups[k]=[];slotOrder.push(k);}groups[k].push(m);});
+  el.innerHTML=slotOrder.map(function(slot){
     const rows=groups[slot];
     const totCal=rows.reduce(function(s,m){return s+(m.calories||0);},0);
     const totP=rows.reduce(function(s,m){return s+(m.protein_g||0);},0);
@@ -1562,7 +1562,7 @@ function renderMealList(elId,meals,canDel,elOverride){
       const macroHtml=`<div class="meal-macro-row">${parts.join('')}${canDel?`<button class="del-btn" style="margin-left:4px" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>`;
       return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span>${macroHtml}</div>`;
     }).join('');
-    return `<div class="meal-slot-group">${header}${items}</div>`;
+    return `<div class="meal-slot-group"><div class="rim"></div>${header}${items}</div>`;
   }).join('');
 }
 
@@ -4988,14 +4988,12 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
     const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ogle:'Öğle',aksam:'Akşam','pre-workout':'Pre Meal','post-workout':'Post Meal',ara:'Atıştırmalık',extra:'Ekstra'};
-    const MEAL_ORDER=G_SLOT_ORDER;
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
-    const sortedOrder=[...new Set([...MEAL_ORDER.filter(s=>groups[s]),...groupOrder])];
-    box.innerHTML=sortedOrder.map(key=>{
+    box.innerHTML=groupOrder.map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
-      const totHtml=`<span style="color:#f59e0b;font-weight:700">${Math.round(cal)} kcal</span> · P <b style="color:#4ade80">${Math.round(p)}</b> · K <b style="color:#60a5fa">${Math.round(c)}</b> · Y <b style="color:#fb923c">${Math.round(f)}</b>`;
+      const totHtml=`<span style="color:#f3c778;font-weight:800;text-shadow:0 0 14px rgba(232,180,90,.4)">${Math.round(cal)} kcal</span> · P <b style="color:#f2879b">${Math.round(p)}</b> · K <b style="color:#5cc9a7">${Math.round(c)}</b> · Y <b style="color:#e8b45a">${Math.round(f)}</b>`;
       const fmt=v=>+(Math.round(v*10)/10);
-      return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const name=m.title||m.description||'Kayıt';const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
+      return `<div class="meal-slot-group"><div class="rim"></div><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const name=m.title||m.description||'Kayıt';const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
     }).join('');
   }
   function renderStack(vits){
