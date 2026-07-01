@@ -4907,4 +4907,17 @@ def api_ai_insights():
             payload = json.loads(resp.read().decode('utf-8'))
         insight = payload['content'][0]['text']
         return jsonify({'insight': insight, 'ok': True})
-    excep
+    except Exception as e:
+        import urllib.error as _ue
+        log.exception("ai-insights error")
+        err_msg = str(e)
+        if isinstance(e, _ue.HTTPError):
+            try: err_msg = e.read().decode('utf-8', errors='ignore')[:300]
+            except: pass
+        return jsonify({'insight': f'AI analiz hatası: {err_msg}', 'ok': False})
+
+
+if __name__ == '__main__':
+    init_db()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
