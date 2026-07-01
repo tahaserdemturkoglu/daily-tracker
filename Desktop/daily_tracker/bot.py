@@ -1156,8 +1156,10 @@ def _log_stack_direct(stack_name, today, overrides, extras):
             conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,?,?)",
                          (log_id, pname, dose, unit, taken, ov.get('note','')))
             if taken:
+                is_zinc = any(k in pname.lower() for k in ('zinc', 'cinko'))
+                zinc_note = ' | gün aşırı — yarın atla' if is_zinc else ''
                 conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
-                             (today, pname, str(dose), unit, f'stack:{stack_name}'))
+                             (today, pname, str(dose), unit, f'stack:{stack_name}{zinc_note}'))
             else:
                 # Eksik alındı — siteye görünür not olarak yaz
                 conn.execute("INSERT OR IGNORE INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
@@ -1192,9 +1194,12 @@ def save_stack_actions(actions):
             ).fetchone()
             if already:
                 continue
+            notes = a.get("notes") or ""
+            if any(k in name.lower() for k in ('cinko', 'zinc')) and 'gün aşırı' not in notes:
+                notes = (notes + ' | gün aşırı — yarın atla').strip(' |')
             conn.execute(
                 "INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
-                (d, name, str(a.get("amount") or ""), a.get("unit") or "", a.get("notes") or "")
+                (d, name, str(a.get("amount") or ""), a.get("unit") or "", notes)
             )
             saved.append(f"{name} {a.get('amount','')} {a.get('unit','')}".strip())
         conn.commit()
