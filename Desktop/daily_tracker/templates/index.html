@@ -644,6 +644,15 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
           </div>
         </div>
+        <div class="card ct ct-blue" id="meal-order-card">
+          <div class="card-head"><span class="card-icon">↕️</span><div><div class="card-name">Öğün Sırası</div><div class="card-sub" id="meal-order-sub">Sürükle veya ok ile sırala</div></div>
+            <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadMealOrder()">↻</button>
+          </div>
+          <div id="meal-order-list" style="display:flex;flex-direction:column;gap:4px;min-height:40px">
+            <div style="color:var(--muted);font-size:.8rem;padding:8px">Yükleniyor...</div>
+          </div>
+          <button class="btn btn-blue btn-sm" style="margin-top:8px;font-size:.75rem" onclick="saveMealOrder()">💾 Sırayı Kaydet</button>
+        </div>
         <div class="card ct ct-teal" style="position:relative">
           <div class="card-head"><span class="card-icon">🍽️</span><div><div class="card-name">Öğün Ekle</div></div></div>
           <div class="form-row" style="align-items:flex-end;gap:6px">
@@ -702,15 +711,6 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div class="card ct ct-indigo">
           <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Bugünkü Öğünler</div></div></div>
           <div class="meal-list" id="meal-today-list"><div class="list-empty">Kayıt yok</div></div>
-        </div>
-        <div class="card ct ct-blue" id="meal-order-card">
-          <div class="card-head"><span class="card-icon">↕️</span><div><div class="card-name">Öğün Sırası</div><div class="card-sub" id="meal-order-sub">Sürükle veya ok ile sırala</div></div>
-            <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadMealOrder()">↻</button>
-          </div>
-          <div id="meal-order-list" style="display:flex;flex-direction:column;gap:4px;min-height:40px">
-            <div style="color:var(--muted);font-size:.8rem;padding:8px">Yükleniyor...</div>
-          </div>
-          <button class="btn btn-blue btn-sm" style="margin-top:8px;font-size:.75rem" onclick="saveMealOrder()">💾 Sırayı Kaydet</button>
         </div>
       </div>
     </div>
