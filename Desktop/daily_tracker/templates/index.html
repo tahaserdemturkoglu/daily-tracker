@@ -1760,13 +1760,16 @@ async function loadMealOrder(){
   const el=$('meal-order-list');if(!el)return;
   const d=typeof selectedNutritionDate==='function'?selectedNutritionDate():today();
   const meals=await API('/api/meals/'+d)||[];
-  // Slot bazlı grupla, G_SLOT_ORDER sırasına göre
-  const groups={};
-  meals.forEach(m=>{const k=(m.slot||'extra').toLowerCase();(groups[k]=groups[k]||[]).push(m);});
-  const ordered=[...new Set([...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups)])];
-  _mealOrderData=ordered.map(k=>({key:k,label:SLOT_DISPLAY[k]||k,items:groups[k]||[]}));
+  // Slot gruplarını API'nin döndürdüğü sırada oluştur (display_order'a göre sıralı gelir)
+  const groups={}, slotOrder=[];
+  meals.forEach(m=>{
+    const k=(m.slot||'extra').toLowerCase();
+    if(!groups[k]){groups[k]=[];slotOrder.push(k);}
+    groups[k].push(m);
+  });
+  _mealOrderData=slotOrder.map(k=>({key:k,label:SLOT_DISPLAY[k]||k,items:groups[k]}));
   renderMealOrderList();
-  if($('meal-order-sub'))$('meal-order-sub').textContent=ordered.length+' öğün grubu';
+  if($('meal-order-sub'))$('meal-order-sub').textContent=slotOrder.length+' öğün grubu';
 }
 function renderMealOrderList(){
   const el=$('meal-order-list');if(!el)return;
