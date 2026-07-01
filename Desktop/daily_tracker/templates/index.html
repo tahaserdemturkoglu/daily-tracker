@@ -4937,7 +4937,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .mission-task.prot i{background:#00e5cc}.mission-task.water i{background:#4d9fff}.mission-task.sleep i{background:#b44dff}.mission-task.vit i{background:#ff4d9e}.mission-task.train i{background:#ff7043}
 .mission-task-label{display:flex;justify-content:space-between;gap:8px;font-size:.58rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
 .mission-panel-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-bottom:18px}
-.mission-log-card{border:1px solid rgba(148,163,184,.16);background:rgba(17,24,39,.72);border-radius:18px;padding:16px;min-height:230px}
+.mission-log-card{border:1px solid rgba(148,163,184,.18);background:linear-gradient(160deg,rgba(17,24,39,.85),rgba(10,12,24,.95));border-radius:18px;padding:18px;min-height:230px;box-shadow:0 8px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(10px)}
 .mission-log-title{font-size:.9rem;font-weight:1000;margin-bottom:4px;color:var(--text)}.mission-log-sub{font-size:.7rem;color:var(--muted);margin-bottom:12px}
 .mission-log-list{display:flex;flex-direction:column;gap:7px;max-height:230px;overflow:auto;padding-right:3px}
 .mission-log-item{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(148,163,184,.12);background:rgba(2,6,23,.25);border-radius:12px;padding:9px 10px}
@@ -4945,9 +4945,18 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .mission-log-meta{font-size:.68rem;color:var(--muted);margin-top:2px}.mission-log-pill{border-radius:999px;background:rgba(255,184,0,.12);border:1px solid rgba(255,184,0,.24);color:#fde68a;padding:4px 8px;font-size:.68rem;font-weight:900}
 .mission-stack-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}.mission-stack-item{border:1px solid rgba(148,163,184,.13);background:rgba(2,6,23,.28);border-radius:10px;padding:8px 10px;min-height:0}
 .mission-stack-item b{font-size:.8rem;color:var(--text);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mission-stack-item span{font-size:.68rem;color:var(--muted);margin-top:4px;display:block}
-.mission-meal-stack{border:1px solid rgba(148,163,184,.13);background:rgba(2,6,23,.25);border-radius:12px;padding:10px 11px}
-.mission-meal-stack-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.mission-meal-stack-title{font-size:.7rem;color:#93c5fd;text-transform:uppercase;font-weight:1000;letter-spacing:.07em}.mission-meal-stack-total{font-size:.7rem;color:#fde68a;font-weight:900}
-.mission-meal-stack-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:6px 0;border-top:1px solid rgba(148,163,184,.09)}.mission-meal-stack-row:first-of-type{border-top:0}.mission-meal-stack-row b{font-size:.77rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mission-meal-stack-row span{font-size:.67rem;color:var(--muted)}
+.mission-meal-stack{border:1px solid rgba(148,163,184,.12);background:rgba(8,12,28,.6);border-radius:13px;padding:11px 13px;transition:transform .15s,box-shadow .15s}
+.mission-meal-stack:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)!important}
+.mission-meal-stack-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.mission-meal-stack-title{font-size:.72rem;text-transform:uppercase;font-weight:900;letter-spacing:.06em}
+.mission-meal-stack-total{font-size:.68rem;color:rgba(255,255,255,.65);font-weight:700}
+.mission-meal-stack-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)}
+.mission-meal-stack-row:first-of-type{border-top:0}
+.mission-meal-stack-row b{font-size:.78rem;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-badge{font-size:.63rem;font-weight:800;padding:2px 6px;border-radius:20px;white-space:nowrap}
+.ms-kcal{background:#d97706;color:#fff}
+.ms-p{background:rgba(74,222,128,.2);color:#4ade80;border:1px solid rgba(74,222,128,.3)}
+.ms-y{background:rgba(251,146,60,.2);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
 .mission-user-badge{display:inline-flex!important;width:max-content;margin-top:5px!important;padding:2px 6px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac!important;font-size:.6rem!important;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
 #ms-meal-log{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:none;overflow:visible}
 @media(max-width:1180px){.mission-control,.mission-panel-grid{grid-template-columns:1fr}.mission-days{grid-template-columns:repeat(4,minmax(100px,1fr))}}
@@ -4981,9 +4990,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const MEAL_ORDER=G_SLOT_ORDER;
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
     const sortedOrder=[...new Set([...MEAL_ORDER.filter(s=>groups[s]),...groupOrder])];
+    const SLOT_COLORS_MS={kahvalti:'#f59e0b',meal1:'#6aa3ff',pre_meal:'#22c55e',post_meal:'#f97316',pre_snack:'#a78bfa',post_snack:'#06b6d4',snack:'#34d399',snack2:'#10b981',ogle:'#3b82f6',aksam:'#8b5cf6',gece:'#7c3aed',extra:'#64748b'};
     box.innerHTML=sortedOrder.map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
-      return `<div class="mission-meal-stack"><div class="mission-meal-stack-head"><div class="mission-meal-stack-title">${labels[key]||key}</div><div class="mission-meal-stack-total">${Math.round(cal)} kcal · P ${Math.round(p)} · K ${Math.round(c)} · Y ${Math.round(f)}</div></div>${rows.map(m=>`<div class="mission-meal-stack-row"><b>${m.description&&m.description!==m.title?m.description+' ':''}${m.title||m.description||'Kayıt'}</b><span style="display:flex;gap:5px;align-items:center">${m.calories?`<span style="color:var(--yellow)">${Math.round(m.calories)} kcal</span>`:''} ${m.protein_g?`<span style="color:var(--green);font-size:.75em">P:${Math.round(m.protein_g)}</span>`:''} ${m.carbs_g?`<span style="color:var(--blue);font-size:.75em">K:${Math.round(m.carbs_g)}</span>`:''} ${m.fat_g?`<span style="color:var(--orange);font-size:.75em">Y:${Math.round(m.fat_g)}</span>`:''}</span></div>`).join('')}</div>`;
+      const sc=SLOT_COLORS_MS[key]||'#64748b';
+      return `<div class="mission-meal-stack" data-slot="${key}" style="border-left:3px solid ${sc};box-shadow:0 4px 20px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.07)"><div class="mission-meal-stack-head" style="background:linear-gradient(135deg,rgba(${hexRgb?hexRgb(sc):'100,163,255'},.12),transparent);border-radius:7px;padding:5px 7px;margin:-2px -2px 6px"><div class="mission-meal-stack-title" style="color:${sc}">${labels[key]||key}</div><div class="mission-meal-stack-total">${Math.round(cal)} kcal · P <b style="color:#4ade80">${Math.round(p)}</b> · K <b style="color:#60a5fa">${Math.round(c)}</b> · Y <b style="color:#fb923c">${Math.round(f)}</b></div></div>${rows.map(m=>`<div class="mission-meal-stack-row"><b>${m.description&&m.description!==m.title?'<span style="color:var(--teal);font-size:.72em">'+m.description+'</span> ':''}${m.title||m.description||'Kayıt'}</b><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${m.calories?`<span class="ms-badge ms-kcal">${Math.round(m.calories)}</span>`:''} ${m.protein_g?`<span class="ms-badge ms-p">P${Math.round(m.protein_g)}</span>`:''} ${m.fat_g?`<span class="ms-badge ms-y">Y${+(m.fat_g).toFixed(1)}</span>`:''}</span></div>`).join('')}</div>`;
     }).join('');
   }
   function renderStack(vits){
