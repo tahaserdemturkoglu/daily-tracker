@@ -4829,10 +4829,18 @@ def api_ai_insights():
         mood_row = conn.execute("SELECT * FROM mood_logs WHERE date=?", (date_str,)).fetchone()
         water_row = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
         step_row = conn.execute("SELECT * FROM step_logs WHERE date=?", (date_str,)).fetchone()
-        # last 7 days summary for context
-        week = [dict(r) for r in conn.execute("SELECT date,calories,protein_g,water_ml FROM summary WHERE date>=? AND date<? ORDER BY date", (
-            (operation_date() - timedelta(days=7)).isoformat(), date_str
-        )).fetchall()]
+        # last 7 days summary for context (summary is not a real table, query actual tables)
+        _start7 = (operation_date() - timedelta(days=7)).isoformat()
+        _meal_week = conn.execute(
+            "SELECT date, SUM(calories) as calories, SUM(protein_g) as protein_g FROM meal_entries WHERE date>=? AND date<? GROUP BY date ORDER BY date",
+            (_start7, date_str)
+        ).fetchall()
+        _water_week = conn.execute(
+            "SELECT date, SUM(water_ml) as water_ml FROM nutrition_logs WHERE date>=? AND date<? GROUP BY date ORDER BY date",
+            (_start7, date_str)
+        ).fetchall()
+        _water_map = {r['date']: r['water_ml'] for r in _water_week}
+        week = [{'date': r['date'], 'calories': r['calories'] or 0, 'protein_g': r['protein_g'] or 0, 'water_ml': _water_map.get(r['date'], 0)} for r in _meal_week]
         conn.close()
         totals = {
             'cal': sum(m.get('calories',0) or 0 for m in meals),
