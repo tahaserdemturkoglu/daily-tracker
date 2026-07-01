@@ -1552,14 +1552,15 @@ function renderMealList(elId,meals,canDel,elOverride){
     const totHtml=`<span style="color:${kcalColor};font-weight:700">${Math.round(totCal)} kcal</span> · P <b style="color:#4ade80">${Math.round(totP)}</b> · K <b style="color:#60a5fa">${Math.round(totK)}</b> · Y <b style="color:#fb923c">${Math.round(totY)}</b>`;
     const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${totHtml}</span></div>`;
     const items=rows.map(m=>{
-      const name=m.title||m.slot||'—';
+      const gram=(m.description&&m.description.trim()&&m.description.trim()!==m.title)?m.description.trim()+' ':'';
+      const name=(gram+(m.title||m.slot||'—')).trim();
       const fmt=v=>+(Math.round(v*10)/10);
       const parts=[];
       if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
       if(m.protein_g) parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);
       if(m.carbs_g!=null&&m.carbs_g!==undefined) parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);
       if(m.fat_g) parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);
-      const macroHtml=`<div class="meal-macro-row">${parts.join('')}${canDel?`<button class="del-btn" style="margin-left:4px" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>`;
+      const macroHtml=`<div class="meal-macro-row">${parts.join('')}${canDel?`<button class="del-btn" style="margin-left:4px" onclick="confirmDelMeal(${m.id},'${(m.title||'').replace(/'/g,'`')}')">✕</button>`:''}</div>`;
       return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span>${macroHtml}</div>`;
     }).join('');
     return `<div class="meal-slot-group"><div class="rim"></div>${header}${items}</div>`;
@@ -4993,7 +4994,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
       const totHtml=`<span style="color:#f3c778;font-weight:800;text-shadow:0 0 14px rgba(232,180,90,.4)">${Math.round(cal)} kcal</span> · P <b style="color:#f2879b">${Math.round(p)}</b> · K <b style="color:#5cc9a7">${Math.round(c)}</b> · Y <b style="color:#e8b45a">${Math.round(f)}</b>`;
       const fmt=v=>+(Math.round(v*10)/10);
-      return `<div class="meal-slot-group"><div class="rim"></div><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const name=m.title||m.description||'Kayıt';const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
+      return `<div class="meal-slot-group"><div class="rim"></div><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const gram=(m.description&&m.description.trim()&&m.description.trim()!==m.title)?m.description.trim()+' ':'';const name=(gram+(m.title||'Kayıt')).trim();const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
     }).join('');
   }
   function renderStack(vits){

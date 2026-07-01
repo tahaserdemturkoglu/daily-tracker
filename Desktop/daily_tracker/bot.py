@@ -469,7 +469,7 @@ def seed_supplement_stack():
     """Kullanicinin bilinen supplement protokolunu quick_templates'e ekle (yoksa)."""
     DEFAULT_SUPPS = [
         ('Probiyotik',      '1',  'kapsul'),
-        ('B Complex',       '1',  'kapsul'),
+        ('Astaxanthin',      '1',  'kapsul'),
         ('Omega 3',         '3',  'kapsul'),
         ('D3+K2',           '1',  'kapsul'),  # 4000 IU
         ('Göz Vitamini',    '1',  'kapsul'),
@@ -629,7 +629,7 @@ STANDART PANCAKE V2:
 SUPPLEMENT SISTEMI (MASTER SPEC v1.0):
 Stackler:
 1. Ac Karna Stack: NOW NAC 600mg (1 kapsul), Garden of Life Probiotic (1 kapsul)
-2. Sabah Stack: Life Extension Mega EPA/DHA (3 kapsul), Thorne D+K2 (4 damla), Life Extension B-Complex (1 kapsul), Life Extension MacuGuard (1 kapsul), California Gold C (1 kapsul), NOW Magtein (1 kapsul), NOW L-Theanine Double Strength (1 kapsul), ON Collagen (1 olcek), NOW Zinc Picolinate 50mg (1 kapsul - GUN ASIRI)
+2. Sabah Stack: Life Extension Mega EPA/DHA (3 kapsul), Thorne D+K2 (4 damla), Life Extension MacuGuard (1 kapsul), NOW Astaxanthin 10mg (1 kapsul), California Gold C (1 kapsul), NOW Magtein (1 kapsul), NOW L-Theanine Double Strength (1 kapsul), ON Collagen (1 olcek), NOW Zinc Picolinate 50mg (1 kapsul - GUN ASIRI)
 3. Pre Workout Stack: Elektrolit (8g), Citrulline (8g), Taurine (2g), Beta Alanine (2g)
 4. Post Workout Stack: Creatine Monohydrate (5g)
 5. Gece Stack: Magnesium Glycinate (3 kapsul), KSM-66 Ashwagandha (1 kapsul), Glycine (3 kapsul), Melatonin (3 kapsul), NOW L-Theanine Double Strength (1 kapsul)
@@ -813,7 +813,7 @@ def supplement_catalog():
         {"keys":["probiyotik","probiotic"], "name":"Probiyotik", "amount":"1", "unit":"kapsul", "note":"Garden of Life probiotic"},
         {"keys":["omega","epa","dha"], "name":"Omega-3", "amount":"3", "unit":"kapsul", "note":"Life Extension Mega EPA/DHA"},
         {"keys":["d3","k2","d+k"], "name":"D3+K2", "amount":"4", "unit":"damla", "note":"Thorne Vitamin D + K2"},
-        {"keys":["b-complex","b complex","bcomplex"], "name":"B-Complex", "amount":"1", "unit":"kapsul", "note":"Life Extension BioActive Complete B-Complex"},
+        {"keys":["astaxanthin","astaksantin"], "name":"Astaxanthin", "amount":"1", "unit":"kapsul", "note":"NOW Astaxanthin 10mg | goz sagligi"},
         {"keys":["goz","macuguard","saffron"], "name":"Goz Vitamini", "amount":"1", "unit":"kapsul", "note":"Life Extension MacuGuard with Saffron"},
         {"keys":["vitamin c","c vitamini","gold c"], "name":"Vitamin C", "amount":"1", "unit":"kapsul", "note":"California Gold Nutrition Gold C 1000 mg"},
         {"keys":["cinko","zinc"], "name":"Cinko", "amount":"1", "unit":"kapsul", "note":"NOW Zinc Picolinate 50 mg | gun asiri"},
@@ -833,8 +833,8 @@ def supplement_catalog():
 def stack_preset(slot):
     return {
         "ac-karna": ["NAC", "Probiyotik"],
-        "sabah": ["Collagen Peptides", "D3+K2", "Omega-3", "Magtein Magnesium L-Threonate", "Goz Vitamini", "B-Complex", "Vitamin C", "L-Theanine", "Cinko"],
-        "kahvalti": ["Collagen Peptides", "D3+K2", "Omega-3", "Magtein Magnesium L-Threonate", "Goz Vitamini", "B-Complex", "Vitamin C", "L-Theanine", "Cinko"],
+        "sabah": ["Collagen Peptides", "D3+K2", "Omega-3", "Magtein Magnesium L-Threonate", "Goz Vitamini", "Astaxanthin", "Vitamin C", "L-Theanine", "Cinko"],
+        "kahvalti": ["Collagen Peptides", "D3+K2", "Omega-3", "Magtein Magnesium L-Threonate", "Goz Vitamini", "Astaxanthin", "Vitamin C", "L-Theanine", "Cinko"],
         "ogle": ["Creatine", "Collagen Peptides", "HydrationUP"],
         "gece": ["L-Theanine", "Magnesium Glycinate", "KSM-66 Ashwagandha", "Glycine", "Melatonin"],
         "pre-workout": ["L-Citrulline", "Beta Alanine", "HydrationUP"],
