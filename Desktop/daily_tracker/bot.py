@@ -972,23 +972,33 @@ def supplement_actions_from_stack_text(raw_text):
     wanted = set(stack_preset(slot))
     actions = []
     for item in supplement_catalog():
-        if item["name"] not in wanted or item_missing_in_text(item, norm):
+        if item["name"] not in wanted:
             continue
-        if item["name"] == "Cinko" and slot in ("sabah", "kahvalti"):
-            # Cinko yuksek doz ve gun asiri takip ediliyor; stack icinde otomatik yazilmaz.
-            # Sadece kullanici acikca "cinko aldim/alindi" derse kaydedilir.
+        is_missing = item_missing_in_text(item, norm)
+        if not is_missing and item["name"] == "Cinko" and slot in ("sabah", "kahvalti"):
             if not zinc_explicitly_taken(norm):
                 continue
         item = stack_apply_overrides(slot, item)
-        actions.append({
-            "type": "vitamin",
-            "date": today,
-            "name": item["name"],
-            "amount": item["amount"],
-            "unit": item["unit"],
-            "notes": f"{stack_label(slot)} | {item['note']}",
-            "stack": slot,
-        })
+        if is_missing:
+            actions.append({
+                "type": "vitamin",
+                "date": today,
+                "name": item["name"],
+                "amount": "0",
+                "unit": item["unit"],
+                "notes": f"eksik alındı | {stack_label(slot)}",
+                "stack": slot,
+            })
+        else:
+            actions.append({
+                "type": "vitamin",
+                "date": today,
+                "name": item["name"],
+                "amount": item["amount"],
+                "unit": item["unit"],
+                "notes": f"{stack_label(slot)} | {item['note']}",
+                "stack": slot,
+            })
     return actions
 
 STACK_NAME_MAP = {
@@ -1025,9 +1035,16 @@ def parse_stack_overrides(norm_text, stack_name):
     overrides = {}
     extras = []
 
-    # Çinko alınmadı özel kuralı
-    if any(w in norm_text for w in ['cinko alinmadi','cinko yok','cinko almadim','cinko haric','cinkosuz']):
-        overrides['NOW Zinc Picolinate 50mg'] = {'taken': 0, 'note': 'kullanici almadim dedi'}
+    # Herhangi bir ürün için "X hariç/eksik/almadım/yok" algıla
+    neg_suffixes = r".{0,30}(haric|eksik|almadim|alinmadi|alma|yok|atladi|atlandi)"
+    neg_prefixes = r"(haric|eksik|almadim|alinmadi|alma|yok|atladi|atlandi).{0,30}"
+    for cat_item in supplement_catalog():
+        all_keys = [norm_tr(cat_item["name"])] + [norm_tr(k) for k in cat_item.get("keys", [])]
+        for k in all_keys:
+            if (re.search(re.escape(k) + neg_suffixes, norm_text) or
+                    re.search(neg_prefixes + re.escape(k), norm_text)):
+                overrides[cat_item["name"]] = {'taken': 0, 'note': 'eksik alındı'}
+                break
 
     # "ama/fakat/ancak X kapsül/g URUN" → override
     import re as _re
@@ -1141,6 +1158,10 @@ def _log_stack_direct(stack_name, today, overrides, extras):
             if taken:
                 conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
                              (today, pname, str(dose), unit, f'stack:{stack_name}'))
+            else:
+                # Eksik alındı — siteye görünür not olarak yaz
+                conn.execute("INSERT OR IGNORE INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+                             (today, pname, '0', unit, f'eksik alındı | {stack_name}'))
             if pname == 'NOW Zinc Picolinate 50mg' and taken:
                 conn.execute("UPDATE supplement_rules SET rule_data=? WHERE product_name=?",
                              (_json.dumps({'last_date': today}), pname))
