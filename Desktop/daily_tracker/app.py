@@ -872,7 +872,7 @@ def api_meals_today():
 @app.route('/api/meals/<date_str>')
 def api_meals_day(date_str):
     conn = get_db()
-    rows = conn.execute("SELECT * FROM meal_entries WHERE date=? ORDER BY id", (date_str,)).fetchall()
+    rows = conn.execute("SELECT * FROM meal_entries WHERE date=? ORDER BY COALESCE(display_order,99), id", (date_str,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 

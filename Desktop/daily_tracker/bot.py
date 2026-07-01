@@ -3270,8 +3270,9 @@ async def _run_bot():
                 log.info("Job queue: sabah 07:00 + gece 22:00 Turkey kuruldu")
             log.info("Bot baslatiliyor: @taha_serdem_daily_rapor_bot")
             async with app:
-                await app.updater.start_polling(drop_pending_updates=True)
-                await app.start()
+                await app.start()                                           # önce start
+                await app.updater.start_polling(drop_pending_updates=True) # sonra polling
+                log.info("Bot polling aktif.")
                 await asyncio.Event().wait()
         except Exception as e:
             log.warning(f"[bot] Hata: {e} \u2014 {retry_delay}s sonra yeniden deneniyor...")

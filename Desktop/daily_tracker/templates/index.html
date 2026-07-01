@@ -613,6 +613,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="w-btn" onclick="quickSteps(2000)">+2K</button>
             <button class="w-btn" onclick="quickSteps(5000)">+5K</button>
             <button class="w-btn" onclick="quickSteps(10000)">10K</button>
+            <button class="w-btn" style="color:#f87171;border-color:rgba(248,113,113,.3)" onclick="deleteSteps()">✕ Sıfırla</button>
           </div>
         </div>
       </div>
@@ -1731,6 +1732,15 @@ async function saveSteps(mode='set'){
     $('steps-input').value='';
     toast(mode==='add'?'+'+v.toLocaleString('tr-TR')+' adım eklendi':'Adım kaydedildi: '+total.toLocaleString('tr-TR'));
   }
+}
+async function deleteSteps(){
+  confirm_('Adım kaydını sil','Bugünün adım verisi silinecek. Emin misin?', async()=>{
+    await DEL('/api/steps/today');
+    if($('steps-cur'))$('steps-cur').textContent='Kayıt yok';
+    if($('mb-steps'))sv('mb-steps','—');
+    if($('h-steps'))sv('h-steps','—');
+    toast('Adım kaydı silindi');
+  });
 }
 async function quickSteps(v){
   const mode=v===10000?'set':'add';
