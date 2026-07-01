@@ -178,21 +178,22 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:4px;transition:color .15s;flex-shrink:0}
 .del-btn:hover{color:var(--red)}
 .meal-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
-.meal-slot-group{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px;box-shadow:0 4px 20px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.06)}
-.meal-slot-header{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:linear-gradient(135deg,rgba(0,229,204,.15),rgba(41,121,255,.1));border-radius:8px;border-left:3px solid var(--teal);margin-bottom:4px;box-shadow:0 2px 8px rgba(0,229,204,.1)}
-.meal-slot-name{font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--teal)}
-.meal-slot-total{font-size:.68rem;color:var(--muted2);font-weight:700}
-.meal-item{background:rgba(255,255,255,.05);border-radius:10px;padding:9px 13px;border:1px solid rgba(255,255,255,.09);box-shadow:0 2px 8px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.05);transition:transform .15s,box-shadow .15s}
-.meal-item:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
-.meal-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.meal-name{font-weight:700;font-size:.87rem;color:#e8eaf0}
-.meal-desc{font-size:.74rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.meal-slot-group{display:flex;flex-direction:column;gap:0;margin-bottom:14px;background:#0d1526;border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.45)}
+.meal-slot-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)}
+.meal-slot-name{font-size:.85rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#fff}
+.meal-slot-total{font-size:.74rem;font-weight:600;color:rgba(255,255,255,.7)}
+.meal-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04);background:transparent;transition:background .12s}
+.meal-item:last-child{border-bottom:none}
+.meal-item:hover{background:rgba(255,255,255,.03)}
+.meal-item-head{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.meal-name{font-weight:400;font-size:.83rem;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.meal-desc{display:none}
 .meal-gram{font-size:.78em;color:var(--teal);font-weight:700;margin-right:4px;opacity:.85}
-.meal-macro-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
-.mi-kcal{font-size:.68rem;font-weight:800;color:#1a1a2e;background:var(--yellow);padding:2px 7px;border-radius:20px}
-.mi-p{font-size:.68rem;font-weight:700;color:#fff;background:rgba(0,229,128,.25);padding:2px 7px;border-radius:20px;border:1px solid rgba(0,229,128,.35)}
-.mi-k{font-size:.68rem;font-weight:700;color:#fff;background:rgba(99,161,255,.25);padding:2px 7px;border-radius:20px;border:1px solid rgba(99,161,255,.35)}
-.mi-y{font-size:.68rem;font-weight:700;color:#fff;background:rgba(255,107,53,.25);padding:2px 7px;border-radius:20px;border:1px solid rgba(255,107,53,.35)}
+.meal-macro-row{display:flex;gap:5px;flex-wrap:nowrap;align-items:center;flex-shrink:0}
+.mi-kcal{font-size:.8rem;font-weight:700;color:#f59e0b;padding:0 4px;background:none;border-radius:0;min-width:62px;text-align:right}
+.mi-p{font-size:.65rem;font-weight:700;color:#4ade80;background:#14532d;padding:2px 6px;border-radius:20px;border:none}
+.mi-k{font-size:.65rem;font-weight:700;color:#60a5fa;background:#1e3a5f;padding:2px 6px;border-radius:20px;border:none}
+.mi-y{font-size:.65rem;font-weight:700;color:#fb923c;background:#7c2d12;padding:2px 6px;border-radius:20px;border:none}
 .meal-macro{font-size:.72rem;color:var(--muted);margin-top:3px}
 .list-empty{color:var(--muted);font-size:.8rem;padding:6px 0;font-style:italic}
 
@@ -1547,19 +1548,19 @@ function renderMealList(elId,meals,canDel,elOverride){
     const slotEmoji={kahvalti:'☕',meal1:'🍽️',pre_meal:'🥗',pre_snack:'🍎',post_meal:'💪',post_snack:'🌙',snack:'🍎',snack2:'🍎',ogle:'🍛',aksam:'🌙',gece:'🌙',extra:'✨'}[slot]||'🥢';
     const slotGlow={kahvalti:'rgba(255,183,77,.15)',meal1:'rgba(99,161,255,.15)',pre_meal:'rgba(0,229,128,.12)',post_meal:'rgba(255,107,53,.15)',gece:'rgba(139,92,246,.15)'}[slot]||'rgba(0,229,204,.1)';
     const slotBorder={kahvalti:'#ffb74d',meal1:'#6aa3ff',pre_meal:'#00e580',post_meal:'#ff6b35',gece:'#8b5cf6'}[slot]||'var(--teal)';
-    const header=`<div class="meal-slot-header" style="background:linear-gradient(135deg,${slotGlow},rgba(255,255,255,.03));border-left-color:${slotBorder};box-shadow:0 2px 10px ${slotGlow}"><span class="meal-slot-name" style="font-size:.8rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#fff">${slotEmoji} ${slotLabel}</span><span class="meal-slot-total" style="font-size:.7rem;opacity:.8">${Math.round(totCal)} kcal · P <b style="color:#00e580">${Math.round(totP)}</b>g · K <b style="color:#6aa3ff">${Math.round(totK)}</b>g · Y <b style="color:#ff6b35">${Math.round(totY)}</b>g</span></div>`;
+    const kcalColor='#f59e0b';
+    const totHtml=`<span style="color:${kcalColor};font-weight:700">${Math.round(totCal)} kcal</span> · P <b style="color:#4ade80">${Math.round(totP)}</b> · K <b style="color:#60a5fa">${Math.round(totK)}</b> · Y <b style="color:#fb923c">${Math.round(totY)}</b>`;
+    const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${totHtml}</span></div>`;
     const items=rows.map(m=>{
       const name=m.title||m.slot||'—';
-      const desc=(m.description&&m.description!==m.title&&m.description!==m.slot)?m.description:'';
-      const nameHtml=desc?`<span class="meal-gram">${desc}</span> ${name}`:name;
-      const parts=[];
       const fmt=v=>+(Math.round(v*10)/10);
+      const parts=[];
       if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
-      if(m.protein_g) parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}g</span>`);
-      if(m.carbs_g!=null&&m.carbs_g!==undefined) parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}g</span>`);
-      if(m.fat_g) parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}g</span>`);
-      const macroHtml=parts.length?`<div class="meal-macro-row">${parts.join('')}</div>`:'';
-      return `<div class="meal-item"><div class="meal-item-head"><span class="meal-name">${nameHtml}</span>${canDel?`<button class="del-btn" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>${macroHtml}</div>`;
+      if(m.protein_g) parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);
+      if(m.carbs_g!=null&&m.carbs_g!==undefined) parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);
+      if(m.fat_g) parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);
+      const macroHtml=`<div class="meal-macro-row">${parts.join('')}${canDel?`<button class="del-btn" style="margin-left:4px" onclick="confirmDelMeal(${m.id},'${name.replace(/'/g,'`')}')">✕</button>`:''}</div>`;
+      return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span>${macroHtml}</div>`;
     }).join('');
     return `<div class="meal-slot-group">${header}${items}</div>`;
   }).join('');
@@ -4958,7 +4959,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .ms-p{background:rgba(74,222,128,.2);color:#4ade80;border:1px solid rgba(74,222,128,.3)}
 .ms-y{background:rgba(251,146,60,.2);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
 .mission-user-badge{display:inline-flex!important;width:max-content;margin-top:5px!important;padding:2px 6px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac!important;font-size:.6rem!important;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
-#ms-meal-log{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:none;overflow:visible}
+#ms-meal-log{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:none;overflow:visible;align-items:start}
 @media(max-width:1180px){.mission-control,.mission-panel-grid{grid-template-columns:1fr}.mission-days{grid-template-columns:repeat(4,minmax(100px,1fr))}}
 @media(max-width:680px){.mission-kcal{font-size:4rem}.mission-inline-stats{grid-template-columns:1fr 1fr}.mission-days{grid-template-columns:1fr 1fr}.mission-log-item{grid-template-columns:1fr}#ms-meal-log{grid-template-columns:1fr}}
 </style>
@@ -4990,11 +4991,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const MEAL_ORDER=G_SLOT_ORDER;
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
     const sortedOrder=[...new Set([...MEAL_ORDER.filter(s=>groups[s]),...groupOrder])];
-    const SLOT_COLORS_MS={kahvalti:'#f59e0b',meal1:'#6aa3ff',pre_meal:'#22c55e',post_meal:'#f97316',pre_snack:'#a78bfa',post_snack:'#06b6d4',snack:'#34d399',snack2:'#10b981',ogle:'#3b82f6',aksam:'#8b5cf6',gece:'#7c3aed',extra:'#64748b'};
     box.innerHTML=sortedOrder.map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
-      const sc=SLOT_COLORS_MS[key]||'#64748b';
-      return `<div class="mission-meal-stack" data-slot="${key}" style="border-left:3px solid ${sc};box-shadow:0 4px 20px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.07)"><div class="mission-meal-stack-head" style="background:linear-gradient(135deg,rgba(${hexRgb?hexRgb(sc):'100,163,255'},.12),transparent);border-radius:7px;padding:5px 7px;margin:-2px -2px 6px"><div class="mission-meal-stack-title" style="color:${sc}">${labels[key]||key}</div><div class="mission-meal-stack-total">${Math.round(cal)} kcal · P <b style="color:#4ade80">${Math.round(p)}</b> · K <b style="color:#60a5fa">${Math.round(c)}</b> · Y <b style="color:#fb923c">${Math.round(f)}</b></div></div>${rows.map(m=>`<div class="mission-meal-stack-row"><b>${m.description&&m.description!==m.title?'<span style="color:var(--teal);font-size:.72em">'+m.description+'</span> ':''}${m.title||m.description||'Kayıt'}</b><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${m.calories?`<span class="ms-badge ms-kcal">${Math.round(m.calories)}</span>`:''} ${m.protein_g?`<span class="ms-badge ms-p">P${Math.round(m.protein_g)}</span>`:''} ${m.fat_g?`<span class="ms-badge ms-y">Y${+(m.fat_g).toFixed(1)}</span>`:''}</span></div>`).join('')}</div>`;
+      const totHtml=`<span style="color:#f59e0b;font-weight:700">${Math.round(cal)} kcal</span> · P <b style="color:#4ade80">${Math.round(p)}</b> · K <b style="color:#60a5fa">${Math.round(c)}</b> · Y <b style="color:#fb923c">${Math.round(f)}</b>`;
+      const fmt=v=>+(Math.round(v*10)/10);
+      return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const name=m.title||m.description||'Kayıt';const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
     }).join('');
   }
   function renderStack(vits){
