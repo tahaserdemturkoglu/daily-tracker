@@ -813,7 +813,7 @@ def supplement_catalog():
         {"keys":["probiyotik","probiotic"], "name":"Probiyotik", "amount":"1", "unit":"kapsul", "note":"Garden of Life probiotic"},
         {"keys":["omega","epa","dha"], "name":"Omega-3", "amount":"3", "unit":"kapsul", "note":"Life Extension Mega EPA/DHA"},
         {"keys":["d3","k2","d+k"], "name":"D3+K2", "amount":"4", "unit":"damla", "note":"Thorne Vitamin D + K2"},
-        {"keys":["astaxanthin","astaksantin"], "name":"Astaxanthin", "amount":"1", "unit":"kapsul", "note":"NOW Astaxanthin 10mg | goz sagligi"},
+        {"keys":["astaxanthin","astaksantin"], "name":"Astaxanthin", "amount":"1", "unit":"kapsul", "note":"NOW Astaxanthin 10mg | sivilce"},
         {"keys":["goz","macuguard","saffron"], "name":"Goz Vitamini", "amount":"1", "unit":"kapsul", "note":"Life Extension MacuGuard with Saffron"},
         {"keys":["vitamin c","c vitamini","gold c"], "name":"Vitamin C", "amount":"1", "unit":"kapsul", "note":"California Gold Nutrition Gold C 1000 mg"},
         {"keys":["cinko","zinc"], "name":"Cinko", "amount":"1", "unit":"kapsul", "note":"NOW Zinc Picolinate 50 mg | gun asiri"},
