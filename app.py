@@ -4822,7 +4822,7 @@ def api_ai_insights():
         data = request.get_json(silent=True) or {}
         date_str = data.get('date', operation_today())
         conn = get_db()
-        meals = [dict(r) for r in conn.execute("SELECT * FROM meals WHERE date=? ORDER BY id", (date_str,)).fetchall()]
+        meals = [dict(r) for r in conn.execute("SELECT * FROM meal_entries WHERE date=? ORDER BY display_order, id", (date_str,)).fetchall()]
         vitamins = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY id", (date_str,)).fetchall()]
         sleep_row = conn.execute("SELECT * FROM sleep_logs WHERE date=?", (date_str,)).fetchone()
         exercise_row = conn.execute("SELECT * FROM exercise_logs WHERE date=?", (date_str,)).fetchone()
@@ -4906,18 +4906,4 @@ def api_ai_insights():
         with urllib.request.urlopen(req, timeout=15) as resp:
             payload = json.loads(resp.read().decode('utf-8'))
         insight = payload['content'][0]['text']
-        return jsonify({'insight': insight, 'ok': True})
-    except Exception as e:
-        import urllib.error as _ue
-        log.exception("ai-insights error")
-        err_msg = str(e)
-        if isinstance(e, _ue.HTTPError):
-            try: err_msg = e.read().decode('utf-8', errors='ignore')[:300]
-            except: pass
-        return jsonify({'insight': f'AI analiz hatası: {err_msg}', 'ok': False})
-
-
-if __name__ == '__main__':
-    init_db()
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+        return jsonify({'insight': insight, 
