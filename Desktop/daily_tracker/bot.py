@@ -188,10 +188,12 @@ def init_db():
             notes TEXT, ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS body_metrics (
-            date TEXT PRIMARY KEY, weight_kg REAL, waist_cm REAL,
-            chest_cm REAL, arm_cm REAL, notes TEXT,
+            date TEXT PRIMARY KEY, weight_kg REAL, weight_kg_night REAL,
+            waist_cm REAL, chest_cm REAL, arm_cm REAL, notes TEXT,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        -- Migration: add weight_kg_night if missing (existing DBs)
+        BEGIN; ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL; COMMIT;
         CREATE TABLE IF NOT EXISTS training_day_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL, training_day TEXT NOT NULL,
@@ -216,7 +218,14 @@ def init_db():
             value TEXT
         );
     ''')
-    conn.commit(); conn.close()
+    conn.commit()
+    # Migration: add weight_kg_night if missing in existing DBs
+    try:
+        conn.execute('ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL')
+        conn.commit()
+    except Exception:
+        pass
+    conn.close()
 
 def water_consolidate(conn, date_val, new_total_ml):
     """Tum water_ml satirlarini sifirla, ilk satirda toplamı yaz. SUM hatasi olmaz."""
