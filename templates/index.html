@@ -725,6 +725,24 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <input type="text" id="supp-search" placeholder="omega-3, magnezyum, D3..." oninput="suppSearch(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
             <div id="supp-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:180px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
           </div>
+          <div class="form-row" style="margin-bottom:6px">
+            <div class="fg" style="flex:1.4">
+              <label>Stack</label>
+              <select id="vit-stack" style="width:100%">
+                <option value="">— Seçiniz —</option>
+                <option value="aç karna stack">Aç Karna</option>
+                <option value="sabah stack">Sabah</option>
+                <option value="öğle stack">Öğlen</option>
+                <option value="pre-workout stack">Pre Workout</option>
+                <option value="post-workout stack">Post Workout</option>
+                <option value="gece stack">Gece</option>
+              </select>
+            </div>
+            <div class="fg" style="flex:2">
+              <label>Durum / Not</label>
+              <input type="text" id="vit-notes" placeholder="eksik alındı, gün aşırı...">
+            </div>
+          </div>
           <div class="form-row">
             <div class="fg" style="flex:2"><label>İsim</label><input type="text" id="vit-name" placeholder="D3, Omega-3..."></div>
             <div class="fg"><label>Miktar</label><input type="text" id="vit-amount" placeholder="2"></div>
@@ -1919,7 +1937,19 @@ async function saveMeal(){
   ['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>{if($(id))$(id).value='';});
   loadTodayMeals();loadDashboard();
 }
-async function saveVitamin(){const name=$('vit-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim()});toast(name+' eklendi');['vit-name','vit-amount','vit-unit','supp-search'].forEach(id=>{if($(id))$(id).value='';});if($('supp-results'))$('supp-results').style.display='none';loadVitamins();loadDashboard();}
+async function saveVitamin(){
+  const name=$('vit-name').value.trim();
+  if(!name)return toast('İsim gir',false);
+  const stack=($('vit-stack')?.value||'').trim();
+  const extra=($('vit-notes')?.value||'').trim();
+  const notes=stack&&extra?stack+' | '+extra:stack||extra||'';
+  await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim(),notes});
+  toast(name+' eklendi');
+  ['vit-name','vit-amount','vit-unit','supp-search','vit-notes'].forEach(id=>{if($(id))$(id).value='';});
+  if($('vit-stack'))$('vit-stack').value='';
+  if($('supp-results'))$('supp-results').style.display='none';
+  loadVitamins();loadDashboard();
+}
 
 /* ═══════════════════════════════════════════════════
    TRAINING — Warm-up / Working Set / Back-off
@@ -3560,14 +3590,15 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       ['Probiyotik','1','doz','Aç karna stack | Garden of Life probiotic']
     ],
     'sabah': [
-      ['NAC','1','kapsul','Sabah stack | NOW NAC 600 mg'],
-      ['Probiyotik','1','doz','Sabah stack | Garden of Life probiotic'],
-      ['Omega-3','3','kapsul','Sabah stack | Life Extension Mega EPA/DHA'],
-      ['D3+K2','4','damla','Sabah stack | Thorne Vitamin D + K2'],
-      ['B-Complex','1','doz','Sabah stack | Life Extension BioActive Complete B-Complex'],
-      ['Goz Vitamini','1','doz','Sabah stack | Life Extension MacuGuard with Saffron'],
-      ['Cinko','1','kapsul','Sabah stack | NOW Zinc Picolinate 50 mg | gun asiri'],
-      ['Collagen Peptides','20','g','Sabah stack | Optimum Nutrition Collagen Peptides']
+      ['Life Extension Mega EPA/DHA','3','kapsul','sabah stack'],
+      ['Thorne Vitamin D + K2','4','damla','sabah stack'],
+      ['California Gold Nutrition C','1','kapsul','sabah stack'],
+      ['NOW Magtein','1','kapsul','sabah stack'],
+      ['NOW L-Theanine Double Strength','1','kapsul','sabah stack'],
+      ['Optimum Nutrition Collagen','1','ölçek','sabah stack'],
+      ['NOW Zinc Picolinate 50mg','1','kapsul','sabah stack | gün aşırı'],
+      ['NOW Astaxanthin 10mg','1','kapsul','sabah stack'],
+      ['Life Extension MacuGuard','1','softgel','sabah stack'],
     ],
     'kahvalti': [
       ['Omega-3','3','kapsul','Kahvaltı stack | Life Extension Mega EPA/DHA'],
@@ -6502,29 +6533,4 @@ input:focus,select:focus,textarea:focus {
 .macro-graph-card.protein .macro-graph-value,.mc-prot .macro-val {color:#14f1d9!important}
 .macro-graph-card.carb .macro-graph-value,.mc-carb .macro-val {color:#ffb020!important}
 .macro-graph-card.fat .macro-graph-value,.mc-fat .macro-val {color:#a78bfa!important}
-.macro-graph-card.water .macro-graph-value,.mc-water .macro-val {color:#60a5fa!important}
-.page-title,.card-name,.tc-title,.pro-log-title,.macro-graph-title {
-  color:#f8fafc!important;
-  text-shadow:0 1px 18px rgba(56,189,248,.08);
-}
-.page-sub,.card-sub,.tc-sub,.macro-graph-sub,.pro-muted {
-  color:#9fb3d4!important;
-}
-.macro-card .bar,.macro-progress,.progress-line {
-  background:rgba(148,163,184,.16)!important;
-}
-.toast {
-  background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
-  color:#03101d!important;
-  box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
-}
-</style>
-
-
-<style id="MISSION_STACK_GROUP_FIX_V1">
-.mission-stack-group{display:grid;gap:8px;margin-bottom:10px}
-.mission-stack-group-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:#67e8f9;font-weight:900;margin:2px 0 0}
-.mission-stack-group .mission-stack-item{margin:0}
-.mission-stack-eksik{opacity:.55;border-color:rgba(239,68,68,.3)!important;background:rgba(239,68,68,.06)!important}
-.mission-stack-eksik b{color:#f87171!important;text-decoration:line-through}
-.eksik-badge{font-size:.63rem;font-weight:700;backgrou
+.macro-graph-card.water .macro-graph-value,.mc-wa
