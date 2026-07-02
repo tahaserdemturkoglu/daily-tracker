@@ -1535,15 +1535,14 @@ async function loadDashboardExtra(d,t,cal,wml){
 function renderVitList(elId,vitamins,canDel){
   const el=$(elId);if(!el)return;
   if(!vitamins.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
-  // Vitamin gruplama: gece stack, sabah stack, diger
   const NIGHT_KEYS=['melatonin','magnesium glycinate','glycine','theanine','ashwagandha','l-theanine'];
   const MORNING_KEYS=['nac','probiyotik','collagen','d3','omega','magtein','goz','b-complex','vitamin c','l-theanine'];
   function vitGroup(v){
-    const n=(v.name||'').toLowerCase(), notes=(v.notes||'').toLowerCase();
+    const n=(v.name||'').toLowerCase(),notes=(v.notes||'').toLowerCase();
     if(notes.includes('gece')||notes.includes('night')||NIGHT_KEYS.some(k=>n.includes(k))) return 'GECE STACK';
-    if(notes.includes('ac karna')||notes.includes('aç karna')||notes.includes('ackarna')||notes.includes('aç karna')) return 'AÇ KARNA STACK';
+    if(notes.includes('ac karna')||notes.includes('aç karna')||notes.includes('ackarna')) return 'AÇ KARNA STACK';
     if(notes.includes('kahvalti')||notes.includes('kahvaltı')||notes.includes('sabah')||MORNING_KEYS.some(k=>n.includes(k))) return 'SABAH STACK';
-    if(notes.includes('pre-workout')||notes.includes('pre workout')) return 'PRE-WORKOUT STACK';
+    if(notes.includes('pre-workout')||notes.includes('pre workout')||notes.includes('pre workout stack')) return 'PRE-WORKOUT STACK';
     if(notes.includes('post-workout')||notes.includes('post workout')||notes.includes('creatine')||n.includes('creatine')) return 'POST-WORKOUT';
     return 'DİĞER';
   }
@@ -1552,8 +1551,25 @@ function renderVitList(elId,vitamins,canDel){
   const GORDER=['AÇ KARNA STACK','SABAH STACK','PRE-WORKOUT STACK','POST-WORKOUT','GECE STACK','DİĞER'];
   const sorted=Object.keys(groups).sort((a,b)=>{const ia=GORDER.indexOf(a)<0?99:GORDER.indexOf(a),ib=GORDER.indexOf(b)<0?99:GORDER.indexOf(b);return ia-ib;});
   el.innerHTML=sorted.map(g=>{
-    const rows=groups[g].map(v=>`<div class="vit-item"><span><b>${v.name}</b>${v.amount?' '+fmtAmt(v.amount):''}${v.unit?' '+v.unit:''}</span>${canDel?`<button class="del-btn" onclick="confirmDelVit(${v.id},'${v.name}')">✕</button>`:''}</div>`).join('');
-    return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">💊 ${g}</span></div>${rows}</div>`;
+    const squares=groups[g].map(v=>{
+      const notes=(v.notes||'').toLowerCase();
+      const isSkip=notes.includes('eksik')||notes.includes('gün aşırı')||notes.includes('atla')||notes.includes('yarım');
+      const isDone=notes.includes('alındı')&&!isSkip;
+      const nameStyle=isSkip?'text-decoration:line-through;color:#ef4444;':'';
+      const cardBorder=isSkip?'border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06);':'';
+      const badge=isSkip?`<div style="position:absolute;top:3px;right:4px;font-size:.5rem;color:#ef4444;font-weight:800">✕</div>`
+                 :isDone?`<div style="position:absolute;top:3px;right:4px;font-size:.5rem;color:#22c55e;font-weight:800">✓</div>`:'';
+      const safeName=(v.name||'').replace(/'/g,"\\'");
+      const amt=v.amount?fmtAmt(v.amount):'';
+      const unit=v.unit?' '+v.unit:'';
+      return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:7px 5px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;aspect-ratio:1/1;min-height:70px;position:relative;${cardBorder}">
+        ${badge}
+        <div style="font-size:.58rem;font-weight:600;line-height:1.25;word-break:break-word;${nameStyle}">${v.name||''}</div>
+        ${amt||unit?`<div style="font-size:.6rem;color:var(--muted);margin-top:3px">${amt}${unit}</div>`:''}
+        ${canDel?`<button class="del-btn" style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:.45rem;padding:1px 4px;opacity:.5" onclick="confirmDelVit(${v.id},'${safeName}')">del</button>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="meal-slot-group"><div class="meal-slot-header"><span class="meal-slot-name">💊 ${g}</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;padding:4px 0">${squares}</div></div>`;
   }).join('');
 }
 function renderMealList(elId,meals,canDel,elOverride){
@@ -6467,51 +6483,4 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if(typeof oldForce === 'function'){ try{ oldForce.apply(this, arguments); }catch(e){} }
     setTimeout(syncDashboardData, 120);
   };
-  document.addEventListener('DOMContentLoaded', () => setTimeout(syncDashboardData, 700));
-  window.addEventListener('focus', () => setTimeout(syncDashboardData, 200));
-  setInterval(syncDashboardData, 8000);
-  window.syncDashboardDataGuard = syncDashboardData;
-})();
-</script>
-
-
-<style id="PREMIUM_COLOR_REFRESH_V1">
-:root {
-  --bg:#07101f;
-  --bg2:#0d1930;
-  --bg3:#142642;
-  --border:#2a4671;
-  --text:#f8fbff;
-  --muted:#a3b7d6;
-  --purple:#8b5cf6;
-  --blue:#38bdf8;
-  --teal:#14f1d9;
-  --green:#22e58a;
-  --yellow:#ffb020;
-  --pink:#f472b6;
-  --red:#fb7185;
-  --indigo:#818cf8;
-  --g-purple:linear-gradient(135deg,#8b5cf6 0%,#38bdf8 100%);
-  --g-teal:linear-gradient(135deg,#14f1d9 0%,#38bdf8 100%);
-  --g-green:linear-gradient(135deg,#22e58a 0%,#16a34a 100%);
-  --g-yellow:linear-gradient(135deg,#ffb020 0%,#fb7185 100%);
-  --g-pink:linear-gradient(135deg,#f472b6 0%,#8b5cf6 100%);
-}
-body {
-  background:
-    linear-gradient(125deg,rgba(20,241,217,.10) 0%,transparent 30%),
-    linear-gradient(235deg,rgba(139,92,246,.13) 0%,transparent 34%),
-    linear-gradient(180deg,#07101f 0%,#050914 56%,#081120 100%) !important;
-}
-.sidebar,.topbar {
-  background:linear-gradient(180deg,rgba(13,25,48,.92),rgba(7,13,25,.88))!important;
-  backdrop-filter:blur(18px);
-  border-color:rgba(96,165,250,.26)!important;
-}
-.brand-name {
-  background:linear-gradient(135deg,#ffffff 0%,#38bdf8 44%,#a78bfa 100%)!important;
-  -webkit-background-clip:text!important;
-  -webkit-text-fill-color:transparent!important;
-}
-.nav-btn.active {
-  background:linear-gradient(135de
+  document.addEventListener('DOMContentLoaded', () => setTimeout(syncDashboardDat
