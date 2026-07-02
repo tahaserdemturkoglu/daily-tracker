@@ -1678,12 +1678,19 @@ async function delFoodItem(id){await DEL('/api/food-registry/'+id);loadFoodRegis
 async function loadVitamins(){const d=await API('/api/today');renderVitList('vit-list',d.vitamins||[],true);}
 async function loadTodayMeals(){renderMealList('meal-today-list',await API('/api/meals/'+today()),true);}
 async function loadQuickPicks(){
-  const all=await API('/api/templates');
-  if(!Array.isArray(all))return;
-  const meals=all.filter(t=>t.kind==='meal'),supps=all.filter(t=>t.kind==='supplement');
-  const qm=$('qm-btns'),qs=$('qs-btns');
-  if(qm&&meals.length)qm.innerHTML=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı yemek</div><div style="display:flex;flex-wrap:wrap;gap:4px">${meals.map(m=>`<button class="btn btn-ghost btn-xs" onclick="quickMeal(${m.id})">${m.title}</button>`).join('')}</div>`;
-  if(qs&&supps.length)qs.innerHTML=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı supplement</div><div style="display:flex;flex-wrap:wrap;gap:4px">${supps.map(s=>`<button class="btn btn-ghost btn-xs" onclick="quickSupp(${s.id})">${s.title}</button>`).join('')}</div>`;
+  // Hızlı yemek: şablon değil, Besin DB ürünleri göster
+  const foods=await API('/api/food-registry');
+  const qm=$('qm-btns');
+  if(qm){
+    if(Array.isArray(foods)&&foods.length){
+      qm.innerHTML=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Hızlı Seç — Besin DB</div><div style="display:flex;flex-wrap:wrap;gap:5px">${foods.map(f=>`<button class="btn btn-ghost btn-xs" onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,'\`')}')" title="${f.calories_per_100||0} kcal/100g · P${f.protein_per_100||0}">${f.name}</button>`).join('')}</div>`;
+    } else {
+      qm.innerHTML='';
+    }
+  }
+  // Supplement quick picks kaldır (supplement için ayrı form var)
+  const qs=$('qs-btns');
+  if(qs) qs.innerHTML='';
 }
 async function quickMeal(id){const all=await API('/api/templates');const t=(all||[]).find(x=>x.id===id);if(!t)return;await POST('/api/meals',{slot:t.category||'extra',title:t.title,description:t.description||t.title,calories:t.calories,protein_g:t.protein_g,carbs_g:t.carbs_g,fat_g:t.fat_g,source:'template'});toast(t.title+' eklendi');loadTodayMeals();loadDashboard();}
 async function quickSupp(id){const all=await API('/api/templates');const t=(all||[]).find(x=>x.id===id);if(!t)return;await POST('/api/vitamin',{name:t.title,amount:t.amount||'',unit:t.unit||''});toast(t.title+' eklendi');loadVitamins();loadDashboard();}
