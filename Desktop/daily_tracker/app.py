@@ -4850,9 +4850,12 @@ def api_ai_insights():
             'water_ml': int((water_row['total'] or 0) if water_row else 0),
             'steps': dict(step_row)['steps'] if step_row else 0,
         }
-        settings_conn = get_db()
-        s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
-        settings_conn.close()
+        try:
+            settings_conn = get_db()
+            s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
+            settings_conn.close()
+        except Exception:
+            s_rows = {}
         targets = {
             'cal': int(s_rows.get('target_calories', 1800)),
             'prot': int(s_rows.get('target_protein', 160)),
