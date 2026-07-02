@@ -2078,7 +2078,7 @@ let _ozDailyDate=null;
 let _ozDailyContainer='oz-daily-content';
 async function renderOzDaily(dateStr,containerElId){
   if(!dateStr)dateStr=today();
-  if(containerElId) _ozDailyContainer=containerElId;
+  _ozDailyContainer=containerElId||'oz-daily-content';
   _ozDailyDate=dateStr;
   const el=$(_ozDailyContainer);if(!el)return;
   el.innerHTML='<div class="odl-loading">Yükleniyor...</div>';
