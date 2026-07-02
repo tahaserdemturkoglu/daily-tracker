@@ -893,6 +893,7 @@ def api_meal_save():
     slot = data.get('slot', '').strip() or 'extra'
     title = data.get('title', '').strip()
     description = data.get('description', '').strip()
+    import re as _re; description = _re.sub(r'\b(\d+)\.0+\b', r'\1', description) if description else description
     calories = _num_or_none(data.get('calories'))
     protein_g = _num_or_none(data.get('protein_g'))
     carbs_g = _num_or_none(data.get('carbs_g'))
@@ -4928,5 +4929,4 @@ if __name__ == '__main__':
     else:
         if TELEGRAM_TOKEN and os.environ.get('DISABLE_EMBEDDED_BOT') != '1':
             threading.Thread(target=start_telegram_bot, daemon=True).start()
-        log.info(f"http://localhost:{PORT}")
-        app.run(host='0.0.0.0', port=PORT, debug=False)
+        log.in

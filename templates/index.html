@@ -1602,7 +1602,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     const totHtml=`<span style="color:${kcalColor};font-weight:700">${Math.round(totCal)} kcal</span> · P <b style="color:#4ade80">${Math.round(totP)}</b> · K <b style="color:#60a5fa">${Math.round(totK)}</b> · Y <b style="color:#fb923c">${Math.round(totY)}</b>`;
     const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${totHtml}</span></div>`;
     const items=rows.map(m=>{
-      const gram=(m.description&&m.description.trim()&&m.description.trim()!==m.title)?m.description.trim()+' ':'';
+      const gram=(m.description&&m.description.trim()&&m.description.trim()!==m.title)?(m.description.trim().replace(/\b(\d+)\.0+\b/g,'$1'))+' ':'';
       const name=(gram+(m.title||m.slot||'—')).trim();
       const fmt=v=>+(Math.round(v*10)/10);
       const parts=[];
@@ -5114,7 +5114,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
       const totHtml=`<span style="color:#f3c778;font-weight:800;text-shadow:0 0 14px rgba(232,180,90,.4)">${Math.round(cal)} kcal</span> · P <b style="color:#f2879b">${Math.round(p)}</b> · K <b style="color:#5cc9a7">${Math.round(c)}</b> · Y <b style="color:#e8b45a">${Math.round(f)}</b>`;
       const fmt=v=>+(Math.round(v*10)/10);
-      return `<div class="meal-slot-group"><div class="rim"></div><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const gram=(m.description&&m.description.trim()&&m.description.trim()!==m.title)?m.description.trim()+' ':'';const name=(gram+(m.title||'Kayıt')).trim();const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
+      const fmtDesc=d=>{if(!d)return '';const t=d.trim();return t.replace(/\b(\d+)\.0+\b/g,'$1');};
+      return `<div class="meal-slot-group"><div class="rim"></div><div class="meal-slot-header"><span class="meal-slot-name">${labels[key]||key}</span><span class="meal-slot-total">${totHtml}</span></div>${rows.map(m=>{const rawD=fmtDesc(m.description||'');const gram=(rawD&&rawD!==m.title)?rawD+' ':'';const name=(gram+(m.title||'Kayıt')).trim();const parts=[];if(m.calories)parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);if(m.protein_g)parts.push(`<span class="mi-p">P:${fmt(m.protein_g)}</span>`);if(m.carbs_g!=null)parts.push(`<span class="mi-k">K:${fmt(m.carbs_g)}</span>`);if(m.fat_g)parts.push(`<span class="mi-y">Y:${fmt(m.fat_g)}</span>`);return `<div class="meal-item"><span class="meal-name" title="${name}">${name}</span><div class="meal-macro-row">${parts.join('')}</div></div>`;}).join('')}</div>`;
     }).join('');
   }
   function renderStack(vits){
@@ -6514,7 +6515,4 @@ body {
 .hero:hover,.card:hover,.chart-card:hover,.stat-card:hover,.macro-card:hover,.quick-card:hover,
 .macro-graph-panel:hover,.pro-log-card:hover,.tc-panel:hover,.tc-form:hover {
   border-color:rgba(20,241,217,.38)!important;
-  box-shadow:0 26px 66px rgba(2,8,23,.46),0 0 0 1px rgba(20,241,217,.05),inset 0 1px 0 rgba(255,255,255,.065)!important;
-}
-.hero.dashboard-integrated {
-  background:
+  box-shadow:0 26px 66px rgba(2,8,23,.46),0 0 0 1px rgba(2
