@@ -705,14 +705,39 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <div id="qm-btns" style="margin-top:8px"></div>
         </div>
         <div class="card ct ct-purple">
-          <div class="card-head"><span class="card-icon">💊</span><div><div class="card-name">Supplement / Vitamin</div></div></div>
-          <div id="qs-btns" style="margin-bottom:8px"></div>
+          <div class="card-head"><span class="card-icon">💊</span><div><div class="card-name">Supplement Ekle</div></div></div>
+          <!-- Hızlı Stack — yatay kaydırmalı, taşmaz -->
+          <div id="stack-quick-panel" style="margin-bottom:12px">
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı Stack</div>
+            <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none">
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('ac-karna')">Aç Karna</button>
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('sabah')">Sabah</button>
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('kahvalti')">Kahvaltı</button>
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('ogle')">Öğlen</button>
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('gece')">Gece</button>
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('pre-workout')">Pre</button>
+              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('post-workout')">Post</button>
+            </div>
+          </div>
+          <!-- Supplement Arama -->
+          <div style="position:relative;margin-bottom:10px">
+            <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Supplement Ara</label>
+            <input type="text" id="supp-search" placeholder="omega-3, magnezyum, D3..." oninput="suppSearch(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+            <div id="supp-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:180px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
+          </div>
           <div class="form-row">
             <div class="fg" style="flex:2"><label>İsim</label><input type="text" id="vit-name" placeholder="D3, Omega-3..."></div>
             <div class="fg"><label>Miktar</label><input type="text" id="vit-amount" placeholder="2"></div>
             <div class="fg"><label>Birim</label><input type="text" id="vit-unit" placeholder="kapsül"></div>
           </div>
           <button class="btn btn-purple" onclick="saveVitamin()">Ekle</button>
+          <div id="qs-btns" style="display:none"></div>
+        </div>
+        <!-- Takviye Sırası -->
+        <div class="card ct ct-indigo">
+          <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Takviye Sırası</div><div class="card-sub" id="vit-list-sub">Bugünkü protokol</div></div>
+            <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadVitamins()">↻</button>
+          </div>
           <div class="vit-list" id="vit-list"><div class="list-empty">Kayıt yok</div></div>
         </div>
       </div>
@@ -1733,7 +1758,32 @@ document.addEventListener('click',function(e){
 async function loadFoodRegistry(){const items=await API('/api/food-registry')||[];const el=document.getElementById('food-registry-list');if(!el)return;if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}el.innerHTML=items.map(f=>`<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px"><span style="flex:2;font-weight:700;font-size:.9rem">${f.name}</span><span style="color:var(--yellow);font-size:.8rem">${f.calories_per_100||0} kcal/100g</span><span style="color:var(--green);font-size:.8rem">P:${f.protein_per_100||0}g</span><span style="color:var(--blue);font-size:.8rem">K:${f.carbs_per_100||0}g</span><span style="color:var(--orange);font-size:.8rem">Y:${f.fat_per_100||0}g</span><span style="color:var(--muted);font-size:.75rem">${f.notes||''}</span><button class="del-btn" onclick="delFoodItem(${f.id})">✕</button></div>`).join('');}
 async function addFoodItem(){const name=(document.getElementById('fr-name').value||'').trim();if(!name)return;await POST('/api/food-registry',{name,calories_per_100:+document.getElementById('fr-cal').value||0,protein_per_100:+document.getElementById('fr-p').value||0,carbs_per_100:+document.getElementById('fr-k').value||0,fat_per_100:+document.getElementById('fr-y').value||0,unit:document.getElementById('fr-unit')?.value||'g',serving_size:+document.getElementById('fr-serving')?.value||100,serving_unit:document.getElementById('fr-unit')?.value||'g',notes:document.getElementById('fr-notes').value,aliases:''});['fr-name','fr-cal','fr-p','fr-k','fr-y','fr-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});loadFoodRegistry();}
 async function delFoodItem(id){await DEL('/api/food-registry/'+id);loadFoodRegistry();}
-async function loadVitamins(){const d=await API('/api/today');renderVitList('vit-list',d.vitamins||[],true);}
+async function loadVitamins(){
+  const d=await API('/api/today');
+  const vits=d.vitamins||[];
+  renderVitList('vit-list',vits,true);
+  const sub=$('vit-list-sub');
+  if(sub) sub.textContent=vits.length?vits.length+' takviye kaydı':'Bugünkü protokol';
+}
+
+let _suppList=null;
+async function suppSearch(q){
+  const res=$('supp-results');if(!res)return;
+  q=(q||'').trim().toLowerCase();
+  if(q.length<1){res.style.display='none';return;}
+  if(!_suppList){const all=await API('/api/templates');_suppList=(all||[]).filter(t=>t.kind==='supplement');}
+  const matches=_suppList.filter(f=>(f.title||'').toLowerCase().includes(q)).slice(0,10);
+  res.innerHTML=matches.map(f=>`<div onclick="selectSupp(${f.id})" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background=''"><span style="font-weight:600">${f.title}</span>${f.amount?`<span style="color:var(--muted);font-size:.75rem">${f.amount} ${f.unit||''}</span>`:''}</div>`).join('');
+  res.style.display=matches.length?'block':'none';
+}
+function selectSupp(id){
+  const t=(_suppList||[]).find(f=>f.id===id);if(!t)return;
+  $('vit-name').value=t.title||'';
+  $('vit-amount').value=t.amount||'';
+  $('vit-unit').value=t.unit||'';
+  $('supp-search').value=t.title||'';
+  $('supp-results').style.display='none';
+}
 async function loadTodayMeals(){renderMealList('meal-today-list',await API('/api/meals/'+today()),true);}
 async function loadQuickPicks(){
   const all=await API('/api/templates');
@@ -1869,7 +1919,7 @@ async function saveMeal(){
   ['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>{if($(id))$(id).value='';});
   loadTodayMeals();loadDashboard();
 }
-async function saveVitamin(){const name=$('vit-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim()});toast(name+' eklendi');['vit-name','vit-amount','vit-unit'].forEach(id=>$(id).value='');loadVitamins();loadDashboard();}
+async function saveVitamin(){const name=$('vit-name').value.trim();if(!name)return toast('İsim gir',false);await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim()});toast(name+' eklendi');['vit-name','vit-amount','vit-unit','supp-search'].forEach(id=>{if($(id))$(id).value='';});if($('supp-results'))$('supp-results').style.display='none';loadVitamins();loadDashboard();}
 
 /* ═══════════════════════════════════════════════════
    TRAINING — Warm-up / Working Set / Back-off
@@ -6477,65 +6527,4 @@ input:focus,select:focus,textarea:focus {
 .mission-stack-group .mission-stack-item{margin:0}
 .mission-stack-eksik{opacity:.55;border-color:rgba(239,68,68,.3)!important;background:rgba(239,68,68,.06)!important}
 .mission-stack-eksik b{color:#f87171!important;text-decoration:line-through}
-.eksik-badge{font-size:.63rem;font-weight:700;background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.35);border-radius:20px;padding:2px 7px;display:inline-block;margin-top:4px}
-</style>
-
-</body>
-</html>
-
-<script id="SAFE_UNDO_ALL_TYPES_V1">
-(function(){
-  if(window.__safeUndoAllTypesV1) return;
-  window.__safeUndoAllTypesV1 = true;
-  const q=id=>document.getElementById(id);
-  const toastSafe=(m,ok=true)=>{ if(typeof toast==='function') toast(m,ok); else console.log(m); };
-  async function post(url,data){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data||{}),cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
-  async function del(url){ const r=await fetch(url,{method:'DELETE',cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
-  async function refresh(){ if(typeof refreshAllVisibleData==='function') await refreshAllVisibleData(); else if(typeof loadDashboard==='function') await loadDashboard(); }
-  function pushUndo(type,label,data){
-    if(typeof window.showUndoDeleteAction==='function'){ window.showUndoDeleteAction({type,label,data}); return; }
-    window.__safeLastUndo={type,label,data};
-    let bar=q('undo-delete-bar');
-    if(!bar){
-      document.body.insertAdjacentHTML('beforeend', `<div id="undo-delete-bar"><div style="min-width:0;flex:1"><b id="undo-title">Kayıt silindi</b><br><span id="undo-sub">Yanlışsa geri alabilirsin.</span></div><button id="undo-delete-btn" onclick="undoLastDelete()">Geri Al</button><button id="undo-close-btn" onclick="hideUndoBar()">Kapat</button></div>`);
-      bar=q('undo-delete-bar');
-    }
-    if(q('undo-title')) q('undo-title').textContent=label+' silindi';
-    if(q('undo-sub')) q('undo-sub').textContent='Yanlışlıkla sildiysen tek tıkla geri getirebilirsin.';
-    if(bar) bar.style.display='flex';
-  }
-  const oldUndo=window.undoLastDelete;
-  window.undoLastDelete=async function(){
-    const a=window.__safeLastUndo;
-    if(a && a.data){
-      const d=a.data;
-      if(a.type==='steps') await post('/api/steps',{date:d.date,steps:d.steps,notes:d.notes||'undo'});
-      else if(a.type==='body') await post('/api/body/metrics',{date:d.date,weight_kg:d.weight_kg,waist_cm:d.waist_cm,chest_cm:d.chest_cm,arm_cm:d.arm_cm,notes:d.notes||'undo'});
-      else if(a.type==='note') await post('/api/note',{date:d.date,note:d.note||''});
-      else if(a.type==='trainingDayLog') await post('/api/training/day/'+encodeURIComponent(d.date)+'/log',{training_day:d.training_day,exercise:d.exercise,program_exercise_id:d.program_exercise_id,set_details:JSON.parse(d.sets_json||'[]'),notes:d.notes||'undo'});
-      else if(a.type==='workoutSet') await post('/api/workout/set',{date:d.date,exercise:d.exercise,weight:d.weight,reps:d.reps,notes:d.notes,set_type:d.set_type,rir:d.rir});
-      else if(oldUndo) return oldUndo();
-      window.__safeLastUndo=null;
-      if(typeof hideUndoBar==='function') hideUndoBar();
-      toastSafe(a.label+' geri getirildi');
-      await refresh();
-      return;
-    }
-    if(oldUndo) return oldUndo();
-  };
-  window.deleteDailyWeight=async function(){
-    const d=(q('wg-date')&&q('wg-date').value)||new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
-    const res=await del('/api/body/metrics/'+encodeURIComponent(d));
-    if(res.deleted) pushUndo('body','Kilo/ölçüm',res.deleted);
-    toastSafe('Kilo/ölçüm kaydı silindi');
-    await refresh();
-  };
-  window.safeDeleteSteps=async function(dateStr){
-    const d=dateStr||((typeof operationToday==='function')?operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));
-    const res=await del('/api/steps/today?date='+encodeURIComponent(d));
-    if(res.deleted) pushUndo('steps','Adım',res.deleted);
-    toastSafe('Adım kaydı silindi');
-    await refresh();
-  };
-  window.safeDeleteNote=async function(dateStr){
-    const d=dateStr||((typeof operationToday==='function')?operationToday():new Date(new 
+.eksik-badge{font-size:.63rem;font-weight:700;backgrou
