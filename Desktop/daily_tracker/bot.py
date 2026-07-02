@@ -3132,7 +3132,11 @@ async def cmd_chat_ai(u, c):
     except Exception:
         log.exception("Deterministik Telegram aksiyonlari basarisiz")
     actions = merge_actions_no_duplicates(actions, fixed_actions)
-    saved    = apply_actions(actions)
+    try:
+        saved = apply_actions(actions)
+    except Exception:
+        log.exception("apply_actions basarisiz")
+        saved = []
 
     template_title = ''
     try:
