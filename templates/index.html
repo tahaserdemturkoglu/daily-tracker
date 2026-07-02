@@ -743,6 +743,13 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
               <input type="text" id="vit-notes" placeholder="eksik alındı, gün aşırı...">
             </div>
           </div>
+          <!-- Hızlı Durum Chip'leri -->
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn btn-xs" style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)" onclick="setVitDurum('alındı',false)">✓ Alındı</button>
+            <button class="btn btn-xs" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)" onclick="setVitDurum('eksik alındı',true)">✕ Eksik</button>
+            <button class="btn btn-xs" style="background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)" onclick="setVitDurum('gün aşırı — bugün atla',true)">⏭ Gün Aşırı</button>
+            <button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="setVitDurum('yarım doz',false)">½ Yarım Doz</button>
+          </div>
           <div class="form-row">
             <div class="fg" style="flex:2"><label>İsim</label><input type="text" id="vit-name" placeholder="D3, Omega-3..."></div>
             <div class="fg"><label>Miktar</label><input type="text" id="vit-amount" placeholder="2"></div>
@@ -1801,6 +1808,13 @@ function selectSupp(id){
   $('vit-unit').value=t.unit||'';
   $('supp-search').value=t.title||'';
   $('supp-results').style.display='none';
+}
+function setVitDurum(durum, zeroAmount){
+  $('vit-notes').value=durum;
+  if(zeroAmount) $('vit-amount').value='0';
+  // Aktif chip görünümü
+  document.querySelectorAll('[onclick^="setVitDurum"]').forEach(b=>b.style.fontWeight='');
+  event.target.style.fontWeight='700';
 }
 async function loadTodayMeals(){renderMealList('meal-today-list',await API('/api/meals/'+today()),true);}
 async function loadQuickPicks(){
@@ -6504,33 +6518,3 @@ body {
 }
 .hero.dashboard-integrated {
   background:
-    linear-gradient(120deg,rgba(20,241,217,.14),transparent 42%),
-    linear-gradient(245deg,rgba(139,92,246,.18),transparent 44%),
-    linear-gradient(135deg,rgba(8,17,32,.98),rgba(15,23,42,.94))!important;
-  border-color:rgba(56,189,248,.42)!important;
-}
-.btn,.tc-btn,.pro-log-action,.hero-ring-actions .btn {
-  box-shadow:0 10px 28px rgba(59,130,246,.22);
-}
-.btn-blue,.tc-small,.pro-log-date button {
-  background:linear-gradient(135deg,#38bdf8,#6366f1)!important;
-}
-.btn-green {
-  background:linear-gradient(135deg,#14f1d9,#22e58a)!important;
-}
-.btn-purple {
-  background:linear-gradient(135deg,#8b5cf6,#3b82f6)!important;
-}
-input,select,textarea {
-  background:#10213d!important;
-  border-color:rgba(125,169,221,.38)!important;
-  color:#f8fafc!important;
-}
-input:focus,select:focus,textarea:focus {
-  border-color:#38bdf8!important;
-  box-shadow:0 0 0 3px rgba(56,189,248,.12)!important;
-}
-.macro-graph-card.protein .macro-graph-value,.mc-prot .macro-val {color:#14f1d9!important}
-.macro-graph-card.carb .macro-graph-value,.mc-carb .macro-val {color:#ffb020!important}
-.macro-graph-card.fat .macro-graph-value,.mc-fat .macro-val {color:#a78bfa!important}
-.macro-graph-card.water .macro-graph-value,.mc-wa
