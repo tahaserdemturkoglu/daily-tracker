@@ -2288,21 +2288,21 @@ async function renderOzWeekly(){
 
 
 async function ozShowDayLog(dateStr){
-  // Haftalık sekmede inline panel oluştur (tab değiştirme)
+  // Haftalık sekmede inline panel — wrapper + content div ayrı
   const body=$('oz-weekly-body');
   if(body){
-    let panel=$('oz-weekly-day-detail');
-    if(!panel){
-      body.insertAdjacentHTML('beforeend',`<div id="oz-weekly-day-detail" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.12);padding-top:4px">
-        <button onclick="$('oz-weekly-day-detail').style.display='none';_ozDailyContainer='oz-daily-content';" style="background:none;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;padding:6px 0 4px;display:flex;align-items:center;gap:4px">✕ Kapat</button>
+    let wrapper=$('oz-weekly-day-wrapper');
+    if(!wrapper){
+      body.insertAdjacentHTML('beforeend',`<div id="oz-weekly-day-wrapper" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.12);padding-top:4px">
+        <button onclick="$('oz-weekly-day-wrapper').style.display='none';_ozDailyContainer='oz-daily-content';" style="background:rgba(255,255,255,.06);border:none;color:var(--muted);font-size:.72rem;cursor:pointer;padding:5px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;margin-bottom:8px">✕ Kapat</button>
+        <div id="oz-weekly-day-content"></div>
       </div>`);
-      panel=$('oz-weekly-day-detail');
+      wrapper=$('oz-weekly-day-wrapper');
     }
-    panel.style.display='block';
-    panel.scrollIntoView({behavior:'smooth',block:'start'});
-    await renderOzDaily(dateStr,'oz-weekly-day-detail');
+    wrapper.style.display='block';
+    wrapper.scrollIntoView({behavior:'smooth',block:'start'});
+    await renderOzDaily(dateStr,'oz-weekly-day-content');
   } else {
-    // fallback: günlük sekmeye geç
     ozSub('daily');
     await renderOzDaily(dateStr);
     const ozEl=document.getElementById('oz-daily-content');
