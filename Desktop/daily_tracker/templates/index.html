@@ -2145,7 +2145,7 @@ async function renderOzDaily(dateStr){
   const sortedSlots=[...new Set([...slotOrder.filter(s=>groups[s]),...Object.keys(groups)])];
   // Supplement groups
   const suppGroups={};
-  vits.forEach(v=>{const k=v.notes&&v.notes.toLowerCase().includes('gece')?'Gece Stack':v.notes&&v.notes.toLowerCase().includes('kahvalti')?'Sabah Stack':v.notes&&v.notes.toLowerCase().includes('ac karna')||v.notes&&v.notes.toLowerCase().includes('aç karna')?'Aç Karna Stack':v.notes&&v.notes.toLowerCase().includes('pre')?'Pre-Workout':'Diğer';(suppGroups[k]=suppGroups[k]||[]).push(v);});
+  vits.forEach(v=>{const n=(v.notes||'').toLowerCase();const k=n.includes('gece')?'Gece Stack':n.includes('ac karna')||n.includes('aç karna')?'Aç Karna Stack':n.includes('post')?'Post-Workout':n.includes('pre')?'Pre-Workout':n.includes('sabah')||n.includes('kahvalti')?'Sabah Stack':'Diğer';(suppGroups[k]=suppGroups[k]||[]).push(v);});
 
   el.innerHTML=`
   <div class="odl-wrap">
@@ -6542,3 +6542,4 @@ input:focus,select:focus,textarea:focus {
   <div id="food-registry-list"></div>
 </div>
 
+                                                      
