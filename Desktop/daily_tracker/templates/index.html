@@ -2075,10 +2075,12 @@ async function refreshOzetMakroCard(){
 }
 
 let _ozDailyDate=null;
-async function renderOzDaily(dateStr){
+let _ozDailyContainer='oz-daily-content';
+async function renderOzDaily(dateStr,containerElId){
   if(!dateStr)dateStr=today();
+  if(containerElId) _ozDailyContainer=containerElId;
   _ozDailyDate=dateStr;
-  const el=$('oz-daily-content');if(!el)return;
+  const el=$(_ozDailyContainer);if(!el)return;
   el.innerHTML='<div class="odl-loading">Yükleniyor...</div>';
   const fmt=n=>Number(n||0).toLocaleString('tr-TR');
   const fmtSleep=h=>{if(!h)return'—';const hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+'s'+(mm?mm+'dk':'');};
@@ -2118,13 +2120,13 @@ async function renderOzDaily(dateStr){
   <div class="odl-wrap">
     <!-- HEADER -->
     <div class="odl-header">
-      <button class="odl-nav-btn" onclick="renderOzDaily('${prev}')">‹</button>
+      <button class="odl-nav-btn" onclick="renderOzDaily('${prev}',_ozDailyContainer)">‹</button>
       <div class="odl-header-center">
         <div class="odl-date-label">${dayLabel}</div>
         <div class="odl-day-type" style="color:${d.training_color||'#64748b'}">${d.training_day||'Off'} · ${d.streak||0} gün seri 🔥</div>
         ${isToday?'<span class="odl-today-badge">Bugün</span>':''}
       </div>
-      <button class="odl-nav-btn" onclick="renderOzDaily('${next}')" ${isToday?'disabled':''}>›</button>
+      <button class="odl-nav-btn" onclick="renderOzDaily('${next}',_ozDailyContainer)" ${isToday?'disabled':''}>›</button>
     </div>
     <!-- SCORE RING -->
     <div class="odl-score-wrap">
@@ -2139,6 +2141,13 @@ async function renderOzDaily(dateStr){
       ${stat('💪','Protein',Math.round(totals.p),tProt,pProt,'#22c55e','g')}
       ${stat('💧','Su',(water_ml/1000).toFixed(1),(tWater/1000).toFixed(0),pWater,'#06b6d4','L')}
       ${stat('🦶','Adım',fmt(steps),fmt(tSteps),pSteps,'#a855f7','')}
+    </div>
+    <!-- MAKRO TOPLAMLAR -->
+    <div class="odl-activity-grid" style="margin:0 0 4px">
+      <div class="odl-act-card"><div class="odl-act-icon">🔥</div><div class="odl-act-label">Kalori</div><div class="odl-act-val" style="color:#f59e0b">${fmt(Math.round(totals.cal))}</div><div class="odl-act-sub">kcal</div></div>
+      <div class="odl-act-card"><div class="odl-act-icon">💪</div><div class="odl-act-label">Protein</div><div class="odl-act-val" style="color:#22c55e">${Math.round(totals.p)}g</div><div class="odl-act-sub">/ ${tProt}g</div></div>
+      <div class="odl-act-card"><div class="odl-act-icon">🍞</div><div class="odl-act-label">Karb</div><div class="odl-act-val" style="color:#3b82f6">${Math.round(totals.c)}g</div><div class="odl-act-sub">günlük</div></div>
+      <div class="odl-act-card"><div class="odl-act-icon">🥑</div><div class="odl-act-label">Yağ</div><div class="odl-act-val" style="color:#f97316">${Math.round(totals.f)}g</div><div class="odl-act-sub">günlük</div></div>
     </div>
     <!-- MEAL TIMELINE -->
     <div class="odl-section">
@@ -2279,12 +2288,26 @@ async function renderOzWeekly(){
 
 
 async function ozShowDayLog(dateStr){
-  // Günlük sekmesine geç ve tam renderOzDaily view'ı kullan
-  ozSub('daily');
-  await renderOzDaily(dateStr);
-  // Sayfayı özet bölümünün üstüne kaydır
-  const ozEl=document.getElementById('oz-daily-content');
-  if(ozEl) ozEl.scrollIntoView({behavior:'smooth',block:'start'});
+  // Haftalık sekmede inline panel oluştur (tab değiştirme)
+  const body=$('oz-weekly-body');
+  if(body){
+    let panel=$('oz-weekly-day-detail');
+    if(!panel){
+      body.insertAdjacentHTML('beforeend',`<div id="oz-weekly-day-detail" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.12);padding-top:4px">
+        <button onclick="$('oz-weekly-day-detail').style.display='none';_ozDailyContainer='oz-daily-content';" style="background:none;border:none;color:var(--muted);font-size:.72rem;cursor:pointer;padding:6px 0 4px;display:flex;align-items:center;gap:4px">✕ Kapat</button>
+      </div>`);
+      panel=$('oz-weekly-day-detail');
+    }
+    panel.style.display='block';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    await renderOzDaily(dateStr,'oz-weekly-day-detail');
+  } else {
+    // fallback: günlük sekmeye geç
+    ozSub('daily');
+    await renderOzDaily(dateStr);
+    const ozEl=document.getElementById('oz-daily-content');
+    if(ozEl) ozEl.scrollIntoView({behavior:'smooth',block:'start'});
+  }
 }
 
 async function renderOzMonthly(){
