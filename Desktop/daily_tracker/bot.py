@@ -1925,6 +1925,26 @@ def merge_actions_no_duplicates(primary, extra):
     return out
 
 # ACTIONS
+def normalize_meal_title(title):
+    """Food registry aliases'ten canonical isim döndür — 'kornişon' → 'Turşu' gibi."""
+    if not title:
+        return title
+    try:
+        conn = get_db()
+        rows = conn.execute("SELECT name, aliases FROM food_registry").fetchall()
+        conn.close()
+        t = title.lower().strip()
+        for row in rows:
+            if row['name'].lower().strip() == t:
+                return row['name']
+            for alias in (row['aliases'] or '').split(','):
+                if alias.strip().lower() == t:
+                    return row['name']
+    except Exception:
+        pass
+    return title
+
+
 def apply_actions(actions):
     saved = []
     today = operation_today()
@@ -1937,6 +1957,7 @@ def apply_actions(actions):
             if typ == 'meal':
                 slot  = a.get('slot') or 'extra'
                 title = a.get('title') or a.get('name') or a.get('description') or slot
+                title = normalize_meal_title(title)
                 if len(title) > 80: title = title[:80]
                 conn = get_db()
                 conn.execute(
