@@ -1,32 +1,25 @@
-﻿"""Cloud entry point: Flask site + standalone Telegram bot."""
+"""Cloud entry point: Flask site + Telegram Bot (webhook mode)."""
 import os
-import threading
+import json
+import urllib.request
 
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 os.environ.setdefault("DISABLE_EMBEDDED_BOT", "1")
 
 from app import app, init_db, PORT, log
-from bot import TELEGRAM_TOKEN, main as start_standalone_bot
+from bot import TELEGRAM_TOKEN
 
 
-def main():
-    init_db()
-    if TELEGRAM_TOKEN:
-        threading.Thread(
-            target=start_standalone_bot,
-            daemon=True,
-            name="telegram-bot",
-        ).start()
-        log.info("Standalone Telegram bot cloud thread started.")
-    else:
-        log.info("Telegram bot token missing.")
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", PORT)),
-        debug=False,
-        use_reloader=False,
+def register_webhook():
+    """Telegram'a Railway URL'ini webhook olarak kaydet."""
+    # Railway public URL'i env var'dan al
+    domain = (
+        os.environ.get('RAILWAY_PUBLIC_DOMAIN') or
+        os.environ.get('RAILWAY_STATIC_URL', '').replace('https://', '').replace('http://', '')
     )
+    if not domain or not TELEGRAM_TOKEN:
+        log.warning("Webhook kaydedilemedi: domain=%s token=%s", domain, bool(TELEGRAM_TOKEN))
+        return
 
-
-if __name__ == "__main__":
-    main()
+    webhook_url = f"https://{domain}/telegram_webhook"
+    pay

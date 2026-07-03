@@ -188,12 +188,10 @@ def init_db():
             notes TEXT, ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS body_metrics (
-            date TEXT PRIMARY KEY, weight_kg REAL, weight_kg_night REAL,
-            waist_cm REAL, chest_cm REAL, arm_cm REAL, notes TEXT,
+            date TEXT PRIMARY KEY, weight_kg REAL, waist_cm REAL,
+            chest_cm REAL, arm_cm REAL, notes TEXT,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
-        -- Migration: add weight_kg_night if missing (existing DBs)
-        BEGIN; ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL; COMMIT;
         CREATE TABLE IF NOT EXISTS training_day_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL, training_day TEXT NOT NULL,
@@ -218,14 +216,7 @@ def init_db():
             value TEXT
         );
     ''')
-    conn.commit()
-    # Migration: add weight_kg_night if missing in existing DBs
-    try:
-        conn.execute('ALTER TABLE body_metrics ADD COLUMN weight_kg_night REAL')
-        conn.commit()
-    except Exception:
-        pass
-    conn.close()
+    conn.commit(); conn.close()
 
 def water_consolidate(conn, date_val, new_total_ml):
     """Tum water_ml satirlarini sifirla, ilk satirda toplamı yaz. SUM hatasi olmaz."""
@@ -1925,26 +1916,6 @@ def merge_actions_no_duplicates(primary, extra):
     return out
 
 # ACTIONS
-def normalize_meal_title(title):
-    """Food registry aliases'ten canonical isim döndür — 'kornişon' → 'Turşu' gibi."""
-    if not title:
-        return title
-    try:
-        conn = get_db()
-        rows = conn.execute("SELECT name, aliases FROM food_registry").fetchall()
-        conn.close()
-        t = title.lower().strip()
-        for row in rows:
-            if row['name'].lower().strip() == t:
-                return row['name']
-            for alias in (row['aliases'] or '').split(','):
-                if alias.strip().lower() == t:
-                    return row['name']
-    except Exception:
-        pass
-    return title
-
-
 def apply_actions(actions):
     saved = []
     today = operation_today()
@@ -1957,7 +1928,6 @@ def apply_actions(actions):
             if typ == 'meal':
                 slot  = a.get('slot') or 'extra'
                 title = a.get('title') or a.get('name') or a.get('description') or slot
-                title = normalize_meal_title(title)
                 if len(title) > 80: title = title[:80]
                 conn = get_db()
                 conn.execute(
@@ -3153,11 +3123,7 @@ async def cmd_chat_ai(u, c):
     except Exception:
         log.exception("Deterministik Telegram aksiyonlari basarisiz")
     actions = merge_actions_no_duplicates(actions, fixed_actions)
-    try:
-        saved = apply_actions(actions)
-    except Exception:
-        log.exception("apply_actions basarisiz")
-        saved = []
+    saved    = apply_actions(actions)
 
     template_title = ''
     try:
@@ -3334,13 +3300,8 @@ async def _run_bot():
                 await app.updater.start_polling(drop_pending_updates=True) # sonra polling
                 log.info("Bot polling aktif.")
                 await asyncio.Event().wait()
-        except Exception as e:
+        except BaseException as e:
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                break
             log.warning(f"[bot] Hata: {e} \u2014 {retry_delay}s sonra yeniden deneniyor...")
-            await asyncio.sleep(retry_delay)
-
-def main():
-    asyncio.run(_run_bot())
-
-
-if __name__ == "__main__":
-    main()
+            await asyncio.sleep(retry

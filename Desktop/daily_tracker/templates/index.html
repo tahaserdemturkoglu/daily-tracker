@@ -3650,9 +3650,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     'kahvalti': [
       ['Omega-3','3','kapsul','Kahvaltı stack | Life Extension Mega EPA/DHA'],
       ['D3+K2','4','damla','Kahvaltı stack | Thorne Vitamin D + K2'],
-      ['B-Complex','1','doz','Kahvaltı stack | Life Extension BioActive Complete B-Complex'],
-      ['Goz Vitamini','1','doz','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
-      ['Cinko','1','kapsul','Kahvaltı stack | NOW Zinc Picolinate 50 mg | gun asiri']
+      ['Göz Vitamini','1','doz','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
+      ['Çinko','1','kapsul','Kahvaltı stack | NOW Zinc Picolinate 50 mg | gün aşırı'],
     ],
     'ogle': [
       ['Creatine','5','g','Ogle stack | KFD Creatine'],
@@ -6679,4 +6678,5 @@ input:focus,select:focus,textarea:focus {
   const q=id=>document.getElementById(id);
   const toastSafe=(m,ok=true)=>{ if(typeof toast==='function') toast(m,ok); else console.log(m); };
   async function post(url,data){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data||{}),cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
-  async function del(url){ const r=await fetch(url,{method:'DELETE',cache:'no-sto
+  async function del(url){ const r=await fetch(url,{method:'DELETE',cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
+  async function refresh()
