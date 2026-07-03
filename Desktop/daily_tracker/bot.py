@@ -3304,4 +3304,72 @@ async def _run_bot():
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 break
             log.warning(f"[bot] Hata: {e} \u2014 {retry_delay}s sonra yeniden deneniyor...")
-            await asyncio.sleep(retry
+            await asyncio.sleep(retry_delay)
+
+
+# --- WEBHOOK MODE -----------------------------------------------------------
+import threading as _threading
+
+_wh_app  = None
+_wh_loop = None
+_wh_lock = _threading.Lock()
+
+def _build_handlers(ptb_app):
+    from telegram.ext import CommandHandler, MessageHandler, filters
+    ptb_app.add_handler(CommandHandler("start",     cmd_start))
+    ptb_app.add_handler(CommandHandler("uyku",      cmd_uyku))
+    ptb_app.add_handler(CommandHandler("su",        cmd_su))
+    ptb_app.add_handler(CommandHandler("mood",      cmd_mood))
+    ptb_app.add_handler(CommandHandler("vitamin",   cmd_vitamin))
+    ptb_app.add_handler(CommandHandler("bugun",     cmd_bugun))
+    ptb_app.add_handler(CommandHandler("rapor",     cmd_rapor))
+    ptb_app.add_handler(CommandHandler("hafta",     cmd_hafta))
+    ptb_app.add_handler(CommandHandler("antrenman", cmd_antrenman))
+    ptb_app.add_handler(CommandHandler("streak",    cmd_streak))
+    ptb_app.add_handler(MessageHandler(filters.PHOTO, cmd_photo))
+    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
+
+def _get_wh_loop():
+    global _wh_loop
+    with _wh_lock:
+        if _wh_loop is None or _wh_loop.is_closed():
+            _wh_loop = asyncio.new_event_loop()
+            t = _threading.Thread(target=_wh_loop.run_forever, daemon=True, name='bot-wh-loop')
+            t.start()
+            log.info("Webhook event loop baslatildi.")
+    return _wh_loop
+
+async def _ensure_wh_app():
+    global _wh_app
+    if _wh_app is not None:
+        return _wh_app
+    from telegram.ext import Application
+    ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
+    _build_handlers(ptb_app)
+    await ptb_app.initialize()
+    _wh_app = ptb_app
+    log.info("Webhook Application hazir.")
+    return _wh_app
+
+async def _do_process(data: dict):
+    from telegram import Update
+    ptb_app = await _ensure_wh_app()
+    update = Update.de_json(data, ptb_app.bot)
+    await ptb_app.process_update(update)
+
+def process_webhook_update(data: dict):
+    """Flask webhook route'undan cagrilir -- bot loop'unda async isler."""
+    loop = _get_wh_loop()
+    future = asyncio.run_coroutine_threadsafe(_do_process(data), loop)
+    try:
+        future.result(timeout=55)
+    except Exception as e:
+        log.error("Webhook update isleme hatasi: %s", e)
+
+
+def main():
+    asyncio.run(_run_bot())
+
+
+if __name__ == "__main__":
+    main()
