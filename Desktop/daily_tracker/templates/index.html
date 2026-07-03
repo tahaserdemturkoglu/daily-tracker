@@ -6483,4 +6483,212 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if(typeof oldForce === 'function'){ try{ oldForce.apply(this, arguments); }catch(e){} }
     setTimeout(syncDashboardData, 120);
   };
-  document.addEventListener('DOMContentLoaded', () => setTimeout(syncDashboardDat
+  document.addEventListener('DOMContentLoaded', () => setTimeout(syncDashboardData, 700));
+  window.addEventListener('focus', () => setTimeout(syncDashboardData, 200));
+  setInterval(syncDashboardData, 8000);
+  window.syncDashboardDataGuard = syncDashboardData;
+})();
+</script>
+
+
+<style id="PREMIUM_COLOR_REFRESH_V1">
+:root {
+  --bg:#07101f;
+  --bg2:#0d1930;
+  --bg3:#142642;
+  --border:#2a4671;
+  --text:#f8fbff;
+  --muted:#a3b7d6;
+  --purple:#8b5cf6;
+  --blue:#38bdf8;
+  --teal:#14f1d9;
+  --green:#22e58a;
+  --yellow:#ffb020;
+  --pink:#f472b6;
+  --red:#fb7185;
+  --indigo:#818cf8;
+  --g-purple:linear-gradient(135deg,#8b5cf6 0%,#38bdf8 100%);
+  --g-teal:linear-gradient(135deg,#14f1d9 0%,#38bdf8 100%);
+  --g-green:linear-gradient(135deg,#22e58a 0%,#16a34a 100%);
+  --g-yellow:linear-gradient(135deg,#ffb020 0%,#fb7185 100%);
+  --g-pink:linear-gradient(135deg,#f472b6 0%,#8b5cf6 100%);
+}
+body {
+  background:
+    linear-gradient(125deg,rgba(20,241,217,.10) 0%,transparent 30%),
+    linear-gradient(235deg,rgba(139,92,246,.13) 0%,transparent 34%),
+    linear-gradient(180deg,#07101f 0%,#050914 56%,#081120 100%) !important;
+}
+.sidebar,.topbar {
+  background:linear-gradient(180deg,rgba(13,25,48,.92),rgba(7,13,25,.88))!important;
+  backdrop-filter:blur(18px);
+  border-color:rgba(96,165,250,.26)!important;
+}
+.brand-name {
+  background:linear-gradient(135deg,#ffffff 0%,#38bdf8 44%,#a78bfa 100%)!important;
+  -webkit-background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+}
+.nav-btn.active {
+  background:linear-gradient(135deg,rgba(20,241,217,.24),rgba(139,92,246,.20))!important;
+  border-left-color:#14f1d9!important;
+  box-shadow:inset 0 0 0 1px rgba(56,189,248,.16),0 12px 32px rgba(20,241,217,.10);
+}
+.nav-btn:hover {
+  background:rgba(56,189,248,.10)!important;
+  color:#f8fafc!important;
+}
+.hero,.card,.chart-card,.stat-card,.macro-card,.quick-card,
+.macro-graph-panel,.pro-log-card,.tc-panel,.tc-form,.hero-ring-card,.hero-trend-panel {
+  background:linear-gradient(180deg,rgba(20,36,64,.90),rgba(8,17,32,.80))!important;
+  border-color:rgba(96,165,250,.30)!important;
+  box-shadow:0 22px 58px rgba(2,8,23,.38),inset 0 1px 0 rgba(255,255,255,.055)!important;
+  transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+.hero:hover,.card:hover,.chart-card:hover,.stat-card:hover,.macro-card:hover,.quick-card:hover,
+.macro-graph-panel:hover,.pro-log-card:hover,.tc-panel:hover,.tc-form:hover {
+  border-color:rgba(20,241,217,.38)!important;
+  box-shadow:0 26px 66px rgba(2,8,23,.46),0 0 0 1px rgba(20,241,217,.05),inset 0 1px 0 rgba(255,255,255,.065)!important;
+}
+.hero.dashboard-integrated {
+  background:
+    linear-gradient(120deg,rgba(20,241,217,.14),transparent 42%),
+    linear-gradient(245deg,rgba(139,92,246,.18),transparent 44%),
+    linear-gradient(135deg,rgba(8,17,32,.98),rgba(15,23,42,.94))!important;
+  border-color:rgba(56,189,248,.42)!important;
+}
+.btn,.tc-btn,.pro-log-action,.hero-ring-actions .btn {
+  box-shadow:0 10px 28px rgba(59,130,246,.22);
+}
+.btn-blue,.tc-small,.pro-log-date button {
+  background:linear-gradient(135deg,#38bdf8,#6366f1)!important;
+}
+.btn-green {
+  background:linear-gradient(135deg,#14f1d9,#22e58a)!important;
+}
+.btn-purple {
+  background:linear-gradient(135deg,#8b5cf6,#3b82f6)!important;
+}
+input,select,textarea {
+  background:#10213d!important;
+  border-color:rgba(125,169,221,.38)!important;
+  color:#f8fafc!important;
+}
+input:focus,select:focus,textarea:focus {
+  border-color:#38bdf8!important;
+  box-shadow:0 0 0 3px rgba(56,189,248,.12)!important;
+}
+.macro-graph-card.protein .macro-graph-value,.mc-prot .macro-val {color:#14f1d9!important}
+.macro-graph-card.carb .macro-graph-value,.mc-carb .macro-val {color:#ffb020!important}
+.macro-graph-card.fat .macro-graph-value,.mc-fat .macro-val {color:#a78bfa!important}
+.macro-graph-card.water .macro-graph-value,.mc-water .macro-val {color:#60a5fa!important}
+.page-title,.card-name,.tc-title,.pro-log-title,.macro-graph-title {
+  color:#f8fafc!important;
+  text-shadow:0 1px 18px rgba(56,189,248,.08);
+}
+.page-sub,.card-sub,.tc-sub,.macro-graph-sub,.pro-muted {
+  color:#9fb3d4!important;
+}
+.macro-card .bar,.macro-progress,.progress-line {
+  background:rgba(148,163,184,.16)!important;
+}
+.toast {
+  background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
+  color:#03101d!important;
+  box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
+}
+.mission-stack-group{display:grid;gap:8px;margin-bottom:10px}
+.mission-stack-group-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:#67e8f9;font-weight:900;margin:2px 0 0}
+.mission-stack-group .mission-stack-item{margin:0}
+.mission-stack-eksik{opacity:.55;border-color:rgba(239,68,68,.3)!important;background:rgba(239,68,68,.06)!important}
+.mission-stack-eksik b{color:#f87171!important;text-decoration:line-through!important}
+.eksik-badge{font-size:.63rem;font-weight:700;background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.35);border-radius:20px;padding:2px 7px;display:inline-block;margin-top:4px}
+</style>
+
+</body>
+</html>
+
+<script id="SAFE_UNDO_ALL_TYPES_V1">
+(function(){
+  if(window.__safeUndoAllTypesV1) return;
+  window.__safeUndoAllTypesV1 = true;
+  const q=id=>document.getElementById(id);
+  const toastSafe=(m,ok=true)=>{ if(typeof toast==='function') toast(m,ok); else console.log(m); };
+  async function post(url,data){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data||{}),cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
+  async function del(url){ const r=await fetch(url,{method:'DELETE',cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
+  async function refresh(){ if(typeof refreshAllVisibleData==='function') await refreshAllVisibleData(); else if(typeof loadDashboard==='function') await loadDashboard(); }
+  function pushUndo(type,label,data){
+    if(typeof window.showUndoDeleteAction==='function'){ window.showUndoDeleteAction({type,label,data}); return; }
+    window.__safeLastUndo={type,label,data};
+    let bar=q('undo-delete-bar');
+    if(!bar){
+      document.body.insertAdjacentHTML('beforeend', `<div id="undo-delete-bar"><div style="min-width:0;flex:1"><b id="undo-title">Kayıt silindi</b><br><span id="undo-sub">Yanlışsa geri alabilirsin.</span></div><button id="undo-delete-btn" onclick="undoLastDelete()">Geri Al</button><button id="undo-close-btn" onclick="hideUndoBar()">Kapat</button></div>`);
+      bar=q('undo-delete-bar');
+    }
+    if(q('undo-title')) q('undo-title').textContent=label+' silindi';
+    if(q('undo-sub')) q('undo-sub').textContent='Yanlışlıkla sildiysen tek tıkla geri getirebilirsin.';
+    if(bar) bar.style.display='flex';
+  }
+  const oldUndo=window.undoLastDelete;
+  window.undoLastDelete=async function(){
+    const a=window.__safeLastUndo;
+    if(a && a.data){
+      const d=a.data;
+      if(a.type==='steps') await post('/api/steps',{date:d.date,steps:d.steps,notes:d.notes||'undo'});
+      else if(a.type==='body') await post('/api/body/metrics',{date:d.date,weight_kg:d.weight_kg,waist_cm:d.waist_cm,chest_cm:d.chest_cm,arm_cm:d.arm_cm,notes:d.notes||'undo'});
+      else if(a.type==='note') await post('/api/note',{date:d.date,note:d.note||''});
+      else if(a.type==='trainingDayLog') await post('/api/training/day/'+encodeURIComponent(d.date)+'/log',{training_day:d.training_day,exercise:d.exercise,program_exercise_id:d.program_exercise_id,set_details:JSON.parse(d.sets_json||'[]'),notes:d.notes||'undo'});
+      else if(a.type==='workoutSet') await post('/api/workout/set',{date:d.date,exercise:d.exercise,weight:d.weight,reps:d.reps,notes:d.notes,set_type:d.set_type,rir:d.rir});
+      else if(oldUndo) return oldUndo();
+      window.__safeLastUndo=null;
+      if(typeof hideUndoBar==='function') hideUndoBar();
+      toastSafe(a.label+' geri getirildi');
+      await refresh();
+      return;
+    }
+    if(oldUndo) return oldUndo();
+  };
+  window.deleteDailyWeight=async function(){
+    const d=(q('wg-date')&&q('wg-date').value)||new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const res=await del('/api/body/metrics/'+encodeURIComponent(d));
+    if(res.deleted) pushUndo('body','Kilo/ölçüm',res.deleted);
+    toastSafe('Kilo/ölçüm kaydı silindi');
+    await refresh();
+  };
+  window.safeDeleteSteps=async function(dateStr){
+    const d=dateStr||((typeof operationToday==='function')?operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));
+    const res=await del('/api/steps/today?date='+encodeURIComponent(d));
+    if(res.deleted) pushUndo('steps','Adım',res.deleted);
+    toastSafe('Adım kaydı silindi');
+    await refresh();
+  };
+  window.safeDeleteNote=async function(dateStr){
+    const d=dateStr||((typeof operationToday==='function')?operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10));
+    const res=await del('/api/note?date='+encodeURIComponent(d));
+    if(res.deleted) pushUndo('note','Not',res.deleted);
+    toastSafe('Not silindi');
+    await refresh();
+  };
+  window.delTrainingLog=async function(id){
+    const res=await del('/api/training/day/log/'+id);
+    if(res.deleted) pushUndo('trainingDayLog','Antrenman kaydı',res.deleted);
+    toastSafe('Antrenman kaydı silindi');
+    await refresh();
+  };
+})();
+</script><div class="page" id="page-besin">
+  <div class="section-header"><h2>🥗 Besin Veritabanı</h2></div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <input id="fr-name" class="input" placeholder="Ürün adı" style="flex:2;min-width:120px">
+      <input id="fr-cal" class="input" placeholder="kcal/100g" type="number" style="width:90px">
+      <input id="fr-p" class="input" placeholder="P/100g" type="number" style="width:75px">
+      <input id="fr-k" class="input" placeholder="K/100g" type="number" style="width:75px">
+      <input id="fr-y" class="input" placeholder="Y/100g" type="number" style="width:75px">
+      <input id="fr-notes" class="input" placeholder="Not (örn: per fış=45kcal)" style="flex:2;min-width:120px">
+      <button class="btn btn-primary" onclick="addFoodItem()">+ Ekle</button>
+    </div>
+  </div>
+  <div id="food-registry-list"></div>
+</div>
+
