@@ -3650,8 +3650,13 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     'kahvalti': [
       ['Omega-3','3','kapsul','Kahvaltı stack | Life Extension Mega EPA/DHA'],
       ['D3+K2','4','damla','Kahvaltı stack | Thorne Vitamin D + K2'],
-      ['Göz Vitamini','1','doz','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
+      ['Life Extension MacuGuard','1','softgel','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
       ['Çinko','1','kapsul','Kahvaltı stack | NOW Zinc Picolinate 50 mg | gün aşırı'],
+      ['NOW Astaxanthin 10mg','1','kapsul','Kahvaltı stack | NOW Astaxanthin 10mg'],
+      ['California Gold Nutrition C','1','kapsul','Kahvaltı stack | Vitamin C'],
+      ['NOW Magtein','1','kapsul','Kahvaltı stack | Magnesium L-Threonate'],
+      ['NOW L-Theanine Double Strength','1','kapsul','Kahvaltı stack | NOW L-Theanine Double Strength'],
+      ['ON Collagen','1','ölçek','Kahvaltı stack | Optimum Nutrition Collagen'],
     ],
     'ogle': [
       ['Creatine','5','g','Ogle stack | KFD Creatine'],
@@ -3755,7 +3760,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       for(const item of _stackPickerData){
         // notes = status string directly — renderVitList checks for 'eksik','gün aşırı','alındı','yarım' substrings
         await fetch('/api/vitamin',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({name:item.name,amount:item.amount,unit:item.unit,notes:item.status}),cache:'no-store'});
+          body:JSON.stringify({name:item.name,amount:item.amount,unit:item.unit,notes:item.baseNotes+' | '+item.status}),cache:'no-store'});
       }
       toastSafe(_stackPickerData.length+' takviye eklendi');
       document.getElementById('stack-picker-panel')?.remove();
