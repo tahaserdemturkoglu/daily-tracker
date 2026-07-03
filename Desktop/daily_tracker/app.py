@@ -893,7 +893,6 @@ def api_meal_save():
     slot = data.get('slot', '').strip() or 'extra'
     title = data.get('title', '').strip()
     description = data.get('description', '').strip()
-    import re as _re; description = _re.sub(r'\b(\d+)\.0+\b', r'\1', description) if description else description
     calories = _num_or_none(data.get('calories'))
     protein_g = _num_or_none(data.get('protein_g'))
     carbs_g = _num_or_none(data.get('carbs_g'))
@@ -1827,7 +1826,7 @@ def tg_store_message(direction, message, chat_id='', username='', actions=None):
 
 @app.route('/telegram_webhook', methods=['POST'])
 def telegram_webhook():
-    """Telegram webhook endpoint — polling yerine bu kullanılır."""
+    """Telegram webhook endpoint."""
     if not TELEGRAM_TOKEN:
         return 'no token', 200
     data = request.get_json(force=True) or {}
@@ -1839,7 +1838,7 @@ def telegram_webhook():
         t = _thr.Thread(target=process_webhook_update, args=(data,), daemon=True)
         t.start()
     except Exception as e:
-        log.error(f"Telegram webhook dispatch error: {e}")
+        log.error("Telegram webhook dispatch error: %s", e)
     return 'ok', 200
 
 
@@ -4869,9 +4868,12 @@ def api_ai_insights():
             'water_ml': int((water_row['total'] or 0) if water_row else 0),
             'steps': dict(step_row)['steps'] if step_row else 0,
         }
-        settings_conn = get_db()
-        s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
-        settings_conn.close()
+        try:
+            settings_conn = get_db()
+            s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
+            settings_conn.close()
+        except Exception:
+            s_rows = {}
         targets = {
             'cal': int(s_rows.get('target_calories', 1800)),
             'prot': int(s_rows.get('target_protein', 160)),
@@ -4936,4 +4938,17 @@ def api_ai_insights():
         return jsonify({'insight': f'Analiz yuklenemedi: {err_msg}', 'ok': False, 'error': err_msg})
 
 
-if __name__ ==
+if __name__ == '__main__':
+    init_db()
+    log.info(f"DB: {DB_PATH}")
+    import sys as _sys
+    telegram_only = ('--telegram-only' in _sys.argv) or (os.environ.get('TELEGRAM_ONLY') == '1')
+    if telegram_only:
+        log.info("Telegram-only mod: site acilmadan bot calisiyor.")
+        start_telegram_bot()
+    else:
+        if TELEGRAM_TOKEN and os.environ.get('DISABLE_EMBEDDED_BOT') != '1':
+            threading.Thread(target=start_telegram_bot, daemon=True).start()
+        log.info(f"http://localhost:{PORT}")
+        app.run(host='0.0.0.0', port=PORT, debug=False)
+
