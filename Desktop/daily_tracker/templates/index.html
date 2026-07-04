@@ -1154,6 +1154,30 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   </div>
 </div>
 
+<!-- ═══ BESİN VERİTABANI ═══ -->
+<div class="page" id="page-besin">
+  <div class="pg-title">Besin Veritabanı</div>
+  <div class="pg-sub">Kayıtlı besinler ve makro değerleri</div>
+  <div class="card ct ct-blue" style="max-width:600px;margin-bottom:16px">
+    <div class="card-head"><span class="card-icon">➕</span><div><div class="card-name">Yeni Besin Ekle</div></div></div>
+    <div class="form-row">
+      <div class="fg" style="flex:3"><label>İsim</label><input type="text" id="fr-name" placeholder="Ürün adı"></div>
+      <div class="fg"><label>Kcal/100g</label><input type="number" id="fr-cal" placeholder="0" step="0.1"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Protein (g)</label><input type="number" id="fr-p" placeholder="0" step="0.1"></div>
+      <div class="fg"><label>Karbonhidrat (g)</label><input type="number" id="fr-k" placeholder="0" step="0.1"></div>
+      <div class="fg"><label>Yağ (g)</label><input type="number" id="fr-y" placeholder="0" step="0.1"></div>
+      <div class="fg"><label>Birim</label><input type="text" id="fr-unit" placeholder="g" value="g" style="max-width:60px"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Not</label><input type="text" id="fr-notes" placeholder="Kaynak, marka vb."></div>
+    </div>
+    <button class="btn-primary" onclick="addFoodItem()" style="margin-top:8px">Kaydet</button>
+  </div>
+  <div id="food-registry-list" style="max-width:700px"></div>
+</div>
+
 <!-- CONFIRM MODAL -->
 <div id="confirm-modal">
   <div class="confirm-box">
@@ -6661,27 +6685,4 @@ input:focus,select:focus,textarea:focus {
   background:rgba(148,163,184,.16)!important;
 }
 .toast {
-  background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
-  color:#03101d!important;
-  box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
-}
-.mission-stack-group{display:grid;gap:8px;margin-bottom:10px}
-.mission-stack-group-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;color:#67e8f9;font-weight:900;margin:2px 0 0}
-.mission-stack-group .mission-stack-item{margin:0}
-.mission-stack-eksik{opacity:.55;border-color:rgba(239,68,68,.3)!important;background:rgba(239,68,68,.06)!important}
-.mission-stack-eksik b{color:#f87171!important;text-decoration:line-through!important}
-.eksik-badge{font-size:.63rem;font-weight:700;background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.35);border-radius:20px;padding:2px 7px;display:inline-block;margin-top:4px}
-</style>
-
-</body>
-</html>
-
-<script id="SAFE_UNDO_ALL_TYPES_V1">
-(function(){
-  if(window.__safeUndoAllTypesV1) return;
-  window.__safeUndoAllTypesV1 = true;
-  const q=id=>document.getElementById(id);
-  const toastSafe=(m,ok=true)=>{ if(typeof toast==='function') toast(m,ok); else console.log(m); };
-  async function post(url,data){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data||{}),cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
-  async function del(url){ const r=await fetch(url,{method:'DELETE',cache:'no-store'}); try{return await r.json()}catch(e){return {ok:r.ok}} }
-  async function refresh()
+  background:lin
