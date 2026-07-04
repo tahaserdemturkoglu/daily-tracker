@@ -3125,7 +3125,12 @@ async def cmd_chat_ai(u, c):
     add_history(chat_id, 'user', raw)
 
     try:
-        result   = claude_call(raw, history) if ANTHROPIC_API_KEY else {'reply': 'API key yok — Railway env var eksik.', 'actions': []}
+        log.info("[BOT] cmd_chat_ai basliyor: ANTHROPIC_KEY=%s raw_len=%d", bool(ANTHROPIC_API_KEY), len(raw))
+        if not ANTHROPIC_API_KEY:
+            result = {'reply': 'ANTHROPIC_API_KEY Railway env da eksik. Lütfen Railway → Variables kontrol et.', 'actions': []}
+        else:
+            result = claude_call(raw, history)
+        log.info("[BOT] claude_call tamamlandi, reply_len=%d actions=%d", len(result.get('reply') or ''), len(result.get('actions') or []))
         actions  = result.get('actions') or []
         fixed_actions = []
         try:
