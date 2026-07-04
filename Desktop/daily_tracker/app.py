@@ -4818,6 +4818,41 @@ def api_supplement_stack_create():
     conn.commit(); conn.close()
     return jsonify({'ok':True, 'stack_id': sid})
 
+@app.route('/api/supplements/stacks/<int:sid>/items', methods=['PUT'])
+def api_supplement_stack_items_replace(sid):
+    """Bir stack'in tüm item'larını yenisiyle değiştir."""
+    data = request.get_json(force=True) or {}
+    items = data.get('items', [])
+    conn = get_db()
+    conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (sid,))
+    for i, item in enumerate(items):
+        conn.execute(
+            "INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
+            (sid, item.get('product_name', item.get('name','')), item.get('dose',1), item.get('unit','kapsul'), i+1)
+        )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'stack_id': sid, 'items_count': len(items)})
+
+@app.route('/api/supplements/zinc/last-date', methods=['PATCH'])
+def api_supplement_zinc_last_date():
+    """supplement_rules tablosunda çinkonun son alınma tarihini güncelle."""
+    import json as _json
+    data = request.get_json(force=True) or {}
+    last_date = data.get('last_date', '').strip()
+    if not last_date:
+        return jsonify({'ok': False, 'error': 'last_date gerekli'}), 400
+    conn = get_db()
+    row = conn.execute("SELECT id, rule_data FROM supplement_rules WHERE product_name='NOW Zinc Picolinate 50mg'").fetchone()
+    if row:
+        rd = _json.loads(row['rule_data'] or '{}')
+        rd['last_date'] = last_date
+        conn.execute("UPDATE supplement_rules SET rule_data=? WHERE id=?", (_json.dumps(rd), row['id']))
+    else:
+        conn.execute("INSERT INTO supplement_rules (product_name,rule_data) VALUES (?,?)",
+                     ('NOW Zinc Picolinate 50mg', _json.dumps({'last_date': last_date})))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'last_date': last_date})
+
 @app.route('/api/supplements/compliance', methods=['GET'])
 def api_supplements_compliance():
     """Son 7 günlük stack uyum oranı."""
@@ -4912,43 +4947,4 @@ def api_ai_insights():
             'max_tokens': 200,
             'system': (
                 "Sen Taha Serdem'in kişisel performans koçusun. "
-                "Günlük veri özetine bakarak 2-3 cümle, samimi, net ve motive edici bir insight ver. "
-                "Olumlu olanı vurgula, eksik varsa kısa belirt. Türkçe yaz. "
-                "Emoji kullanabilirsin. Sadece insight metni döndür, başka hiçbir şey yazma."
-            ),
-            'messages': [{'role': 'user', 'content': ctx_str}]
-        }
-        req = urllib.request.Request(
-            'https://api.anthropic.com/v1/messages',
-            data=json.dumps(body).encode('utf-8'),
-            headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            payload = json.loads(resp.read().decode('utf-8'))
-        insight = payload['content'][0]['text']
-        return jsonify({'insight': insight, 'ok': True})
-    except Exception as e:
-        log.exception("ai-insights error")
-        err_msg = str(e)
-        import urllib.error as _ue
-        if isinstance(e, _ue.HTTPError):
-            try: err_msg = e.read().decode('utf-8', errors='ignore')[:300]
-            except: pass
-        return jsonify({'insight': f'Analiz yuklenemedi: {err_msg}', 'ok': False, 'error': err_msg})
-
-
-if __name__ == '__main__':
-    init_db()
-    log.info(f"DB: {DB_PATH}")
-    import sys as _sys
-    telegram_only = ('--telegram-only' in _sys.argv) or (os.environ.get('TELEGRAM_ONLY') == '1')
-    if telegram_only:
-        log.info("Telegram-only mod: site acilmadan bot calisiyor.")
-        start_telegram_bot()
-    else:
-        if TELEGRAM_TOKEN and os.environ.get('DISABLE_EMBEDDED_BOT') != '1':
-            threading.Thread(target=start_telegram_bot, daemon=True).start()
-        log.info(f"http://localhost:{PORT}")
-        app.run(host='0.0.0.0', port=PORT, debug=False)
-
+                "Günlük veri özetine bakarak 2-3 cümle, sa
