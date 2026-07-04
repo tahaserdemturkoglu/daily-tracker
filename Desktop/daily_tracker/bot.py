@@ -1067,7 +1067,6 @@ def parse_stack_overrides(norm_text, stack_name):
 
 async def _handle_stack_shortcut(raw_text, norm_text, today):
     """Stack kısa yolunu işle. Kayıt başarılıysa cevap metni döner, değilse None."""
-    import aiohttp as _aio
     stack_name = detect_stack_name(norm_text)
     if not stack_name or 'stack' not in norm_text:
         return None
@@ -2806,6 +2805,18 @@ async def cmd_chat_ai(u, c):
         save_owner_chat_id(chat_id)
     await u.message.chat.send_action('typing')
     n = norm_tr(raw)
+    # Early log: incoming mesaji HEMEN kaydet (crash olsa bile gorunsun)
+    _chat_id_str = str(u.message.chat_id)
+    _username = (u.message.from_user.username or '') if u.message.from_user else ''
+    try:
+        _conn = get_db()
+        _conn.execute(
+            "INSERT INTO telegram_messages (direction,chat_id,username,message) VALUES (?,?,?,?)",
+            ('in', _chat_id_str, _username, raw)
+        )
+        _conn.commit(); _conn.close()
+    except Exception:
+        log.exception("Erken mesaj kaydi basarisiz")
 
     # GUN SONU RAPORU — dogal dil tetikleyicileri
     _gun_sonu_triggers = [
@@ -3117,54 +3128,77 @@ async def cmd_chat_ai(u, c):
     history = get_history(chat_id)
     add_history(chat_id, 'user', raw)
 
-    result   = claude_call(raw, history) if ANTHROPIC_API_KEY else {'reply': 'API key yok.', 'actions': []}
-    actions  = result.get('actions') or []
-    fixed_actions = []
     try:
-        fixed_actions.extend(tg_known_food_update_from_text(raw))
-        if not fixed_actions:
-            fixed_actions.extend(tg_known_food_actions_from_text(raw))
-        fixed_actions.extend(tg_water_actions_from_text(raw))
+        log.info("[BOT] cmd_chat_ai basliyor: ANTHROPIC_KEY=%s raw_len=%d", bool(ANTHROPIC_API_KEY), len(raw))
+        if not ANTHROPIC_API_KEY:
+            result = {'reply': 'ANTHROPIC_API_KEY Railway env da eksik. Lütfen Railway → Variables kontrol et.', 'actions': []}
+        else:
+            result = claude_call(raw, history)
+        log.info("[BOT] claude_call tamamlandi, reply_len=%d actions=%d", len(result.get('reply') or ''), len(result.get('actions') or []))
+        actions  = result.get('actions') or []
+        fixed_actions = []
+        try:
+            fixed_actions.extend(tg_known_food_update_from_text(raw))
+            if not fixed_actions:
+                fixed_actions.extend(tg_known_food_actions_from_text(raw))
+            fixed_actions.extend(tg_water_actions_from_text(raw))
+        except Exception:
+            log.exception("Deterministik Telegram aksiyonlari basarisiz")
+        actions = merge_actions_no_duplicates(actions, fixed_actions)
+        try:
+            saved = apply_actions(actions)
+        except Exception:
+            log.exception("apply_actions basarisiz")
+            saved = []
+
+        template_title = ''
+        try:
+            template_title = save_template_from_actions(raw, actions)
+        except Exception:
+            log.exception("Template kaydi basarisiz")
+
+        try:
+            food_db_auto_learn(actions)
+        except Exception:
+            log.exception("Food DB ogrenme basarisiz")
+
+        reply = result.get('reply') or 'Anladim.'
+        if template_title:
+            reply += f"\n\nSablon kaydedildi: {template_title}"
+        if saved:
+            reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
+        add_history(chat_id, 'bot', reply)
+
+        # Out mesajini DB'ye kaydet
+        try:
+            username = (u.message.from_user.username or '') if u.message.from_user else ''
+            conn = get_db()
+            conn.execute(
+                "INSERT INTO telegram_messages (direction,chat_id,username,message,actions) VALUES (?,?,?,?,?)",
+                ('out', str(chat_id), username, reply, json.dumps(actions, ensure_ascii=False))
+            )
+            conn.commit(); conn.close()
+        except Exception:
+            log.exception("Out mesaj kaydi basarisiz")
+
+        await u.message.reply_text(reply)
+
     except Exception:
-        log.exception("Deterministik Telegram aksiyonlari basarisiz")
-    actions = merge_actions_no_duplicates(actions, fixed_actions)
-    saved    = apply_actions(actions)
-
-    template_title = ''
-    try:
-        template_title = save_template_from_actions(raw, actions)
-    except Exception:
-        log.exception("Template kaydi basarisiz")
-
-    try:
-        food_db_auto_learn(actions)
-    except Exception:
-        log.exception("Food DB ogrenme basarisiz")
-
-    reply = result.get('reply') or 'Anladim.'
-    if template_title:
-        reply += f"\n\nSablon kaydedildi: {template_title}"
-    if saved:
-        reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
-    add_history(chat_id, 'bot', reply)
-
-    # Telegram mesajlarini DB'ye kaydet (site senkronizasyonu)
-    try:
-        username = (u.message.from_user.username or '') if u.message.from_user else ''
-        conn = get_db()
-        conn.execute(
-            "INSERT INTO telegram_messages (direction,chat_id,username,message,actions) VALUES (?,?,?,?,?)",
-            ('in', str(chat_id), username, raw, json.dumps(actions, ensure_ascii=False))
-        )
-        conn.execute(
-            "INSERT INTO telegram_messages (direction,chat_id,username,message,actions) VALUES (?,?,?,?,?)",
-            ('out', str(chat_id), username, reply, None)
-        )
-        conn.commit(); conn.close()
-    except Exception:
-        log.exception("Telegram mesaj kaydi basarisiz")
-
-    await u.message.reply_text(reply)
+        log.exception("cmd_chat_ai GENEL HATA")
+        _err_reply = "Bir sorun olustu, tekrar dene. 🔧"
+        try:
+            await u.message.reply_text(_err_reply)
+        except Exception:
+            pass
+        try:
+            _conn2 = get_db()
+            _conn2.execute(
+                "INSERT INTO telegram_messages (direction,chat_id,username,message) VALUES (?,?,?,?)",
+                ('out', _chat_id_str, _username, _err_reply)
+            )
+            _conn2.commit(); _conn2.close()
+        except Exception:
+            pass
 
 
 def enforce_training_day_on_actions(actions, date_val=None):
@@ -3374,3 +3408,7 @@ def process_webhook_update(data: dict):
 
 def main():
     asyncio.run(_run_bot())
+
+
+if __name__ == "__main__":
+    main()
