@@ -1064,7 +1064,6 @@ def parse_stack_overrides(norm_text, stack_name):
 
 async def _handle_stack_shortcut(raw_text, norm_text, today):
     """Stack kısa yolunu işle. Kayıt başarılıysa cevap metni döner, değilse None."""
-    import aiohttp as _aio
     stack_name = detect_stack_name(norm_text)
     if not stack_name or 'stack' not in norm_text:
         return None
