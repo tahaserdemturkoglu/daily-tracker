@@ -681,6 +681,18 @@ Taha'nin tarihsel verilerine (kilo trend, makrolar, antrenman, vucut fotograflar
 - Alt karin hedefi: gercekci ama 65-66 kg'a inmeden belirgin olmaz.
 - Fotograf/kilo degerlendirmesi istenirse: genel egilim + somut oneri ver, generic yanit verme.
 - Her degerlendirmede "bu KISISEL verilerime gore" cercevesini koru.
+
+HAFTALIK KARB CYCLE MAKRO PLANI:
+Antrenman gunu tipine gore gunluk hedef makrolar (kalori acigi protokolu):
+- Push Gunu  (Pazartesi): 2100 kcal | P:140g K:270g Y:55g
+- Pull Gunu  (Sali):      2100 kcal | P:140g K:270g Y:55g
+- Bacak Gunu (Carsamba):  2200 kcal | P:140g K:310g Y:55g
+- Upper Gunu (Persembe):  2000 kcal | P:140g K:245g Y:55g
+- Lower Gunu (Cuma):      2000 kcal | P:140g K:245g Y:55g
+- Dinlenme 1 (Cumartesi): 1750 kcal | P:140g K:210g Y:40g
+- Dinlenme 2 (Pazar):     1750 kcal | P:140g K:210g Y:40g
+Haftalik ortalama: ~1910 kcal. Protein her gun sabit 140g. Karbonhidrat antrenman siddetine gore dalgalanir.
+Bugunun antrenman gunu biliniyorsa yukaridaki hedefleri makro degerlendirimesinde baz al.
 """
 
 NUTRITION_ANALYSIS_POLICY = """
@@ -2249,6 +2261,60 @@ def apply_actions(actions):
             log.exception("Action kaydedilemedi: %s", typ)
     return saved
 
+# KİLO AI YORUM
+def _kilo_yorum(kg, date_str):
+    """Sabah tartısı sonrası 2-3 cümle kişisel AI koçluk yorumu üretir."""
+    try:
+        import urllib.request as _ureq, json as _json
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT date, weight_kg FROM body_metrics "
+            "WHERE date <= ? AND weight_kg IS NOT NULL "
+            "ORDER BY date DESC LIMIT 7",
+            (date_str,)
+        ).fetchall()
+        yesterday = (datetime.strptime(date_str, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+        yday = conn.execute(
+            "SELECT ROUND(SUM(calories)) cal, ROUND(SUM(protein_g)) prot, "
+            "ROUND(SUM(carbs_g)) carb, ROUND(SUM(fat_g)) fat "
+            "FROM meal_entries WHERE date=?", (yesterday,)
+        ).fetchone()
+        conn.close()
+
+        weight_lines = '\n'.join(f"  {r['date']}: {r['weight_kg']}kg" for r in reversed(rows))
+        if yday and yday['cal']:
+            yday_str = (f"Dun ({yesterday}): {int(yday['cal'])}kcal, "
+                        f"P:{int(yday['prot'] or 0)}g K:{int(yday['carb'] or 0)}g "
+                        f"Y:{int(yday['fat'] or 0)}g")
+        else:
+            yday_str = f"Dun ({yesterday}): makro verisi yok"
+
+        prompt = (
+            f"Sabah tartisi: {kg}kg\nSon 7 gun:\n{weight_lines}\n{yday_str}\n\n"
+            "2-3 kisa cumle: bu tarti ne anlama geliyor (su/glikojen/trend acisindan), "
+            "dunku makrolarla iliskisi var mi? Net ve kisisel yaz."
+        )
+
+        body = _json.dumps({
+            'model': 'claude-haiku-4-5-20251001',
+            'max_tokens': 250,
+            'system': TAHA_COACHING_POLICY,
+            'messages': [{'role': 'user', 'content': prompt}]
+        }).encode()
+        req = _ureq.Request(
+            'https://api.anthropic.com/v1/messages', data=body,
+            headers={'x-api-key': ANTHROPIC_API_KEY,
+                     'anthropic-version': '2023-06-01',
+                     'content-type': 'application/json'},
+            method='POST'
+        )
+        with _ureq.urlopen(req, timeout=12) as resp:
+            data = _json.loads(resp.read())
+        return '\n\n🤖 ' + data['content'][0]['text'].strip()
+    except Exception:
+        log.exception("_kilo_yorum basarisiz")
+        return ''
+
 # TEMPLATES
 def should_save_template(text):
     n = norm_tr(text)
@@ -3181,6 +3247,17 @@ async def cmd_chat_ai(u, c):
             reply += f"\n\nSablon kaydedildi: {template_title}"
         if saved:
             reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
+        # Sabah kilo AI yorumu
+        for _s in saved:
+            if _s.startswith('kilo (') and 'gece' not in _s:
+                try:
+                    _kg = float(_s.replace('kilo (', '').replace('kg)', ''))
+                    _kilo_ai = _kilo_yorum(_kg, operation_today())
+                    if _kilo_ai:
+                        reply += _kilo_ai
+                except Exception:
+                    log.exception("_kilo_yorum cagrisi basarisiz")
+                break
         add_history(chat_id, 'bot', reply)
 
         # Out mesajini DB'ye kaydet
@@ -3313,6 +3390,16 @@ async def cmd_photo(u, c):
             reply += f"\n\nSistem notu: Bugunun resmi antrenman gunu {official_training}."
         if saved:
             reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
+        for _s in saved:
+            if _s.startswith('kilo (') and 'gece' not in _s:
+                try:
+                    _kg = float(_s.replace('kilo (', '').replace('kg)', ''))
+                    _kilo_ai = _kilo_yorum(_kg, operation_today())
+                    if _kilo_ai:
+                        reply += _kilo_ai
+                except Exception:
+                    log.exception("_kilo_yorum foto basarisiz")
+                break
         await msg.reply_text(reply)
     except Exception as e:
         log.exception("Fotograf analizi basarisiz")
