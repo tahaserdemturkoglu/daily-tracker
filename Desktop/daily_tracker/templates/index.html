@@ -455,7 +455,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Bugünkü Öğünler</div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Öğünler</div>
             <span id="dcw-total-kcal" style="font-size:11px;color:#FF7B54;font-weight:700">— kcal</span>
           </div>
           <div id="dcw-meal-slots"></div>
@@ -656,7 +656,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           </div>
         </div>
         <div class="card ct ct-indigo">
-          <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Bugünkü Öğünler</div></div></div>
+          <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Öğün Listesi</div></div></div>
           <div class="meal-list" id="meal-today-list"><div class="list-empty">Kayıt yok</div></div>
         </div>
         <div class="card ct ct-blue" id="meal-order-card">
@@ -5427,7 +5427,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const items=groups[g].map(v=>{const raw=String(v.notes||''),isEksik=/eksik al[iı]nd[iı]/i.test(raw),isGun=/gün aşırı|gun asiri/i.test(raw),reported=/kullanici bildirimi/i.test(raw),detail=raw.split('|').map(x=>x.trim()).filter(x=>x&&!/stack$/i.test(x)&&!/kullanici bildirimi/i.test(x)&&!/eksik al[iı]nd[iı]/i.test(x)).join(' · ');
         if(isEksik)return `<div class="mission-stack-item" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06)"><b style="color:#f87171;text-decoration:line-through">❌ ${v.name||'Takviye'}</b><span style="color:#f87171;font-size:.62rem">eksik alındı</span></div>`;
         if(isGun)return `<div class="mission-stack-item" style="border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05)"><b style="color:#fbbf24">⏭ ${v.name||'Takviye'}</b><span style="color:#fbbf24;font-size:.62rem">⚠️ gün aşırı — atlandı</span></div>`;
-        return `<div class="mission-stack-item"><b>💊 ${v.name||'Takviye'}</b><span>${[v.amount?fmtAmt(v.amount):'',v.unit].filter(Boolean).join(' ')||'doz'}${detail?' · '+detail:''}</span>${reported?'<span class="mission-user-badge">Kullanıcı bildirimi</span>':''}</div>`;
+        const isYarinAtla=/yar[ıi]n\s+atla/i.test(raw);
+        const cleanDetail=detail.replace(/yar[ıi]n\s+atla/gi,'').replace(/alındı\s*—?\s*/gi,'').replace(/·\s*$/,'').trim();
+        return `<div class="mission-stack-item"${isYarinAtla?' style="border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.03)"':''}><b>💊 ${v.name||'Takviye'}</b><span>${[v.amount?fmtAmt(v.amount):'',v.unit].filter(Boolean).join(' ')||'doz'}${cleanDetail?' · '+cleanDetail:''}</span>${isYarinAtla?'<span style="color:#fbbf24;font-size:.6rem;font-weight:800;border:1px solid rgba(251,191,36,.3);border-radius:6px;padding:1px 5px;margin-left:4px">⚠️ yarın atla</span>':''}${reported?'<span class="mission-user-badge">Kullanıcı bildirimi</span>':''}</div>`;
       }).join('');
       return `<div style="border:1px solid ${sc}28;border-radius:13px;padding:10px 12px 11px;background:linear-gradient(135deg,${sc}0d 0%,transparent 70%);margin-bottom:10px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,${sc}66,transparent)"></div><div style="display:flex;align-items:center;gap:7px;margin-bottom:9px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${sc};box-shadow:0 0 8px ${sc},0 0 16px ${sc}77"></span><span style="font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:${sc};text-shadow:0 0 14px ${sc}80">${g}</span></div><div class="mission-stack-grid">${items}</div></div>`;
     }).join('');
