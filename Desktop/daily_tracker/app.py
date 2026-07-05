@@ -385,19 +385,36 @@ def ensure_carb_cycle_table():
 
 ensure_carb_cycle_table()
 
+# Haftanin gunune gore otomatik karb cycle tipi
+DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Upper', 4:'Lower', 5:'Off1', 6:'Off2'}
+
+def auto_cycle_day_type():
+    """Bugunun haftanin gunune gore karb cycle tipini dondur."""
+    import datetime
+    tz = pytz.timezone('Europe/Istanbul')
+    today_tr = datetime.datetime.now(tz).date()
+    dow = today_tr.weekday()  # 0=Pazartesi, 6=Pazar
+    return DOW_TO_CYCLE.get(dow, 'Off2'), today_tr.isoformat()
+
 @app.route('/api/carb-cycle', methods=['GET'])
 def api_carb_cycle_get():
-    """Karb cycle planini + bugunun hedeflerini dondur."""
+    """Karb cycle planini + bugunun hedeflerini dondur.
+    Gun tipi: once manual override (cycle_day_type_YYYY-MM-DD), sonra otomatik haftanin gunu."""
     conn = get_db()
     rows = conn.execute("SELECT * FROM carb_cycle_plan ORDER BY cal DESC").fetchall()
-    settings_row = conn.execute("SELECT value FROM user_settings WHERE key='cycle_day_type'").fetchone()
+    auto_type, today_str = auto_cycle_day_type()
+    # Manuel override: key = cycle_day_type_2026-07-05 (gun bazli)
+    manual_row = conn.execute(
+        "SELECT value FROM user_settings WHERE key=?", (f'cycle_day_type_{today_str}',)
+    ).fetchone()
     conn.close()
     plan = {r['day_type']: {'cal': r['cal'], 'protein': r['protein'],
                             'carb': r['carb'], 'fat': r['fat'], 'notes': r['notes']}
             for r in rows}
-    today_type = settings_row['value'] if settings_row else None
-    today_targets = plan.get(today_type) if today_type else None
-    return jsonify({'plan': plan, 'today_type': today_type, 'today_targets': today_targets})
+    today_type = manual_row['value'] if manual_row else auto_type
+    today_targets = plan.get(today_type)
+    return jsonify({'plan': plan, 'today_type': today_type, 'today_targets': today_targets,
+                    'auto_type': auto_type, 'is_manual': bool(manual_row)})
 
 @app.route('/api/carb-cycle', methods=['PATCH'])
 def api_carb_cycle_patch():
@@ -416,15 +433,35 @@ def api_carb_cycle_patch():
 
 @app.route('/api/carb-cycle/select', methods=['POST'])
 def api_carb_cycle_select():
-    """Bugun icin gun tipini sec ve user_settings'e kaydet."""
+    """Bugun icin manuel gun tipi sec — gun bazli key ile sakla."""
+    import datetime
     data = request.get_json(force=True) or {}
     day_type = data.get('day_type', '')
+    tz = pytz.timezone('Europe/Istanbul')
+    today_str = datetime.datetime.now(tz).date().isoformat()
     conn = get_db()
+    if day_type:
+        # Gun bazli manual override
+        conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
+                     (f'cycle_day_type_{today_str}', day_type))
+    else:
+        # Secimi kaldir (otomatiğe don)
+        conn.execute("DELETE FROM user_settings WHERE key=?", (f'cycle_day_type_{today_str}',))
+    # Eski genel key de guncelle (geriye uyumluluk)
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
                  ('cycle_day_type', day_type))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'day_type': day_type})
 
+
+@app.route('/api/vitamin-logs/<int:lid>/note', methods=['PATCH'])
+def api_vitamin_log_note_patch(lid):
+    """Vitamin log notunu guncelle."""
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    conn.execute("UPDATE vitamin_logs SET notes=? WHERE id=?", (data.get('notes',''), lid))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 def db_upsert(table, date_val, data: dict):
     conn = get_db()

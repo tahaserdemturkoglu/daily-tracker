@@ -560,12 +560,23 @@ def today_summary():
     return '\n'.join(lines)
 
 # AI
+DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Upper', 4:'Lower', 5:'Off1', 6:'Off2'}
+
 def get_carb_cycle_today():
-    """Bugunun karb cycle gun tipi ve makro hedeflerini DB'den dondur."""
+    """Bugunun karb cycle gun tipi ve makro hedeflerini dondur.
+    Once manuel override (gun bazli), yoksa haftanin gunune gore otomatik."""
     try:
+        import pytz, datetime
+        tz = pytz.timezone('Europe/Istanbul')
+        today_str = datetime.datetime.now(tz).date().isoformat()
+        dow = datetime.datetime.now(tz).weekday()
+        auto_type = DOW_TO_CYCLE.get(dow, 'Off2')
         conn = get_db()
-        st = conn.execute("SELECT value FROM user_settings WHERE key='cycle_day_type'").fetchone()
-        day_type = st['value'] if st else None
+        # Gun bazli manuel override kontrolu
+        manual = conn.execute(
+            "SELECT value FROM user_settings WHERE key=?", (f'cycle_day_type_{today_str}',)
+        ).fetchone()
+        day_type = manual['value'] if manual else auto_type
         targets = None
         if day_type:
             r = conn.execute("SELECT * FROM carb_cycle_plan WHERE day_type=?", (day_type,)).fetchone()
@@ -573,9 +584,9 @@ def get_carb_cycle_today():
                 targets = {'cal': r['cal'], 'protein': r['protein'],
                            'carb': r['carb'], 'fat': r['fat']}
         conn.close()
-        return {'day_type': day_type, 'targets': targets}
+        return {'day_type': day_type, 'targets': targets, 'is_auto': not bool(manual)}
     except Exception:
-        return {'day_type': None, 'targets': None}
+        return {'day_type': None, 'targets': None, 'is_auto': True}
 
 
 def today_ai_context():
