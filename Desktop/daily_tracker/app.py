@@ -390,11 +390,12 @@ DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Upper', 4:'Lower', 5:'Off1', 6:
 
 def auto_cycle_day_type():
     """Bugunun haftanin gunune gore karb cycle tipini dondur."""
-    import datetime
-    tz = pytz.timezone('Europe/Istanbul')
-    today_tr = datetime.datetime.now(tz).date()
-    dow = today_tr.weekday()  # 0=Pazartesi, 6=Pazar
-    return DOW_TO_CYCLE.get(dow, 'Off2'), today_tr.isoformat()
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as _dt
+    now_tr = _dt.now(ZoneInfo('Europe/Istanbul'))
+    dow = now_tr.weekday()  # 0=Pazartesi, 6=Pazar
+    today_str = now_tr.date().isoformat()
+    return DOW_TO_CYCLE.get(dow, 'Off2'), today_str
 
 @app.route('/api/carb-cycle', methods=['GET'])
 def api_carb_cycle_get():
@@ -434,11 +435,11 @@ def api_carb_cycle_patch():
 @app.route('/api/carb-cycle/select', methods=['POST'])
 def api_carb_cycle_select():
     """Bugun icin manuel gun tipi sec — gun bazli key ile sakla."""
-    import datetime
+    from zoneinfo import ZoneInfo
+    from datetime import datetime as _dt
     data = request.get_json(force=True) or {}
     day_type = data.get('day_type', '')
-    tz = pytz.timezone('Europe/Istanbul')
-    today_str = datetime.datetime.now(tz).date().isoformat()
+    today_str = _dt.now(ZoneInfo('Europe/Istanbul')).date().isoformat()
     conn = get_db()
     if day_type:
         # Gun bazli manual override
