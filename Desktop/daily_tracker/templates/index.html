@@ -1230,24 +1230,47 @@ const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight
 // TEK KAYNAK — öğün sırası buradan yönetilir
 const G_SLOT_ORDER=['kahvalti','kahvaltı','meal1','meal2','meal3','pre_meal','pre_snack','post_meal','post_snack','snack2','aksam','akşam','gece','snack','ara','ogle','öğle','extra'];
 function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
-const CYCLE_PLAN={
-  'Push':  {cal:1720,prot:140,carb:200,fat:40},
-  'Pull':  {cal:1920,prot:140,carb:250,fat:40},
-  'Legs':  {cal:2120,prot:140,carb:300,fat:40},
-  'Upper': {cal:1920,prot:140,carb:250,fat:40},
-  'Lower': {cal:1720,prot:140,carb:200,fat:40},
-  'Off1':  {cal:1490,prot:140,carb:120,fat:50},
-  'Off2':  {cal:1330,prot:140,carb:80, fat:50},
-};
-function getCycleDayType(){return localStorage.getItem('cycle_day_type')||'';}
+// Karb cycle plan — DB'den yuklenir, localStorage sadece fallback
+let CYCLE_PLAN={};
+let _cycleDbType='';
+
+async function loadCyclePlan(){
+  try{
+    const r=await fetch('/api/carb-cycle').then(r=>r.json());
+    // r.plan: {Push:{cal,protein,carb,fat,notes}, ...}
+    CYCLE_PLAN={};
+    for(const [k,v] of Object.entries(r.plan||{})){
+      CYCLE_PLAN[k]={cal:v.cal,prot:v.protein,carb:v.carb,fat:v.fat};
+    }
+    _cycleDbType=r.today_type||'';
+    // Sync localStorage with DB value
+    if(_cycleDbType) localStorage.setItem('cycle_day_type',_cycleDbType);
+    else localStorage.removeItem('cycle_day_type');
+    // Highlight active button
+    document.querySelectorAll('.cycle-day-btn').forEach(b=>{
+      b.classList.toggle('active',b.dataset.dt===_cycleDbType);
+    });
+    applyCycleTargets();
+  }catch(e){console.warn('cycle plan load failed',e);}
+}
+
+function getCycleDayType(){return _cycleDbType||localStorage.getItem('cycle_day_type')||'';}
+
 function selectDayType(type){
-  if(type===getCycleDayType()){localStorage.removeItem('cycle_day_type');type='';}
-  else localStorage.setItem('cycle_day_type',type);
+  const current=getCycleDayType();
+  const next=(type===current)?'':type;
+  _cycleDbType=next;
+  localStorage.setItem('cycle_day_type',next);
+  // Persist to DB
+  fetch('/api/carb-cycle/select',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({day_type:next})});
   document.querySelectorAll('.cycle-day-btn').forEach(b=>{
-    b.classList.toggle('active',b.dataset.dt===type);
+    b.classList.toggle('active',b.dataset.dt===next);
   });
   applyCycleTargets();
 }
+
 function applyCycleTargets(){
   const dt=getCycleDayType();
   const cp=CYCLE_PLAN[dt];
@@ -1256,19 +1279,17 @@ function applyCycleTargets(){
   if($('dash-goal-prot'))$('dash-goal-prot').textContent=cp.prot+'g';
   if($('dash-goal-carb'))$('dash-goal-carb').textContent=cp.carb+'g';
   if($('dash-goal-fat'))$('dash-goal-fat').textContent=cp.fat+'g';
-  // update remaining kcal in hero
   const cal=parseInt(($('d-cal')||{textContent:'0'}).textContent.replace(/\./g,'')||0);
   if($('d-remain'))$('d-remain').textContent=Math.max(0,cp.cal-cal).toLocaleString('tr-TR')+' kcal kaldı';
   if($('d-target-txt'))$('d-target-txt').textContent='Hedef: '+cp.cal.toLocaleString('tr-TR')+' kcal';
 }
+
 function getT(training_day){
   try{
     const t={...DEF,...JSON.parse(localStorage.getItem('targets')||'{}')};
-    // Cycle override takes precedence
     const dt=getCycleDayType();
     const cp=CYCLE_PLAN[dt];
     if(cp){return {...t,...cp,water:t.water,steps:t.steps};}
-    // Training day'de cal_training kullan (Off değilse)
     if(training_day && training_day!=='Off' && t.cal_training){ t.cal=t.cal_training; }
     return t;
   }catch{return DEF;}
@@ -4880,7 +4901,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     ['wg-weight','wg-waist','wg-chest','wg-arm','wg-note-extra'].forEach(id=>{const el=q(id); if(el)el.value='';});
     if(typeof toast==='function')toast('Haftalık ölçüm kaydedildi');
     if(typeof loadDailyWeightTrend==='function')await loadDailyWeightTrend();
-    if(typeof loadDashboard==='function')await loadDashboard();
+    if(typeof loadDashboard==='function')await loadCyclePlan(); loadDashboard();
   };
   const oldTrend=window.loadDailyWeightTrend;
   window.loadDailyWeightTrend=async function(){

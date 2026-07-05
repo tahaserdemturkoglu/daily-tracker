@@ -349,6 +349,83 @@ def ensure_user_settings_table():
 
 ensure_user_settings_table()
 
+# ── Karb cycle plan ──────────────────────────────────────────────────────────
+CARB_CYCLE_DEFAULT = [
+    {'day_type': 'Push',  'cal': 1720, 'protein': 140, 'carb': 200, 'fat': 40, 'notes': 'Pazartesi'},
+    {'day_type': 'Pull',  'cal': 1920, 'protein': 140, 'carb': 250, 'fat': 40, 'notes': 'Sali'},
+    {'day_type': 'Legs',  'cal': 2120, 'protein': 140, 'carb': 300, 'fat': 40, 'notes': 'Carsamba'},
+    {'day_type': 'Upper', 'cal': 1920, 'protein': 140, 'carb': 250, 'fat': 40, 'notes': 'Persembe'},
+    {'day_type': 'Lower', 'cal': 1720, 'protein': 140, 'carb': 200, 'fat': 40, 'notes': 'Cuma'},
+    {'day_type': 'Off1',  'cal': 1490, 'protein': 140, 'carb': 120, 'fat': 50, 'notes': 'Cumartesi'},
+    {'day_type': 'Off2',  'cal': 1330, 'protein': 140, 'carb': 80,  'fat': 50, 'notes': 'Pazar'},
+]
+
+def ensure_carb_cycle_table():
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS carb_cycle_plan (
+            day_type TEXT PRIMARY KEY,
+            cal      INTEGER DEFAULT 0,
+            protein  INTEGER DEFAULT 0,
+            carb     INTEGER DEFAULT 0,
+            fat      INTEGER DEFAULT 0,
+            notes    TEXT DEFAULT '',
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    # Seed default plan if table is empty
+    existing = conn.execute("SELECT COUNT(*) FROM carb_cycle_plan").fetchone()[0]
+    if existing == 0:
+        for row in CARB_CYCLE_DEFAULT:
+            conn.execute(
+                "INSERT OR IGNORE INTO carb_cycle_plan (day_type,cal,protein,carb,fat,notes) VALUES (?,?,?,?,?,?)",
+                (row['day_type'], row['cal'], row['protein'], row['carb'], row['fat'], row['notes'])
+            )
+    conn.commit(); conn.close()
+
+ensure_carb_cycle_table()
+
+@app.route('/api/carb-cycle', methods=['GET'])
+def api_carb_cycle_get():
+    """Karb cycle planini + bugunun hedeflerini dondur."""
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM carb_cycle_plan ORDER BY cal DESC").fetchall()
+    settings_row = conn.execute("SELECT value FROM user_settings WHERE key='cycle_day_type'").fetchone()
+    conn.close()
+    plan = {r['day_type']: {'cal': r['cal'], 'protein': r['protein'],
+                            'carb': r['carb'], 'fat': r['fat'], 'notes': r['notes']}
+            for r in rows}
+    today_type = settings_row['value'] if settings_row else None
+    today_targets = plan.get(today_type) if today_type else None
+    return jsonify({'plan': plan, 'today_type': today_type, 'today_targets': today_targets})
+
+@app.route('/api/carb-cycle', methods=['PATCH'])
+def api_carb_cycle_patch():
+    """Bir gun tipinin makro hedeflerini guncelle."""
+    data = request.get_json(force=True) or {}
+    day_type = data.get('day_type')
+    if not day_type:
+        return jsonify({'error': 'day_type required'}), 400
+    conn = get_db()
+    conn.execute(
+        "UPDATE carb_cycle_plan SET cal=?, protein=?, carb=?, fat=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE day_type=?",
+        (data.get('cal'), data.get('protein'), data.get('carb'), data.get('fat'), data.get('notes', ''), day_type)
+    )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/carb-cycle/select', methods=['POST'])
+def api_carb_cycle_select():
+    """Bugun icin gun tipini sec ve user_settings'e kaydet."""
+    data = request.get_json(force=True) or {}
+    day_type = data.get('day_type', '')
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
+                 ('cycle_day_type', day_type))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'day_type': day_type})
+
+
 def db_upsert(table, date_val, data: dict):
     conn = get_db()
     cur = conn.cursor()

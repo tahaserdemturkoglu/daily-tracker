@@ -560,6 +560,24 @@ def today_summary():
     return '\n'.join(lines)
 
 # AI
+def get_carb_cycle_today():
+    """Bugunun karb cycle gun tipi ve makro hedeflerini DB'den dondur."""
+    try:
+        conn = get_db()
+        st = conn.execute("SELECT value FROM user_settings WHERE key='cycle_day_type'").fetchone()
+        day_type = st['value'] if st else None
+        targets = None
+        if day_type:
+            r = conn.execute("SELECT * FROM carb_cycle_plan WHERE day_type=?", (day_type,)).fetchone()
+            if r:
+                targets = {'cal': r['cal'], 'protein': r['protein'],
+                           'carb': r['carb'], 'fat': r['fat']}
+        conn.close()
+        return {'day_type': day_type, 'targets': targets}
+    except Exception:
+        return {'day_type': None, 'targets': None}
+
+
 def today_ai_context():
     today = operation_today()
     totals = meal_macro_totals(today)
@@ -570,6 +588,7 @@ def today_ai_context():
     mo  = conn.execute("SELECT * FROM mood_logs     WHERE date=?", (today,)).fetchone()
     vs  = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
     conn.close()
+    cycle = get_carb_cycle_today()
     return {
         'date': today,
         'training_day': training_day(today),
@@ -579,6 +598,8 @@ def today_ai_context():
         'exercise': dict(ex) if ex else {},
         'mood': dict(mo) if mo else {},
         'vitamins': vs,
+        'cycle_day_type': cycle['day_type'],
+        'cycle_targets': cycle['targets'],
     }
 
 
@@ -592,17 +613,22 @@ TAHA ICIN KALICI KOCLUK HAFIZASI:
 - Hedefler: yag kaybi, kas korunumu/kazanimi, performans, akne takibi, sindirim ve genel saglik.
 
 GENEL HESAP KURALLARI:
-- Tum gramajlar aksi belirtilmedikce CIG gramdir. Pisirmis diyene kadar cig hesapla.
-- Cig kabul edilenler: pirinc, patates, tavuk, et, hindi, balik. Kullanici "pismis" demezse cig kullan.
+- TUM gramajlar DAIMA CIG (ham) gramdir. "cig" yazmaya gerek yok; sistem daima cig kabul eder.
+- Pismis diyene kadar cig hesapla. Pisirmis sozunu kullanici acikca soylemedikce cig kullan.
+- Cig kabul edilenler: pirinc, patates, tavuk, et, hindi, balik, tum tahillar.
+- PATATES: daima Genc Patates, daima airfryer, daima cig agirlik. Baska tur/pisirme yontemi yok.
+- KETCHAP: her zaman Keto Ketchap (PROD-005). Kullanici sadece "ketcap" veya "sos" yazarsa Keto Ketchap kullan.
+- YAG: her zaman GymBeam Sprey Yag (PROD-002). Kullanici "yag" veya "sprey yag" yazarsa bu urun. 1 fis = 15 kcal.
 - Ekstra yag belirtilmedikce eklenmez.
-- GymBeam Sprey Yag yalniz kullanici fis/basis sayisi soylerse eklenir.
 
 VARSAYILAN URUN ESLESTIRMESI (kullanici generic isim yazarsa bu urune yon):
 - "pirinc" / "pirinç" / "rice" = YASMiN Pirinci (PROD-010)
-- "patates" / "potato" = Maczyste Patates (PROD-011)
+- "patates" / "potato" / "airfryer patates" = Genc Patates — DAIMA CIG AGIRLIK, DAIMA AIRFRYER
 - "yogurt" / "yoğurt" = Skyr Yogurt (PROD-013)
 - "yumurta" / "egg" = Carrefour BIO Yumurta (PROD-008)
-- "tavuk" / "chicken" = Tavuk Gogsu
+- "tavuk" / "chicken" = Tavuk Gogsu (CIG)
+- "ketchap" / "ketcap" / "sos" = DAIMA Keto Ketchap (PROD-005)
+- "yag" / "sprey yag" / "yağ" = DAIMA GymBeam Sprey Yag (PROD-002) — NOT: 1 fis = 15 kcal
 
 KAYITLI URUNLER VE RESMI MAKROLARI (MASTER SPEC v1.0):
 PROD-001 Dondurulmus Patates: 100g = 99 kcal, 1.9P, 15K, 3.1Y
@@ -615,7 +641,7 @@ PROD-007 Carrefour Tam Tahilli Tost Ekmegi: 100g = 252 kcal, 9.5P, 45K, 2.1Y
 PROD-008 Carrefour BIO Yumurta: 1 adet = 70 kcal, 6P, 0.5K, 5Y [source=manual]
 PROD-009 Kakao: 100g = 309 kcal, 24P, 13K, 11Y
 PROD-010 YASMiN Pirinci: 100g CIG = 346 kcal, 7.6P, 77K, 0.5Y
-PROD-011 Maczyste Patates: 100g CIG = 77 kcal, 2P, 17K, 0.1Y [source=manual]
+PROD-011 Genc Patates (airfryer): 100g CIG = 70 kcal, 2P, 16K, 0.1Y — her zaman cig tartilir, airfry pisirilir
 PROD-012 Cikolatali Protein Bar 33%: 1 bar (50g) = 193 kcal, 16.5P, 11.5K, 9Y
 PROD-013 Skyr Yogurt: 100g = 64 kcal, 12P, 4.1K, 0Y | 150g = 96 kcal, 18P, 6.2K, 0Y
 PROD-014 Tavuk Baharati: 100g = 286 kcal, 18.1P, 50.4K, 8.2Y | 5g = 14 kcal (gram belirtilmezse hesaplama yapma)
@@ -1538,6 +1564,18 @@ def claude_call(user_text, history=None):
         week_text = ''
     profile_text = user_profile_context()
 
+    # Karb cycle bugun hedef satiri
+    _ct = ctx.get('cycle_targets')
+    _cdt = ctx.get('cycle_day_type') or ''
+    if _cdt and _ct:
+        _cycle_ctx_line = (
+            f"KARB CYCLE GUN TIPI: {_cdt}. "
+            f"BUGUNUN MAKRO HEDEFLERI: {_ct['cal']} kcal | P:{_ct['protein']}g K:{_ct['carb']}g Y:{_ct['fat']}g. "
+            "Bu hedefleri makro degerlendirmesinde baz al; hedef asimini/eksigini belirt.\n"
+        )
+    else:
+        _cycle_ctx_line = "KARB CYCLE: Bugun icin gun tipi belirlenmemis (sidebar'dan sec).\n"
+
     system_prompt = (
         "Sen Taha Serdem'in kisisel antrenman ve gunluk performans kocusun. "
         "Turkce, samimi, net ve motive edici konus.\n"
@@ -1549,7 +1587,8 @@ def claude_call(user_text, history=None):
         "Bugun icin program onerisi veya antrenman kaydi yaparken bunu esas al; "
         "foto, kas grubu veya tahmine gore Push/Pull/Leg uydurma. "
         "Kullanici duzeltirse sistem gercegi olarak kabul et.\n"
-        "REPLY FORMATI (yemek log edilince):\n"
+        + _cycle_ctx_line
+        + "REPLY FORMATI (yemek log edilince):\n"
         "  - Her ogunu emoji ile listele: 🍽️ [Ad]: ~X kcal | P:Xg K:Xg Y:Xg\n"
         "  - Toplam makroyu yaz: 🔥 Toplam: ~X kcal | P:Xg K:Xg Y:Xg\n"
         "  - 2-3 cumle kisa koçluk yorum yap (gunun durumuna gore)\n"
@@ -2794,72 +2833,105 @@ def bulk_log_parse(raw_text):
     ]
 
     # ── Fallback makro tablosu /100g (food_registry bulamazsa) ──────────────
+    # Kullanici daima cig gramaj kullanir. Tum degerler /100g cig.
+    # Ketchap = DAIMA Keto Ketchap. Yag = DAIMA GymBeam Sprey Yag. Patates = DAIMA Genc Patates airfryer.
+    USER_FOOD_ALIASES = {
+        # norm_tr(kullanici_yazisi) -> norm_tr(food_registry_name)
+        'ketchap':     'keto ketchap',
+        'ketcap':      'keto ketchap',
+        'sos':         'keto ketchap',
+        'yag':         'gymbeam sprey yag',
+        'sprey yag':   'gymbeam sprey yag',
+        'sprey':       'gymbeam sprey yag',
+        'patates':     'genc patates',
+        'air fryer patates': 'genc patates',
+        'airfryer patates':  'genc patates',
+        'tavuk':       'tavuk gogus',
+        'tavuk fileto':'tavuk gogus',
+    }
+
     FALLBACK_MACROS = {
-        'tavuk':          (110, 21,  0,   2.5),
-        'tavuk gogus':    (110, 21,  0,   2.5),
-        'tavuk fileto':   (110, 21,  0,   2.5),
-        'patates':        (86,  2,   19.5,0.1),
-        'salatalik':      (11,  0.7, 1.9, 0.1),
-        'ceri domates':   (18,  0.9, 3.5, 0.2),
-        'domates':        (18,  0.9, 3.5, 0.2),
+        'tavuk gogus':    (101, 23,  0,   1.0),   # cig, USDA
+        'tavuk':          (101, 23,  0,   1.0),
+        'tavuk fileto':   (101, 23,  0,   1.0),
+        'genc patates':   (70,  2,   16,  0.1),   # cig, airfryer
+        'patates':        (70,  2,   16,  0.1),
+        'salatalik':      (15,  0.7, 3.6, 0.1),
+        'ceri domates':   (18,  0.9, 3.9, 0.2),
+        'domates':        (18,  0.9, 3.9, 0.2),
         'cilek':          (32,  0.7, 7.7, 0.3),
-        'kaju':           (570, 15,  32,  46),
+        'kaju':           (553, 15,  30,  45),
         'badem':          (579, 21,  12,  50),
-        'ketchap':        (32,  1.6, 6,   0.4),
-        'keto ketchap':   (32,  1.6, 6,   0.4),
+        'keto ketchap':   (41,  2.0, 6.2, 0.5),   # etiket degeri
+        'ketchap':        (41,  2.0, 6.2, 0.5),
+        'gymbeam sprey yag': (15, 0,  0,  1.65),  # 1 fis = 15 kcal
+        'sprey yag':      (15,  0,   0,   1.65),
+        'yag':            (15,  0,   0,   1.65),
         'fistik yagi':    (598, 25,  18,  51),
         'fistik':         (598, 25,  18,  51),
-        'tavuk baharat':  (280, 12,  46,  7),
-        'baharat':        (280, 12,  46,  7),
-        'marul':          (13,  1.2, 2.3, 0.2),
-        'yumurta':        (155, 13,  1.1, 11),
-        'yulaf':          (389, 17,  66,  7),
+        'tavuk baharat':  (286, 18.1,50.4,8.2),   # etiket
+        'baharat':        (286, 18.1,50.4,8.2),
+        'marul':          (14,  1.4, 2.9, 0.2),
+        'yumurta':        (137, 12,  1.3, 9.3),   # Carrefour BIO cig
+        'yulaf':          (371, 13.5,58,  7.1),
         'muz':            (89,  1.1, 23,  0.3),
         'elma':           (52,  0.3, 14,  0.2),
         'cay':            (1,   0,   0.2, 0),
         'zeytinyagi':     (884, 0,   0,   100),
         'zeytin yagi':    (884, 0,   0,   100),
-        'zeytinyag':      (884, 0,   0,   100),
     }
 
     def _food_lookup(raw_name):
-        """food_registry'den veya fallback tablosundan /100g makro dondur."""
+        """food_registry'den veya fallback tablosundan /100g makro dondur.
+        Alias cozumu: ketchap→Keto Ketchap, yag→GymBeam Sprey Yag, patates→Genc Patates.
+        Tum degerler CIG agirlik bazlidir."""
         n = norm_tr(raw_name)
+        # ── Kullanici alias cozumu (her zaman bu urunler) ──────────────────
+        resolved = USER_FOOD_ALIASES.get(n)
+        if resolved is None:
+            # "tavuk baharat" gibi iki kelimeli eslesme
+            for alias_key, alias_val in USER_FOOD_ALIASES.items():
+                if alias_key in n:
+                    resolved = alias_val
+                    break
+        search_name = resolved if resolved else n
         try:
             conn = get_db()
             rows = conn.execute(
                 "SELECT * FROM food_registry ORDER BY id"
             ).fetchall()
             conn.close()
-            # Tam isim esleme
+            # Tam isim esleme (hem orijinal hem resolved)
             for r in rows:
                 rn = norm_tr(r['name'] or '')
-                aliases = norm_tr(r['aliases'] or '')
-                if rn == n or n == rn:
+                al = norm_tr(r['aliases'] or '')
+                if rn == search_name or rn == n or search_name in al or n in al:
                     return (r['calories_per_100'], r['protein_per_100'],
                             r['carbs_per_100'], r['fat_per_100'])
-            # Parcali esleme: her kayit kelimesinin %70'i uyusuyorsa
+            # Parcali esleme
             for r in rows:
                 rn  = norm_tr(r['name'] or '')
                 al  = norm_tr(r['aliases'] or '')
                 search_in = rn + ' ' + al
-                words_n = [w for w in n.split() if len(w) >= 3]
+                words_n = [w for w in search_name.split() if len(w) >= 3]
                 if words_n and all(w in search_in for w in words_n):
                     return (r['calories_per_100'], r['protein_per_100'],
                             r['carbs_per_100'], r['fat_per_100'])
-                # Tersine: registry kelimesi input'ta
                 words_r = [w for w in rn.split() if len(w) >= 3]
-                if words_r and all(w in n for w in words_r):
+                if words_r and all(w in search_name for w in words_r):
                     return (r['calories_per_100'], r['protein_per_100'],
                             r['carbs_per_100'], r['fat_per_100'])
         except Exception:
             pass
-        # Fallback tablosu
+        # Fallback tablosu (resolved isim oncelikli)
+        for key, (kcal, p, k, y) in FALLBACK_MACROS.items():
+            if key == search_name or key == n:
+                return (kcal, p, k, y)
         for key, (kcal, p, k, y) in FALLBACK_MACROS.items():
             kw = [w for w in key.split() if len(w) >= 3]
-            if kw and all(w in n for w in kw):
+            if kw and all(w in search_name for w in kw):
                 return (kcal, p, k, y)
-            if key in n or n in key:
+            if key in search_name or search_name in key:
                 return (kcal, p, k, y)
         return None
 
