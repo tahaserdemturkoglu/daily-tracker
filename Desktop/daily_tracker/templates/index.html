@@ -2804,7 +2804,7 @@ async function loadReport(){
 /* ═══════════════════════════════════════════════════
    INIT
 ════════════════════════════════════════════════════ */
-loadDashboard();
+loadCyclePlan().then(()=>loadDashboard());
 setInterval(loadDashboard,30000);
 // Telegram'dan sonra sekmeye donunce aninda yenile
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashboard();});
