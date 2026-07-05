@@ -2763,7 +2763,7 @@ def save_workout_log(date_str, result_sets):
 def bulk_log_parse(raw_text):
     """
     Cok satirli toplu log mesajini parse eder.
-    Her satiri ayri tanir: adim, su, stack, supplement, vb.
+    Slot header'lari (Meal2, Snack vb.) + besin satirlari destekler.
     Returns (actions, stack_results, descriptions, unhandled) veya None.
     """
     lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
@@ -2775,26 +2775,144 @@ def bulk_log_parse(raw_text):
     stack_results = []
     descriptions = []
     unhandled = []
+    current_slot = None  # aktif slot context
+
+    # ── Slot header esleme (normalize edilmis tam satir) ─────────────────────
+    SLOT_MAP = [
+        (r'meal\s*1',                  'kahvalti'),
+        (r'meal\s*2',                  'ogle'),
+        (r'meal\s*3',                  'aksam'),
+        (r'meal\s*4|meal\s*4',         'gece'),
+        (r'snack\s*2|ara\s*ogun\s*2',  'snack2'),
+        (r'snack|ara\s*ogun|atistirma', 'snack'),
+        (r'kahvalti|kahvalt[ii]|breakfast', 'kahvalti'),
+        (r'o[cg]le|lunch',             'ogle'),
+        (r'aksam|dinner',              'aksam'),
+        (r'gece\s*yemek|late\s*meal',  'gece'),
+        (r'pre[\s\-]?meal|pre[\s\-]?workout\s*yemek', 'pre_meal'),
+        (r'post[\s\-]?meal|post[\s\-]?workout\s*yemek', 'post_meal'),
+    ]
+
+    # ── Fallback makro tablosu /100g (food_registry bulamazsa) ──────────────
+    FALLBACK_MACROS = {
+        'tavuk':          (110, 21,  0,   2.5),
+        'tavuk gogus':    (110, 21,  0,   2.5),
+        'tavuk fileto':   (110, 21,  0,   2.5),
+        'patates':        (86,  2,   19.5,0.1),
+        'salatalik':      (11,  0.7, 1.9, 0.1),
+        'ceri domates':   (18,  0.9, 3.5, 0.2),
+        'domates':        (18,  0.9, 3.5, 0.2),
+        'cilek':          (32,  0.7, 7.7, 0.3),
+        'kaju':           (570, 15,  32,  46),
+        'badem':          (579, 21,  12,  50),
+        'ketchap':        (32,  1.6, 6,   0.4),
+        'keto ketchap':   (32,  1.6, 6,   0.4),
+        'fistik yagi':    (598, 25,  18,  51),
+        'fistik':         (598, 25,  18,  51),
+        'tavuk baharat':  (280, 12,  46,  7),
+        'baharat':        (280, 12,  46,  7),
+        'marul':          (13,  1.2, 2.3, 0.2),
+        'yumurta':        (155, 13,  1.1, 11),
+        'yulaf':          (389, 17,  66,  7),
+        'muz':            (89,  1.1, 23,  0.3),
+        'elma':           (52,  0.3, 14,  0.2),
+        'cay':            (1,   0,   0.2, 0),
+        'zeytinyagi':     (884, 0,   0,   100),
+        'zeytin yagi':    (884, 0,   0,   100),
+        'zeytinyag':      (884, 0,   0,   100),
+    }
+
+    def _food_lookup(raw_name):
+        """food_registry'den veya fallback tablosundan /100g makro dondur."""
+        n = norm_tr(raw_name)
+        try:
+            conn = get_db()
+            rows = conn.execute(
+                "SELECT * FROM food_registry ORDER BY id"
+            ).fetchall()
+            conn.close()
+            # Tam isim esleme
+            for r in rows:
+                rn = norm_tr(r['name'] or '')
+                aliases = norm_tr(r['aliases'] or '')
+                if rn == n or n == rn:
+                    return (r['calories_per_100'], r['protein_per_100'],
+                            r['carbs_per_100'], r['fat_per_100'])
+            # Parcali esleme: her kayit kelimesinin %70'i uyusuyorsa
+            for r in rows:
+                rn  = norm_tr(r['name'] or '')
+                al  = norm_tr(r['aliases'] or '')
+                search_in = rn + ' ' + al
+                words_n = [w for w in n.split() if len(w) >= 3]
+                if words_n and all(w in search_in for w in words_n):
+                    return (r['calories_per_100'], r['protein_per_100'],
+                            r['carbs_per_100'], r['fat_per_100'])
+                # Tersine: registry kelimesi input'ta
+                words_r = [w for w in rn.split() if len(w) >= 3]
+                if words_r and all(w in n for w in words_r):
+                    return (r['calories_per_100'], r['protein_per_100'],
+                            r['carbs_per_100'], r['fat_per_100'])
+        except Exception:
+            pass
+        # Fallback tablosu
+        for key, (kcal, p, k, y) in FALLBACK_MACROS.items():
+            kw = [w for w in key.split() if len(w) >= 3]
+            if kw and all(w in n for w in kw):
+                return (kcal, p, k, y)
+            if key in n or n in key:
+                return (kcal, p, k, y)
+        return None
+
+    def _calc(macros_per_100, grams):
+        r = grams / 100.0
+        kcal, p, k, y = macros_per_100
+        return {
+            'calories':  round(kcal * r, 1),
+            'protein_g': round(p * r, 1),
+            'carbs_g':   round(k * r, 1),
+            'fat_g':     round(y * r, 1),
+        }
 
     for line in lines:
         norm = norm_tr(line)
         handled = False
 
-        # Adim: "9000 adim", "9.000 adim", "9bin adim"
-        m = re.search(r'(\d[\d.]*)\s*(bin\s*)?adim', norm)
+        # ── Slot header algila ─────────────────────────────────────────────
+        if len(norm.strip()) <= 35:
+            for pattern, slot_key in SLOT_MAP:
+                if re.fullmatch(pattern, norm.strip(), re.IGNORECASE):
+                    current_slot = slot_key
+                    descriptions.append(f"\U0001f4cb Slot: {line.strip()} → {slot_key}")
+                    handled = True
+                    break
+
+        if handled:
+            continue
+
+        # ── Adim: "9000 adim", "9bin adim", "10k adim", "10K adim" ─────────
+        m = re.search(r'(\d[\d.,]*)\s*([Kk]|bin)?\s*adim', norm)
         if m:
             try:
-                steps_str = m.group(1).replace('.', '')
-                steps = int(float(steps_str))
-                if m.group(2):
-                    steps *= 1000
+                raw_q = m.group(1).replace(' ', '')
+                # "9.000" -> 9000 (binlik nokta), "9,5" -> 9.5
+                if '.' in raw_q and ',' not in raw_q and len(raw_q.split('.')[-1]) == 3:
+                    steps = int(raw_q.replace('.', ''))
+                else:
+                    steps = float(raw_q.replace(',', '.'))
+                multiplier = m.group(2)
+                if multiplier and multiplier.lower() in ('k',):
+                    steps = int(steps * 1000)
+                elif multiplier and 'bin' in multiplier:
+                    steps = int(steps * 1000)
+                else:
+                    steps = int(steps)
                 actions.append({'type': 'steps', 'date': today, 'steps': steps})
                 descriptions.append(f"\U0001f463 Adim: {steps:,}")
                 handled = True
             except (ValueError, OverflowError):
                 pass
 
-        # Su: "5l su", "2.5 litre", "500ml"
+        # ── Su: "5l su", "2.5 litre", "500ml" ───────────────────────────────
         if not handled:
             wm = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:l\b|lt\b|litre\b|liter\b)', norm)
             if wm:
@@ -2810,7 +2928,7 @@ def bulk_log_parse(raw_text):
                 descriptions.append(f"\U0001f4a7 Su: +{ml}ml")
                 handled = True
 
-        # Stack: "gece stack alindi", "pre-workout stack tamam"
+        # ── Stack: "gece stack alindi", "pre-workout stack tamam" ────────────
         if not handled and 'stack' in norm:
             stack_acts = supplement_actions_from_stack_text(line)
             if stack_acts:
@@ -2823,7 +2941,56 @@ def bulk_log_parse(raw_text):
                     descriptions.append(f"\U0001f48a {lbl}: zaten kayitli")
                 handled = True
 
-        # Tekil supplement: "5g creatine", "kreatin 5gr alindi"
+        # ── Besin satiri: slot context varsa "130g tavuk", "5g baharat" ──────
+        if not handled and current_slot:
+            food_m = re.match(
+                r'^(\d+(?:[.,]\d+)?)\s*'
+                r'(g|gr|gram|fis|adet|ml|)?\s*'
+                r'(.+)$',
+                line.strip(), re.IGNORECASE
+            )
+            if food_m:
+                qty_raw  = food_m.group(1).replace(',', '.')
+                unit_raw = (food_m.group(2) or '').lower().strip()
+                food_name = food_m.group(3).strip()
+                try:
+                    qty = float(qty_raw)
+                    # "fis" = fistik yagi informal birimi → gram
+                    if unit_raw == 'fis':
+                        food_name = ('fistik yagi ' + food_name).strip()
+                        grams = qty
+                    elif unit_raw == 'adet':
+                        grams = qty * 50   # ~50g/adet varsayim (yumurta)
+                    elif unit_raw in ('g', 'gr', 'gram', ''):
+                        grams = qty
+                    else:
+                        grams = qty
+
+                    macros = _food_lookup(food_name)
+                    if macros and grams > 0:
+                        m_calc = _calc(macros, grams)
+                        actions.append({
+                            'type': 'meal',
+                            'date': today,
+                            'slot': current_slot,
+                            'title': food_name,
+                            'description': f'{int(grams)}g',
+                            **m_calc
+                        })
+                        descriptions.append(
+                            f"\U0001f37d [{current_slot}] {food_name} {int(grams)}g"
+                            f" — {int(m_calc['calories'])}kcal"
+                            f" P:{m_calc['protein_g']} K:{m_calc['carbs_g']} Y:{m_calc['fat_g']}"
+                        )
+                        handled = True
+                    elif grams > 0:
+                        # Makro bulunamadi ama slot context var
+                        unhandled.append(f"[{current_slot}?] {line}")
+                        handled = True
+                except (ValueError, TypeError):
+                    pass
+
+        # ── Tekil supplement: "5g creatine", "kreatin 5gr alindi" ────────────
         if not handled:
             for item in supplement_catalog():
                 keys_to_check = item['keys'] + [norm_tr(item['name'])]
@@ -2848,7 +3015,7 @@ def bulk_log_parse(raw_text):
                     handled = True
                     break
 
-        # Adim alternatif: "X steps"
+        # ── Adim alternatif: "X steps" ───────────────────────────────────────
         if not handled:
             m2 = re.search(r'(\d+)\s*step', norm)
             if m2:
