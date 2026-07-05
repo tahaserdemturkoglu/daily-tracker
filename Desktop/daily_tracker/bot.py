@@ -683,15 +683,16 @@ Taha'nin tarihsel verilerine (kilo trend, makrolar, antrenman, vucut fotograflar
 - Her degerlendirmede "bu KISISEL verilerime gore" cercevesini koru.
 
 HAFTALIK KARB CYCLE MAKRO PLANI:
-Antrenman gunu tipine gore gunluk hedef makrolar (kalori acigi protokolu):
-- Push Gunu  (Pazartesi): 2100 kcal | P:140g K:270g Y:55g
-- Pull Gunu  (Sali):      2100 kcal | P:140g K:270g Y:55g
-- Bacak Gunu (Carsamba):  2200 kcal | P:140g K:310g Y:55g
-- Upper Gunu (Persembe):  2000 kcal | P:140g K:245g Y:55g
-- Lower Gunu (Cuma):      2000 kcal | P:140g K:245g Y:55g
-- Dinlenme 1 (Cumartesi): 1750 kcal | P:140g K:210g Y:40g
-- Dinlenme 2 (Pazar):     1750 kcal | P:140g K:210g Y:40g
-Haftalik ortalama: ~1910 kcal. Protein her gun sabit 140g. Karbonhidrat antrenman siddetine gore dalgalanir.
+Antrenman gunu tipine gore gunluk hedef makrolar (kalori acigi + kas koruma protokolu):
+- Push Gunu  (Pazartesi): 1720 kcal | P:140g K:200g Y:40g
+- Pull Gunu  (Sali):      1920 kcal | P:140g K:250g Y:40g
+- Bacak Gunu (Carsamba):  2120 kcal | P:140g K:300g Y:40g
+- Upper Gunu (Persembe):  1920 kcal | P:140g K:250g Y:40g
+- Lower Gunu (Cuma):      1720 kcal | P:140g K:200g Y:40g
+- Dinlenme 1 (Cumartesi): 1490 kcal | P:140g K:120g Y:50g
+- Dinlenme 2 (Pazar):     1330 kcal | P:140g K:80g  Y:50g
+Haftalik ortalama: ~1746 kcal. Protein her gun sabit 140g. Karbonhidrat antrenman siddetine gore dalgalanir.
+Hedef: 65-66kg'da maksimum kas tutma, alt karin gorunurlugu, minimum guc kaybi.
 Bugunun antrenman gunu biliniyorsa yukaridaki hedefleri makro degerlendirimesinde baz al.
 """
 

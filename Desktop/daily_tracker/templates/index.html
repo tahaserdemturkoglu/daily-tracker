@@ -337,6 +337,12 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <button class="nav-btn" onclick="showPage('besin')"><span class="nav-icon">🥗</span>Besin DB</button>
   <button class="nav-btn" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>Ayarlar</button>
   </nav>
+  <div style="padding:10px 12px 8px;border-top:1px solid var(--border)">
+    <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;font-weight:700">📅 Karb Cycle — Gün Tipi</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px" id="cycle-day-picker">
+      <button class="cycle-day-btn" data-dt="Push" onclick="selectDayType('Push')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(255,107,107,.35);background:rgba(255,107,107,.07);color:#ff6b6b;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Push</button><button class="cycle-day-btn" data-dt="Pull" onclick="selectDayType('Pull')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.07);color:#fbbf24;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Pull</button><button class="cycle-day-btn" data-dt="Legs" onclick="selectDayType('Legs')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(74,222,128,.35);background:rgba(74,222,128,.07);color:#4ade80;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Legs</button><button class="cycle-day-btn" data-dt="Upper" onclick="selectDayType('Upper')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.07);color:#38bdf8;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Upper</button><button class="cycle-day-btn" data-dt="Lower" onclick="selectDayType('Lower')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(167,139,250,.35);background:rgba(167,139,250,.07);color:#a78bfa;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Lower</button><button class="cycle-day-btn" data-dt="Off1" onclick="selectDayType('Off1')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.07);color:#94a3b8;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Off 1</button><button class="cycle-day-btn" data-dt="Off2" onclick="selectDayType('Off2')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(100,116,139,.35);background:rgba(100,116,139,.07);color:#64748b;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Off 2</button>
+    </div>
+  </div>
   <div class="sidebar-bottom">
     <div class="streak-badge" id="sb-streak">🔥 0 gün seri</div>
     <button class="theme-btn" onclick="toggleTheme()">🌗 Tema Değiştir</button>
@@ -489,16 +495,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         </div>
       </div>
     </div>
-    <!-- GÜN TİPİ SEÇİCİ -->
-    <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap" id="cycle-day-picker">
-      <span style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">📅 Gün Tipi:</span>
-      <button class="cycle-day-btn" data-dt="Push"  onclick="selectDayType('Push')"  style="padding:4px 10px;border-radius:7px;border:1px solid rgba(255,107,107,.4);background:rgba(255,107,107,.08);color:#ff6b6b;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s">Push</button>
-      <button class="cycle-day-btn" data-dt="Pull"  onclick="selectDayType('Pull')"  style="padding:4px 10px;border-radius:7px;border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.08);color:#fbbf24;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s">Pull</button>
-      <button class="cycle-day-btn" data-dt="Legs"  onclick="selectDayType('Legs')"  style="padding:4px 10px;border-radius:7px;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.08);color:#4ade80;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s">Legs</button>
-      <button class="cycle-day-btn" data-dt="Upper" onclick="selectDayType('Upper')" style="padding:4px 10px;border-radius:7px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.08);color:#38bdf8;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s">Upper</button>
-      <button class="cycle-day-btn" data-dt="Lower" onclick="selectDayType('Lower')" style="padding:4px 10px;border-radius:7px;border:1px solid rgba(167,139,250,.4);background:rgba(167,139,250,.08);color:#a78bfa;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s">Lower</button>
-      <button class="cycle-day-btn" data-dt="Off"   onclick="selectDayType('Off')"   style="padding:4px 10px;border-radius:7px;border:1px solid rgba(100,116,139,.4);background:rgba(100,116,139,.08);color:#94a3b8;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s">Off</button>
-    </div>
+
     <!-- HEDEFLER SATIRI -->
     <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:6px" id="dash-goals-row">
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
@@ -1234,12 +1231,13 @@ const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight
 const G_SLOT_ORDER=['kahvalti','kahvaltı','meal1','meal2','meal3','pre_meal','pre_snack','post_meal','post_snack','snack2','aksam','akşam','gece','snack','ara','ogle','öğle','extra'];
 function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
 const CYCLE_PLAN={
-  'Push':  {cal:2100,prot:140,carb:270,fat:55},
-  'Pull':  {cal:2100,prot:140,carb:270,fat:55},
-  'Legs':  {cal:2200,prot:140,carb:310,fat:55},
-  'Upper': {cal:2000,prot:140,carb:245,fat:55},
-  'Lower': {cal:2000,prot:140,carb:245,fat:55},
-  'Off':   {cal:1750,prot:140,carb:210,fat:40},
+  'Push':  {cal:1720,prot:140,carb:200,fat:40},
+  'Pull':  {cal:1920,prot:140,carb:250,fat:40},
+  'Legs':  {cal:2120,prot:140,carb:300,fat:40},
+  'Upper': {cal:1920,prot:140,carb:250,fat:40},
+  'Lower': {cal:1720,prot:140,carb:200,fat:40},
+  'Off1':  {cal:1490,prot:140,carb:120,fat:50},
+  'Off2':  {cal:1330,prot:140,carb:80, fat:50},
 };
 function getCycleDayType(){return localStorage.getItem('cycle_day_type')||'';}
 function selectDayType(type){
