@@ -4783,6 +4783,27 @@ def api_supplements_log():
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'log_id': log_id, 'stack': stack_name, 'date': today})
 
+@app.route('/api/supplements/log/<int:lid>', methods=['DELETE'])
+def api_supplement_log_delete(lid):
+    """Bir supplement log kaydını ve item'larını sil (re-log için)."""
+    conn = get_db()
+    conn.execute("DELETE FROM supplement_log_items WHERE log_id=?", (lid,))
+    conn.execute("DELETE FROM supplement_logs WHERE id=?", (lid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'deleted_log_id': lid})
+
+@app.route('/api/supplements/log-items/<int:iid>', methods=['PATCH'])
+def api_supplement_log_item_patch(iid):
+    """Supplement log item'ını güncelle (taken, override_note)."""
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    if 'taken' in data:
+        conn.execute("UPDATE supplement_log_items SET taken=? WHERE id=?", (data['taken'], iid))
+    if 'override_note' in data:
+        conn.execute("UPDATE supplement_log_items SET override_note=? WHERE id=?", (data['override_note'], iid))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
 @app.route('/api/supplements/zinc', methods=['GET'])
 def api_supplements_zinc():
     import json as _json
