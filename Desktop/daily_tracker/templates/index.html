@@ -455,7 +455,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Günün Öğünleri</div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Bugünkü Öğünler</div>
             <span id="dcw-total-kcal" style="font-size:11px;color:#FF7B54;font-weight:700">— kcal</span>
           </div>
           <div id="dcw-meal-slots"></div>
@@ -1129,27 +1129,33 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   <!-- ═══ AYARLAR ═══ -->
   <div class="page" id="page-settings">
     <div class="pg-title">Ayarlar</div>
-    <div class="pg-sub">Günlük makro hedefleri</div>
-    <div class="card ct ct-red" style="max-width:480px">
-      <div class="card-head"><span class="card-icon">🎯</span><div><div class="card-name">Hedefler</div></div></div>
-      <div class="form-row">
-        <div class="fg"><label>Kalori (Off)</label><input type="number" id="s-cal" placeholder="1800"></div>
-        <div class="fg"><label>Kalori (Antrenman)</label><input type="number" id="s-cal-training" placeholder="2000"></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label>Protein (g)</label><input type="number" id="s-prot" placeholder="190"></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label>Karb (g)</label><input type="number" id="s-carb" placeholder="360"></div>
-        <div class="fg"><label>Yağ (g)</label><input type="number" id="s-fat" placeholder="80"></div>
-      </div>
-      <div class="form-row">
-        <div class="fg"><label>Su hedefi (ml)</label><input type="number" id="s-water" placeholder="3500"></div>
-        <div class="fg"><label>Hedef Kilo (kg)</label><input type="number" id="s-weight-goal" step=".5" placeholder="80"></div>
-      </div>
-      <button class="btn btn-red" onclick="saveSettings()">Kaydet</button>
+    <div class="pg-sub">Karb cycle hedefleri ve sistem ayarları</div>
+
+    <!-- Karb Cycle Plan -->
+    <div class="card ct ct-red" style="max-width:560px">
+      <div class="card-head"><span class="card-icon">🔄</span><div><div class="card-name">Karb Cycle Planı</div><div class="card-sub" style="font-size:.72rem;color:var(--muted)">DB'den okunuyor — sidebar seçimiyle aktif hedef belirlenir</div></div></div>
+      <div id="cycle-plan-table" style="margin-top:8px"></div>
+      <div style="margin-top:10px;font-size:.72rem;color:var(--muted)">Düzenlemek için kalori/makro alanına tıkla, Enter ile kaydet.</div>
     </div>
-    <div class="card ct ct-teal" style="max-width:480px;margin-top:14px">
+
+    <!-- Su & Kilo hedefleri -->
+    <div class="card ct ct-blue" style="max-width:560px;margin-top:14px">
+      <div class="card-head"><span class="card-icon">💧</span><div><div class="card-name">Günlük Hedefler</div></div></div>
+      <div class="form-row">
+        <div class="fg"><label>Su hedefi (ml)</label><input type="number" id="s-water" placeholder="5000"></div>
+        <div class="fg"><label>Hedef Kilo (kg)</label><input type="number" id="s-weight-goal" step=".5" placeholder="66"></div>
+      </div>
+      <!-- Hidden compat fields — used by getT() fallback -->
+      <input type="hidden" id="s-cal" value="1720">
+      <input type="hidden" id="s-cal-training" value="1920">
+      <input type="hidden" id="s-prot" value="140">
+      <input type="hidden" id="s-carb" value="200">
+      <input type="hidden" id="s-fat" value="40">
+      <button class="btn btn-blue" onclick="saveSettings()">Kaydet</button>
+    </div>
+
+    <!-- AI Sistem -->
+    <div class="card ct ct-teal" style="max-width:560px;margin-top:14px">
       <div class="card-head"><span class="card-icon">🤖</span><div><div class="card-name">AI Koç — Claude Haiku</div></div></div>
       <div style="font-size:.84rem;line-height:1.8;color:var(--muted)">
         Telegram botu ve site Railway'de 7/24 çalışıyor.<br>
@@ -1294,6 +1300,70 @@ function getT(training_day){
     return t;
   }catch{return DEF;}
 }
+async function renderCyclePlanTable(){
+  const el=$('cycle-plan-table');
+  if(!el)return;
+  const r=await fetch('/api/carb-cycle').then(r=>r.json()).catch(()=>null);
+  if(!r||!r.plan){el.innerHTML='<div style="color:var(--muted);font-size:.8rem">Yüklenemedi</div>';return;}
+  const ORDER=['Push','Pull','Legs','Upper','Lower','Off1','Off2'];
+  const COLORS={Push:'#ff6b6b',Pull:'#fbbf24',Legs:'#4ade80',Upper:'#38bdf8',Lower:'#a78bfa',Off1:'#94a3b8',Off2:'#64748b'};
+  const LABELS={Push:'Push — Pazartesi',Pull:'Pull — Salı',Legs:'Legs — Çarşamba',Upper:'Upper — Perşembe',Lower:'Lower — Cuma',Off1:'Off 1 — Cumartesi',Off2:'Off 2 — Pazar'};
+  const today_type=r.today_type||'';
+  let html=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
+    <thead><tr style="color:var(--muted);font-size:.68rem;text-transform:uppercase">
+      <th style="text-align:left;padding:4px 6px">Gün</th>
+      <th style="padding:4px 6px">Kcal</th>
+      <th style="padding:4px 6px">P</th>
+      <th style="padding:4px 6px">K</th>
+      <th style="padding:4px 6px">Y</th>
+      <th style="padding:4px 6px"></th>
+    </tr></thead><tbody>`;
+  for(const dt of ORDER){
+    const v=r.plan[dt]||{};
+    const isActive=dt===today_type;
+    const c=COLORS[dt]||'#94a3b8';
+    html+=`<tr id="cpr-${dt}" style="border-top:1px solid rgba(255,255,255,.04);${isActive?'background:rgba(255,255,255,.04)':''}">
+      <td style="padding:6px 6px;font-weight:700;color:${c}">${isActive?'▶ ':''}${LABELS[dt]}</td>
+      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="cal" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.cal||0}</span></td>
+      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="protein" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.protein||0}g</span></td>
+      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="carb" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.carb||0}g</span></td>
+      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="fat" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.fat||0}g</span></td>
+      <td style="padding:6px;text-align:center"><button onclick="selectDayType('${dt}');renderCyclePlanTable()" style="font-size:.65rem;padding:2px 8px;border-radius:6px;border:1px solid ${c}33;background:${c}11;color:${c};cursor:pointer">${isActive?'✓ Aktif':'Seç'}</button></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+function editCycleCell(span){
+  if(span.querySelector('input'))return;
+  const raw=span.textContent.replace(/[^0-9.]/g,'');
+  const inp=document.createElement('input');
+  inp.type='number';inp.value=raw;inp.style.cssText='width:60px;padding:2px 4px;border-radius:4px;border:1px solid var(--accent);background:var(--card);color:var(--text);font-size:.8rem';
+  const dt=span.dataset.dt, field=span.dataset.field;
+  inp.onblur=()=>saveCycleCell(dt,field,inp.value);
+  inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){renderCyclePlanTable();}};
+  span.innerHTML='';span.appendChild(inp);inp.focus();inp.select();
+}
+
+async function saveCycleCell(dt,field,val){
+  // Read current row values
+  const row=document.getElementById('cpr-'+dt);
+  if(!row)return;
+  const cells={};
+  row.querySelectorAll('.cpe').forEach(s=>{
+    const v=s.querySelector('input')?s.querySelector('input').value:s.textContent.replace(/[^0-9.]/g,'');
+    cells[s.dataset.field]=parseInt(v)||0;
+  });
+  cells[field]=parseInt(val)||0;
+  await fetch('/api/carb-cycle',{method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({day_type:dt,cal:cells.cal||0,protein:cells.protein||0,carb:cells.carb||0,fat:cells.fat||0})});
+  // Reload CYCLE_PLAN in memory too
+  await loadCyclePlan();
+  renderCyclePlanTable();
+  toast('Karb cycle güncellendi');
+}
+
 function saveSettings(){
   const t={cal:+$('s-cal').value||DEF.cal,cal_training:+($('s-cal-training')&&$('s-cal-training').value)||DEF.cal_training,prot:+$('s-prot').value||DEF.prot,carb:+$('s-carb').value||DEF.carb,fat:+$('s-fat').value||DEF.fat,water:+$('s-water').value||DEF.water,weight_goal:+($('s-weight-goal').value)||0};
   localStorage.setItem('targets',JSON.stringify(t));
@@ -1301,6 +1371,7 @@ function saveSettings(){
   toast('Hedefler kaydedildi');loadDashboard();
 }
 async function loadSettings(){
+  renderCyclePlanTable();
   try{const s=await fetch('/api/settings').then(r=>r.json());if(Object.keys(s).length){const merged={...DEF,...s};localStorage.setItem('targets',JSON.stringify(merged));}}catch(e){}
   const t=getT();['cal','prot','carb','fat','water'].forEach(k=>$('s-'+k)&&($('s-'+k).value=t[k]));
   if($('s-cal-training')&&t.cal_training)$('s-cal-training').value=t.cal_training;
@@ -5306,7 +5377,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if($m('mission-control')) return;
     const dash=$m('page-dashboard'), hero=dash&&dash.querySelector('.hero');
     if(!dash||!hero) return;
-    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div class="dg-head-left"><div class="dg-head-icon">🎯</div><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub">Bugünkü yarışın</div></div></div><div class="dg-pct-pill" id="dg-overall-pct">0%</div></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Günün Beslenme Logu</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
+    hero.insertAdjacentHTML('beforebegin', `<section class="mission-control" id="mission-control"><div class="mission-hero"><div class="mission-eyebrow">TAHA SERDEM DAILY RAPOR</div><div class="mission-kcal" id="ms-cal">0</div><div class="mission-sub"><b id="ms-remain">0 kcal kaldı</b><br><span id="ms-context">Bugünün operasyon hedefi hazırlanıyor.</span></div><div class="mission-inline-stats"><div class="mission-mini"><b id="ms-prot">0g</b><span>Protein</span></div><div class="mission-mini"><b id="ms-water">0L</b><span>Su</span></div><div class="mission-mini"><b id="ms-steps">0</b><span>Adım</span></div></div><div class="mission-actions"><button class="mission-action" onclick="addWater&&addWater(500)">+500ml Su</button><button class="mission-action alt" onclick="showPage&&showPage('log')">+ Öğün</button><button class="mission-action warn" onclick="showPage&&showPage('training')">Antrenman</button><button class="mission-action danger" onclick="clearTodayConfirm()">🗑️ Bugünü Temizle</button></div></div><div class="mission-board" id="daily-goals-board"><div class="dg-head"><div class="dg-head-left"><div class="dg-head-icon">🎯</div><div><div class="dg-title">Günlük Hedefler</div><div class="dg-sub">Bugünkü yarışın</div></div></div><div class="dg-pct-pill" id="dg-overall-pct">0%</div></div><div class="dg-goals" id="dg-goals-list"></div></div></section><section class="mission-panel-grid" id="mission-panels"><div class="mission-log-card"><div class="mission-log-title">Bugünkü Öğünler</div><div class="mission-log-sub">Telegram ve web kayıtları burada saat gibi okunur.</div><div class="mission-log-list" id="ms-meal-log"></div></div><div class="mission-log-card"><div class="mission-log-title">Takviye Stack</div><div class="mission-log-sub">Günlük protokol, uyku stack ve vitaminler.</div><div class="mission-stack-grid" id="ms-stack-log"></div></div></section>`);
   }
   function taskBar(cls,label,value,target){ const p=pct(value,target); return `<div><div class="mission-task-label"><span>${label}</span><span>${p}%</span></div><div class="mission-task ${cls}"><i style="width:${p}%"></i></div></div>`; }
   function renderDayCard(row,t,idx){ const ds=row.date,today=(window.operationToday?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)),sc=scoreDay(row,t),type=row.training_day||'Off',color=typeColors[type]||'#64748b',id='ms-ring-'+idx; setTimeout(()=>ring(id,sc,color),0); return `<div class="mission-day ${ds===today?'today':''}"><div class="mission-date"><b>${dateLabel(ds)}</b><span>${ds===today?'Bugün':dateLabel(ds,{weekday:'short'})}</span></div><div class="mission-type" style="background:${color}">${type}</div><div class="mission-score"><canvas id="${id}"></canvas><span>${sc}%</span></div><div class="mission-tasks">${taskBar('prot','P',row.protein_g||0,t.prot)}${taskBar('water','Su',row.water_ml||0,t.water)}${taskBar('sleep','Uyku',row.sleep_hours||0,7.5)}${taskBar('train','Plan',type==='Off'?80:(row.has_data?100:35),100)}</div></div>`; }
