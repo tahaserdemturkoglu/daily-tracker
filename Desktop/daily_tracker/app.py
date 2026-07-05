@@ -361,7 +361,7 @@ def ensure_carb_cycle_table():
 ensure_carb_cycle_table()
 
 # Haftanin gunune gore otomatik karb cycle tipi
-DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Off1', 4:'Off2', 5:'Upper', 6:'Lower'}
+DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Upper', 4:'Lower', 5:'Off1', 6:'Off2'}
 
 def auto_cycle_day_type():
     """Bugunun operasyon gunu bazinda karb cycle tipini dondur."""
