@@ -2816,7 +2816,14 @@ def bulk_log_parse(raw_text):
     Slot header'lari (Meal2, Snack vb.) + besin satirlari destekler.
     Returns (actions, stack_results, descriptions, unhandled) veya None.
     """
-    lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+    # Her satirdaki "/" ayiricilari da satir sonu gibi isle (Meal2 / 130g tavuk / ...)
+    raw_lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+    lines = []
+    for l in raw_lines:
+        if '/' in l:
+            lines.extend(p.strip() for p in l.split('/') if p.strip())
+        else:
+            lines.append(l)
     if len(lines) < 2:
         return None
 
