@@ -40,41 +40,16 @@ SHIFT_BLOCK_DAYS = 14
 
 def current_shift_info(now=None):
     """
-    Vardiyaya gore operasyon gunu kapanisini belirler.
-    - 2026-06-22'ye kadar: 15:00-00:00, gun 06:00'da kapanir.
-    - 2026-06-22 itibariyle 2 hafta 06:00-15:00, gun 03:00'te kapanir.
-    - Sonraki 2 hafta 21:00-06:00, gun 12:00'de kapanir.
-    Sonra 2 haftalik sabah/gece dongusu devam eder.
+    Sabit 18:00-03:00 vardiyasi (2026-07-06 itibariyle).
+    Uyanis ~14:15, uyku ~06:45. Gun siniri 14:00.
     """
-    now = now or now_istanbul()
-    base = now.date()
-    if base < SHIFT_TRANSITION_DATE:
-        return {
-            'name': '15:00-00:00',
-            'label': 'aksam vardiyasi',
-            'start': '15:00',
-            'end': '00:00',
-            'cutoff_hour': 6,
-            'late_window': '00:00-05:59',
-        }
-
-    block = ((base - SHIFT_TRANSITION_DATE).days // SHIFT_BLOCK_DAYS) % 2
-    if block == 0:
-        return {
-            'name': '06:00-15:00',
-            'label': 'sabah vardiyasi',
-            'start': '06:00',
-            'end': '15:00',
-            'cutoff_hour': 3,
-            'late_window': '00:00-02:59',
-        }
     return {
-        'name': '21:00-06:00',
-        'label': 'gece vardiyasi',
-        'start': '21:00',
-        'end': '06:00',
-        'cutoff_hour': 12,
-        'late_window': '00:00-11:59',
+        'name': '18:00-03:00',
+        'label': 'aksam vardiyasi',
+        'start': '18:00',
+        'end': '03:00',
+        'cutoff_hour': 14,
+        'late_window': '00:00-13:59',
     }
 
 def operation_cutoff_hour(now=None):
@@ -386,16 +361,13 @@ def ensure_carb_cycle_table():
 ensure_carb_cycle_table()
 
 # Haftanin gunune gore otomatik karb cycle tipi
-DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Upper', 4:'Lower', 5:'Off1', 6:'Off2'}
+DOW_TO_CYCLE = {0:'Push', 1:'Pull', 2:'Legs', 3:'Off1', 4:'Off2', 5:'Upper', 6:'Lower'}
 
 def auto_cycle_day_type():
-    """Bugunun haftanin gunune gore karb cycle tipini dondur."""
-    from zoneinfo import ZoneInfo
-    from datetime import datetime as _dt
-    now_tr = _dt.now(ZoneInfo('Europe/Istanbul'))
-    dow = now_tr.weekday()  # 0=Pazartesi, 6=Pazar
-    today_str = now_tr.date().isoformat()
-    return DOW_TO_CYCLE.get(dow, 'Off2'), today_str
+    """Bugunun operasyon gunu bazinda karb cycle tipini dondur."""
+    op_date = operation_date()
+    dow = op_date.weekday()  # 0=Pazartesi, 6=Pazar
+    return DOW_TO_CYCLE.get(dow, 'Off2'), op_date.isoformat()
 
 @app.route('/api/carb-cycle', methods=['GET'])
 def api_carb_cycle_get():
@@ -435,11 +407,9 @@ def api_carb_cycle_patch():
 @app.route('/api/carb-cycle/select', methods=['POST'])
 def api_carb_cycle_select():
     """Bugun icin manuel gun tipi sec — gun bazli key ile sakla."""
-    from zoneinfo import ZoneInfo
-    from datetime import datetime as _dt
     data = request.get_json(force=True) or {}
     day_type = data.get('day_type', '')
-    today_str = _dt.now(ZoneInfo('Europe/Istanbul')).date().isoformat()
+    today_str = operation_today()
     conn = get_db()
     if day_type:
         # Gun bazli manual override
