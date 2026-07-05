@@ -1401,7 +1401,7 @@ async function loadDashboard(){
   if($('mb-supp-row')){
     try{
       const suppData=await API('/api/supplements/today');
-      const done=(suppData?.logged||[]).map(l=>l.stack_name).join(', ');
+      const done=(suppData?.logs||[]).map(l=>l.stack_name_snapshot).join(', ');
       if(done){$('mb-supp-row').style.display='';sv('mb-supp',done);}
     }catch(e){}
   }
@@ -1572,7 +1572,7 @@ async function loadDashboardExtra(d,t,cal,wml){
   // ── Supplement Durumu per-stack ──
   try{
     const suppData=await API('/api/supplements/today');
-    const logged=(suppData?.logged||[]).map(l=>(l.stack_name||'').toLowerCase());
+    const logged=(suppData?.logs||[]).map(l=>(l.stack_name_snapshot||'').toLowerCase());
     const STACKS=[
       {name:'Aç Karna Stack',key:'aç karna'},
       {name:'Sabah Stack',key:'sabah'},
