@@ -837,26 +837,27 @@ def stack_label(slot):
     }.get(slot, "Supplement Stack")
 
 def supplement_catalog():
+    # product_name = actual DB product name in supplement_stack_items
     return [
-        {"keys":["nac"], "name":"NAC", "amount":"1", "unit":"kapsul", "note":"NOW NAC 600 mg"},
-        {"keys":["probiyotik","probiotic"], "name":"Probiyotik", "amount":"1", "unit":"kapsul", "note":"Garden of Life probiotic"},
-        {"keys":["omega","epa","dha"], "name":"Omega-3", "amount":"3", "unit":"kapsul", "note":"Life Extension Mega EPA/DHA"},
-        {"keys":["d3","k2","d+k"], "name":"D3+K2", "amount":"4", "unit":"damla", "note":"Thorne Vitamin D + K2"},
-        {"keys":["astaxanthin","astaksantin"], "name":"Astaxanthin", "amount":"1", "unit":"kapsul", "note":"NOW Astaxanthin 10mg | sivilce"},
-        {"keys":["goz","macuguard","saffron"], "name":"Goz Vitamini", "amount":"1", "unit":"kapsul", "note":"Life Extension MacuGuard with Saffron"},
-        {"keys":["vitamin c","c vitamini","gold c"], "name":"Vitamin C", "amount":"1", "unit":"kapsul", "note":"California Gold Nutrition Gold C 1000 mg"},
-        {"keys":["cinko","zinc"], "name":"Cinko", "amount":"1", "unit":"kapsul", "note":"NOW Zinc Picolinate 50 mg | gun asiri"},
-        {"keys":["magtein","threonate","l-threonate"], "name":"Magtein Magnesium L-Threonate", "amount":"1", "unit":"kapsul", "note":"NOW Magtein Magnesium L-Threonate"},
-        {"keys":["magnesium glycinate","magnezyum glisinat","glycinate"], "name":"Magnesium Glycinate", "amount":"3", "unit":"kapsul", "note":"NOW Magnesium Glycinate"},
-        {"keys":["ashwagandha","ksm","ksm-66"], "name":"KSM-66 Ashwagandha", "amount":"1", "unit":"kapsul", "note":"NutraBio KSM-66 Ashwagandha"},
-        {"keys":["glycine","glisin"], "name":"Glycine", "amount":"3", "unit":"kapsul", "note":"NOW Glycine 1000 mg"},
-        {"keys":["melatonin"], "name":"Melatonin", "amount":"3", "unit":"kapsul", "note":"NOW Melatonin 1 mg"},
-        {"keys":["theanine","l-theanine","l theanine"], "name":"L-Theanine", "amount":"1", "unit":"kapsul", "note":"NOW L-Theanine Double Strength 200 mg"},
-        {"keys":["creatine","kreatin"], "name":"Creatine", "amount":"5", "unit":"g", "note":"KFD Creatine"},
-        {"keys":["collagen","kolajen"], "name":"Collagen Peptides", "amount":"1", "unit":"olcek", "note":"Optimum Nutrition Collagen Peptides"},
-        {"keys":["hydration","hydrationup","elektrolit","electrolyte"], "name":"HydrationUP", "amount":"1", "unit":"paket", "note":"California Gold Nutrition HydrationUP"},
-        {"keys":["citrulline","sitrulin","l-citrulline"], "name":"L-Citrulline", "amount":"6", "unit":"g", "note":"L-Citrulline pre-workout"},
-        {"keys":["beta alanine","beta-alanine"], "name":"Beta Alanine", "amount":"3", "unit":"g", "note":"Beta Alanine pre-workout"},
+        {"keys":["nac"], "name":"NAC", "product_name":"NOW NAC 600mg", "amount":"1", "unit":"kapsul", "note":"NOW NAC 600 mg"},
+        {"keys":["probiyotik","probiotic"], "name":"Probiyotik", "product_name":"Garden of Life Probiotic", "amount":"1", "unit":"kapsul", "note":"Garden of Life probiotic"},
+        {"keys":["omega","epa","dha"], "name":"Omega-3", "product_name":"Life Extension Mega EPA/DHA", "amount":"3", "unit":"kapsul", "note":"Life Extension Mega EPA/DHA"},
+        {"keys":["d3","k2","d+k"], "name":"D3+K2", "product_name":"Thorne Vitamin D + K2", "amount":"4", "unit":"damla", "note":"Thorne Vitamin D + K2"},
+        {"keys":["astaxanthin","astaksantin"], "name":"Astaxanthin", "product_name":"NOW Astaxanthin 10mg", "amount":"1", "unit":"kapsul", "note":"NOW Astaxanthin 10mg | sivilce"},
+        {"keys":["goz","macuguard","saffron"], "name":"Goz Vitamini", "product_name":"Life Extension MacuGuard", "amount":"1", "unit":"kapsul", "note":"Life Extension MacuGuard with Saffron"},
+        {"keys":["vitamin c","c vitamini","gold c"], "name":"Vitamin C", "product_name":"California Gold Nutrition C", "amount":"1", "unit":"kapsul", "note":"California Gold Nutrition Gold C 1000 mg"},
+        {"keys":["cinko","zinc"], "name":"Cinko", "product_name":"NOW Zinc Picolinate 50mg", "amount":"1", "unit":"kapsul", "note":"NOW Zinc Picolinate 50 mg | gun asiri"},
+        {"keys":["magtein","threonate","l-threonate"], "name":"Magtein Magnesium L-Threonate", "product_name":"NOW Magtein", "amount":"1", "unit":"kapsul", "note":"NOW Magtein Magnesium L-Threonate"},
+        {"keys":["magnesium glycinate","magnezyum glisinat","glycinate"], "name":"Magnesium Glycinate", "product_name":"Magnesium Glycinate", "amount":"3", "unit":"kapsul", "note":"NOW Magnesium Glycinate"},
+        {"keys":["ashwagandha","ksm","ksm-66"], "name":"KSM-66 Ashwagandha", "product_name":"KSM-66 Ashwagandha", "amount":"1", "unit":"kapsul", "note":"NutraBio KSM-66 Ashwagandha"},
+        {"keys":["glycine","glisin"], "name":"Glycine", "product_name":"Glycine", "amount":"3", "unit":"kapsul", "note":"NOW Glycine 1000 mg"},
+        {"keys":["melatonin"], "name":"Melatonin", "product_name":"Melatonin", "amount":"3", "unit":"kapsul", "note":"NOW Melatonin 1 mg"},
+        {"keys":["theanine","l-theanine","l theanine"], "name":"L-Theanine", "product_name":"NOW L-Theanine Double Strength", "amount":"1", "unit":"kapsul", "note":"NOW L-Theanine Double Strength 200 mg"},
+        {"keys":["creatine","kreatin"], "name":"Creatine", "product_name":"Creatine Monohydrate", "amount":"5", "unit":"g", "note":"KFD Creatine"},
+        {"keys":["collagen","kolajen"], "name":"Collagen Peptides", "product_name":"Optimum Nutrition Collagen", "amount":"1", "unit":"olcek", "note":"Optimum Nutrition Collagen Peptides"},
+        {"keys":["hydration","hydrationup","elektrolit","electrolyte"], "name":"HydrationUP", "product_name":"HydrationUP", "amount":"1", "unit":"paket", "note":"California Gold Nutrition HydrationUP"},
+        {"keys":["citrulline","sitrulin","l-citrulline"], "name":"L-Citrulline", "product_name":"L-Citrulline", "amount":"6", "unit":"g", "note":"L-Citrulline pre-workout"},
+        {"keys":["beta alanine","beta-alanine"], "name":"Beta Alanine", "product_name":"Beta Alanine", "amount":"3", "unit":"g", "note":"Beta Alanine pre-workout"},
     ]
 
 def stack_preset(slot):
@@ -1072,7 +1073,7 @@ def parse_stack_overrides(norm_text, stack_name):
         for k in all_keys:
             if (re.search(re.escape(k) + neg_suffixes, norm_text) or
                     re.search(neg_prefixes + re.escape(k), norm_text)):
-                overrides[cat_item["name"]] = {'taken': 0, 'note': 'eksik alındı'}
+                overrides[cat_item.get("product_name", cat_item["name"])] = {'taken': 0, 'note': 'eksik alındı'}
                 break
 
     # "ama/fakat/ancak X kapsül/g URUN" → override
@@ -1155,7 +1156,8 @@ async def _handle_stack_shortcut(raw_text, norm_text, today):
             dose = ov.get('dose', item['dose'])
             unit = ov.get('unit', item['unit'])
             suffix = ' ⟵ override' if pname in overrides else ''
-            lines.append(f'  💊 {pname}: {dose} {unit}{suffix}')
+            dose_str = str(int(dose)) if isinstance(dose, (int, float)) and float(dose) == int(float(dose)) else str(dose)
+            lines.append(f'  💊 {pname}: {dose_str} {unit}{suffix}')
     for ex in extras:
         lines.append(f'  ➕ {ex["name"]}: {ex["dose"]} {ex["unit"]} (ekstra)')
 
@@ -1188,8 +1190,9 @@ def _log_stack_direct(stack_name, today, overrides, extras):
             if taken:
                 is_zinc = any(k in pname.lower() for k in ('zinc', 'cinko'))
                 zinc_note = ' | gün aşırı — yarın atla' if is_zinc else ''
+                _dose_str = str(int(dose)) if isinstance(dose, (int, float)) and float(dose) == int(float(dose)) else str(dose)
                 conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
-                             (today, pname, str(dose), unit, f'stack:{stack_name}{zinc_note}'))
+                             (today, pname, _dose_str, unit, f'stack:{stack_name}{zinc_note}'))
             else:
                 # Eksik alındı — siteye görünür not olarak yaz
                 conn.execute("INSERT OR IGNORE INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
@@ -2987,7 +2990,12 @@ async def cmd_chat_ai(u, c):
     # "Tüm vitaminler tamam" kisayolu — template'lerden direkt log at
     # Net stack kisayolu: ac karna/sabah/gece/pre/post stack AI'ya birakilmaz.
     # Yeni supplement sistem: API tabanlı snapshot + override + ekstra
-    _stack_result = await _handle_stack_shortcut(raw, n, operation_today())
+    try:
+        _stack_result = await _handle_stack_shortcut(raw, n, operation_today())
+    except Exception as _se:
+        log.exception("_handle_stack_shortcut çöktü")
+        _stack_result = None
+        await u.message.reply_text(f"⚠️ Stack kaydı sırasında hata: {_se}")
     if _stack_result:
         add_history(chat_id, 'user', raw)
         add_history(chat_id, 'bot', _stack_result)
