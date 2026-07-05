@@ -1767,9 +1767,9 @@ function renderMealList(elId,meals,canDel,elOverride){
   }
   function slotTR(s){
     if(s==='kahvalti') return 'Kahvaltı';
-    if(s==='meal1'||s==='ogl'||s==='ogle2') return 'Öğle';
-    if(s==='meal2') return 'Akşam';
-    if(s==='meal3') return 'Gece';
+    if(s==='meal1') return 'Meal 1';
+    if(s==='meal2') return 'Meal 2';
+    if(s==='meal3') return 'Meal 3';
     if(s==='pre_meal'||s==='pre'||s==='pre-workout') return 'Pre Meal';
     if(s==='post_meal'||s==='post'||s==='post-workout') return 'Post Meal';
     if(s==='pre_snack') return 'Pre Snack';
@@ -1838,7 +1838,7 @@ async function loadLogPage(){
 
 const SLOT_DISPLAY={
   kahvalti:'☕ Kahvaltı', kahvaltı:'☕ Kahvaltı', breakfast:'☕ Kahvaltı',
-  meal1:'🍛 Öğle', meal2:'🌆 Akşam', meal3:'🌙 Gece',
+  meal1:'🍽️ Meal 1', meal2:'🍽️ Meal 2', meal3:'🍽️ Meal 3',
   pre_meal:'🥗 Pre Meal',    pre_snack:'🍎 Pre Snack',
   pre:'🥗 Pre Meal',         'pre meal':'🥗 Pre Meal',
   post_meal:'💪 Post Meal',  post_snack:'🌙 Post Snack',
@@ -2471,7 +2471,7 @@ async function renderOzDaily(dateStr){
   // Stat card
   const stat=(icon,label,val,target,p,color,unit)=>`<div class="odl-stat"><div class="odl-stat-top"><div class="odl-stat-icon" style="background:${color}22;color:${color}">${icon}</div><div class="odl-stat-pct" style="color:${p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8'}">${p}%</div></div><div class="odl-stat-val" style="color:${val>0?color:'var(--muted)'}">${val}${unit}</div><div class="odl-stat-tgt">/ ${target}${unit}</div><div class="odl-bar-track"><div class="odl-bar-fill" style="width:${p}%;background:${color}"></div></div></div>`;
   // Slot labels
-  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍛 Öğle',meal2:'🌆 Akşam',meal3:'🌙 Gece',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🍛 Öğle',öğle:'🍛 Öğle',aksam:'🌆 Akşam',akşam:'🌆 Akşam',gece:'🌙 Gece','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
+  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍽️ Meal 1',meal2:'🍽️ Meal 2',meal3:'🍽️ Meal 3',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🍛 Öğle',öğle:'🍛 Öğle',aksam:'🌆 Akşam',akşam:'🌆 Akşam',gece:'🌙 Gece','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
   const groups={};
   ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase().replace(/ö/g,'ö').replace(/ü/g,'ü');(groups[k]=groups[k]||[]).push(m);});
   const slotOrder=G_SLOT_ORDER;
@@ -5390,7 +5390,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function renderMeals(meals){
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
-    const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Öğle',meal2:'Akşam',meal3:'Gece',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ogle:'Öğle',aksam:'Akşam',gece:'Gece','pre-workout':'Pre Meal','post-workout':'Post Meal',ara:'Atıştırmalık',extra:'Ekstra'};
+    const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',meal2:'Meal 2',meal3:'Meal 3',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ogle:'Öğle',aksam:'Akşam',gece:'Gece','pre-workout':'Pre Meal','post-workout':'Post Meal',ara:'Atıştırmalık',extra:'Ekstra'};
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
     box.innerHTML=groupOrder.map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
@@ -5440,10 +5440,10 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   async function renderComboWidget(meals,summary,todayData,trainingDay){
     const $id=id=>document.getElementById(id);
     const SLOT_ORDER=G_SLOT_ORDER;
-    const SLOT_LABELS={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',meal2:'Meal 2',meal3:'Meal 3',meal2:'Meal 2',meal3:'Meal 3',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ara:'Atıştırmalık',aksam:'Akşam',gece:'Gece',extra:'Ekstra'};
+    const SLOT_LABELS={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',meal2:'Meal 2',meal3:'Meal 3',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ara:'Atıştırmalık',ogle:'Öğle',aksam:'Akşam',gece:'Gece',extra:'Ekstra'};
     const SLOT_COLORS={kahvalti:'#f59e0b',pre_meal:'#f97316',meal1:'#3b82f6',meal2:'#8b5cf6',meal3:'#ec4899',pre_snack:'#22c55e',post_meal:'#06b6d4',post_snack:'#a78bfa',snack:'#22c55e',snack2:'#16a34a',aksam:'#a78bfa',gece:'#6366f1',extra:'#64748b'};
     const TC2={Push:'#dc2626',Pull:'#0ea5e9',Leg:'#f59e0b',Upper:'#8b5cf6',Lower:'#22c55e',Off:'#475569'};
-    function slotKey(raw){const s=String(raw||'extra').toLowerCase().replace(/ı/g,'i').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ç/g,'c').replace(/ğ/g,'g');if(/kahv|breakfast/.test(s))return 'kahvalti';if(/^snack2/.test(s))return 'snack2';if(/^snack|^ara|atistirma/.test(s))return 'snack';if(/meal1|ogle|ana/.test(s))return 'meal1';if(/aksam|dinner/.test(s))return 'aksam';if(s==='pre_meal'||s==='pre-workout'||s==='pre')return 'pre_meal';if(s==='pre_snack')return 'pre_snack';if(s==='post_meal'||s==='post-workout'||s==='post')return 'post_meal';if(s==='post_snack')return 'post_snack';return 'extra';}
+    function slotKey(raw){const s=String(raw||'extra').toLowerCase().replace(/ı/g,'i').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ç/g,'c').replace(/ğ/g,'g');if(/kahv|breakfast/.test(s))return 'kahvalti';if(/^snack2/.test(s))return 'snack2';if(/^snack|^ara|atistirma/.test(s))return 'snack';if(/^meal1$|ogle|ana/.test(s))return 'meal1';if(/^meal2$/.test(s))return 'meal2';if(/^meal3$/.test(s))return 'meal3';if(/aksam|dinner/.test(s))return 'aksam';if(/^gece$/.test(s))return 'gece';if(s==='pre_meal'||s==='pre-workout'||s==='pre')return 'pre_meal';if(s==='pre_snack')return 'pre_snack';if(s==='post_meal'||s==='post-workout'||s==='post')return 'post_meal';if(s==='post_snack')return 'post_snack';return 'extra';}
     function dayOff(offset){const d=new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000);d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10);}
     // Meals
     const groups={};
