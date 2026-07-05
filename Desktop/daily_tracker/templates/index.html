@@ -337,7 +337,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <button class="nav-btn" onclick="showPage('besin')"><span class="nav-icon">🥗</span>Besin DB</button>
   <button class="nav-btn" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>Ayarlar</button>
   </nav>
-  <div style="padding:10px 12px 8px;border-top:1px solid var(--border)">
+  <div style="display:none">
     <div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;font-weight:700" id="cycle-sidebar-label">📅 Karb Cycle — Gün Tipi</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px" id="cycle-day-picker">
       <button class="cycle-day-btn" data-dt="Push" onclick="selectDayType('Push')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(255,107,107,.35);background:rgba(255,107,107,.07);color:#ff6b6b;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Push</button><button class="cycle-day-btn" data-dt="Pull" onclick="selectDayType('Pull')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.07);color:#fbbf24;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Pull</button><button class="cycle-day-btn" data-dt="Legs" onclick="selectDayType('Legs')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(74,222,128,.35);background:rgba(74,222,128,.07);color:#4ade80;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Legs</button><button class="cycle-day-btn" data-dt="Upper" onclick="selectDayType('Upper')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.07);color:#38bdf8;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Upper</button><button class="cycle-day-btn" data-dt="Lower" onclick="selectDayType('Lower')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(167,139,250,.35);background:rgba(167,139,250,.07);color:#a78bfa;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Lower</button><button class="cycle-day-btn" data-dt="Off1" onclick="selectDayType('Off1')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.07);color:#94a3b8;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Off 1</button><button class="cycle-day-btn" data-dt="Off2" onclick="selectDayType('Off2')" style="padding:5px 0;border-radius:8px;border:1px solid rgba(100,116,139,.35);background:rgba(100,116,139,.07);color:#64748b;font-size:.68rem;font-weight:800;cursor:pointer;transition:all .15s;width:100%">Off 2</button>
@@ -1464,7 +1464,7 @@ function mkSparkline(id,labels,data,color){
 /* ═══════════════════════════════════════════════════
    DASHBOARD
 ════════════════════════════════════════════════════ */
-const TC={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444'};
+const TC={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Legs:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444',Off1:'#475569',Off2:'#334155'};
 const CYCLE=['Push','Pull','Leg','Upper','Lower','Off','Off'];
 const CYCLE_START='2026-06-01';
 function training_day_local(dateStr){
@@ -1539,7 +1539,7 @@ async function loadDashboard(){
   sv('d-energy',mo.energy??'—'); sv('d-mood',mo.mood??'—');
 
   const pill=$('top-pill');
-  if(pill){pill.textContent=d.training_day||'—';pill.style.background=TC[d.training_day]||'#333';}
+  if(pill){const _ct=_cycleDbType||d.training_day||'—';const _tcMap={...TC,Off1:'#475569',Off2:'#334155',Push:'#cc0000',Pull:'#0066cc',Legs:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e'};pill.textContent=_ct;pill.style.background=_tcMap[_ct]||'#444';}
   sv('sb-streak','🔥 '+(d.streak||0)+' gün seri');
 
   mkRing('ring-chart',[Math.min(cal,t.cal),Math.max(0,t.cal-cal)],['#ffb800','#16223a']);
@@ -1767,7 +1767,9 @@ function renderMealList(elId,meals,canDel,elOverride){
   }
   function slotTR(s){
     if(s==='kahvalti') return 'Kahvaltı';
-    if(s==='meal1') return 'Meal 1';
+    if(s==='meal1'||s==='ogl'||s==='ogle2') return 'Öğle';
+    if(s==='meal2') return 'Akşam';
+    if(s==='meal3') return 'Gece';
     if(s==='pre_meal'||s==='pre'||s==='pre-workout') return 'Pre Meal';
     if(s==='post_meal'||s==='post'||s==='post-workout') return 'Post Meal';
     if(s==='pre_snack') return 'Pre Snack';
@@ -1790,9 +1792,9 @@ function renderMealList(elId,meals,canDel,elOverride){
     const totK=rows.reduce(function(s,m){return s+(m.carbs_g||0);},0);
     const totY=rows.reduce(function(s,m){return s+(m.fat_g||0);},0);
     const slotLabel=slotTR(slot);
-    const slotEmoji={kahvalti:'☕',meal1:'🍽️',pre_meal:'🥗',pre_snack:'🍎',post_meal:'💪',post_snack:'🌙',snack:'🍎',snack2:'🍎',ogle:'🍛',aksam:'🌙',gece:'🌙',extra:'✨'}[slot]||'🥢';
-    const slotGlow={kahvalti:'rgba(255,183,77,.15)',meal1:'rgba(99,161,255,.15)',pre_meal:'rgba(0,229,128,.12)',post_meal:'rgba(255,107,53,.15)',gece:'rgba(139,92,246,.15)'}[slot]||'rgba(0,229,204,.1)';
-    const slotBorder={kahvalti:'#ffb74d',meal1:'#6aa3ff',pre_meal:'#00e580',post_meal:'#ff6b35',gece:'#8b5cf6'}[slot]||'var(--teal)';
+    const slotEmoji={kahvalti:'☕',meal1:'🍛',meal2:'🌆',meal3:'🌙',pre_meal:'🥗',pre_snack:'🍎',post_meal:'💪',post_snack:'🌙',snack:'🍎',snack2:'🍎',ogle:'🍛',aksam:'🌆',gece:'🌙',extra:'✨'}[slot]||'🥢';
+    const slotGlow={kahvalti:'rgba(255,183,77,.15)',meal1:'rgba(99,161,255,.15)',meal2:'rgba(167,139,250,.12)',meal3:'rgba(139,92,246,.15)',pre_meal:'rgba(0,229,128,.12)',post_meal:'rgba(255,107,53,.15)',ogle:'rgba(99,161,255,.15)',aksam:'rgba(167,139,250,.12)',gece:'rgba(139,92,246,.15)'}[slot]||'rgba(0,229,204,.1)';
+    const slotBorder={kahvalti:'#ffb74d',meal1:'#6aa3ff',meal2:'#a78bfa',meal3:'#8b5cf6',pre_meal:'#00e580',post_meal:'#ff6b35',ogle:'#6aa3ff',aksam:'#a78bfa',gece:'#8b5cf6'}[slot]||'var(--teal)';
     const kcalColor='#f59e0b';
     const totHtml=`<span style="color:${kcalColor};font-weight:700">${Math.round(totCal)} kcal</span> · P <b style="color:#4ade80">${Math.round(totP)}</b> · K <b style="color:#60a5fa">${Math.round(totK)}</b> · Y <b style="color:#fb923c">${Math.round(totY)}</b>`;
     const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${totHtml}</span></div>`;
@@ -1836,7 +1838,7 @@ async function loadLogPage(){
 
 const SLOT_DISPLAY={
   kahvalti:'☕ Kahvaltı', kahvaltı:'☕ Kahvaltı', breakfast:'☕ Kahvaltı',
-  meal1:'🍽️ Meal 1',
+  meal1:'🍛 Öğle', meal2:'🌆 Akşam', meal3:'🌙 Gece',
   pre_meal:'🥗 Pre Meal',    pre_snack:'🍎 Pre Snack',
   pre:'🥗 Pre Meal',         'pre meal':'🥗 Pre Meal',
   post_meal:'💪 Post Meal',  post_snack:'🌙 Post Snack',
@@ -2469,7 +2471,7 @@ async function renderOzDaily(dateStr){
   // Stat card
   const stat=(icon,label,val,target,p,color,unit)=>`<div class="odl-stat"><div class="odl-stat-top"><div class="odl-stat-icon" style="background:${color}22;color:${color}">${icon}</div><div class="odl-stat-pct" style="color:${p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8'}">${p}%</div></div><div class="odl-stat-val" style="color:${val>0?color:'var(--muted)'}">${val}${unit}</div><div class="odl-stat-tgt">/ ${target}${unit}</div><div class="odl-bar-track"><div class="odl-bar-fill" style="width:${p}%;background:${color}"></div></div></div>`;
   // Slot labels
-  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍽️ Meal 1',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🥗 Öğle',öğle:'🥗 Öğle',aksam:'🌙 Akşam',akşam:'🌙 Akşam','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
+  const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍛 Öğle',meal2:'🌆 Akşam',meal3:'🌙 Gece',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🍛 Öğle',öğle:'🍛 Öğle',aksam:'🌆 Akşam',akşam:'🌆 Akşam',gece:'🌙 Gece','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
   const groups={};
   ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase().replace(/ö/g,'ö').replace(/ü/g,'ü');(groups[k]=groups[k]||[]).push(m);});
   const slotOrder=G_SLOT_ORDER;
@@ -5388,7 +5390,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   function renderMeals(meals){
     const box=$m('ms-meal-log'); if(!box)return;
     if(!Array.isArray(meals)||!meals.length){box.innerHTML='<div class="list-empty">Bugün öğün kaydı yok.</div>';return;}
-    const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Meal 1',meal2:'Meal 2',meal3:'Meal 3',meal2:'Meal 2',meal3:'Meal 3',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ogle:'Öğle',aksam:'Akşam','pre-workout':'Pre Meal','post-workout':'Post Meal',ara:'Atıştırmalık',extra:'Ekstra'};
+    const labels={kahvalti:'Kahvaltı',pre_meal:'Pre Meal',meal1:'Öğle',meal2:'Akşam',meal3:'Gece',pre_snack:'Pre Snack',post_meal:'Post Meal',post_snack:'Post Snack',snack:'Snack',snack2:'Snack 2',ogle:'Öğle',aksam:'Akşam',gece:'Gece','pre-workout':'Pre Meal','post-workout':'Post Meal',ara:'Atıştırmalık',extra:'Ekstra'};
     const groups={}; const groupOrder=[]; meals.forEach(m=>{const key=String(m.slot||'extra').toLocaleLowerCase('tr-TR').replace('ö','o').replace('ı','i');if(!groups[key]){groups[key]=[];groupOrder.push(key);}groups[key].push(m);});
     box.innerHTML=groupOrder.map(key=>{
       const rows=groups[key],cal=rows.reduce((s,m)=>s+Number(m.calories||0),0),p=rows.reduce((s,m)=>s+Number(m.protein_g||0),0),c=rows.reduce((s,m)=>s+Number(m.carbs_g||0),0),f=rows.reduce((s,m)=>s+Number(m.fat_g||0),0);
