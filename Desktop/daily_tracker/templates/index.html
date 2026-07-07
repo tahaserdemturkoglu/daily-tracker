@@ -1784,8 +1784,9 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
-  const groups={},slotOrder=[];
-  meals.forEach(m=>{const k=normSlot(m.slot);if(!groups[k]){groups[k]=[];slotOrder.push(k);}groups[k].push(m);});
+  const groups={};
+  meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
+  const slotOrder=[...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups).filter(s=>!G_SLOT_ORDER.includes(s))];
   el.innerHTML=slotOrder.map(function(slot){
     const rows=groups[slot];
     const totCal=rows.reduce(function(s,m){return s+(m.calories||0);},0);
