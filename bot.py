@@ -86,8 +86,22 @@ def operation_cutoff_hour(now=None):
     return int(current_shift_info(now).get('cutoff_hour') or OPERATION_DAY_CUTOFF_HOUR)
 
 
+_GUNAYDIN_DATE_OVERRIDE: str | None = None  # günaydın komutuyla set edilir → vardiya atlanır
+
+def set_gunaydin_override():
+    """Günaydın algılandığında bugünü zorla operasyon günü yap."""
+    global _GUNAYDIN_DATE_OVERRIDE
+    _GUNAYDIN_DATE_OVERRIDE = date.today().isoformat()
+
 def operation_date(now=None):
-    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar."""
+    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar.
+    Günaydın override varsa vardiya hesabını atlar, bugünü döndürür."""
+    global _GUNAYDIN_DATE_OVERRIDE
+    if _GUNAYDIN_DATE_OVERRIDE:
+        override = date.fromisoformat(_GUNAYDIN_DATE_OVERRIDE)
+        if override == date.today():   # hâlâ aynı takvim günü
+            return override
+        _GUNAYDIN_DATE_OVERRIDE = None  # gün geçmiş, sıfırla
     now = now or datetime.now()
     d = now.date()
     if 0 <= now.hour < operation_cutoff_hour(now):
@@ -2300,6 +2314,23 @@ async def cmd_chat_ai(u, c):
         save_owner_chat_id(chat_id)
     await u.message.chat.send_action('typing')
     n = norm_tr(raw)
+
+    # GÜNAYDIN — yeni güne zorla geç (vardiya saatinden bağımsız)
+    _gunaydin_triggers = [
+        'gunaydın', 'gunaydin', 'iyi sabahlar', 'sabah oldu',
+        'uyandım', 'uyandim', 'kalktım', 'kalktim',
+        'good morning',
+    ]
+    if any(x in n for x in _gunaydin_triggers):
+        set_gunaydin_override()
+        today = operation_today()
+        gun_adi = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'][date.fromisoformat(today).weekday()]
+        antrenman = training_day(today)
+        reply = f"☀️ Günaydın! {gun_adi}, {today}\n\nYeni güne geçildi ✅\n📅 Bugün: {antrenman} günü\n💊 Supplementlerini almayı unutma!"
+        add_history(chat_id, 'user', raw)
+        add_history(chat_id, 'bot', reply)
+        await u.message.reply_text(reply)
+        return
 
     stack_update_reply = stack_update_from_text(raw)
     if stack_update_reply:
