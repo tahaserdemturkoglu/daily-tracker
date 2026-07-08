@@ -1167,6 +1167,21 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <strong style="color:var(--text)">Durum:</strong> <span style="color:var(--green)">✓ Aktif (Railway)</span>
       </div>
     </div>
+    <div class="card" style="max-width:480px;margin-top:14px;background:var(--bg3);border:1px solid rgba(99,161,255,.25);border-radius:12px;padding:14px">
+      <div class="card-head" style="margin-bottom:12px"><span class="card-icon">🔄</span><div><div class="card-name">Haftalık Karb Döngüsü</div><div class="card-sub" style="font-size:.72rem;color:var(--muted)">Günlük karb hedefleri (g)</div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Pzt</label><input type="number" id="cc-mon" placeholder="300" style="text-align:center"></div>
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Sal</label><input type="number" id="cc-tue" placeholder="250" style="text-align:center"></div>
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Çar</label><input type="number" id="cc-wed" placeholder="250" style="text-align:center"></div>
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Per</label><input type="number" id="cc-thu" placeholder="230" style="text-align:center"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Cum</label><input type="number" id="cc-fri" placeholder="200" style="text-align:center"></div>
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Cmt</label><input type="number" id="cc-sat" placeholder="120" style="text-align:center"></div>
+        <div class="fg"><label style="font-size:.65rem;color:var(--muted)">Paz</label><input type="number" id="cc-sun" placeholder="80" style="text-align:center"></div>
+      </div>
+      <button class="btn btn-xs" style="background:rgba(99,161,255,.15);color:#6aa3ff;border:1px solid rgba(99,161,255,.3);width:100%;padding:8px;font-weight:700" onclick="saveCarbCycle()">💾 Kaydet</button>
+    </div>
   </div>
 </div>
 
@@ -1291,6 +1306,36 @@ async function loadSettings(){
   const t=getT();['cal','prot','carb','fat','water'].forEach(k=>$('s-'+k)&&($('s-'+k).value=t[k]));
   if($('s-cal-training')&&t.cal_training)$('s-cal-training').value=t.cal_training;
   if($('s-weight-goal')&&t.weight_goal)$('s-weight-goal').value=t.weight_goal;
+  loadCarbCycleSettings();
+}
+function loadCarbCycleSettings(){
+  const saved=JSON.parse(localStorage.getItem('carb_cycle')||'{}');
+  const def={mon:300,tue:250,wed:250,thu:230,fri:200,sat:120,sun:80};
+  const c={...def,...saved};
+  const map={mon:'cc-mon',tue:'cc-tue',wed:'cc-wed',thu:'cc-thu',fri:'cc-fri',sat:'cc-sat',sun:'cc-sun'};
+  Object.entries(map).forEach(([k,id])=>{if($(id))$(id).value=c[k];});
+}
+function saveCarbCycle(){
+  const ids={mon:'cc-mon',tue:'cc-tue',wed:'cc-wed',thu:'cc-thu',fri:'cc-fri',sat:'cc-sat',sun:'cc-sun'};
+  const targets={};
+  Object.entries(ids).forEach(([k,id])=>{targets[k]=parseInt($(id)?.value)||0;});
+  localStorage.setItem('carb_cycle',JSON.stringify(targets));
+  toastSafe('Karb döngüsü kaydedildi ✓');
+}
+function getWeekCarbPlan(){
+  const saved=JSON.parse(localStorage.getItem('carb_cycle')||'{}');
+  const def={mon:300,tue:250,wed:250,thu:230,fri:200,sat:120,sun:80};
+  const c={...def,...saved};
+  const today=new Date();
+  const dow=(today.getDay()+6)%7; // 0=Mon
+  const mon=new Date(today);mon.setDate(today.getDate()-dow);
+  return [
+    {offset:0,day:'Pzt',key:'mon'},{offset:1,day:'Sal',key:'tue'},{offset:2,day:'Çar',key:'wed'},
+    {offset:3,day:'Per',key:'thu'},{offset:4,day:'Cum',key:'fri'},{offset:5,day:'Cmt',key:'sat'},{offset:6,day:'Paz',key:'sun'}
+  ].map(({offset,day,key})=>{
+    const d=new Date(mon);d.setDate(mon.getDate()+offset);
+    return{date:d.toISOString().split('T')[0],day,target:c[key]};
+  });
 }
 
 /* TOAST */
@@ -1615,15 +1660,7 @@ async function loadDashboardExtra(d,t,cal,wml){
 
   // ── Haftalık Karb Döngüsü Paneli ──
   try{
-    const WEEK_CARB_PLAN=[
-      {date:'2026-07-06',day:'Pzt',target:300},
-      {date:'2026-07-07',day:'Sal',target:250},
-      {date:'2026-07-08',day:'Çar',target:250},
-      {date:'2026-07-09',day:'Per',target:230},
-      {date:'2026-07-10',day:'Cum',target:200},
-      {date:'2026-07-11',day:'Cmt',target:120},
-      {date:'2026-07-12',day:'Paz',target:80},
-    ];
+    const WEEK_CARB_PLAN=getWeekCarbPlan();
     const maxTarget=Math.max(...WEEK_CARB_PLAN.map(d=>d.target));
     const todayStr=today();
     const actuals={};
@@ -1688,8 +1725,8 @@ function renderVitList(elId,vitamins,canDel){
       const isEksik=notes.includes('eksik alındı')||notes.includes('eksik alindi')||isAlınmadı;
       const isDone=(notes.includes('alındı')||notes.includes('alindi'))&&!isAlınmadı&&!isGunAsiriAtlandi&&!notes.includes('yarım');
       const nameStyle=isEksik?'text-decoration:line-through;color:#ef4444;':'';
-      const cardBorder=isEksik?'border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06);':isGunAsiriAtlandi?'border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05);':isDone?'border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04);':'';
-      const badge=isEksik?`<div style="position:absolute;top:2px;right:3px;font-size:.45rem;color:#ef4444;font-weight:800;background:rgba(239,68,68,.15);border-radius:3px;padding:1px 3px">🔴 alınmadı</div>`
+      const cardBorder=isEksik?'border-color:#ef4444;background:rgba(239,68,68,.08);':isGunAsiriAtlandi?'border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05);':isDone?'border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04);':'';
+      const badge=isEksik?`<div style="position:absolute;top:0;left:0;right:0;background:#ef4444;color:#fff;font-size:.45rem;font-weight:800;text-align:center;padding:2px 3px;border-radius:9px 9px 0 0">⚠️ alınmadı</div>`
                  :isGunAsiriAtlandi?`<div style="position:absolute;top:2px;right:3px;font-size:.45rem;color:#fbbf24;font-weight:800;background:rgba(251,191,36,.15);border-radius:3px;padding:1px 3px">⏭ atlandı</div>`
                  :isDone?`<div style="position:absolute;top:3px;right:4px;font-size:.5rem;color:#22c55e;font-weight:800">✓</div>`:'';
       const safeName=(v.name||'').replace(/'/g,"\\'");
@@ -3781,12 +3818,12 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       ['Optimum Nutrition Collagen','1','ölçek','sabah stack'],
       ['NOW Zinc Picolinate 50mg','1','kapsul','sabah stack | gün aşırı'],
       ['NOW Astaxanthin 10mg','1','kapsul','sabah stack'],
-      ['Life Extension MacuGuard','1','softgel','sabah stack'],
+      ['Life Extension MacuGuard','1','kapsül','sabah stack'],
     ],
     'kahvalti': [
       ['Omega-3','3','kapsul','Kahvaltı stack | Life Extension Mega EPA/DHA'],
       ['D3+K2','4','damla','Kahvaltı stack | Thorne Vitamin D + K2'],
-      ['Life Extension MacuGuard','1','softgel','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
+      ['Life Extension MacuGuard','1','kapsül','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
       ['Çinko','1','kapsul','Kahvaltı stack | NOW Zinc Picolinate 50 mg | gün aşırı'],
       ['NOW Astaxanthin 10mg','1','kapsul','Kahvaltı stack | NOW Astaxanthin 10mg'],
       ['California Gold Nutrition C','1','kapsul','Kahvaltı stack | Vitamin C'],
