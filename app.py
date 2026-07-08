@@ -468,6 +468,25 @@ def api_reload_templates():
     app.jinja_env.auto_reload = True
     return jsonify({'ok': True, 'msg': 'Template cache temizlendi'})
 
+@app.route('/api/pull-template', methods=['POST','GET'])
+def api_pull_template():
+    """GitHub raw'dan index.html çek, volume'daki dosyayı güncelle"""
+    try:
+        import urllib.request
+        url = 'https://raw.githubusercontent.com/tahaserdemturkoglu/daily-tracker/main/templates/index.html'
+        with urllib.request.urlopen(url, timeout=30) as resp:
+            content = resp.read().decode('utf-8')
+        path = os.path.join(BASE_DIR, 'templates', 'index.html')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        if app.jinja_env.cache:
+            app.jinja_env.cache.clear()
+        log.info(f'Template pulled from GitHub: {len(content)} bytes')
+        return jsonify({'ok': True, 'size': len(content)})
+    except Exception as e:
+        log.warning(f'Template pull failed: {e}')
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
 @app.route('/api/week')
 def api_week():
     days = int(request.args.get('days', 7))
@@ -893,7 +912,6 @@ def api_meal_save():
     slot = data.get('slot', '').strip() or 'extra'
     title = data.get('title', '').strip()
     description = data.get('description', '').strip()
-    import re as _re; description = _re.sub(r'\b(\d+)\.0+\b', r'\1', description) if description else description
     calories = _num_or_none(data.get('calories'))
     protein_g = _num_or_none(data.get('protein_g'))
     carbs_g = _num_or_none(data.get('carbs_g'))
@@ -1824,6 +1842,24 @@ def tg_store_message(direction, message, chat_id='', username='', actions=None):
         conn.commit(); conn.close()
     except Exception:
         log.exception("Telegram mesaj kaydi basarisiz")
+
+@app.route('/telegram_webhook', methods=['POST'])
+def telegram_webhook():
+    """Telegram webhook endpoint."""
+    if not TELEGRAM_TOKEN:
+        return 'no token', 200
+    data = request.get_json(force=True) or {}
+    if not data:
+        return 'ok', 200
+    try:
+        from bot import process_webhook_update
+        import threading as _thr
+        t = _thr.Thread(target=process_webhook_update, args=(data,), daemon=True)
+        t.start()
+    except Exception as e:
+        log.error("Telegram webhook dispatch error: %s", e)
+    return 'ok', 200
+
 
 @app.route('/api/telegram/messages')
 def api_telegram_messages():
@@ -4801,6 +4837,41 @@ def api_supplement_stack_create():
     conn.commit(); conn.close()
     return jsonify({'ok':True, 'stack_id': sid})
 
+@app.route('/api/supplements/stacks/<int:sid>/items', methods=['PUT'])
+def api_supplement_stack_items_replace(sid):
+    """Bir stack'in tüm item'larını yenisiyle değiştir."""
+    data = request.get_json(force=True) or {}
+    items = data.get('items', [])
+    conn = get_db()
+    conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (sid,))
+    for i, item in enumerate(items):
+        conn.execute(
+            "INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
+            (sid, item.get('product_name', item.get('name','')), item.get('dose',1), item.get('unit','kapsul'), i+1)
+        )
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'stack_id': sid, 'items_count': len(items)})
+
+@app.route('/api/supplements/zinc/last-date', methods=['PATCH'])
+def api_supplement_zinc_last_date():
+    """supplement_rules tablosunda çinkonun son alınma tarihini güncelle."""
+    import json as _json
+    data = request.get_json(force=True) or {}
+    last_date = data.get('last_date', '').strip()
+    if not last_date:
+        return jsonify({'ok': False, 'error': 'last_date gerekli'}), 400
+    conn = get_db()
+    row = conn.execute("SELECT id, rule_data FROM supplement_rules WHERE product_name='NOW Zinc Picolinate 50mg'").fetchone()
+    if row:
+        rd = _json.loads(row['rule_data'] or '{}')
+        rd['last_date'] = last_date
+        conn.execute("UPDATE supplement_rules SET rule_data=? WHERE id=?", (_json.dumps(rd), row['id']))
+    else:
+        conn.execute("INSERT INTO supplement_rules (product_name,rule_data) VALUES (?,?)",
+                     ('NOW Zinc Picolinate 50mg', _json.dumps({'last_date': last_date})))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'last_date': last_date})
+
 @app.route('/api/supplements/compliance', methods=['GET'])
 def api_supplements_compliance():
     """Son 7 günlük stack uyum oranı."""
@@ -4851,9 +4922,12 @@ def api_ai_insights():
             'water_ml': int((water_row['total'] or 0) if water_row else 0),
             'steps': dict(step_row)['steps'] if step_row else 0,
         }
-        settings_conn = get_db()
-        s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
-        settings_conn.close()
+        try:
+            settings_conn = get_db()
+            s_rows = {r['key']: r['value'] for r in settings_conn.execute("SELECT key,value FROM settings").fetchall()}
+            settings_conn.close()
+        except Exception:
+            s_rows = {}
         targets = {
             'cal': int(s_rows.get('target_calories', 1800)),
             'prot': int(s_rows.get('target_protein', 160)),
@@ -4929,4 +5003,6 @@ if __name__ == '__main__':
     else:
         if TELEGRAM_TOKEN and os.environ.get('DISABLE_EMBEDDED_BOT') != '1':
             threading.Thread(target=start_telegram_bot, daemon=True).start()
-        log.in
+        log.info(f"http://localhost:{PORT}")
+        app.run(host='0.0.0.0', port=PORT, debug=False)
+
