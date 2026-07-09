@@ -6835,3 +6835,30 @@ input:focus,select:focus,textarea:focus {
 }
 .toast {
   background:lin
+<script id="STACK_ICON_PATCH_V1">
+(function(){
+  if(window.__sip1)return;
+  window.__sip1=true;
+  var WARN="⚠ ";
+  var X="❌";
+  var SKIP="⏭";
+  var PILL="💊";
+  function fix(){
+    document.querySelectorAll("#ms-stack-log .mission-stack-item b").forEach(function(b){
+      var t=b.textContent||"";
+      var cp=t.codePointAt(0);
+      var elen=cp>0xFFFF?2:1;
+      if(cp===0x1F48A){b.textContent=t.slice(elen+1);}
+      else if(cp===0x274C||cp===0x23ED){b.textContent=WARN+t.slice(elen+1);}
+    });
+  }
+  function watch(){
+    var box=document.getElementById("ms-stack-log");
+    if(!box){setTimeout(watch,300);return;}
+    new MutationObserver(fix).observe(box,{childList:true,subtree:true});
+    fix();
+  }
+  if(document.readyState!=="loading")watch();
+  else document.addEventListener("DOMContentLoaded",watch);
+})();
+</script>
