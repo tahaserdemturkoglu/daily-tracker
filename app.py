@@ -1,3 +1,4 @@
+# deploy: 2026-07-09T02:27:52.523Z
 #!/usr/bin/env python3
 """Taha Serdem Daily Rapor — Flask + Telegram Bot"""
 
