@@ -587,6 +587,27 @@ def api_new_day_clear():
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+
+@app.route('/api/debug-streak')
+def api_debug_streak():
+    from datetime import timedelta as _td
+    conn = get_db()
+    op = operation_date()
+    tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs','vitamin_logs','meal_entries')
+    days_out = {}
+    for i in range(5):
+        dd = op - _td(days=i)
+        day_res = {}
+        for t in tables:
+            try:
+                row = conn.execute(f"SELECT id FROM {t} WHERE date=?", (dd.isoformat(),)).fetchone()
+                day_res[t] = bool(row)
+            except Exception as e:
+                day_res[t] = 'ERR:'+str(e)[:40]
+        days_out[dd.isoformat()] = day_res
+    conn.close()
+    return jsonify({'op_date': op.isoformat(), 'days': days_out})
+
 @app.route('/api/reload-templates')
 def api_reload_templates():
     """Force Jinja2 template cache clear â no restart needed"""
