@@ -517,6 +517,8 @@ def no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    if response.content_type and 'html' in response.content_type and response.data:
+        response.data = response.data.replace('⏭'.encode('utf-8'), '⚠️'.encode('utf-8'))
     return response
 
 @app.route('/')
@@ -5179,4 +5181,3 @@ if __name__ == '__main__':
             threading.Thread(target=start_telegram_bot, daemon=True).start()
         log.info(f"http://localhost:{PORT}")
         app.run(host='0.0.0.0', port=PORT, debug=False)
-
