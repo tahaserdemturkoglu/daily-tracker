@@ -1,5 +1,6 @@
 # deploy: 2026-07-09T02:27:52.523Z
 #!/usr/bin/env python3
+# railway-deploy-trigger: 2026-07-09
 """Taha Serdem Daily Rapor — Flask + Telegram Bot"""
 
 import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
