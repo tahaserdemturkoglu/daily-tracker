@@ -6862,3 +6862,19 @@ input:focus,select:focus,textarea:focus {
   else document.addEventListener("DOMContentLoaded",watch);
 })();
 </script>
+
+<script id="STACK_ICON_PATCH_V2">
+(function(){
+window.__sip1=true;if(window.__sip2)return;window.__sip2=true;
+var X="\u274C",PILL="\uD83D\uDC8A",WARN="\u26A0\uFE0F",CHECK="\u2705";
+function fmtA(a){if(!a)return "";var n=parseFloat(a);return isNaN(n)?a:(n===Math.floor(n)?""+Math.floor(n):""+n);}
+function todayS(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function groupOf(v){var n=(v.notes||"").toLowerCase();if(n.includes("ac karna")||n.includes("a\u00e7 karna"))return "A\u00e7 Karna Stack";if(n.includes("sabah")||n.includes("kahvalt"))return "Sabah Stack";if(n.includes("pre-workout"))return "Pre-Workout Stack";if(n.includes("post-workout"))return "Post-Workout";if(n.includes("gece")||n.includes("night"))return "Gece Stack";return "Di\u011fer";}
+var ORDER=["A\u00e7 Karna Stack","Sabah Stack","Pre-Workout Stack","Post-Workout","Gece Stack","Di\u011fer"];
+var _busy=false;
+var obs=new MutationObserver(function(){var box=document.getElementById("ms-stack-log");if(!box||box.querySelector(".ms-v2"))return;run();});
+async function run(){if(_busy)return;_busy=true;try{var box=document.getElementById("ms-stack-log");if(!box||!box.children.length){_busy=false;return;}var data=await fetch("/api/day/"+todayS(),{cache:"no-store"}).then(function(r){return r.json();});var vits=(data&&data.vitamins)||[];if(!vits.length){_busy=false;return;}var groups={};vits.forEach(function(v){var g=groupOf(v);(groups[g]=groups[g]||[]).push(v);});obs.disconnect();box.innerHTML='<div class="ms-v2" style="display:none"></div>'+ORDER.filter(function(g){return groups[g];}).map(function(g){return '<div class="mission-stack-group"><div class="mission-stack-group-title">'+g+'</div>'+groups[g].map(function(v){var raw=String(v.notes||""),name=v.name||"Takviye",dose=[v.amount?fmtA(v.amount):"",v.unit].filter(Boolean).join(" ");var isEksik=/eksik al[i\u0131]nd[\u0131i]/i.test(raw);var isGun=/g\u00fcn a\u015f\u0131r\u0131|gun asiri/i.test(raw);var isAlindi=/al\u0131nd[\u0131i]|alind[i\u0131]/i.test(raw);var isGunAlindi=isGun&&isAlindi&&!isEksik;var isGunAtlandi=isGun&&!isAlindi&&!isEksik;if(isEksik)return '<div class="mission-stack-item" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.06)"><b style="color:#f87171;text-decoration:line-through">'+X+" "+name+'</b><span style="color:#f87171;font-size:.62rem">eksik al\u0131nd\u0131</span></div>';if(isGunAtlandi)return '<div class="mission-stack-item" style="border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.05)"><b style="color:#fbbf24">'+WARN+" "+name+'</b><span style="color:#fbbf24;font-size:.62rem">g\u00fcn a\u015f\u0131r\u0131 \u2014 atland\u0131</span></div>';if(isGunAlindi)return '<div class="mission-stack-item" style="border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.05)"><b style="color:#4ade80">'+CHECK+" "+name+'</b><span style="color:#4ade80;font-size:.62rem">'+dose+' \u00b7 g\u00fcn a\u015f\u0131r\u0131 al\u0131nd\u0131</span></div>';return '<div class="mission-stack-item"><b>'+PILL+" "+name+'</b><span>'+dose+"</span></div>";}).join("")+"</div>";}).join("");obs.observe(box,{childList:true,subtree:false});}catch(e){}  _busy=false;}
+function watch(){var box=document.getElementById("ms-stack-log");if(!box){setTimeout(watch,300);return;}obs.observe(box,{childList:true,subtree:false});run();}
+if(document.readyState!=="loading")watch();else document.addEventListener("DOMContentLoaded",watch);
+})();
+</script>
