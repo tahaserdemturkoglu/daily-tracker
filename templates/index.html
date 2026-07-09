@@ -1727,7 +1727,7 @@ function renderVitList(elId,vitamins,canDel){
       const nameStyle=isEksik?'text-decoration:line-through;color:#ef4444;':'';
       const cardBorder=isEksik?'border-color:#ef4444;background:rgba(239,68,68,.08);':isGunAsiriAtlandi?'border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.06);':isGunAsiriAlindi?'border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.08);':isDone?'border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04);':'';
       const badge=isEksik?`<div style="position:absolute;top:0;left:0;right:0;background:#ef4444;color:#fff;font-size:.45rem;font-weight:800;text-align:center;padding:2px 3px;border-radius:9px 9px 0 0">&#10071; eksik</div>`
-                 :isGunAsiriAtlandi?`<div style="position:absolute;top:2px;right:3px;font-size:.45rem;color:#fbbf24;font-weight:800;background:rgba(251,191,36,.15);border-radius:3px;padding:1px 3px">&#9888; atland&#305;</div>`
+                 :isGunAsiriAtlandi?`<div style="position:absolute;top:0;left:0;right:0;background:#d97706;color:#fff;font-size:.45rem;font-weight:800;text-align:center;padding:2px 3px;border-radius:9px 9px 0 0">&#9888; atland&#305;</div>`
                  :isDone?`<div style="position:absolute;top:3px;right:4px;font-size:.5rem;color:#22c55e;font-weight:800">ÃÂ¢ÃÂÃÂ</div>`:'';
       const safeName=(v.name||'').replace(/'/g,"\\'");
       const amt=v.amount?fmtAmt(v.amount):'';
