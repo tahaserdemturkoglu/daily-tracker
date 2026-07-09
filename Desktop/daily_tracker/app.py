@@ -56,13 +56,16 @@ def operation_cutoff_hour(now=None):
     return int(current_shift_info(now).get('cutoff_hour') or OPERATION_DAY_CUTOFF_HOUR)
 
 
-_forced_op_date = None
-
 def operation_date(now=None):
     """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir."""
-    global _forced_op_date
-    if _forced_op_date:
-        return _forced_op_date
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        row = conn.execute("SELECT value FROM user_settings WHERE key='force_operation_date'").fetchone()
+        conn.close()
+        if row and row[0]:
+            return date.fromisoformat(row[0])
+    except:
+        pass
     now = now or now_istanbul()
     d = now.date()
     if 0 <= now.hour < operation_cutoff_hour(now):
@@ -568,17 +571,20 @@ def api_settings():
 
 @app.route('/api/new-day', methods=['POST'])
 def api_new_day():
-    """Gunaydın: operation tarihi bugunun takvim tarihine ayarla"""
-    global _forced_op_date
+    """Gunaydın: operation tarihi bugunun takvim tarihine ayarla (DB'ye kaydet)"""
     from datetime import date as _dt
-    _forced_op_date = _dt.today()
-    return jsonify({'ok': True, 'date': _forced_op_date.isoformat()})
+    today = _dt.today().isoformat()
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('force_operation_date', ?)", (today,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': today})
 
 @app.route('/api/new-day', methods=['DELETE'])
 def api_new_day_clear():
     """Override temizle, tekrar shift sistemine don"""
-    global _forced_op_date
-    _forced_op_date = None
+    conn = get_db()
+    conn.execute("DELETE FROM user_settings WHERE key='force_operation_date'")
+    conn.commit(); conn.close()
     return jsonify({'ok': True})
 
 @app.route('/api/reload-templates')
