@@ -56,8 +56,13 @@ def operation_cutoff_hour(now=None):
     return int(current_shift_info(now).get('cutoff_hour') or OPERATION_DAY_CUTOFF_HOUR)
 
 
+_forced_op_date = None
+
 def operation_date(now=None):
     """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir."""
+    global _forced_op_date
+    if _forced_op_date:
+        return _forced_op_date
     now = now or now_istanbul()
     d = now.date()
     if 0 <= now.hour < operation_cutoff_hour(now):
@@ -560,6 +565,21 @@ def api_settings():
         conn.close()
         result = {r['key']: r['value'] for r in rows}
         return jsonify(result)
+
+@app.route('/api/new-day', methods=['POST'])
+def api_new_day():
+    """Gunaydın: operation tarihi bugunun takvim tarihine ayarla"""
+    global _forced_op_date
+    from datetime import date as _dt
+    _forced_op_date = _dt.today()
+    return jsonify({'ok': True, 'date': _forced_op_date.isoformat()})
+
+@app.route('/api/new-day', methods=['DELETE'])
+def api_new_day_clear():
+    """Override temizle, tekrar shift sistemine don"""
+    global _forced_op_date
+    _forced_op_date = None
+    return jsonify({'ok': True})
 
 @app.route('/api/reload-templates')
 def api_reload_templates():
