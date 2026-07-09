@@ -1,7 +1,7 @@
 # deploy: 2026-07-09T02:27:52.523Z
 #!/usr/bin/env python3
 # railway-deploy-trigger: 2026-07-09
-"""Taha Serdem Daily Rapor Ã¢ÂÂ Flask + Telegram Bot"""
+"""Taha Serdem Daily Rapor ÃÂ¢ÃÂÃÂ Flask + Telegram Bot"""
 
 import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
 from datetime import datetime, date, timedelta
@@ -11,7 +11,7 @@ from flask import Flask, request, jsonify, render_template
 _TZ_ISTANBUL = ZoneInfo('Europe/Istanbul')
 
 def now_istanbul() -> datetime:
-    """ÃÂu anki Istanbul saatini dÃÂ¶ndÃÂ¼rÃÂ¼r. Railway UTC'de ÃÂ§alÃÂ±ÃÂÃÂ±r, bu fonksiyon TR saatini verir."""
+    """ÃÂÃÂu anki Istanbul saatini dÃÂÃÂ¶ndÃÂÃÂ¼rÃÂÃÂ¼r. Railway UTC'de ÃÂÃÂ§alÃÂÃÂ±ÃÂÃÂÃÂÃÂ±r, bu fonksiyon TR saatini verir."""
     return datetime.now(_TZ_ISTANBUL)
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +29,7 @@ def load_config():
 
 _cfg = load_config()
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', _cfg.get('TELEGRAM_TOKEN', ''))
-# Antrenman dÃÂ¶ngÃÂ¼sÃÂ¼ baÃÂlangÃÂ±ÃÂ§ tarihi (Push gÃÂ¼nÃÂ¼). BugÃÂ¼n baÃÂlar.
+# Antrenman dÃÂÃÂ¶ngÃÂÃÂ¼sÃÂÃÂ¼ baÃÂÃÂlangÃÂÃÂ±ÃÂÃÂ§ tarihi (Push gÃÂÃÂ¼nÃÂÃÂ¼). BugÃÂÃÂ¼n baÃÂÃÂlar.
 CYCLE_START = _cfg.get('CYCLE_START', date.today().isoformat())
 
 
@@ -98,7 +98,7 @@ app = Flask(__name__, template_folder='templates')
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ ANTRENMAN DÃÂNGÃÂSÃÂ Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ ANTRENMAN DÃÂÃÂNGÃÂÃÂSÃÂÃÂ ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 TRAINING_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
 TRAINING_COLORS = {
     'Push':  '#cc0000',
@@ -115,7 +115,7 @@ def training_day(date_str):
     d = date.fromisoformat(date_str)
     return WEEKDAY_CYCLE[d.weekday()]
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ DATABASE Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ DATABASE ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -394,7 +394,7 @@ def streak_count():
     tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs',
               'vitamin_logs','meal_entries')
     today = operation_date()
-    # BugÃÂ¼n henÃÂ¼z veri yoksa dÃÂ¼nden baÃÂla (sabah grace period)
+    # BugÃÂÃÂ¼n henÃÂÃÂ¼z veri yoksa dÃÂÃÂ¼nden baÃÂÃÂla (sabah grace period)
     today_found = any(conn.execute(f"SELECT id FROM {t} WHERE date=?", (today.isoformat(),)).fetchone() for t in tables)
     d = today if today_found else today - timedelta(days=1)
     n = 0
@@ -405,7 +405,7 @@ def streak_count():
     conn.close()
     return n
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ FLASK ROUTES Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ FLASK ROUTES ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 
 import base64 as _b64
@@ -478,7 +478,7 @@ def api_settings():
 
 @app.route('/api/reload-templates')
 def api_reload_templates():
-    """Force Jinja2 template cache clear Ã¢ÂÂ no restart needed"""
+    """Force Jinja2 template cache clear ÃÂ¢ÃÂÃÂ no restart needed"""
     if app.jinja_env.cache:
         app.jinja_env.cache.clear()
     app.jinja_env.auto_reload = True
@@ -486,7 +486,7 @@ def api_reload_templates():
 
 @app.route('/api/pull-template', methods=['POST','GET'])
 def api_pull_template():
-    """GitHub raw'dan index.html ÃÂ§ek, volume'daki dosyayÃÂ± gÃÂ¼ncelle"""
+    """GitHub raw'dan index.html ÃÂÃÂ§ek, volume'daki dosyayÃÂÃÂ± gÃÂÃÂ¼ncelle"""
     try:
         import urllib.request
         url = 'https://raw.githubusercontent.com/tahaserdemturkoglu/daily-tracker/main/templates/index.html'
@@ -757,7 +757,7 @@ def api_vitamin_update(vid):
     return jsonify({'ok': True})
 
 CANONICAL_SLOTS = [
-    ('TITLE-001', 'KahvaltÃÂ±',   1),
+    ('TITLE-001', 'KahvaltÃÂÃÂ±',   1),
     ('TITLE-002', 'Meal 1',     2),
     ('TITLE-003', 'Pre Meal',   3),
     ('TITLE-004', 'Pre Snack',  4),
@@ -768,14 +768,14 @@ CANONICAL_SLOTS = [
 ]
 
 def seed_meal_titles():
-    """Canonical ÃÂ¶ÃÂÃÂ¼n slot listesini yÃÂ¼kle Ã¢ÂÂ kirli kayÃÂ±tlarÃÂ± sil, canonical'i uygula."""
+    """Canonical ÃÂÃÂ¶ÃÂÃÂÃÂÃÂ¼n slot listesini yÃÂÃÂ¼kle ÃÂ¢ÃÂÃÂ kirli kayÃÂÃÂ±tlarÃÂÃÂ± sil, canonical'i uygula."""
     conn = get_db()
     # Canonical title_id setini belirle
     canonical_ids = {t[0] for t in CANONICAL_SLOTS}
-    # Canonical olmayan (kullanÃÂ±cÃÂ± eklediÃÂi kirli) kayÃÂ±tlarÃÂ± sil
+    # Canonical olmayan (kullanÃÂÃÂ±cÃÂÃÂ± eklediÃÂÃÂi kirli) kayÃÂÃÂ±tlarÃÂÃÂ± sil
     conn.execute("DELETE FROM meal_titles WHERE title_id NOT IN ({})".format(
         ','.join('?' for _ in canonical_ids)), list(canonical_ids))
-    # Eksik canonical'leri ekle / order_num'ÃÂ± gÃÂ¼ncelle
+    # Eksik canonical'leri ekle / order_num'ÃÂÃÂ± gÃÂÃÂ¼ncelle
     for tid, name, order in CANONICAL_SLOTS:
         existing = conn.execute("SELECT id FROM meal_titles WHERE title_id=?", (tid,)).fetchone()
         if existing:
@@ -826,7 +826,7 @@ def api_meal_titles_add():
 
 @app.route('/api/meals/from-food-registry', methods=['POST'])
 def api_meal_from_food_registry():
-    """Besin DB'den ÃÂ¼rÃÂ¼n seÃÂ§erek loga ekle Ã¢ÂÂ makrolarÃÂ± otomatik hesapla."""
+    """Besin DB'den ÃÂÃÂ¼rÃÂÃÂ¼n seÃÂÃÂ§erek loga ekle ÃÂ¢ÃÂÃÂ makrolarÃÂÃÂ± otomatik hesapla."""
     data = request.get_json(force=True) or {}
     d = data.get('date', operation_today())
     slot = (data.get('slot') or '').strip()
@@ -835,7 +835,7 @@ def api_meal_from_food_registry():
     amount = float(data.get('amount') or 100)
     unit = (data.get('unit') or 'g').strip()
 
-    # Besin DB'den makrolarÃÂ± ÃÂ§ek
+    # Besin DB'den makrolarÃÂÃÂ± ÃÂÃÂ§ek
     conn = get_db()
     if food_id:
         food = conn.execute("SELECT * FROM food_registry WHERE id=?", (food_id,)).fetchone()
@@ -844,7 +844,7 @@ def api_meal_from_food_registry():
             "SELECT * FROM food_registry WHERE name=? OR official_name=?", (food_name, food_name)
         ).fetchone()
         if not food:
-            # aliases iÃÂ§inde ara
+            # aliases iÃÂÃÂ§inde ara
             all_foods = conn.execute("SELECT * FROM food_registry").fetchall()
             food = next((f for f in all_foods
                          if food_name.lower() in (f['aliases'] or '').lower()), None)
@@ -853,10 +853,10 @@ def api_meal_from_food_registry():
 
     if not food:
         conn.close()
-        return jsonify({'ok': False, 'error': f'ÃÂrÃÂ¼n bulunamadÃÂ±: {food_name}'}), 404
+        return jsonify({'ok': False, 'error': f'ÃÂÃÂrÃÂÃÂ¼n bulunamadÃÂÃÂ±: {food_name}'}), 404
 
     food = dict(food)
-    # Makro hesaplama (100g bazÃÂ±ndan)
+    # Makro hesaplama (100g bazÃÂÃÂ±ndan)
     ratio = amount / 100.0
     kcal = round((food.get('calories_per_100') or 0) * ratio, 1)
     prot = round((food.get('protein_per_100') or 0) * ratio, 1)
@@ -880,7 +880,7 @@ def api_meal_from_food_registry():
 
 @app.route('/api/meals/from-template/<int:tid>', methods=['POST'])
 def api_meal_from_template(tid):
-    """ÃÂablonu bugÃÂ¼nÃÂ¼n loguna ekle."""
+    """ÃÂÃÂablonu bugÃÂÃÂ¼nÃÂÃÂ¼n loguna ekle."""
     data = request.get_json(force=True) or {}
     d = data.get('date', operation_today())
     slot = (data.get('slot') or '').strip()
@@ -888,7 +888,7 @@ def api_meal_from_template(tid):
     tmpl = conn.execute("SELECT * FROM quick_templates WHERE id=? AND kind='meal'", (tid,)).fetchone()
     if not tmpl:
         conn.close()
-        return jsonify({'ok': False, 'error': 'ÃÂablon bulunamadÃÂ±'}), 404
+        return jsonify({'ok': False, 'error': 'ÃÂÃÂablon bulunamadÃÂÃÂ±'}), 404
     tmpl = dict(tmpl)
     use_slot = slot or tmpl.get('category') or tmpl.get('title') or 'extra'
     conn.execute("""
@@ -916,7 +916,7 @@ def api_meals_day(date_str):
     return jsonify([dict(r) for r in rows])
 
 def _num_or_none(v):
-    """0 deÃÂerlerini NULL'a dÃÂ¶nÃÂ¼ÃÂtÃÂ¼rmez Ã¢ÂÂ sadece None/'' Ã¢ÂÂ None yapar."""
+    """0 deÃÂÃÂerlerini NULL'a dÃÂÃÂ¶nÃÂÃÂ¼ÃÂÃÂtÃÂÃÂ¼rmez ÃÂ¢ÃÂÃÂ sadece None/'' ÃÂ¢ÃÂÃÂ None yapar."""
     if v is None or v == '': return None
     try: return float(v)
     except: return None
@@ -960,15 +960,15 @@ def api_meal_delete(mid):
 def api_meal_update(mid):
     data = request.get_json(force=True) or {}
     conn = get_db()
-    # Mevcut satÃÂ±rÃÂ± ÃÂ§ek Ã¢ÂÂ gÃÂ¶nderilmeyen alanlar korunsun
+    # Mevcut satÃÂÃÂ±rÃÂÃÂ± ÃÂÃÂ§ek ÃÂ¢ÃÂÃÂ gÃÂÃÂ¶nderilmeyen alanlar korunsun
     existing = conn.execute("SELECT * FROM meal_entries WHERE id=?", (mid,)).fetchone()
     ex = dict(existing) if existing else {}
-    # display_order iÃÂ§in kolon yoksa ekle
+    # display_order iÃÂÃÂ§in kolon yoksa ekle
     try:
         conn.execute("ALTER TABLE meal_entries ADD COLUMN display_order INTEGER DEFAULT 99")
         conn.commit()
     except: pass
-    # PATCH: sadece display_order gÃÂ¼ncellemesi
+    # PATCH: sadece display_order gÃÂÃÂ¼ncellemesi
     if 'display_order' in data and len(data) == 1:
         conn.execute("UPDATE meal_entries SET display_order=? WHERE id=?", (int(data['display_order']), mid))
         conn.commit(); conn.close()
@@ -1247,7 +1247,7 @@ def api_day(date_str):
 
 @app.route('/api/ai-report/<date_str>', methods=['GET'])
 def api_ai_report_get(date_str):
-    """AI gÃÂ¼nlÃÂ¼k raporu Ã¢ÂÂ varsa dÃÂ¶ndÃÂ¼r, yoksa oluÃÂtur."""
+    """AI gÃÂÃÂ¼nlÃÂÃÂ¼k raporu ÃÂ¢ÃÂÃÂ varsa dÃÂÃÂ¶ndÃÂÃÂ¼r, yoksa oluÃÂÃÂtur."""
     conn = get_db()
     row = conn.execute("SELECT report_json FROM daily_ai_reports WHERE date=?", (date_str,)).fetchone()
     if row:
@@ -1259,7 +1259,7 @@ def api_ai_report_get(date_str):
 
 @app.route('/api/ai-report/<date_str>/generate', methods=['POST','GET'])
 def api_ai_report_generate(date_str):
-    """AI raporu ÃÂ¼ret ve sakla."""
+    """AI raporu ÃÂÃÂ¼ret ve sakla."""
     import json as _j
     conn = get_db()
     # Veri topla
@@ -1281,7 +1281,7 @@ def api_ai_report_generate(date_str):
     has_exercise = bool(exercise and exercise['type'])
     sleep_h = float(sleep_row['hours']) if sleep_row and sleep_row['hours'] else 0
 
-    # Hedefler (Taha iÃÂ§in sabit)
+    # Hedefler (Taha iÃÂÃÂ§in sabit)
     CAL_TARGET  = (2800, 3400)
     PROT_TARGET = 180
     WATER_TARGET = 3000
@@ -1291,36 +1291,36 @@ def api_ai_report_generate(date_str):
     items = []
     # Protein
     if total_prot >= PROT_TARGET:
-        items.append({'type':'ok', 'text': f'Protein hedefi tamamlandÃÂ± ({round(total_prot)}g / {PROT_TARGET}g)'})
+        items.append({'type':'ok', 'text': f'Protein hedefi tamamlandÃÂÃÂ± ({round(total_prot)}g / {PROT_TARGET}g)'})
     elif total_prot > 0:
         deficit = round(PROT_TARGET - total_prot)
-        items.append({'type':'warn', 'text': f'Protein hedefi eksik Ã¢ÂÂ {deficit}g daha gerekiyor ({round(total_prot)}g / {PROT_TARGET}g)'})
+        items.append({'type':'warn', 'text': f'Protein hedefi eksik ÃÂ¢ÃÂÃÂ {deficit}g daha gerekiyor ({round(total_prot)}g / {PROT_TARGET}g)'})
 
     # Kalori
     if total_cal:
         if CAL_TARGET[0] <= total_cal <= CAL_TARGET[1]:
             items.append({'type':'ok', 'text': f'Kalori hedefi uygun ({round(total_cal)} kcal)'})
         elif total_cal < CAL_TARGET[0]:
-            items.append({'type':'warn', 'text': f'Kalori dÃÂ¼ÃÂÃÂ¼k Ã¢ÂÂ {round(CAL_TARGET[0]-total_cal)} kcal eksik ({round(total_cal)} kcal)'})
+            items.append({'type':'warn', 'text': f'Kalori dÃÂÃÂ¼ÃÂÃÂÃÂÃÂ¼k ÃÂ¢ÃÂÃÂ {round(CAL_TARGET[0]-total_cal)} kcal eksik ({round(total_cal)} kcal)'})
         else:
-            items.append({'type':'warn', 'text': f'Kalori fazla Ã¢ÂÂ hedefin {round(total_cal-CAL_TARGET[1])} kcal ÃÂ¼stÃÂ¼nde ({round(total_cal)} kcal)'})
+            items.append({'type':'warn', 'text': f'Kalori fazla ÃÂ¢ÃÂÃÂ hedefin {round(total_cal-CAL_TARGET[1])} kcal ÃÂÃÂ¼stÃÂÃÂ¼nde ({round(total_cal)} kcal)'})
 
     # Su
     if water_ml >= WATER_TARGET:
-        items.append({'type':'ok', 'text': f'Su hedefi tamamlandÃÂ± ({water_ml/1000:.1f}L)'})
+        items.append({'type':'ok', 'text': f'Su hedefi tamamlandÃÂÃÂ± ({water_ml/1000:.1f}L)'})
     elif water_ml > 0:
         remain = round((WATER_TARGET - water_ml) / 100) * 100
-        items.append({'type':'warn', 'text': f'Su tÃÂ¼ketimi dÃÂ¼ÃÂÃÂ¼k Ã¢ÂÂ {remain}ml daha iÃÂ§ilebilir ({water_ml/1000:.1f}L / {WATER_TARGET/1000:.1f}L)'})
+        items.append({'type':'warn', 'text': f'Su tÃÂÃÂ¼ketimi dÃÂÃÂ¼ÃÂÃÂÃÂÃÂ¼k ÃÂ¢ÃÂÃÂ {remain}ml daha iÃÂÃÂ§ilebilir ({water_ml/1000:.1f}L / {WATER_TARGET/1000:.1f}L)'})
     else:
-        items.append({'type':'warn', 'text': f'Su kaydÃÂ± yok Ã¢ÂÂ gÃÂ¼nlÃÂ¼k {WATER_TARGET/1000:.1f}L hedefine ulaÃÂ'})
+        items.append({'type':'warn', 'text': f'Su kaydÃÂÃÂ± yok ÃÂ¢ÃÂÃÂ gÃÂÃÂ¼nlÃÂÃÂ¼k {WATER_TARGET/1000:.1f}L hedefine ulaÃÂÃÂ'})
 
-    # AdÃÂ±m
+    # AdÃÂÃÂ±m
     if steps >= STEP_TARGET:
-        items.append({'type':'ok', 'text': f'AdÃÂ±m hedefi tamamlandÃÂ± ({steps:,} adÃÂ±m)'})
+        items.append({'type':'ok', 'text': f'AdÃÂÃÂ±m hedefi tamamlandÃÂÃÂ± ({steps:,} adÃÂÃÂ±m)'})
     elif steps > 0:
-        items.append({'type':'warn', 'text': f'AdÃÂ±m hedefi tamamlanmadÃÂ± ({steps:,} / {STEP_TARGET:,} adÃÂ±m)'})
+        items.append({'type':'warn', 'text': f'AdÃÂÃÂ±m hedefi tamamlanmadÃÂÃÂ± ({steps:,} / {STEP_TARGET:,} adÃÂÃÂ±m)'})
     else:
-        items.append({'type':'warn', 'text': f'AdÃÂ±m kaydÃÂ± yok Ã¢ÂÂ {STEP_TARGET:,} adÃÂ±m hedefi'})
+        items.append({'type':'warn', 'text': f'AdÃÂÃÂ±m kaydÃÂÃÂ± yok ÃÂ¢ÃÂÃÂ {STEP_TARGET:,} adÃÂÃÂ±m hedefi'})
 
     # Supplement
     key_stacks = ['Sabah Stack', 'Pre Workout Stack', 'Post Workout Stack']
@@ -1333,7 +1333,7 @@ def api_ai_report_generate(date_str):
 
     # Antrenman
     if has_exercise:
-        items.append({'type':'ok', 'text': f'Antrenman tamamlandÃÂ± ({exercise["type"]})'})
+        items.append({'type':'ok', 'text': f'Antrenman tamamlandÃÂÃÂ± ({exercise["type"]})'})
 
     # Uyku
     if sleep_h:
@@ -1342,15 +1342,15 @@ def api_ai_report_generate(date_str):
         elif sleep_h < SLEEP_TARGET[0]:
             items.append({'type':'warn', 'text': f'Uyku yetersiz ({sleep_h}s / hedef {SLEEP_TARGET[0]}s)'})
 
-    # ÃÂneri
+    # ÃÂÃÂneri
     suggestions = []
     if water_ml < WATER_TARGET and water_ml > 0:
         remain_l = (WATER_TARGET - water_ml) / 1000
-        suggestions.append(f'{remain_l:.1f}L daha su iÃÂ§ilebilir.')
+        suggestions.append(f'{remain_l:.1f}L daha su iÃÂÃÂ§ilebilir.')
     if steps < STEP_TARGET and steps > 0:
-        suggestions.append(f'{STEP_TARGET - steps:,} adÃÂ±m daha atÃÂ±labilir.')
+        suggestions.append(f'{STEP_TARGET - steps:,} adÃÂÃÂ±m daha atÃÂÃÂ±labilir.')
     if total_prot < PROT_TARGET and total_prot > 0:
-        suggestions.append(f'{round(PROT_TARGET - total_prot)}g protein eksik Ã¢ÂÂ tavuk veya yumurta eklenebilir.')
+        suggestions.append(f'{round(PROT_TARGET - total_prot)}g protein eksik ÃÂ¢ÃÂÃÂ tavuk veya yumurta eklenebilir.')
 
     report = {
         'date': date_str,
@@ -1422,25 +1422,25 @@ def api_report():
     # Uyku analizi
     if sl.get('hours'):
         h = float(sl['hours'])
-        if h < 6: lines.append("  Ã¢ÂÂ  Uyku cok az Ã¢ÂÂ performans dusuyor olabilir.")
-        elif h < 7.5: lines.append("  ~ Uyku biraz dusuk Ã¢ÂÂ 7-9 saat hedefle.")
-        else: lines.append(f"  Ã¢ÂÂ Uyku iyi ({h}s).")
+        if h < 6: lines.append("  ÃÂ¢ÃÂÃÂ  Uyku cok az ÃÂ¢ÃÂÃÂ performans dusuyor olabilir.")
+        elif h < 7.5: lines.append("  ~ Uyku biraz dusuk ÃÂ¢ÃÂÃÂ 7-9 saat hedefle.")
+        else: lines.append(f"  ÃÂ¢ÃÂÃÂ Uyku iyi ({h}s).")
 
     # Antrenman analizi
     if td == 'Off':
-        lines.append("  Ã¢ÂÂ Dinlenme gunu Ã¢ÂÂ aktif recovery veya tam dinlenme.")
+        lines.append("  ÃÂ¢ÃÂÃÂ Dinlenme gunu ÃÂ¢ÃÂÃÂ aktif recovery veya tam dinlenme.")
     elif ex.get('type'):
-        lines.append(f"  Ã¢ÂÂ {td} antrenman tamamlandi.")
+        lines.append(f"  ÃÂ¢ÃÂÃÂ {td} antrenman tamamlandi.")
     else:
-        lines.append(f"  Ã¢ÂÂ  {td} gunu antrenman kaydi yok.")
+        lines.append(f"  ÃÂ¢ÃÂÃÂ  {td} gunu antrenman kaydi yok.")
 
     # Mood analizi
     if mo.get('stress') and int(mo['stress']) >= 7:
-        lines.append("  Ã¢ÂÂ  Stres yuksek Ã¢ÂÂ recovery ve uyku oncelikli.")
+        lines.append("  ÃÂ¢ÃÂÃÂ  Stres yuksek ÃÂ¢ÃÂÃÂ recovery ve uyku oncelikli.")
     if mo.get('energy') and int(mo['energy']) <= 4:
-        lines.append("  Ã¢ÂÂ  Enerji dusuk Ã¢ÂÂ beslenme ve uyku gozden gecir.")
+        lines.append("  ÃÂ¢ÃÂÃÂ  Enerji dusuk ÃÂ¢ÃÂÃÂ beslenme ve uyku gozden gecir.")
     if mo.get('mood') and int(mo['mood']) >= 7:
-        lines.append("  Ã¢ÂÂ Iyi ruh hali Ã¢ÂÂ devam!")
+        lines.append("  ÃÂ¢ÃÂÃÂ Iyi ruh hali ÃÂ¢ÃÂÃÂ devam!")
 
     if not (sl or ex or nu or w or co or mo):
         lines.append("  Bugun kayit girilmemis.")
@@ -1450,7 +1450,7 @@ def api_report():
 
 @app.route('/api/summary')
 def api_summary():
-    """Weekly/monthly summary for the ÃÂzet page."""
+    """Weekly/monthly summary for the ÃÂÃÂzet page."""
     days = int(request.args.get('days', 7))
     days = max(1, min(days, 90))
     ensure_step_logs_table()
@@ -1558,7 +1558,7 @@ SET_TYPE_ALIASES = {
     'warm up': 'Warm up',
     'warmup': 'Warm up',
     'isinma': 'Warm up',
-    'ÃÂ±sÃÂ±nma': 'Warm up',
+    'ÃÂÃÂ±sÃÂÃÂ±nma': 'Warm up',
     'working set': 'Working set',
     'working': 'Working set',
     'work set': 'Working set',
@@ -1592,7 +1592,7 @@ def parse_training_sets_from_text(raw_text):
     text = (raw_text or '').replace('\r', '\n').strip()
     if not text:
         return []
-    pattern = r'(warm\s*up|warmup|isinma|ÃÂ±sÃÂ±nma|working\s*set|working|ana\s*set|top\s*set|top|back\s*off|backoff|drop\s*set|drop)'
+    pattern = r'(warm\s*up|warmup|isinma|ÃÂÃÂ±sÃÂÃÂ±nma|working\s*set|working|ana\s*set|top\s*set|top|back\s*off|backoff|drop\s*set|drop)'
     parts = re.split(pattern, text, flags=re.I)
     if len(parts) <= 2:
         return []
@@ -1740,7 +1740,7 @@ def api_training_schedule():
         schedule.append({'date': ds, 'training': td, 'color': TRAINING_COLORS[td], 'is_today': i == 0})
     return jsonify({'schedule': schedule, 'cycle_start': CYCLE_START})
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ WORKOUT LOGS (set-by-set) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ WORKOUT LOGS (set-by-set) ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 @app.route('/api/workout/<date_str>')
 def api_workout_get(date_str):
     conn = get_db()
@@ -1818,7 +1818,7 @@ def api_workout_history(training_day_name):
 
 @app.route('/api/workout/muscle-heatmap')
 def api_muscle_heatmap():
-    """Son 14 gÃÂ¼nÃÂ¼n antrenmanlarini dÃÂ¶ndÃÂ¼rÃÂ¼r Ã¢ÂÂ exercise + date listesi."""
+    """Son 14 gÃÂÃÂ¼nÃÂÃÂ¼n antrenmanlarini dÃÂÃÂ¶ndÃÂÃÂ¼rÃÂÃÂ¼r ÃÂ¢ÃÂÃÂ exercise + date listesi."""
     days = int(request.args.get('days', 14))
     cutoff = (operation_date() - timedelta(days=days)).isoformat()
     conn = get_db()
@@ -1829,7 +1829,7 @@ def api_muscle_heatmap():
     conn.close()
     return jsonify([{'date': r['date'], 'exercise': r['exercise']} for r in rows])
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ TELEGRAM BOT Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ TELEGRAM BOT ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 
 def ensure_telegram_messages_table():
@@ -1989,17 +1989,17 @@ async def cmd_vitamin(u,c):
         await u.message.reply_text(f"Vitamin: {name} {amount} {unit}")
     except: await u.message.reply_text("Kullanim: /vitamin D3 5000 IU")
 async def cmd_bugun(u,c):
-    result = ai_coach_call('BugÃÂ¼nÃÂ¼n tam gÃÂ¼nlÃÂ¼k ÃÂ¶zetini ver: kilo, makrolar (kcal/P/K/Y), vitaminler, su, adÃÂ±m, uyku, antrenman ve kÃÂ±sa koÃÂ§ deÃÂerlendirmesi.')
+    result = ai_coach_call('BugÃÂÃÂ¼nÃÂÃÂ¼n tam gÃÂÃÂ¼nlÃÂÃÂ¼k ÃÂÃÂ¶zetini ver: kilo, makrolar (kcal/P/K/Y), vitaminler, su, adÃÂÃÂ±m, uyku, antrenman ve kÃÂÃÂ±sa koÃÂÃÂ§ deÃÂÃÂerlendirmesi.')
     reply = result.get('reply') or tg_today_summary()
     await u.message.reply_text(reply)
 
 async def cmd_rapor(u,c):
-    result = ai_coach_call('BugÃÂ¼nÃÂ¼n detaylÃÂ± beslenme raporunu ÃÂ§ÃÂ±kar: tÃÂ¼m ÃÂ¶ÃÂÃÂ¼nleri ayrÃÂ± ayrÃÂ± listele, makro toplamlarÃÂ±nÃÂ± ver, hedeflerden sapmalarÃÂ± belirt ve koÃÂ§ yorumu ekle.')
+    result = ai_coach_call('BugÃÂÃÂ¼nÃÂÃÂ¼n detaylÃÂÃÂ± beslenme raporunu ÃÂÃÂ§ÃÂÃÂ±kar: tÃÂÃÂ¼m ÃÂÃÂ¶ÃÂÃÂÃÂÃÂ¼nleri ayrÃÂÃÂ± ayrÃÂÃÂ± listele, makro toplamlarÃÂÃÂ±nÃÂÃÂ± ver, hedeflerden sapmalarÃÂÃÂ± belirt ve koÃÂÃÂ§ yorumu ekle.')
     reply = result.get('reply') or tg_report()
     await u.message.reply_text(reply)
 
 async def cmd_antrenman(u,c):
-    result = ai_coach_call('BugÃÂ¼nkÃÂ¼ antrenman gÃÂ¼nÃÂ¼nÃÂ¼ belirt ve geÃÂ§miÃÂ verilerime bakarak bugÃÂ¼n iÃÂ§in en uygun antrenman planÃÂ±nÃÂ± yap. Progressive overload uygula.')
+    result = ai_coach_call('BugÃÂÃÂ¼nkÃÂÃÂ¼ antrenman gÃÂÃÂ¼nÃÂÃÂ¼nÃÂÃÂ¼ belirt ve geÃÂÃÂ§miÃÂÃÂ verilerime bakarak bugÃÂÃÂ¼n iÃÂÃÂ§in en uygun antrenman planÃÂÃÂ±nÃÂÃÂ± yap. Progressive overload uygula.')
     reply = result.get('reply') or ''
     if not reply:
         sched = json.loads(api_training_schedule().get_data())['schedule']
@@ -2011,7 +2011,7 @@ async def cmd_antrenman(u,c):
     await u.message.reply_text(reply)
 
 async def cmd_hafta(u,c):
-    result = ai_coach_call('Son 7 gÃÂ¼nÃÂ¼n ÃÂ¶zetini ver: kilo trendi, makro ortalamalarÃÂ±, antrenman sÃÂ±klÃÂ±ÃÂÃÂ±, su ortalamasÃÂ± ve bu hafta iÃÂ§in koÃÂ§ deÃÂerlendirmesi.')
+    result = ai_coach_call('Son 7 gÃÂÃÂ¼nÃÂÃÂ¼n ÃÂÃÂ¶zetini ver: kilo trendi, makro ortalamalarÃÂÃÂ±, antrenman sÃÂÃÂ±klÃÂÃÂ±ÃÂÃÂÃÂÃÂ±, su ortalamasÃÂÃÂ± ve bu hafta iÃÂÃÂ§in koÃÂÃÂ§ deÃÂÃÂerlendirmesi.')
     reply = result.get('reply') or ''
     if not reply:
         data = json.loads(api_week().get_data())
@@ -2072,14 +2072,14 @@ def _today_ai_context():
         mood     = conn.execute("SELECT * FROM mood_logs     WHERE date=?", (today,)).fetchone()
         vitamins = [dict(r) for r in conn.execute("SELECT name,amount,unit,notes FROM vitamin_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
         note     = conn.execute("SELECT note FROM daily_notes WHERE date=?", (today,)).fetchone()
-        # Su: nutrition_logs'tan SUM (birden fazla satÃÂ±r olabilir)
+        # Su: nutrition_logs'tan SUM (birden fazla satÃÂÃÂ±r olabilir)
         water_row = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (today,)).fetchone()
         water_ml  = int(water_row['total'] or 0) if water_row else 0
-        # ÃÂÃÂÃÂ¼n detaylarÃÂ±: meal_entries tablosundan
+        # ÃÂÃÂÃÂÃÂÃÂÃÂ¼n detaylarÃÂÃÂ±: meal_entries tablosundan
         meals = [dict(r) for r in conn.execute(
             "SELECT slot, title, description, calories, protein_g, carbs_g, fat_g FROM meal_entries WHERE date=? ORDER BY id",
             (today,)).fetchall()]
-        # AdÃÂ±m ve kilo
+        # AdÃÂÃÂ±m ve kilo
         step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (today,)).fetchone()
         body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (today,)).fetchone()
     finally:
@@ -2103,13 +2103,13 @@ def _today_ai_context():
 
 
 def _week_ai_context():
-    """Son 7 gÃÂ¼nÃÂ¼n kilo, makro, antrenman ve su ÃÂ¶zetini dÃÂ¶ndÃÂ¼rÃÂ¼r."""
+    """Son 7 gÃÂÃÂ¼nÃÂÃÂ¼n kilo, makro, antrenman ve su ÃÂÃÂ¶zetini dÃÂÃÂ¶ndÃÂÃÂ¼rÃÂÃÂ¼r."""
     from datetime import datetime as _dt, timedelta as _td
     today = operation_today()
     days = [(_dt.strptime(today, '%Y-%m-%d') - _td(days=i)).strftime('%Y-%m-%d') for i in range(7)]
     conn = get_db()
     try:
-        # Kilo geÃÂ§miÃÂi
+        # Kilo geÃÂÃÂ§miÃÂÃÂi
         weights = []
         for d in days:
             row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (d,)).fetchone()
@@ -2121,7 +2121,7 @@ def _week_ai_context():
                     w['delta'] = round(row['weight_kg_night'] - row['weight_kg'], 2)
                 weights.append(w)
 
-        # Makro geÃÂ§miÃÂi
+        # Makro geÃÂÃÂ§miÃÂÃÂi
         macro_history = []
         for d in days:
             r = conn.execute(
@@ -2131,7 +2131,7 @@ def _week_ai_context():
                 macro_history.append({'date': d, 'kcal': round(r['kcal'] or 0),
                                        'protein_g': round(r['p'] or 0), 'carbs_g': round(r['k'] or 0), 'fat_g': round(r['y'] or 0)})
 
-        # Antrenman geÃÂ§miÃÂi
+        # Antrenman geÃÂÃÂ§miÃÂÃÂi
         workout_history = []
         for d in days:
             rows = conn.execute("SELECT DISTINCT exercise FROM workout_logs WHERE date=? ORDER BY id", (d,)).fetchall()
@@ -2139,20 +2139,20 @@ def _week_ai_context():
                 workout_history.append({'date': d, 'training_day': training_day(d),
                                          'hareketler': [r['exercise'] for r in rows]})
 
-        # Su geÃÂ§miÃÂi
+        # Su geÃÂÃÂ§miÃÂÃÂi
         water_history = []
         for d in days:
             r = conn.execute("SELECT SUM(water_ml) as total FROM nutrition_logs WHERE date=?", (d,)).fetchone()
             if r and r['total']:
                 water_history.append({'date': d, 'litre': round((r['total'] or 0) / 1000, 2)})
 
-        # Kilo trendi ÃÂ¶zeti
+        # Kilo trendi ÃÂÃÂ¶zeti
         trend_note = ''
         weights_sorted = sorted(weights, key=lambda x: x['date'])
         sabah_vals = [w['sabah_kg'] for w in weights_sorted if 'sabah_kg' in w]
         if len(sabah_vals) >= 3:
             diff = round(sabah_vals[-1] - sabah_vals[0], 2)
-            trend_note = f"{'+' if diff >= 0 else ''}{diff} kg ({days[-1]} Ã¢ÂÂ {days[0]})"
+            trend_note = f"{'+' if diff >= 0 else ''}{diff} kg ({days[-1]} ÃÂ¢ÃÂÃÂ {days[0]})"
 
     finally:
         conn.close()
@@ -2173,11 +2173,11 @@ TAHA ICIN KALICI KOCLUK HAFIZASI:
 - Hatalari durustce belirt ama panik yaptirma.
 - Hedefler: yag kaybi, kas korunumu/kazanimi, performans, akne takibi, sindirim ve genel saglik.
 
-KONUSMA TARZI Ã¢ÂÂ EN ONEMLI KURAL:
+KONUSMA TARZI ÃÂ¢ÃÂÃÂ EN ONEMLI KURAL:
 - Normal mesajlarda (slash komut degil) KISA ve DOGAL yaz. Madde listesi yapma. 1-3 cumle yeter.
 - Veri kaydedildiyse tek satirda onayla: "Kaydettim." veya "Tamam, islendi." yeterli.
 - Sadece /bugun, /rapor gibi ozel komutlarda yapilandirilmis format kullan.
-- KoÃÂ§ gibi konuÃÂ, anket dolduruyor gibi deÃÂil. ÃÂrnek iyi: "AÃÂÃÂ±r geÃÂ§miÃÂ, kaÃÂ§ set yaptÃÂ±n?" ÃÂrnek kÃÂ¶tÃÂ¼: "AntrenmanÃÂ±n kaydedildi. Detaylar: ..."
+- KoÃÂÃÂ§ gibi konuÃÂÃÂ, anket dolduruyor gibi deÃÂÃÂil. ÃÂÃÂrnek iyi: "AÃÂÃÂÃÂÃÂ±r geÃÂÃÂ§miÃÂÃÂ, kaÃÂÃÂ§ set yaptÃÂÃÂ±n?" ÃÂÃÂrnek kÃÂÃÂ¶tÃÂÃÂ¼: "AntrenmanÃÂÃÂ±n kaydedildi. Detaylar: ..."
 - Veri eksikse tek, kisa bir soru sor. Birden fazla soru sorma.
 
 GENEL HESAP KURALLARI:
@@ -2237,29 +2237,29 @@ def _claude_call(user_text):
     week_ctx = _week_ai_context()
     system_prompt = (
         TAHA_COACHING_POLICY + "\n" +
-        "Sen Taha Serdem'in kiÃÂisel antrenman ve gÃÂ¼nlÃÂ¼k performans koÃÂ§usun. "
-        "TÃÂ¼rkÃÂ§e, samimi, net ve motive edici konuÃÂ.\n"
-        "KullanÃÂ±cÃÂ±nÃÂ±n mesajÃÂ±nÃÂ± analiz et. KayÃÂ±t iÃÂ§eriyorsa actions listesini doldur. "
+        "Sen Taha Serdem'in kiÃÂÃÂisel antrenman ve gÃÂÃÂ¼nlÃÂÃÂ¼k performans koÃÂÃÂ§usun. "
+        "TÃÂÃÂ¼rkÃÂÃÂ§e, samimi, net ve motive edici konuÃÂÃÂ.\n"
+        "KullanÃÂÃÂ±cÃÂÃÂ±nÃÂÃÂ±n mesajÃÂÃÂ±nÃÂÃÂ± analiz et. KayÃÂÃÂ±t iÃÂÃÂ§eriyorsa actions listesini doldur. "
         "Eksik bilgi varsa once makul tahminle kaydet ve belirsizligi reply icinde belirt; sadece kritik bilgi tamamen yoksa kisa soru sor. Tam gun beslenme mesajlarinda asla detay ver diye kacma; mevcut gramajlardan yaklasik gun toplamlarini cikar.\n"
-        "SADECE geÃÂ§erli JSON dÃÂ¶ndÃÂ¼r:\n"
+        "SADECE geÃÂÃÂ§erli JSON dÃÂÃÂ¶ndÃÂÃÂ¼r:\n"
         '{"reply":"...","actions":['
         '{"type":"sleep","date":"YYYY-MM-DD","hours":7.5,"quality":8},'
         '{"type":"exercise","date":"YYYY-MM-DD","exercise_type":"Upper","duration":60,"intensity":8,"notes":""},'
-        '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvaltÃÂ±","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10},'
+        '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvaltÃÂÃÂ±","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10},'
         '{"type":"water","date":"YYYY-MM-DD","water_ml":500},'
         '{"type":"mood","date":"YYYY-MM-DD","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","date":"YYYY-MM-DD","name":"D3","amount":"5000","unit":"IU"},'
         '{"type":"note","date":"YYYY-MM-DD","note":"..."}'
         ']}\n'
-        f'Tarih kuralÃÂ±: KullanÃÂ±cÃÂ± tarih belirtmemiÃÂse date={operation_today()} (bugÃÂ¼n). '
-        f'"DÃÂ¼n" derse date={(operation_date()-timedelta(days=1)).isoformat()}. '
-        '"X gÃÂ¼n ÃÂ¶nce" veya "X Haziran" gibi ifadeleri doÃÂru tarihe ÃÂ§evir. '
+        f'Tarih kuralÃÂÃÂ±: KullanÃÂÃÂ±cÃÂÃÂ± tarih belirtmemiÃÂÃÂse date={operation_today()} (bugÃÂÃÂ¼n). '
+        f'"DÃÂÃÂ¼n" derse date={(operation_date()-timedelta(days=1)).isoformat()}. '
+        '"X gÃÂÃÂ¼n ÃÂÃÂ¶nce" veya "X Haziran" gibi ifadeleri doÃÂÃÂru tarihe ÃÂÃÂ§evir. '
         f"Saat baglami: Simdiki yerel saat {now_istanbul().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
         f"Gece/vardiya kayit kurali: aktif gec pencere {current_shift_info().get('late_window')}. Bu pencerede yatmadan once stack, vitamin, ogun, su, adim, kilo ve gun sonu notlari kullanici aksini soylemedikce bir onceki operasyon gunune aittir. 03:30da uyuyacagim/yatacagim gibi ifadeler uyku suresi degildir; sleep hours olarak 3.3 kaydetme. Uyku kaydi icin ancak uyudum/kalktim/uyandim veya baslangic-bitis netse action uret.\n"
-        'BugÃÂ¼n: ' + operation_today() + '\n'
+        'BugÃÂÃÂ¼n: ' + operation_today() + '\n'
         'Karar baglami: ' + (tg_context_note_for_prompt(user_text) if 'tg_context_note_for_prompt' in globals() else '') + '\n'
-        'BugÃÂ¼nÃÂ¼n verisi: ' + json.dumps(ctx, ensure_ascii=False) + '\n'
-        'Son 7 gÃÂ¼nÃÂ¼n ÃÂ¶zeti: ' + json.dumps(week_ctx, ensure_ascii=False)
+        'BugÃÂÃÂ¼nÃÂÃÂ¼n verisi: ' + json.dumps(ctx, ensure_ascii=False) + '\n'
+        'Son 7 gÃÂÃÂ¼nÃÂÃÂ¼n ÃÂÃÂ¶zeti: ' + json.dumps(week_ctx, ensure_ascii=False)
     )
     body = {
         'model': ANTHROPIC_MODEL,
@@ -2289,10 +2289,10 @@ def _claude_call(user_text):
             msg = json.loads(detail).get('error', {}).get('message', detail[:200])
         except Exception:
             msg = detail[:200]
-        return {'reply': f'Claude hatasÃÂ±: {msg}', 'actions': []}
+        return {'reply': f'Claude hatasÃÂÃÂ±: {msg}', 'actions': []}
     except Exception:
         log.exception("Claude cevap hatasi")
-        return {'reply': 'BaÃÂlantÃÂ± sorunu. Tekrar dener misin?', 'actions': []}
+        return {'reply': 'BaÃÂÃÂlantÃÂÃÂ± sorunu. Tekrar dener misin?', 'actions': []}
 
 
 def ai_coach_call(user_text):
@@ -2301,8 +2301,8 @@ def ai_coach_call(user_text):
     if not OPENAI_API_KEY:
         return {
             'reply': (
-                'AI modu aktif deÃÂil.\n\n'
-                'KomutlarÃÂ± kullanabilirsin:\n'
+                'AI modu aktif deÃÂÃÂil.\n\n'
+                'KomutlarÃÂÃÂ± kullanabilirsin:\n'
                 '/uyku /egzersiz /yemek /su /mood /vitamin\n'
                 '/bugun /rapor /hafta /antrenman'
             ),
@@ -2313,21 +2313,21 @@ def ai_coach_call(user_text):
     ctx = _today_ai_context()
 
     system_prompt = (
-        "Sen Taha Serdem'in kiÃÂisel antrenman ve gÃÂ¼nlÃÂ¼k performans koÃÂ§usun. "
-        "TÃÂ¼rkÃÂ§e, samimi ve net konuÃÂ. Motive edici ama gerÃÂ§ekÃÂ§i ol.\n"
-        "KullanÃÂ±cÃÂ±nÃÂ±n mesajÃÂ±nÃÂ± analiz et. KayÃÂ±t iÃÂ§eriyorsa actions listesini doldur. "
+        "Sen Taha Serdem'in kiÃÂÃÂisel antrenman ve gÃÂÃÂ¼nlÃÂÃÂ¼k performans koÃÂÃÂ§usun. "
+        "TÃÂÃÂ¼rkÃÂÃÂ§e, samimi ve net konuÃÂÃÂ. Motive edici ama gerÃÂÃÂ§ekÃÂÃÂ§i ol.\n"
+        "KullanÃÂÃÂ±cÃÂÃÂ±nÃÂÃÂ±n mesajÃÂÃÂ±nÃÂÃÂ± analiz et. KayÃÂÃÂ±t iÃÂÃÂ§eriyorsa actions listesini doldur. "
         "Eksik bilgi varsa once makul tahminle kaydet ve belirsizligi reply icinde belirt; sadece kritik bilgi tamamen yoksa kisa soru sor. Tam gun beslenme mesajlarinda asla detay ver diye kacma; mevcut gramajlardan yaklasik gun toplamlarini cikar.\n"
-        "Medikal teÃÂhis koyma.\n\n"
-        "SADECE geÃÂ§erli JSON dÃÂ¶ndÃÂ¼r, baÃÂka hiÃÂ§bir ÃÂey yazma:\n"
+        "Medikal teÃÂÃÂhis koyma.\n\n"
+        "SADECE geÃÂÃÂ§erli JSON dÃÂÃÂ¶ndÃÂÃÂ¼r, baÃÂÃÂka hiÃÂÃÂ§bir ÃÂÃÂey yazma:\n"
         '{"reply":"...","actions":['
         '{"type":"sleep","hours":7.5,"quality":8},'
         '{"type":"exercise","exercise_type":"Upper","duration":60,"intensity":8,"notes":""},'
-        '{"type":"meal","slot":"kahvaltÃÂ±","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10},'
+        '{"type":"meal","slot":"kahvaltÃÂÃÂ±","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10},'
         '{"type":"water","water_ml":500},{"type":"water_set","water_ml":3200},{"type":"delete_water"},'
         '{"type":"mood","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","name":"D3","amount":"5000","unit":"IU"},'
         '{"type":"training_exercise","exercise":"Bench press","set_details":[{"type":"Warm up","reps":"12","weight":"40 kg"},{"type":"Working set","reps":"8","weight":"80 kg"},{"type":"Back off","reps":"12","weight":"60 kg"}]},'
-        '{"type":"steps","steps":8500},{"type":"body_weight","weight_kg":95.2},{"type":"skin_log","area":"yÃÂ¼z","name":"Benzoyl peroxide","status":"done"},{"type":"note","note":"..."}'
+        '{"type":"steps","steps":8500},{"type":"body_weight","weight_kg":95.2},{"type":"skin_log","area":"yÃÂÃÂ¼z","name":"Benzoyl peroxide","status":"done"},{"type":"note","note":"..."}'
         ']}'
     )
 
@@ -2337,7 +2337,7 @@ def ai_coach_call(user_text):
         'messages': [
             {
                 'role': 'system',
-                'content': system_prompt + '\n\nBugÃÂ¼nÃÂ¼n verisi: ' + json.dumps(ctx, ensure_ascii=False)
+                'content': system_prompt + '\n\nBugÃÂÃÂ¼nÃÂÃÂ¼n verisi: ' + json.dumps(ctx, ensure_ascii=False)
             },
             {'role': 'user', 'content': user_text}
         ]
@@ -2365,17 +2365,17 @@ def ai_coach_call(user_text):
             msg = err.get('error', {}).get('message', detail[:200])
         except Exception:
             msg = detail[:200]
-        return {'reply': f'OpenAI hatasÃÂ±: {msg}', 'actions': []}
+        return {'reply': f'OpenAI hatasÃÂÃÂ±: {msg}', 'actions': []}
     except Exception:
         log.exception("OpenAI cevap hatasi")
-        return {'reply': 'AI cevabÃÂ±nÃÂ± iÃÂlerken sorun ÃÂ§ÃÂ±ktÃÂ±. Tekrar dener misin?', 'actions': []}
+        return {'reply': 'AI cevabÃÂÃÂ±nÃÂÃÂ± iÃÂÃÂlerken sorun ÃÂÃÂ§ÃÂÃÂ±ktÃÂÃÂ±. Tekrar dener misin?', 'actions': []}
 
 
 def tg_template_name_from_text(raw_text):
     text = (raw_text or '').strip()
     if not text:
         return ''
-    m = re.search(r'ad[ÃÂ±i]\s+(.+?)\s+olsun', text, flags=re.I)
+    m = re.search(r'ad[ÃÂÃÂ±i]\s+(.+?)\s+olsun', text, flags=re.I)
     if m:
         name = m.group(1).strip(" .,!?:;")
         return name[:60]
@@ -2388,20 +2388,20 @@ def tg_template_name_from_text(raw_text):
 def tg_meal_category_from_text(raw_text, slot=''):
     text = (raw_text or '').lower()
     if any(w in text for w in ['sabah', 'kahvalt', 'breakfast']):
-        return 'kahvaltÃÂ±'
-    if any(w in text for w in ['pre', 'antrenman ÃÂ¶ncesi', 'idman ÃÂ¶ncesi']):
+        return 'kahvaltÃÂÃÂ±'
+    if any(w in text for w in ['pre', 'antrenman ÃÂÃÂ¶ncesi', 'idman ÃÂÃÂ¶ncesi']):
         return 'pre-antrenman'
-    if any(w in text for w in ['post', 'antrenman sonrasÃÂ±', 'idman sonrasÃÂ±']):
+    if any(w in text for w in ['post', 'antrenman sonrasÃÂÃÂ±', 'idman sonrasÃÂÃÂ±']):
         return 'post-antrenman'
-    if any(w in text for w in ['ÃÂ¶ÃÂle', 'ogle', 'lunch']):
-        return 'ÃÂ¶ÃÂle'
-    if any(w in text for w in ['akÃÂam', 'aksam', 'dinner']):
-        return 'akÃÂam'
+    if any(w in text for w in ['ÃÂÃÂ¶ÃÂÃÂle', 'ogle', 'lunch']):
+        return 'ÃÂÃÂ¶ÃÂÃÂle'
+    if any(w in text for w in ['akÃÂÃÂam', 'aksam', 'dinner']):
+        return 'akÃÂÃÂam'
     return slot or 'extra'
 
 def tg_should_save_template(raw_text):
     text = (raw_text or '').lower()
-    return any(w in text for w in ['fiks', 'fix', 'sabit', 'ÃÂablon', 'sablon', 'favori', 'hep kullan', 'kaydet'])
+    return any(w in text for w in ['fiks', 'fix', 'sabit', 'ÃÂÃÂablon', 'sablon', 'favori', 'hep kullan', 'kaydet'])
 
 def tg_save_meal_template_from_actions(raw_text, actions):
     if not tg_should_save_template(raw_text):
@@ -2413,9 +2413,9 @@ def tg_save_meal_template_from_actions(raw_text, actions):
             break
     if not meal:
         return ''
-    title = tg_template_name_from_text(raw_text) or meal.get('title') or meal.get('slot') or 'Sabit ÃÂÃÂÃÂ¼n'
+    title = tg_template_name_from_text(raw_text) or meal.get('title') or meal.get('slot') or 'Sabit ÃÂÃÂÃÂÃÂÃÂÃÂ¼n'
     if 'kahvalt' in tg_meal_category_from_text(raw_text, meal.get('slot') or '') and 'kahvalt' not in title.lower():
-        title = title.strip() + ' KahvaltÃÂ±sÃÂ±'
+        title = title.strip() + ' KahvaltÃÂÃÂ±sÃÂÃÂ±'
     category = tg_meal_category_from_text(raw_text, meal.get('slot') or '')
     desc = meal.get('description') or title
     conn = get_db()
@@ -2435,7 +2435,7 @@ def tg_save_meal_template_from_actions(raw_text, actions):
             INSERT INTO quick_templates
                 (kind, category, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, amount, unit, notes)
             VALUES ('meal',?,?,?,?,?,?,?,?,?,?,?)
-        """, payload + ('', '', 'telegram-ai sabit ÃÂ¶ÃÂÃÂ¼n'))
+        """, payload + ('', '', 'telegram-ai sabit ÃÂÃÂ¶ÃÂÃÂÃÂÃÂ¼n'))
     conn.commit(); conn.close()
     return title
 
@@ -2482,8 +2482,8 @@ def tg_direct_mood_actions_from_text(raw_text, chat_id=''):
     last = tg_last_bot_prompt(chat_id)
     norm = (last or '').lower()
     prompt_words = (
-        'hisset', 'ruh', 'mood', 'moral', 'nasÃÂ±l kalktÃÂ±n', 'nasil kalktin',
-        'nasÃÂ±l uyandÃÂ±n', 'nasil uyandin', 'uyandÃÂ±ÃÂÃÂ±nda', 'uyandiginda'
+        'hisset', 'ruh', 'mood', 'moral', 'nasÃÂÃÂ±l kalktÃÂÃÂ±n', 'nasil kalktin',
+        'nasÃÂÃÂ±l uyandÃÂÃÂ±n', 'nasil uyandin', 'uyandÃÂÃÂ±ÃÂÃÂÃÂÃÂ±nda', 'uyandiginda'
     )
     if last and not any(w in norm for w in prompt_words):
         return []
@@ -2526,7 +2526,7 @@ def ai_apply_actions(actions):
                     a.get('fat_g'), a.get('fiber_g'), 'telegram-ai'
                 ))
                 conn.commit(); conn.close()
-                saved.append('ÃÂ¶ÃÂÃÂ¼n')
+                saved.append('ÃÂÃÂ¶ÃÂÃÂÃÂÃÂ¼n')
             elif typ == 'water':
                 ml = int(a.get('water_ml') or 0)
                 if ml > 0:
@@ -2550,7 +2550,7 @@ def ai_apply_actions(actions):
                 else:
                     conn.execute("INSERT INTO nutrition_logs (date, water_ml) VALUES (?,?)", (action_date, max(0, ml)))
                 conn.commit(); conn.close()
-                saved.append('su dÃÂ¼zeltildi')
+                saved.append('su dÃÂÃÂ¼zeltildi')
             elif typ in ('delete_water',):
                 conn = get_db()
                 conn.execute("UPDATE nutrition_logs SET water_ml=0 WHERE date=?", (action_date,))
@@ -2624,27 +2624,27 @@ def ai_apply_actions(actions):
                     conn = get_db()
                     conn.execute("INSERT OR REPLACE INTO step_logs (date, steps, notes) VALUES (?,?,?)", (action_date, steps, a.get('notes') or 'telegram-ai'))
                     conn.commit(); conn.close()
-                    saved.append('adÃÂ±m')
+                    saved.append('adÃÂÃÂ±m')
             elif typ in ('skin', 'skin_log'):
                 ensure_skin_tables()
                 conn = get_db()
                 conn.execute("INSERT INTO skin_logs (date, area, name, status, notes) VALUES (?,?,?,?,?)",
-                             (action_date, a.get('area') or 'yÃÂ¼z', a.get('name') or a.get('item') or 'cilt rutini', a.get('status') or 'done', a.get('notes') or 'telegram-ai'))
+                             (action_date, a.get('area') or 'yÃÂÃÂ¼z', a.get('name') or a.get('item') or 'cilt rutini', a.get('status') or 'done', a.get('notes') or 'telegram-ai'))
                 conn.commit(); conn.close()
                 saved.append('cilt')
             elif typ in ('update_steps',):
                 ensure_step_logs_table()
                 steps = int(a.get('steps') or a.get('value') or 0)
                 conn = get_db()
-                conn.execute("INSERT OR REPLACE INTO step_logs (date, steps, notes) VALUES (?,?,?)", (action_date, max(0, steps), a.get('notes') or 'telegram-ai dÃÂ¼zeltme'))
+                conn.execute("INSERT OR REPLACE INTO step_logs (date, steps, notes) VALUES (?,?,?)", (action_date, max(0, steps), a.get('notes') or 'telegram-ai dÃÂÃÂ¼zeltme'))
                 conn.commit(); conn.close()
-                saved.append('adÃÂ±m dÃÂ¼zeltildi')
+                saved.append('adÃÂÃÂ±m dÃÂÃÂ¼zeltildi')
             elif typ in ('delete_steps',):
                 ensure_step_logs_table()
                 conn = get_db()
                 conn.execute("DELETE FROM step_logs WHERE date=?", (action_date,))
                 conn.commit(); conn.close()
-                saved.append('adÃÂ±m silindi')
+                saved.append('adÃÂÃÂ±m silindi')
             elif typ in ('update_weight',):
                 ensure_body_metrics_table()
                 kg = float(a.get('weight_kg') or a.get('kg') or a.get('value') or 0)
@@ -2653,9 +2653,9 @@ def ai_apply_actions(actions):
                     INSERT INTO body_metrics (date, weight_kg, notes)
                     VALUES (?,?,?)
                     ON CONFLICT(date) DO UPDATE SET weight_kg=excluded.weight_kg, notes=excluded.notes
-                """, (action_date, kg, a.get('notes') or 'telegram-ai dÃÂ¼zeltme'))
+                """, (action_date, kg, a.get('notes') or 'telegram-ai dÃÂÃÂ¼zeltme'))
                 conn.commit(); conn.close()
-                saved.append('kilo dÃÂ¼zeltildi')
+                saved.append('kilo dÃÂÃÂ¼zeltildi')
             elif typ in ('delete_weight',):
                 ensure_body_metrics_table()
                 conn = get_db()
@@ -2683,12 +2683,12 @@ def tg_try_water_correction(raw_text):
         return None
     norm = text.lower()
     trans = str.maketrans({
-        'ÃÂ±': 'i', 'ÃÂ°': 'i', 'ÃÂ': 'g', 'ÃÂ': 'g', 'ÃÂ¼': 'u', 'ÃÂ': 'u',
-        'ÃÂ': 's', 'ÃÂ': 's', 'ÃÂ¶': 'o', 'ÃÂ': 'o', 'ÃÂ§': 'c', 'ÃÂ': 'c'
+        'ÃÂÃÂ±': 'i', 'ÃÂÃÂ°': 'i', 'ÃÂÃÂ': 'g', 'ÃÂÃÂ': 'g', 'ÃÂÃÂ¼': 'u', 'ÃÂÃÂ': 'u',
+        'ÃÂÃÂ': 's', 'ÃÂÃÂ': 's', 'ÃÂÃÂ¶': 'o', 'ÃÂÃÂ': 'o', 'ÃÂÃÂ§': 'c', 'ÃÂÃÂ': 'c'
     })
     n = norm.translate(trans)
     water_words = ('su', 'suyu', 'water')
-    correction_words = ('azalt', 'dus', 'dÃÂ¼ÃÂ', 'eksilt', 'geri al', 'yanlis', 'yanlÃÂ±ÃÂ', 'fazla', 'sil')
+    correction_words = ('azalt', 'dus', 'dÃÂÃÂ¼ÃÂÃÂ', 'eksilt', 'geri al', 'yanlis', 'yanlÃÂÃÂ±ÃÂÃÂ', 'fazla', 'sil')
     if not any(w in n for w in water_words) or not any(w in n for w in correction_words):
         return None
 
@@ -2718,7 +2718,7 @@ def tg_try_water_correction(raw_text):
         'type': 'water_correction',
         'water_ml_delta': -amount_ml,
         'water_ml_total': new_total,
-        'reply': f"Tamam, suyu {amount_ml} ml azalttÃÂ±m. Yeni toplam: {new_total/1000:.2f} L."
+        'reply': f"Tamam, suyu {amount_ml} ml azalttÃÂÃÂ±m. Yeni toplam: {new_total/1000:.2f} L."
     }
 
 
@@ -2730,7 +2730,7 @@ def tg_water_actions_from_text(raw_text):
     norm = _tg_norm(text) if '_tg_norm' in globals() else text.lower()
     if not any(w in norm for w in ['su', 'water', 'ml', 'litre', 'lt']):
         return []
-    # "su 3 litre oldu/toplam" -> total set, otherwise "200ml su iÃÂ§ildi" -> add
+    # "su 3 litre oldu/toplam" -> total set, otherwise "200ml su iÃÂÃÂ§ildi" -> add
     m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)?', norm)
     if not m:
         return []
@@ -2740,7 +2740,7 @@ def tg_water_actions_from_text(raw_text):
     if ml <= 0:
         return []
     date = tg_effective_log_date(text, 'water') if 'tg_effective_log_date' in globals() else operation_today()
-    is_total = any(w in norm for w in ['toplam', 'olsun', 'olarak', 'yap', 'duzelt', 'dÃÂ¼zelt', 'set'])
+    is_total = any(w in norm for w in ['toplam', 'olsun', 'olarak', 'yap', 'duzelt', 'dÃÂÃÂ¼zelt', 'set'])
     return [{'type': 'water_set' if is_total else 'water', 'date': date, 'water_ml': ml}]
 
 def tg_basic_actions_from_text(raw_text):
@@ -2748,10 +2748,10 @@ def tg_basic_actions_from_text(raw_text):
     text = raw_text or ''
     low = text.lower()
     trans = str.maketrans({
-        'ÃÂ±': 'i', 'ÃÂ°': 'i', 'ÃÂ': 'g', 'ÃÂ': 'g', 'ÃÂ¼': 'u', 'ÃÂ': 'u',
-        'ÃÂ': 's', 'ÃÂ': 's', 'ÃÂ¶': 'o', 'ÃÂ': 'o', 'ÃÂ§': 'c', 'ÃÂ': 'c',
-        'ÃÂÃÂ±': 'i', 'ÃÂÃÂ°': 'i', 'ÃÂÃÂ¸': 'g', 'ÃÂÃÂ¾': 'g', 'ÃÂÃÂ¼': 'u', 'ÃÂÃÂ': 'u',
-        'ÃÂÃÂ¸': 's', 'ÃÂÃÂ¾': 's', 'ÃÂÃÂ¶': 'o', 'ÃÂÃ¢ÂÂ': 'o', 'ÃÂÃÂ§': 'c', 'ÃÂÃ¢ÂÂ¡': 'c'
+        'ÃÂÃÂ±': 'i', 'ÃÂÃÂ°': 'i', 'ÃÂÃÂ': 'g', 'ÃÂÃÂ': 'g', 'ÃÂÃÂ¼': 'u', 'ÃÂÃÂ': 'u',
+        'ÃÂÃÂ': 's', 'ÃÂÃÂ': 's', 'ÃÂÃÂ¶': 'o', 'ÃÂÃÂ': 'o', 'ÃÂÃÂ§': 'c', 'ÃÂÃÂ': 'c',
+        'ÃÂÃÂÃÂÃÂ±': 'i', 'ÃÂÃÂÃÂÃÂ°': 'i', 'ÃÂÃÂÃÂÃÂ¸': 'g', 'ÃÂÃÂÃÂÃÂ¾': 'g', 'ÃÂÃÂÃÂÃÂ¼': 'u', 'ÃÂÃÂÃÂÃÂ': 'u',
+        'ÃÂÃÂÃÂÃÂ¸': 's', 'ÃÂÃÂÃÂÃÂ¾': 's', 'ÃÂÃÂÃÂÃÂ¶': 'o', 'ÃÂÃÂÃÂ¢ÃÂÃÂ': 'o', 'ÃÂÃÂÃÂÃÂ§': 'c', 'ÃÂÃÂÃÂ¢ÃÂÃÂ¡': 'c'
     })
     norm = low.translate(trans)
     today = operation_today()
@@ -2776,18 +2776,18 @@ def tg_basic_actions_from_text(raw_text):
             actions.append({'type': 'steps', 'date': today, 'steps': max(step_nums), 'notes': 'telegram-basic'})
 
     if any(w in norm for w in ['kahvalti', 'ogle', 'aksam', 'pre', 'post', 'ogun']):
-        cal = re.search(r'(?:kalori|kcal|calories)\s*[:~Ã¢ÂÂ ]+\s*(\d{2,5})', norm)
-        pro = re.search(r'(?:protein|p)\s*[:~Ã¢ÂÂ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
-        carb = re.search(r'(?:karbonhidrat|karb|carb|k)\s*[:~Ã¢ÂÂ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
-        fat = re.search(r'(?:yag|yaÃÂ|fat|y)\s*[:~Ã¢ÂÂ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
+        cal = re.search(r'(?:kalori|kcal|calories)\s*[:~ÃÂ¢ÃÂÃÂ ]+\s*(\d{2,5})', norm)
+        pro = re.search(r'(?:protein|p)\s*[:~ÃÂ¢ÃÂÃÂ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
+        carb = re.search(r'(?:karbonhidrat|karb|carb|k)\s*[:~ÃÂ¢ÃÂÃÂ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
+        fat = re.search(r'(?:yag|yaÃÂÃÂ|fat|y)\s*[:~ÃÂ¢ÃÂÃÂ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
         if cal or pro or carb or fat:
             slot = 'extra'
             if 'kahvalti' in norm:
-                slot = 'kahvaltÃÂ±'
+                slot = 'kahvaltÃÂÃÂ±'
             elif 'ogle' in norm:
-                slot = 'ÃÂ¶ÃÂle'
+                slot = 'ÃÂÃÂ¶ÃÂÃÂle'
             elif 'aksam' in norm:
-                slot = 'akÃÂam'
+                slot = 'akÃÂÃÂam'
             elif 'pre' in norm:
                 slot = 'pre-workout'
             elif 'post' in norm:
@@ -2811,10 +2811,10 @@ def tg_full_day_actions_from_text(raw_text):
     text = raw_text or ''
     low = text.lower()
     trans = str.maketrans({
-        'ÃÂ±': 'i', 'ÃÂ°': 'i', 'ÃÂ': 'g', 'ÃÂ': 'g', 'ÃÂ¼': 'u', 'ÃÂ': 'u',
-        'ÃÂ': 's', 'ÃÂ': 's', 'ÃÂ¶': 'o', 'ÃÂ': 'o', 'ÃÂ§': 'c', 'ÃÂ': 'c',
-        'ÃÂÃÂ±': 'i', 'ÃÂÃÂ°': 'i', 'ÃÂÃÂ¸': 'g', 'ÃÂÃÂ¾': 'g', 'ÃÂÃÂ¼': 'u', 'ÃÂÃÂ': 'u',
-        'ÃÂÃÂ¸': 's', 'ÃÂÃÂ¾': 's', 'ÃÂÃÂ¶': 'o', 'ÃÂÃ¢ÂÂ': 'o', 'ÃÂÃÂ§': 'c', 'ÃÂÃ¢ÂÂ¡': 'c'
+        'ÃÂÃÂ±': 'i', 'ÃÂÃÂ°': 'i', 'ÃÂÃÂ': 'g', 'ÃÂÃÂ': 'g', 'ÃÂÃÂ¼': 'u', 'ÃÂÃÂ': 'u',
+        'ÃÂÃÂ': 's', 'ÃÂÃÂ': 's', 'ÃÂÃÂ¶': 'o', 'ÃÂÃÂ': 'o', 'ÃÂÃÂ§': 'c', 'ÃÂÃÂ': 'c',
+        'ÃÂÃÂÃÂÃÂ±': 'i', 'ÃÂÃÂÃÂÃÂ°': 'i', 'ÃÂÃÂÃÂÃÂ¸': 'g', 'ÃÂÃÂÃÂÃÂ¾': 'g', 'ÃÂÃÂÃÂÃÂ¼': 'u', 'ÃÂÃÂÃÂÃÂ': 'u',
+        'ÃÂÃÂÃÂÃÂ¸': 's', 'ÃÂÃÂÃÂÃÂ¾': 's', 'ÃÂÃÂÃÂÃÂ¶': 'o', 'ÃÂÃÂÃÂ¢ÃÂÃÂ': 'o', 'ÃÂÃÂÃÂÃÂ§': 'c', 'ÃÂÃÂÃÂ¢ÃÂÃÂ¡': 'c'
     })
     norm = low.translate(trans)
     if not any(x in norm for x in ['kahvalti', 'ogle', 'aksam']):
@@ -2831,9 +2831,9 @@ def tg_full_day_actions_from_text(raw_text):
         return text[start:end]
 
     sections = [
-        ('kahvaltÃÂ±', section('kahvaltÃÂ±', ['kahvalti'], ['ogle', 'aksam', 'gun totali'])),
-        ('ÃÂ¶ÃÂle', section('ÃÂ¶ÃÂle', ['ogle'], ['aksam', 'gun totali'])),
-        ('akÃÂam', section('akÃÂam', ['aksam'], ['gun totali'])),
+        ('kahvaltÃÂÃÂ±', section('kahvaltÃÂÃÂ±', ['kahvalti'], ['ogle', 'aksam', 'gun totali'])),
+        ('ÃÂÃÂ¶ÃÂÃÂle', section('ÃÂÃÂ¶ÃÂÃÂle', ['ogle'], ['aksam', 'gun totali'])),
+        ('akÃÂÃÂam', section('akÃÂÃÂam', ['aksam'], ['gun totali'])),
     ]
 
     def add(a, b):
@@ -2867,10 +2867,10 @@ def tg_full_day_actions_from_text(raw_text):
                 out = {'cal': grams * 0.32, 'p': grams * 0.007, 'c': grams * 0.077, 'f': grams * 0.003}
             elif 'mercimek' in ln:
                 out = {'cal': 115.0, 'p': 9.0, 'c': 20.0, 'f': 0.5}
-        if 'yarim kase mercimek' in ln or 'yarÃÂ±m kase mercimek' in line.lower():
+        if 'yarim kase mercimek' in ln or 'yarÃÂÃÂ±m kase mercimek' in line.lower():
             out = add(out, {'cal': 115.0, 'p': 9.0, 'c': 20.0, 'f': 0.5})
-        if 'gymbeam' in ln and any(w in ln for w in ['fis', 'basis', 'basÃÂ±ÃÂ', 'spray']):
-            fm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:fis|basis|basÃÂ±ÃÂ|spray)', ln)
+        if 'gymbeam' in ln and any(w in ln for w in ['fis', 'basis', 'basÃÂÃÂ±ÃÂÃÂ', 'spray']):
+            fm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:fis|basis|basÃÂÃÂ±ÃÂÃÂ|spray)', ln)
             if fm:
                 sprays = float(fm.group(1).replace(',', '.'))
                 out = add(out, {'cal': sprays * 15.0, 'p': 0.0, 'c': 0.0, 'f': sprays * 1.65})
@@ -3146,10 +3146,10 @@ def tg_full_day_reply(actions):
 def tg_ascii_text(raw_text):
     text = (raw_text or '').lower()
     pairs = [
-        ('ÃÂ±','i'),('ÃÂ°','i'),('ÃÂ','g'),('ÃÂ','g'),('ÃÂ¼','u'),('ÃÂ','u'),
-        ('ÃÂ','s'),('ÃÂ','s'),('ÃÂ¶','o'),('ÃÂ','o'),('ÃÂ§','c'),('ÃÂ','c'),
-        ('ÃÂÃÂ±','i'),('ÃÂÃÂ°','i'),('ÃÂÃÂ¸','g'),('ÃÂÃÂ¾','g'),('ÃÂÃÂ¼','u'),('ÃÂÃÂ','u'),
-        ('ÃÂÃÂ¸','s'),('ÃÂÃÂ¾','s'),('ÃÂÃÂ¶','o'),('ÃÂÃ¢ÂÂ','o'),('ÃÂÃÂ§','c'),('ÃÂÃ¢ÂÂ¡','c')
+        ('ÃÂÃÂ±','i'),('ÃÂÃÂ°','i'),('ÃÂÃÂ','g'),('ÃÂÃÂ','g'),('ÃÂÃÂ¼','u'),('ÃÂÃÂ','u'),
+        ('ÃÂÃÂ','s'),('ÃÂÃÂ','s'),('ÃÂÃÂ¶','o'),('ÃÂÃÂ','o'),('ÃÂÃÂ§','c'),('ÃÂÃÂ','c'),
+        ('ÃÂÃÂÃÂÃÂ±','i'),('ÃÂÃÂÃÂÃÂ°','i'),('ÃÂÃÂÃÂÃÂ¸','g'),('ÃÂÃÂÃÂÃÂ¾','g'),('ÃÂÃÂÃÂÃÂ¼','u'),('ÃÂÃÂÃÂÃÂ','u'),
+        ('ÃÂÃÂÃÂÃÂ¸','s'),('ÃÂÃÂÃÂÃÂ¾','s'),('ÃÂÃÂÃÂÃÂ¶','o'),('ÃÂÃÂÃÂ¢ÃÂÃÂ','o'),('ÃÂÃÂÃÂÃÂ§','c'),('ÃÂÃÂÃÂ¢ÃÂÃÂ¡','c')
     ]
     for a, b in pairs:
         text = text.replace(a, b)
@@ -3278,9 +3278,9 @@ def tg_meal_count(actions):
 def tg_is_weak_ai_reply(reply):
     r = (reply or '').lower()
     return any(x in r for x in [
-        'baÃÂlantÃÂ± sorunu', 'baglanti sorunu', 'tekrar dener misin',
-        'detaylarÃÂ±nÃÂ± biraz daha aÃÂ§', 'detaylarini biraz daha ac',
-        'tam hesaplayabilmem', 'eksik', 'claude hatasÃÂ±', 'openai hatasÃÂ±'
+        'baÃÂÃÂlantÃÂÃÂ± sorunu', 'baglanti sorunu', 'tekrar dener misin',
+        'detaylarÃÂÃÂ±nÃÂÃÂ± biraz daha aÃÂÃÂ§', 'detaylarini biraz daha ac',
+        'tam hesaplayabilmem', 'eksik', 'claude hatasÃÂÃÂ±', 'openai hatasÃÂÃÂ±'
     ])
 
 def tg_smart_daily_reply(actions, original_reply=''):
@@ -3338,7 +3338,7 @@ def tg_template_norm(raw_text):
     if 'tg_ascii_text' in globals():
         return tg_ascii_text(raw_text)
     text = (raw_text or '').lower()
-    for a, b in [('ÃÂ±','i'),('ÃÂ°','i'),('ÃÂ','g'),('ÃÂ¼','u'),('ÃÂ','s'),('ÃÂ¶','o'),('ÃÂ§','c')]:
+    for a, b in [('ÃÂÃÂ±','i'),('ÃÂÃÂ°','i'),('ÃÂÃÂ','g'),('ÃÂÃÂ¼','u'),('ÃÂÃÂ','s'),('ÃÂÃÂ¶','o'),('ÃÂÃÂ§','c')]:
         text = text.replace(a, b)
     return text
 
@@ -3367,10 +3367,10 @@ def tg_template_name_from_text(raw_text):
     if not text:
         return ''
     for pat in [
-        r'ad[ÃÂ±i]\s+(.+?)\s+olsun',
+        r'ad[ÃÂÃÂ±i]\s+(.+?)\s+olsun',
         r'ismi\s+(.+?)\s+olsun',
         r'isimi\s+(.+?)\s+olsun',
-        r'bunun\s+ad[ÃÂ±i]\s+(.+?)\s+olsun',
+        r'bunun\s+ad[ÃÂÃÂ±i]\s+(.+?)\s+olsun',
         r'(.{2,60}?)\s+olarak\s+kaydet',
     ]:
         m = re.search(pat, text, flags=re.I)
@@ -3383,11 +3383,11 @@ def tg_template_name_from_text(raw_text):
 def tg_meal_category_from_text(raw_text, slot=''):
     norm = tg_template_norm(raw_text)
     if 'kahvalti' in norm or 'sabah' in norm:
-        return 'kahvaltÃÂ±'
+        return 'kahvaltÃÂÃÂ±'
     if 'ogle' in norm:
-        return 'ÃÂ¶ÃÂle'
+        return 'ÃÂÃÂ¶ÃÂÃÂle'
     if 'aksam' in norm:
-        return 'akÃÂam'
+        return 'akÃÂÃÂam'
     if 'pre' in norm:
         return 'pre-antrenman'
     if 'post' in norm:
@@ -3401,7 +3401,7 @@ def tg_should_stack_template(raw_text):
 def tg_supp_category_from_text(raw_text):
     norm = tg_template_norm(raw_text)
     if any(w in norm for w in ['uyku', 'melatonin', 'glycine', 'glisin', 'magnesium', 'magnezyum']):
-        return 'uyku ÃÂ¶ncesi'
+        return 'uyku ÃÂÃÂ¶ncesi'
     if any(w in norm for w in ['pre', 'citrulline', 'kreatin', 'creatine', 'beta']):
         return 'pre-workout'
     if any(w in norm for w in ['cilt', 'skin', 'nac', 'zinc', 'cinko']):
@@ -3510,18 +3510,18 @@ def tg_touch_heartbeat(status='running', message=''):
         pass
 
 def tg_effective_log_date(raw_text='', action_type=''):
-    """Telegram'da gece 00:00 sonrasÃÂ± yazÃÂ±lan gÃÂ¼n-sonu kayÃÂ±tlarÃÂ±nÃÂ± ÃÂ¶nceki gÃÂ¼ne baÃÂla."""
+    """Telegram'da gece 00:00 sonrasÃÂÃÂ± yazÃÂÃÂ±lan gÃÂÃÂ¼n-sonu kayÃÂÃÂ±tlarÃÂÃÂ±nÃÂÃÂ± ÃÂÃÂ¶nceki gÃÂÃÂ¼ne baÃÂÃÂla."""
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
     now = now_istanbul()
     today = now.date()
-    if any(w in norm for w in ['dun', 'dunku', 'dÃÂ¼n']):
+    if any(w in norm for w in ['dun', 'dunku', 'dÃÂÃÂ¼n']):
         return (today - timedelta(days=1)).isoformat()
     if any(w in norm for w in ['bugun', 'bug??nk??', 'bugunku']):
         return operation_today() if 'operation_today' in globals() else today.isoformat()
     late_types = {'meal', 'vitamin', 'supplement', 'water', 'steps', 'step', 'weight', 'body_weight', 'kilo', 'note', 'mood'}
     day_end_words = [
-        'gece', 'yatmadan', 'uyku oncesi', 'uyku ÃÂ¶ncesi', 'gun sonu', 'gÃÂ¼n sonu',
-        'stack', 'vitamin', 'takviye', 'supplement', 'aksam', 'akÃÂam', 'bugun yediklerim'
+        'gece', 'yatmadan', 'uyku oncesi', 'uyku ÃÂÃÂ¶ncesi', 'gun sonu', 'gÃÂÃÂ¼n sonu',
+        'stack', 'vitamin', 'takviye', 'supplement', 'aksam', 'akÃÂÃÂam', 'bugun yediklerim'
     ]
     if 0 <= now.hour < operation_cutoff_hour(now) and ((action_type or '') in late_types or any(w in norm for w in day_end_words)):
         return (today - timedelta(days=1)).isoformat()
@@ -3533,11 +3533,11 @@ def tg_night_casual_reply(raw_text=''):
     if not (0 <= now.hour < operation_cutoff_hour(now)):
         return ''
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    casual_words = ['naber', 'selam', 'merhaba', 'hey', 'kontrol', 'calisiyor', 'ÃÂ§alisiyor', 'ÃÂ§alÃÂ±ÃÂÃÂ±yor']
+    casual_words = ['naber', 'selam', 'merhaba', 'hey', 'kontrol', 'calisiyor', 'ÃÂÃÂ§alisiyor', 'ÃÂÃÂ§alÃÂÃÂ±ÃÂÃÂÃÂÃÂ±yor']
     record_words = [
-        'kilo', 'kg', 'su', 'adim', 'adÃÂ±m', 'uyudum', 'uyandim', 'uyandÃÂ±m', 'kalktim', 'kalktÃÂ±m',
-        'nac', 'probiyotik', 'omega', 'vitamin', 'stack', 'takviye', 'kahvalti', 'kahvaltÃÂ±',
-        'ogle', 'ÃÂ¶gle', 'ÃÂ¶ÃÂle', 'aksam', 'akÃÂam', 'tavuk', 'yulaf', 'yumurta', 'antrenman'
+        'kilo', 'kg', 'su', 'adim', 'adÃÂÃÂ±m', 'uyudum', 'uyandim', 'uyandÃÂÃÂ±m', 'kalktim', 'kalktÃÂÃÂ±m',
+        'nac', 'probiyotik', 'omega', 'vitamin', 'stack', 'takviye', 'kahvalti', 'kahvaltÃÂÃÂ±',
+        'ogle', 'ÃÂÃÂ¶gle', 'ÃÂÃÂ¶ÃÂÃÂle', 'aksam', 'akÃÂÃÂam', 'tavuk', 'yulaf', 'yumurta', 'antrenman'
     ]
     if any(w in norm for w in casual_words) and not any(w in norm for w in record_words):
         return (
@@ -3548,8 +3548,8 @@ def tg_night_casual_reply(raw_text=''):
 
 def tg_is_future_bedtime_statement(raw_text):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    future_words = ['uyuyaca', 'uyuyacagim', 'uyuyacaÃÂÃÂ±m', 'uyucam', 'uyicam', 'yataca', 'yatacagim', 'yatacaÃÂÃÂ±m', 'yatcam']
-    slept_words = ['uyudum', 'uyumusum', 'uyumuÃÂum', 'kalktim', 'kalktÃÂ±m', 'uyandim', 'uyandÃÂ±m']
+    future_words = ['uyuyaca', 'uyuyacagim', 'uyuyacaÃÂÃÂÃÂÃÂ±m', 'uyucam', 'uyicam', 'yataca', 'yatacagim', 'yatacaÃÂÃÂÃÂÃÂ±m', 'yatcam']
+    slept_words = ['uyudum', 'uyumusum', 'uyumuÃÂÃÂum', 'kalktim', 'kalktÃÂÃÂ±m', 'uyandim', 'uyandÃÂÃÂ±m']
     return any(w in norm for w in future_words) and not any(w in norm for w in slept_words)
 
 def tg_weight_context_note(raw_text, action_date):
@@ -3646,7 +3646,7 @@ def tg_food_estimate(line):
     ml = float(mlm.group(1)) if mlm else 0.0
 
     qty = 0.0
-    qm = re.search(r'(^|\s)(\d+)\s*(?:tam\s*)?(?:adet\s*)?(yumurta|kayisi|fis|basis|bas[ÃÂ±i]s)', n)
+    qm = re.search(r'(^|\s)(\d+)\s*(?:tam\s*)?(?:adet\s*)?(yumurta|kayisi|fis|basis|bas[ÃÂÃÂ±i]s)', n)
     if qm:
         qty = float(qm.group(2))
 
@@ -3656,7 +3656,7 @@ def tg_food_estimate(line):
             add(390 * factor, 68 * factor, 3 * factor, 10 * factor)
         elif 'tavuk' in n:
             add(grams * 1.20, grams * 0.23, 0, grams * 0.02)
-        elif 'pirinc' in n or 'pirinÃÂ§' in raw_line.lower():
+        elif 'pirinc' in n or 'pirinÃÂÃÂ§' in raw_line.lower():
             add(grams * 3.60, grams * 0.07, grams * 0.79, grams * 0.006)
         elif 'patates' in n:
             add(grams * 0.77, grams * 0.02, grams * 0.17, grams * 0.001)
@@ -3666,23 +3666,23 @@ def tg_food_estimate(line):
             add(grams * 3.89, grams * 0.169, grams * 0.663, grams * 0.069)
         elif 'cilek' in n:
             add(grams * 0.32, grams * 0.007, grams * 0.077, grams * 0.003)
-        elif 'salatalik' in n or 'salatalÃÂ±k' in raw_line.lower():
+        elif 'salatalik' in n or 'salatalÃÂÃÂ±k' in raw_line.lower():
             add(grams * 0.15, grams * 0.007, grams * 0.036, grams * 0.001)
-        elif 'yumurta beyazi' in n or 'likit yumurta' in n or 'sivi yumurta' in n or 'sÃÂ±vÃÂ± yumurta' in raw_line.lower():
+        elif 'yumurta beyazi' in n or 'likit yumurta' in n or 'sivi yumurta' in n or 'sÃÂÃÂ±vÃÂÃÂ± yumurta' in raw_line.lower():
             add(grams * 0.58, grams * 0.103, grams * 0.012, grams * 0.008)
-        elif 'badem sutu' in n or 'badem sÃÂ¼tÃÂ¼' in raw_line.lower():
+        elif 'badem sutu' in n or 'badem sÃÂÃÂ¼tÃÂÃÂ¼' in raw_line.lower():
             add(grams * 0.14, grams * 0.005, 0, grams * 0.011)
-        elif 'kayisi' in n or 'kayÃÂ±sÃÂ±' in raw_line.lower():
+        elif 'kayisi' in n or 'kayÃÂÃÂ±sÃÂÃÂ±' in raw_line.lower():
             add(grams * 2.41, grams * 0.034, grams * 0.63, grams * 0.005)
         elif 'kakao' in n:
             add(grams * 2.28, grams * 0.20, grams * 0.58, grams * 0.14)
 
-    if ml and ('badem sutu' in n or 'badem sÃÂ¼tÃÂ¼' in raw_line.lower()):
+    if ml and ('badem sutu' in n or 'badem sÃÂÃÂ¼tÃÂÃÂ¼' in raw_line.lower()):
         add(ml * 0.14, ml * 0.005, 0, ml * 0.011)
 
     if qty and 'yumurta' in n and not any(x in n for x in ['beyaz', 'likit', 'sivi']):
         add(qty * 70, qty * 6, qty * 0.5, qty * 5)
-    if qty and ('kayisi' in n or 'kayÃÂ±sÃÂ±' in raw_line.lower()) and not grams:
+    if qty and ('kayisi' in n or 'kayÃÂÃÂ±sÃÂÃÂ±' in raw_line.lower()) and not grams:
         add(qty * 8, qty * 0.1, qty * 2.0, 0)
 
     if 'yarim kase mercimek' in n or ('yarim kase' in n and 'mercimek' in n):
@@ -3694,8 +3694,8 @@ def tg_food_estimate(line):
         if km and float(km.group(1)) > 30:
             kgrams = float(km.group(1))
             add(kgrams * 0.41, kgrams * 0.02, kgrams * 0.062, kgrams * 0.005)
-    if 'gymbeam' in n and any(w in n for w in ['fis', 'basis', 'basÃÂ±s', 'spray']):
-        fm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:fis|basis|basÃÂ±s|spray)', n)
+    if 'gymbeam' in n and any(w in n for w in ['fis', 'basis', 'basÃÂÃÂ±s', 'spray']):
+        fm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:fis|basis|basÃÂÃÂ±s|spray)', n)
         if fm:
             sprays = float(fm.group(1).replace(',', '.'))
             add(sprays * 15, 0, 0, sprays * 1.65)
@@ -3764,7 +3764,7 @@ def tg_full_day_actions_from_text(raw_text):
 def tg_supplement_actions_from_text_legacy(raw_text):
     text = raw_text or ''
     norm = tg_ascii_text(text) if 'tg_ascii_text' in globals() else text.lower()
-    if not any(w in norm for w in ['nac', 'omega', 'd3', 'k2', 'b-complex', 'b complex', 'probiyotik', 'probiotic', 'goz', 'gÃÂ¶z', 'cinko', 'zinc', 'vitamin', 'takviye', 'supplement']):
+    if not any(w in norm for w in ['nac', 'omega', 'd3', 'k2', 'b-complex', 'b complex', 'probiyotik', 'probiotic', 'goz', 'gÃÂÃÂ¶z', 'cinko', 'zinc', 'vitamin', 'takviye', 'supplement']):
         return []
     today = tg_effective_log_date(text, 'vitamin') if 'tg_effective_log_date' in globals() else operation_today()
     catalog = [
@@ -3777,7 +3777,7 @@ def tg_supplement_actions_from_text_legacy(raw_text):
         ('b-complex', 'B-Complex', '1', 'doz', 'Life Extension BioActive Complete B-Complex'),
         ('b complex', 'B-Complex', '1', 'doz', 'Life Extension BioActive Complete B-Complex'),
         ('goz', 'Goz Vitamini', '1', 'doz', 'Life Extension MacuGuard with Saffron'),
-        ('gÃÂ¶z', 'Goz Vitamini', '1', 'doz', 'Life Extension MacuGuard with Saffron'),
+        ('gÃÂÃÂ¶z', 'Goz Vitamini', '1', 'doz', 'Life Extension MacuGuard with Saffron'),
         ('cinko', 'Cinko', '1', 'kapsul', 'NOW Zinc Picolinate 50 mg'),
         ('zinc', 'Cinko', '1', 'kapsul', 'NOW Zinc Picolinate 50 mg'),
     ]
@@ -3790,17 +3790,17 @@ def tg_supplement_actions_from_text_legacy(raw_text):
         amount = default_amount
         unit = default_unit
         local = line.lower()
-        if key in ['nac', 'probiyotik', 'probiotic', 'b-complex', 'b complex', 'goz', 'gÃÂ¶z', 'cinko', 'zinc'] and '\n' not in text and len(text.split()) > 3:
+        if key in ['nac', 'probiyotik', 'probiotic', 'b-complex', 'b complex', 'goz', 'gÃÂÃÂ¶z', 'cinko', 'zinc'] and '\n' not in text and len(text.split()) > 3:
             local = key
-        m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(kapsul|kapsÃÂ¼l|damla|doz|tablet|olcek|ÃÂ¶lcek|ÃÂ¶lÃÂ§ek|g|mg|iu)?', local)
+        m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(kapsul|kapsÃÂÃÂ¼l|damla|doz|tablet|olcek|ÃÂÃÂ¶lcek|ÃÂÃÂ¶lÃÂÃÂ§ek|g|mg|iu)?', local)
         if name == 'D3+K2':
             m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(damla|drop)', line.lower()) or m
         if m:
             amount = m.group(1).replace(',', '.')
             if m.group(2):
-                unit = m.group(2).replace('kapsÃÂ¼l', 'kapsul').replace('ÃÂ¶lÃÂ§ek', 'olcek').replace('ÃÂ¶lcek', 'olcek')
+                unit = m.group(2).replace('kapsÃÂÃÂ¼l', 'kapsul').replace('ÃÂÃÂ¶lÃÂÃÂ§ek', 'olcek').replace('ÃÂÃÂ¶lcek', 'olcek')
         notes = note
-        if 'gun asiri' in norm or 'gÃÂ¼n aÃÂÃÂ±rÃÂ±' in text.lower() or 'asiri' in norm:
+        if 'gun asiri' in norm or 'gÃÂÃÂ¼n aÃÂÃÂÃÂÃÂ±rÃÂÃÂ±' in text.lower() or 'asiri' in norm:
             if name == 'Cinko':
                 notes += ' | gun asiri'
         actions.append({'type': 'vitamin', 'date': today, 'name': name, 'amount': amount, 'unit': unit, 'notes': notes})
@@ -3935,14 +3935,14 @@ def tg_supplement_actions_from_text(raw_text):
                 unit = found.group(2).replace('kapsul','kapsul').replace('olcek','olcek')
         actions.append({'type':'vitamin', 'date':today, 'name':item['name'], 'amount':amount, 'unit':unit, 'notes':f"{tg_stack_label(slot or 'manual')} | {item['note']}", 'stack':slot or 'manual'})
         seen.add(item['name'])
-    # ÃÂinko sabah/kahvaltÃÂ± stack'te bekleniyor ama alÃÂ±nmadÃÂ±ysa bot notu ekle
+    # ÃÂÃÂinko sabah/kahvaltÃÂÃÂ± stack'te bekleniyor ama alÃÂÃÂ±nmadÃÂÃÂ±ysa bot notu ekle
     if slot in ('sabah', 'kahvalti'):
         wanted_names = set(tg_stack_preset(slot))
         if 'Cinko' in wanted_names and 'Cinko' not in seen:
             cinko_item = next((it for it in catalog if it['name'] == 'Cinko'), None)
             explicitly_excluded = cinko_item and tg_supplement_item_missing(cinko_item, norm)
             if not explicitly_excluded:
-                actions.append({'type': '_bot_note', 'text': 'Ã¢ÂÂ Ã¯Â¸Â ÃÂinko alÃÂ±nmadÃÂ± Ã¢ÂÂ not edildi'})
+                actions.append({'type': '_bot_note', 'text': 'ÃÂ¢ÃÂÃÂ ÃÂ¯ÃÂ¸ÃÂ ÃÂÃÂinko alÃÂÃÂ±nmadÃÂÃÂ± ÃÂ¢ÃÂÃÂ not edildi'})
     return actions
 
 def tg_merge_deterministic_actions(actions, extra_actions):
@@ -3973,11 +3973,11 @@ def tg_stack_template_requested(raw_text):
 def tg_stack_template_title(raw_text, actions):
     text = raw_text or ''
     norm = tg_template_norm(text) if 'tg_template_norm' in globals() else text.lower()
-    for pat in [r'ad[iÃÂ±]\s+(.+?)\s+stack\s+olsun', r'ismi\s+(.+?)\s+stack\s+olsun', r'(.{2,50}?)\s+stackle']:
+    for pat in [r'ad[iÃÂÃÂ±]\s+(.+?)\s+stack\s+olsun', r'ismi\s+(.+?)\s+stack\s+olsun', r'(.{2,50}?)\s+stackle']:
         m = re.search(pat, norm, flags=re.I)
         if m:
             name = re.sub(r'\s+', ' ', m.group(1)).strip(" .,!?:;\"'")
-            noisy = ['bunu', 'bunuda', 'bunu da', 'alindi', 'aldim', 'stack', 'eksik', 'icmedim', 'haric', 'hariÃÂÃÂ§']
+            noisy = ['bunu', 'bunuda', 'bunu da', 'alindi', 'aldim', 'stack', 'eksik', 'icmedim', 'haric', 'hariÃÂÃÂÃÂÃÂ§']
             if name and not any(x in name for x in noisy):
                 return name[:70]
     slot = ''
@@ -4175,7 +4175,7 @@ def tg_training_stack_catalog(day):
 
 def tg_try_training_stack_template(raw_text=''):
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    if not any(w in norm for w in ['stack', 'program', 'sablon', 'ÃÂablon', 'kur', 'yukle', 'yÃÂ¼kle', 'olustur', 'oluÃÂtur']):
+    if not any(w in norm for w in ['stack', 'program', 'sablon', 'ÃÂÃÂablon', 'kur', 'yukle', 'yÃÂÃÂ¼kle', 'olustur', 'oluÃÂÃÂtur']):
         return ''
     if not any(w in norm for w in ['push', 'pull', 'leg', 'upper', 'lower']):
         return ''
@@ -4228,7 +4228,7 @@ async def cmd_chat_ai(u, c):
         return
     water_correction = tg_try_water_correction(raw) if 'tg_try_water_correction' in globals() else None
     if water_correction:
-        reply = water_correction.get('reply') or 'Su kaydÃÂ± dÃÂ¼zeltildi.'
+        reply = water_correction.get('reply') or 'Su kaydÃÂÃÂ± dÃÂÃÂ¼zeltildi.'
         tg_store_message('out', reply, chat_id, 'AI Coach', water_correction)
         await u.message.reply_text(reply)
         return
@@ -4288,13 +4288,13 @@ async def cmd_chat_ai(u, c):
         actions = [a for a in actions if not (isinstance(a, dict) and a.get('type') == 'mood')]
         actions = direct_mood_actions + actions
     saved = ai_apply_actions(actions)
-    if (not result.get('actions')) and basic_actions and 'BaÃÂÃÂ¸lantÃÂÃÂ± sorunu' in (result.get('reply') or ''):
-        result['reply'] = 'AI baÃÂÃÂ¸lantÃÂÃÂ±sÃÂÃÂ± anlÃÂÃÂ±k takÃÂÃÂ±ldÃÂÃÂ± ama temel verileri boÃÂÃÂ¸a dÃÂÃÂ¼ÃÂÃÂ¸ÃÂÃÂ¼rmedim. Kilo/su/adÃÂÃÂ±m ve net makro gÃÂÃÂ¶rdÃÂÃÂ¼ÃÂÃÂ¸ÃÂÃÂ¼m kayÃÂÃÂ±tlarÃÂÃÂ± sisteme iÃÂÃÂ¸ledim; detaylÃÂÃÂ± koÃÂÃÂ§ yorumunu tekrar sorabilirsin.'
+    if (not result.get('actions')) and basic_actions and 'BaÃÂÃÂÃÂÃÂ¸lantÃÂÃÂÃÂÃÂ± sorunu' in (result.get('reply') or ''):
+        result['reply'] = 'AI baÃÂÃÂÃÂÃÂ¸lantÃÂÃÂÃÂÃÂ±sÃÂÃÂÃÂÃÂ± anlÃÂÃÂÃÂÃÂ±k takÃÂÃÂÃÂÃÂ±ldÃÂÃÂÃÂÃÂ± ama temel verileri boÃÂÃÂÃÂÃÂ¸a dÃÂÃÂÃÂÃÂ¼ÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂ¼rmedim. Kilo/su/adÃÂÃÂÃÂÃÂ±m ve net makro gÃÂÃÂÃÂÃÂ¶rdÃÂÃÂÃÂÃÂ¼ÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂ¼m kayÃÂÃÂÃÂÃÂ±tlarÃÂÃÂÃÂÃÂ± sisteme iÃÂÃÂÃÂÃÂ¸ledim; detaylÃÂÃÂÃÂÃÂ± koÃÂÃÂÃÂÃÂ§ yorumunu tekrar sorabilirsin.'
     template_title = ''
     try:
         template_title = tg_save_meal_template_from_actions(raw, actions) if 'tg_save_meal_template_from_actions' in globals() else ''
         if template_title:
-            saved.append('ÃÂablon')
+            saved.append('ÃÂÃÂablon')
     except Exception:
         log.exception("Telegram sabit ogun sablon kaydi basarisiz")
 
@@ -4326,7 +4326,7 @@ async def cmd_chat_ai(u, c):
         except Exception:
             log.exception("Telegram kilo fallback kaydi basarisiz")
 
-    if 'adÃÂ±m' not in saved and 'adim' not in saved and any(w in norm for w in ['adim','step','steps']):
+    if 'adÃÂÃÂ±m' not in saved and 'adim' not in saved and any(w in norm for w in ['adim','step','steps']):
         try:
             import re
             nums = [int(x) for x in re.findall(r'\b\d{3,6}\b', norm)]
@@ -4336,16 +4336,16 @@ async def cmd_chat_ai(u, c):
                 today = tg_effective_log_date(raw, 'steps') if 'tg_effective_log_date' in globals() else operation_today()
                 conn.execute("INSERT OR REPLACE INTO step_logs (date, steps, notes) VALUES (?,?,?)", (today, nums[-1], 'telegram'))
                 conn.commit(); conn.close()
-                saved.append('adÃÂ±m')
+                saved.append('adÃÂÃÂ±m')
         except Exception:
             log.exception("Telegram adim fallback kaydi basarisiz")
 
-    reply = result.get('reply') or 'AnladÃÂ±m.'
+    reply = result.get('reply') or 'AnladÃÂÃÂ±m.'
     bot_notes = [a.get('text','') for a in actions if isinstance(a, dict) and a.get('type') == '_bot_note']
     if bot_notes:
         reply += '\n\n' + '\n'.join(bot_notes)
     if 'before_sleep_count' in locals() and before_sleep_count > after_sleep_count:
-        reply += "\n\nUyku notu: uyuyacaÃÂÃÂ±m/yatacaÃÂÃÂ±m ifadesini saat olarak algÃÂ±lamadÃÂ±m; uyku sÃÂ¼resi kaydetmedim. UyandÃÂ±ÃÂÃÂ±nda kalkÃÂ±ÃÂ saatini yazarsan gerÃÂ§ek sÃÂ¼reyi iÃÂleriz."
+        reply += "\n\nUyku notu: uyuyacaÃÂÃÂÃÂÃÂ±m/yatacaÃÂÃÂÃÂÃÂ±m ifadesini saat olarak algÃÂÃÂ±lamadÃÂÃÂ±m; uyku sÃÂÃÂ¼resi kaydetmedim. UyandÃÂÃÂ±ÃÂÃÂÃÂÃÂ±nda kalkÃÂÃÂ±ÃÂÃÂ saatini yazarsan gerÃÂÃÂ§ek sÃÂÃÂ¼reyi iÃÂÃÂleriz."
     if template_title:
         reply += f"\n\nSablon hazir: {template_title}. Sablonlar sayfasinda dogru kategori altinda kullanabilirsin."
     if saved:
@@ -4544,68 +4544,68 @@ def api_food_registry_delete(fid):
 
 @app.route('/api/food-registry/migrate-spec', methods=['POST'])
 def api_food_registry_migrate_spec():
-    """Master spec v1.0 ÃÂ¼rÃÂ¼n dÃÂ¼zeltmeleri Ã¢ÂÂ isimleri, macrolarÃÂ± ve meta alanlarÃÂ± gÃÂ¼ncelle."""
+    """Master spec v1.0 ÃÂÃÂ¼rÃÂÃÂ¼n dÃÂÃÂ¼zeltmeleri ÃÂ¢ÃÂÃÂ isimleri, macrolarÃÂÃÂ± ve meta alanlarÃÂÃÂ± gÃÂÃÂ¼ncelle."""
     ensure_food_registry()
     conn = get_db()
     # product_id, official_name, base_unit, is_raw, source, correct macros
     SPEC = [
         # (match_by_name, updates_dict)
-        ('Yasmin PirinÃÂ§', {'product_id':'PROD-010','official_name':'YASMÃÂ°N Pirinci','name':'YASMÃÂ°N Pirinci',
+        ('Yasmin PirinÃÂÃÂ§', {'product_id':'PROD-010','official_name':'YASMÃÂÃÂ°N Pirinci','name':'YASMÃÂÃÂ°N Pirinci',
                            'calories_per_100':346,'protein_per_100':7.6,'carbs_per_100':77,'fat_per_100':0.5,
                            'base_unit':'100g_raw','is_raw':1,'source':'etiket',
-                           'aliases':'pirinÃÂ§,pirinc,yasmin,yasmin pirinci,yasemin,jasmin rice,rice'}),
-        ('Patates',       {'product_id':'PROD-011','official_name':'MÃÂczyste Patates','name':'MÃÂczyste Patates',
+                           'aliases':'pirinÃÂÃÂ§,pirinc,yasmin,yasmin pirinci,yasemin,jasmin rice,rice'}),
+        ('Patates',       {'product_id':'PROD-011','official_name':'MÃÂÃÂczyste Patates','name':'MÃÂÃÂczyste Patates',
                            'calories_per_100':77,'protein_per_100':2,'carbs_per_100':17,'fat_per_100':0.1,
                            'base_unit':'100g_raw','is_raw':1,'source':'manual',
-                           'aliases':'patates,potato,maczyste,mÃÂczyste patates'}),
-        ('Skyr Yogurt',   {'product_id':'PROD-013','official_name':'Skyr YoÃÂurt','name':'Skyr YoÃÂurt',
+                           'aliases':'patates,potato,maczyste,mÃÂÃÂczyste patates'}),
+        ('Skyr Yogurt',   {'product_id':'PROD-013','official_name':'Skyr YoÃÂÃÂurt','name':'Skyr YoÃÂÃÂurt',
                            'calories_per_100':64,'protein_per_100':12,'carbs_per_100':4.1,'fat_per_100':0,
                            'base_unit':'100g','is_raw':0,'source':'etiket',
-                           'aliases':'yoÃÂurt,yogurt,skyr,skyr yogurt'}),
-        ('SÃÂ±vÃÂ± Yumurta BeyazÃÂ±', {'product_id':'PROD-006','official_name':'SÃÂ±vÃÂ± Yumurta AkÃÂ±','name':'SÃÂ±vÃÂ± Yumurta AkÃÂ±',
+                           'aliases':'yoÃÂÃÂurt,yogurt,skyr,skyr yogurt'}),
+        ('SÃÂÃÂ±vÃÂÃÂ± Yumurta BeyazÃÂÃÂ±', {'product_id':'PROD-006','official_name':'SÃÂÃÂ±vÃÂÃÂ± Yumurta AkÃÂÃÂ±','name':'SÃÂÃÂ±vÃÂÃÂ± Yumurta AkÃÂÃÂ±',
                                   'calories_per_100':58,'protein_per_100':10.3,'carbs_per_100':1.2,'fat_per_100':0.8,
                                   'base_unit':'100g','is_raw':0,'source':'etiket',
-                                  'aliases':'syb,sÃÂ±vÃÂ± yumurta,liquid egg white,egg white,sivi yumurta,sÃÂ±vÃÂ± yumurta akÃÂ±,likit yumurta'}),
+                                  'aliases':'syb,sÃÂÃÂ±vÃÂÃÂ± yumurta,liquid egg white,egg white,sivi yumurta,sÃÂÃÂ±vÃÂÃÂ± yumurta akÃÂÃÂ±,likit yumurta'}),
         ('Kakao',         {'product_id':'PROD-009','official_name':'Kakao','name':'Kakao',
                            'calories_per_100':309,'protein_per_100':24,'carbs_per_100':13,'fat_per_100':11,
                            'base_unit':'100g','is_raw':0,'source':'etiket','aliases':'cocoa,cacao,kakao'}),
-        ('Carrefour Tost EkmeÃÂi', {'product_id':'PROD-007','official_name':'Carrefour Tam TahÃÂ±llÃÂ± Tost EkmeÃÂi',
-                                    'name':'Carrefour Tam TahÃÂ±llÃÂ± Tost EkmeÃÂi',
+        ('Carrefour Tost EkmeÃÂÃÂi', {'product_id':'PROD-007','official_name':'Carrefour Tam TahÃÂÃÂ±llÃÂÃÂ± Tost EkmeÃÂÃÂi',
+                                    'name':'Carrefour Tam TahÃÂÃÂ±llÃÂÃÂ± Tost EkmeÃÂÃÂi',
                                     'calories_per_100':252,'protein_per_100':9.5,'carbs_per_100':45,'fat_per_100':2.1,
                                     'base_unit':'100g','serving_size':23,'is_raw':0,'source':'etiket',
-                                    'aliases':'tost ekmeÃÂi,ekmek,carrefour tost,tost,tost ekmegi,tam tahÃÂ±llÃÂ± tost'}),
-        ('Donmus Patates',{'product_id':'PROD-001','official_name':'DondurulmuÃÂ Patates','name':'DondurulmuÃÂ Patates',
+                                    'aliases':'tost ekmeÃÂÃÂi,ekmek,carrefour tost,tost,tost ekmegi,tam tahÃÂÃÂ±llÃÂÃÂ± tost'}),
+        ('Donmus Patates',{'product_id':'PROD-001','official_name':'DondurulmuÃÂÃÂ Patates','name':'DondurulmuÃÂÃÂ Patates',
                            'calories_per_100':99,'protein_per_100':1.9,'carbs_per_100':15,'fat_per_100':3.1,
                            'base_unit':'100g','is_raw':0,'source':'etiket',
-                           'aliases':'donmuÃÂ patates,donmus patates,frozen potato,kartofle'}),
-        ('GymBeam Sprey Yag', {'product_id':'PROD-002','official_name':'GymBeam Sprey YaÃÂ','name':'GymBeam Sprey YaÃÂ',
+                           'aliases':'donmuÃÂÃÂ patates,donmus patates,frozen potato,kartofle'}),
+        ('GymBeam Sprey Yag', {'product_id':'PROD-002','official_name':'GymBeam Sprey YaÃÂÃÂ','name':'GymBeam Sprey YaÃÂÃÂ',
                                 'calories_per_100':15,'protein_per_100':0,'carbs_per_100':0,'fat_per_100':1.65,
-                                'base_unit':'1fis','serving_size':1,'serving_unit':'fÃÂ±s','is_raw':0,'source':'etiket',
-                                'aliases':'gymbeam,sprey yaÃÂ,sprey yag,olive oil spray,fÃÂ±s,yaÃÂ'}),
-        ('ÃÂekersiz Badem SÃÂ¼tÃÂ¼', {'product_id':'PROD-003','official_name':'ÃÂekersiz Badem SÃÂ¼tÃÂ¼',
+                                'base_unit':'1fis','serving_size':1,'serving_unit':'fÃÂÃÂ±s','is_raw':0,'source':'etiket',
+                                'aliases':'gymbeam,sprey yaÃÂÃÂ,sprey yag,olive oil spray,fÃÂÃÂ±s,yaÃÂÃÂ'}),
+        ('ÃÂÃÂekersiz Badem SÃÂÃÂ¼tÃÂÃÂ¼', {'product_id':'PROD-003','official_name':'ÃÂÃÂekersiz Badem SÃÂÃÂ¼tÃÂÃÂ¼',
                                    'calories_per_100':14,'protein_per_100':0.5,'carbs_per_100':0,'fat_per_100':1.1,
                                    'base_unit':'100ml','is_raw':0,'source':'etiket',
-                                   'aliases':'ÃÂekersiz badem sÃÂ¼tÃÂ¼,badem sutu,almond milk,sekersiz badem sutu'}),
-        ('KorniÃÂon TurÃÂu', {'product_id':'PROD-004','official_name':'SalatalÃÂ±k TurÃÂusu','name':'SalatalÃÂ±k TurÃÂusu',
+                                   'aliases':'ÃÂÃÂekersiz badem sÃÂÃÂ¼tÃÂÃÂ¼,badem sutu,almond milk,sekersiz badem sutu'}),
+        ('KorniÃÂÃÂon TurÃÂÃÂu', {'product_id':'PROD-004','official_name':'SalatalÃÂÃÂ±k TurÃÂÃÂusu','name':'SalatalÃÂÃÂ±k TurÃÂÃÂusu',
                              'calories_per_100':18,'protein_per_100':0.9,'carbs_per_100':1.92,'fat_per_100':0,
                              'base_unit':'100g','is_raw':0,'source':'etiket',
-                             'aliases':'turÃÂu,korniÃÂon,pickle,tursu,kornison,salatalÃÂ±k turÃÂusu'}),
-        ('Keto KetÃÂ§ap',   {'product_id':'PROD-005','official_name':'Keto KetÃÂ§ap',
+                             'aliases':'turÃÂÃÂu,korniÃÂÃÂon,pickle,tursu,kornison,salatalÃÂÃÂ±k turÃÂÃÂusu'}),
+        ('Keto KetÃÂÃÂ§ap',   {'product_id':'PROD-005','official_name':'Keto KetÃÂÃÂ§ap',
                            'calories_per_100':41,'protein_per_100':2,'carbs_per_100':6.2,'fat_per_100':0.5,
-                           'base_unit':'100g','is_raw':0,'source':'etiket','aliases':'ketÃÂ§ap,keto ketÃÂ§ap,ketchup,ketcap'}),
+                           'base_unit':'100g','is_raw':0,'source':'etiket','aliases':'ketÃÂÃÂ§ap,keto ketÃÂÃÂ§ap,ketchup,ketcap'}),
         ('Carrefour BIO Yumurta', {'product_id':'PROD-008','official_name':'Carrefour BIO Yumurta',
                                     'calories_per_100':137,'protein_per_100':12.4,'carbs_per_100':1.3,'fat_per_100':9.1,
                                     'base_unit':'1adet','serving_size':1,'serving_unit':'adet','is_raw':0,'source':'manual',
                                     'aliases':'yumurta,carrefour yumurta,bio yumurta,tam yumurta,carrefour bio'}),
-        ('Go On Nutrition Protein 33% Bar Sutlu', {'product_id':'PROD-012','official_name':'ÃÂikolatalÃÂ± Protein Bar 33%',
-                                                    'name':'ÃÂikolatalÃÂ± Protein Bar 33%',
+        ('Go On Nutrition Protein 33% Bar Sutlu', {'product_id':'PROD-012','official_name':'ÃÂÃÂikolatalÃÂÃÂ± Protein Bar 33%',
+                                                    'name':'ÃÂÃÂikolatalÃÂÃÂ± Protein Bar 33%',
                                                     'calories_per_100':386,'protein_per_100':33,'carbs_per_100':23,'fat_per_100':18,
                                                     'base_unit':'1bar','serving_size':50,'serving_unit':'g','is_raw':0,'source':'etiket',
-                                                    'aliases':'protein bar,go on,go on nutrition,bar,ÃÂ§ikolatalÃÂ± protein bar,1 bar'}),
-        ('Tavuk Baharati', {'product_id':'PROD-014','official_name':'Tavuk BaharatÃÂ±','name':'Tavuk BaharatÃÂ±',
+                                                    'aliases':'protein bar,go on,go on nutrition,bar,ÃÂÃÂ§ikolatalÃÂÃÂ± protein bar,1 bar'}),
+        ('Tavuk Baharati', {'product_id':'PROD-014','official_name':'Tavuk BaharatÃÂÃÂ±','name':'Tavuk BaharatÃÂÃÂ±',
                             'calories_per_100':286,'protein_per_100':18.1,'carbs_per_100':50.4,'fat_per_100':8.2,
                             'base_unit':'100g','serving_size':5,'serving_unit':'g','is_raw':0,'source':'etiket',
-                            'aliases':'tavuk baharatÃÂ±,baharat,tavuk baharati'}),
+                            'aliases':'tavuk baharatÃÂÃÂ±,baharat,tavuk baharati'}),
     ]
     updated = []
     for match_name, upd in SPEC:
@@ -4620,7 +4620,7 @@ def api_food_registry_migrate_spec():
     conn.commit(); conn.close()
     return jsonify({'ok':True, 'updated': updated})
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ SUPPLEMENT SYSTEM Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ SUPPLEMENT SYSTEM ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 def ensure_supplement_tables():
     """Supplement tablolarinin varligini garanti et."""
@@ -4631,7 +4631,7 @@ def ensure_supplement_tables():
     conn.close()
 
 def seed_supplement_data():
-    """Master Spec v1.0 supplement ÃÂ¼rÃÂ¼nleri ve stacklerini yÃÂ¼kle (yoksa)."""
+    """Master Spec v1.0 supplement ÃÂÃÂ¼rÃÂÃÂ¼nleri ve stacklerini yÃÂÃÂ¼kle (yoksa)."""
     conn = get_db()
     # Check if already seeded
     existing = conn.execute("SELECT COUNT(*) as c FROM supplement_stacks").fetchone()['c']
@@ -4650,7 +4650,7 @@ def seed_supplement_data():
         ('California Gold Nutrition C',    'California Gold Nutrition', 'kapsul', 1, 'kapsul'),
         ('NOW Magtein',                    'NOW',                 'kapsul',  1, 'kapsul'),
         ('NOW L-Theanine Double Strength', 'NOW',                 'kapsul',  1, 'kapsul'),
-        ('Optimum Nutrition Collagen',     'Optimum Nutrition',   'olcek',   1, 'ÃÂ¶lÃÂ§ek'),
+        ('Optimum Nutrition Collagen',     'Optimum Nutrition',   'olcek',   1, 'ÃÂÃÂ¶lÃÂÃÂ§ek'),
         ('NOW Zinc Picolinate 50mg',       'NOW',                 'kapsul',  1, 'kapsul'),
         ('Elektrolit',                     '',                    'g',       8, 'g'),
         ('Citrulline',                     '',                    'g',       8, 'g'),
@@ -4670,7 +4670,7 @@ def seed_supplement_data():
 
     # Stacks
     STACKS = [
-        ('AÃÂ§ Karna Stack',   'fasted',     1, [
+        ('AÃÂÃÂ§ Karna Stack',   'fasted',     1, [
             ('NOW NAC 600mg',                  1, 'kapsul'),
             ('Garden of Life Probiotic',       1, 'kapsul'),
         ]),
@@ -4682,7 +4682,7 @@ def seed_supplement_data():
             ('California Gold Nutrition C',    1, 'kapsul'),
             ('NOW Magtein',                    1, 'kapsul'),
             ('NOW L-Theanine Double Strength', 1, 'kapsul'),
-            ('Optimum Nutrition Collagen',     1, 'ÃÂ¶lÃÂ§ek'),
+            ('Optimum Nutrition Collagen',     1, 'ÃÂÃÂ¶lÃÂÃÂ§ek'),
             ('NOW Zinc Picolinate 50mg',       1, 'kapsul'),
         ]),
         ('Pre Workout Stack','preworkout', 3, [
@@ -4722,7 +4722,7 @@ try:
 except Exception as e:
     import logging; logging.getLogger('daily').warning(f"supplement seed failed: {e}")
 
-# Ã¢ÂÂÃ¢ÂÂ API Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ API ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 @app.route('/api/supplements/stacks', methods=['GET'])
 def api_supplement_stacks():
@@ -4765,7 +4765,7 @@ def api_supplements_today():
 
 @app.route('/api/supplements/log', methods=['POST'])
 def api_supplements_log():
-    """Stack tamamlandÃÂ± olarak kaydet. Override ve ekstra destekler."""
+    """Stack tamamlandÃÂÃÂ± olarak kaydet. Override ve ekstra destekler."""
     import json as _json
     data = request.get_json(force=True) or {}
     today = data.get('date', operation_today())
@@ -4778,7 +4778,7 @@ def api_supplements_log():
     stack = conn.execute("SELECT * FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
     if not stack:
         conn.close()
-        return jsonify({'ok': False, 'error': f'Stack bulunamadÃÂ±: {stack_name}'}), 404
+        return jsonify({'ok': False, 'error': f'Stack bulunamadÃÂÃÂ±: {stack_name}'}), 404
 
     # Snapshot log
     conn.execute("INSERT INTO supplement_logs (date,stack_id,stack_name_snapshot,completed,notes) VALUES (?,?,?,1,?)",
@@ -4841,7 +4841,7 @@ def api_supplement_stack_create():
     data = request.get_json(force=True) or {}
     name = data.get('name','').strip()
     if not name:
-        return jsonify({'ok':False, 'error':'Stack adÃÂ± gerekli'}), 400
+        return jsonify({'ok':False, 'error':'Stack adÃÂÃÂ± gerekli'}), 400
     items = data.get('items', [])
     conn = get_db()
     conn.execute("INSERT OR IGNORE INTO supplement_stacks (name,category,active,order_num) VALUES (?,?,1,99)",
@@ -4855,7 +4855,7 @@ def api_supplement_stack_create():
 
 @app.route('/api/supplements/stacks/<int:sid>/items', methods=['PUT'])
 def api_supplement_stack_items_replace(sid):
-    """Bir stack'in tÃÂ¼m item'larÃÂ±nÃÂ± yenisiyle deÃÂiÃÂtir."""
+    """Bir stack'in tÃÂÃÂ¼m item'larÃÂÃÂ±nÃÂÃÂ± yenisiyle deÃÂÃÂiÃÂÃÂtir."""
     data = request.get_json(force=True) or {}
     items = data.get('items', [])
     conn = get_db()
@@ -4870,7 +4870,7 @@ def api_supplement_stack_items_replace(sid):
 
 @app.route('/api/supplements/zinc/last-date', methods=['PATCH'])
 def api_supplement_zinc_last_date():
-    """supplement_rules tablosunda ÃÂ§inkonun son alÃÂ±nma tarihini gÃÂ¼ncelle."""
+    """supplement_rules tablosunda ÃÂÃÂ§inkonun son alÃÂÃÂ±nma tarihini gÃÂÃÂ¼ncelle."""
     import json as _json
     data = request.get_json(force=True) or {}
     last_date = data.get('last_date', '').strip()
@@ -4890,7 +4890,7 @@ def api_supplement_zinc_last_date():
 
 @app.route('/api/supplements/compliance', methods=['GET'])
 def api_supplements_compliance():
-    """Son 7 gÃÂ¼nlÃÂ¼k stack uyum oranÃÂ±."""
+    """Son 7 gÃÂÃÂ¼nlÃÂÃÂ¼k stack uyum oranÃÂÃÂ±."""
     conn = get_db()
     from datetime import date as _date, timedelta as _td
     today = _date.fromisoformat(operation_today())
@@ -4902,7 +4902,7 @@ def api_supplements_compliance():
     conn.close()
     return jsonify(result)
 
-# Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+# ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 
 @app.route('/api/ai-insights', methods=['POST'])
 def api_ai_insights():
@@ -4951,14 +4951,14 @@ def api_ai_insights():
             'steps': 10000,
         }
         ctx_str = (
-            f"Tarih: {date_str} ({training_day(date_str)} gÃÂ¼nÃÂ¼)\n"
+            f"Tarih: {date_str} ({training_day(date_str)} gÃÂÃÂ¼nÃÂÃÂ¼)\n"
             f"Kalori: {totals['cal']} / {targets['cal']} kcal\n"
             f"Protein: {round(totals['prot'])}g / {targets['prot']}g\n"
-            f"Karb: {round(totals['carb'])}g | YaÃÂ: {round(totals['fat'])}g\n"
+            f"Karb: {round(totals['carb'])}g | YaÃÂÃÂ: {round(totals['fat'])}g\n"
             f"Su: {totals['water_ml']}ml / {targets['water']}ml\n"
-            f"AdÃÂ±m: {totals['steps']} / {targets['steps']}\n"
-            f"ÃÂÃÂÃÂ¼nler: {len(meals)} kayÃÂ±t\n"
-            f"Takviyeler: {len(vitamins)} kayÃÂ±t\n"
+            f"AdÃÂÃÂ±m: {totals['steps']} / {targets['steps']}\n"
+            f"ÃÂÃÂÃÂÃÂÃÂÃÂ¼nler: {len(meals)} kayÃÂÃÂ±t\n"
+            f"Takviyeler: {len(vitamins)} kayÃÂÃÂ±t\n"
         )
         if sleep_row:
             sl = dict(sleep_row)
@@ -4970,21 +4970,21 @@ def api_ai_insights():
             mo = dict(mood_row)
             ctx_str += f"Enerji: {mo.get('energy','?')}/10 | Mood: {mo.get('mood','?')}/10\n"
         if week:
-            ctx_str += f"Son 7 gÃÂ¼n kalori ort: {round(sum(w.get('calories',0) or 0 for w in week)/max(len(week),1))} kcal\n"
-            ctx_str += f"Son 7 gÃÂ¼n protein ort: {round(sum(w.get('protein_g',0) or 0 for w in week)/max(len(week),1))}g\n"
+            ctx_str += f"Son 7 gÃÂÃÂ¼n kalori ort: {round(sum(w.get('calories',0) or 0 for w in week)/max(len(week),1))} kcal\n"
+            ctx_str += f"Son 7 gÃÂÃÂ¼n protein ort: {round(sum(w.get('protein_g',0) or 0 for w in week)/max(len(week),1))}g\n"
 
         if not ANTHROPIC_API_KEY:
-            return jsonify({'insight': 'AI modu aktif deÃÂil.', 'ok': False})
+            return jsonify({'insight': 'AI modu aktif deÃÂÃÂil.', 'ok': False})
 
         import urllib.request, urllib.error
         body = {
             'model': ANTHROPIC_MODEL,
             'max_tokens': 200,
             'system': (
-                "Sen Taha Serdem'in kiÃÂisel performans koÃÂ§usun. "
-                "GÃÂ¼nlÃÂ¼k veri ÃÂ¶zetine bakarak 2-3 cÃÂ¼mle, samimi, net ve motive edici bir insight ver. "
-                "Olumlu olanÃÂ± vurgula, eksik varsa kÃÂ±sa belirt. TÃÂ¼rkÃÂ§e yaz. "
-                "Emoji kullanabilirsin. Sadece insight metni dÃÂ¶ndÃÂ¼r, baÃÂka hiÃÂ§bir ÃÂey yazma."
+                "Sen Taha Serdem'in kiÃÂÃÂisel performans koÃÂÃÂ§usun. "
+                "GÃÂÃÂ¼nlÃÂÃÂ¼k veri ÃÂÃÂ¶zetine bakarak 2-3 cÃÂÃÂ¼mle, samimi, net ve motive edici bir insight ver. "
+                "Olumlu olanÃÂÃÂ± vurgula, eksik varsa kÃÂÃÂ±sa belirt. TÃÂÃÂ¼rkÃÂÃÂ§e yaz. "
+                "Emoji kullanabilirsin. Sadece insight metni dÃÂÃÂ¶ndÃÂÃÂ¼r, baÃÂÃÂka hiÃÂÃÂ§bir ÃÂÃÂey yazma."
             ),
             'messages': [{'role': 'user', 'content': ctx_str}]
         }
