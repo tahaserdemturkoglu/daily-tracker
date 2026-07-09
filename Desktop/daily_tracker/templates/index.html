@@ -1253,7 +1253,7 @@ const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight
 // TEK KAYNAK ÃÂ¢ÃÂÃÂ ÃÂÃÂ¶ÃÂÃÂÃÂÃÂ¼n sÃÂÃÂ±rasÃÂÃÂ± buradan yÃÂÃÂ¶netilir
 const G_SLOT_ORDER=['kahvalti','kahvaltÃÂÃÂ±','snack','meal1','pre_meal','snack2','pre_snack','post_meal','post_snack','meal2','meal3','aksam','akÃÂÃÂam','gece','ara','ogle','ÃÂÃÂ¶ÃÂÃÂle','extra'];
 function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
-let CYCLE_PLAN={
+const CYCLE_PLAN={
   'Push':  {cal:2100,prot:140,carb:270,fat:55},
   'Pull':  {cal:2100,prot:140,carb:270,fat:55},
   'Legs':  {cal:2200,prot:140,carb:310,fat:55},
@@ -1592,7 +1592,6 @@ async function loadDashboardExtra(d,t,cal,wml){
     }else{b.style.opacity='.65';b.style.boxShadow='none';}
   });
   if(_cdt) applyCycleTargets();
-  fetch('/api/carb-cycle').then(function(res){return res.json();}).then(function(cc){if(cc&&cc.plan){CYCLE_PLAN=cc.plan;}var dt=localStorage.getItem('cycle_day_type')||cc.auto_type||'';if(dt){localStorage.setItem('cycle_day_type',dt);}applyCycleTargets();}).catch(function(){});
 
   // ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ AdÃÂÃÂ±m Takibi ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
   const steps=d.steps?.steps||0;
