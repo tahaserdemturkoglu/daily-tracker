@@ -2346,12 +2346,33 @@ GUNLUK LOG SIRASI:
 7) Ogunler ve ogun yorumlari 8) Toplam makrolar 9) Koc yorumu 10) Gun puani /10.
 """
 
+
+def _besin_db_for_prompt():
+    """Besin DB'deki tum urunleri AI prompt icin formatla."""
+    try:
+        conn = get_db()
+        rows = conn.execute("SELECT name, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, notes FROM food_registry ORDER BY name").fetchall()
+        conn.close()
+        lines = ["BESIN DB (etiket degerleri - bunlari kullan, genel bilgine gore tahmin yapma):"]
+        for r in rows:
+            if not r['name']: continue
+            cal = r['calories_per_100'] or 0
+            p = r['protein_per_100'] or 0
+            k = r['carbs_per_100'] or 0
+            y = r['fat_per_100'] or 0
+            note = (r['notes'] or '')[:80]
+            lines.append(f"- {r['name']}: 100g={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f} | {note}")
+        return '\n'.join(lines)
+    except Exception as e:
+        return ''
+
 def _claude_call(user_text):
     import urllib.request, urllib.error
     ctx = _today_ai_context()
     week_ctx = _week_ai_context()
+    besin_db_ctx = _besin_db_for_prompt()
     system_prompt = (
-        TAHA_COACHING_POLICY + "\n" +
+        TAHA_COACHING_POLICY + "\n" + besin_db_ctx + "\n" +
         "Sen Taha Serdem'in kiÅisel antrenman ve gÃ¼nlÃ¼k performans koÃ§usun. "
         "TÃ¼rkÃ§e, samimi, net ve motive edici konuÅ.\n"
         "KullanÄ±cÄ±nÄ±n mesajÄ±nÄ± analiz et. KayÄ±t iÃ§eriyorsa actions listesini doldur. "
