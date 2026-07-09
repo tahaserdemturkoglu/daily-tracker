@@ -389,6 +389,22 @@ def api_carb_cycle_get():
     return jsonify({'plan': plan, 'today_type': today_type, 'today_targets': today_targets,
                     'auto_type': auto_type, 'is_manual': bool(manual_row)})
 
+
+@app.route('/api/carb-cycle', methods=['PUT'])
+def api_carb_cycle_put():
+    """Karb cycle plan hedeflerini guncelle"""
+    data = request.get_json() or {}
+    conn = get_db()
+    for day_type, vals in data.items():
+        if day_type in ['Push','Pull','Legs','Upper','Lower','Off1','Off2']:
+            conn.execute(
+                'UPDATE carb_cycle_plan SET cal=?,protein=?,carb=?,fat=? WHERE day_type=?',
+                (int(vals.get('cal',0)), int(vals.get('protein',0)),
+                 int(vals.get('carb',0)), int(vals.get('fat',0)), day_type)
+            )
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
 @app.route('/api/carb-cycle', methods=['PATCH'])
 def api_carb_cycle_patch():
     """Bir gun tipinin makro hedeflerini guncelle."""
