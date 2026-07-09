@@ -498,8 +498,10 @@ def db_date(table, date_str):
 
 def streak_count():
     conn = get_db()
-    n, d = 0, operation_date()
-    tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs')
+    tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs','vitamin_logs','meal_entries')
+    today = operation_date()
+    today_found = any(conn.execute(f"SELECT id FROM {t} WHERE date=?", (today.isoformat(),)).fetchone() for t in tables)
+    n, d = 0, today if today_found else today - timedelta(days=1)
     while True:
         found = any(conn.execute(f"SELECT id FROM {t} WHERE date=?", (d.isoformat(),)).fetchone() for t in tables)
         if not found: break
