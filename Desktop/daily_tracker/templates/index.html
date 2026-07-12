@@ -569,8 +569,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <div class="pg-sub">Bugünün verilerini gir</div>
     <div class="sub-tabs">
       <button class="sub-tab active" onclick="showSub('sub-vucut')">🏃 Vücut</button>
-      <button class="sub-tab" onclick="showSub('sub-beslenme')">🥩 Beslenme</button>
-      <button class="sub-tab" onclick="showSub('sub-is')">💼 İş</button>
+      <button class="sub-tab" onclick="showSub('sub-beslenme')">🍽️ Öğün / Beslenme</button>
+      <button class="sub-tab" onclick="showSub('sub-supplement')">💊 Supplement</button>
     </div>
     <div class="sub-sec active" id="sub-vucut">
       <div class="cards-grid">
@@ -771,6 +771,10 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           </div>
           <div id="qm-btns" style="margin-top:8px"></div>
         </div>
+      </div>
+    </div>
+    <div class="sub-sec" id="sub-supplement">
+      <div class="cards-grid">
         <div class="card ct ct-purple">
           <div class="card-head"><span class="card-icon">💊</span><div><div class="card-name">Supplement Ekle</div></div></div>
           <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
@@ -855,31 +859,6 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadVitamins()">↻</button>
           </div>
           <div class="vit-list" id="vit-list"><div class="list-empty">Kayıt yok</div></div>
-        </div>
-      </div>
-    </div>
-    <div class="sub-sec" id="sub-is">
-      <div class="cards-grid">
-        <div class="card ct ct-blue">
-          <div class="card-head"><span class="card-icon">💼</span><div><div class="card-name">İş</div></div></div>
-          <div class="form-row">
-            <div class="fg"><label>Saat</label><input type="number" id="wo-h" step=".5" placeholder="8"></div>
-            <div class="fg" style="flex:2"><label>Görevler</label><input type="text" id="wo-tasks" placeholder="Proje..."></div>
-          </div>
-          <button class="btn btn-blue" onclick="saveWork()">Kaydet</button>
-        </div>
-        <div class="card ct ct-green">
-          <div class="card-head"><span class="card-icon">🎯</span><div><div class="card-name">Antrenörlük</div></div></div>
-          <div class="form-row">
-            <div class="fg"><label>Seans</label><input type="number" id="co-s" placeholder="3"></div>
-            <div class="fg" style="flex:2"><label>Danışanlar</label><input type="text" id="co-c" placeholder="Ali, Buse..."></div>
-          </div>
-          <button class="btn btn-green" onclick="saveCoaching()">Kaydet</button>
-        </div>
-        <div class="card ct ct-yellow">
-          <div class="card-head"><span class="card-icon">📓</span><div><div class="card-name">Not</div></div></div>
-          <textarea id="note-txt" placeholder="Bugün nasıldı..."></textarea>
-          <button class="btn btn-yellow" onclick="saveNote()">Kaydet</button>
         </div>
       </div>
     </div>
@@ -1504,7 +1483,7 @@ function showPage(name){
   ({dashboard:loadDashboard,log:loadLogPage,calendar:loadCalendar,report:loadReport,training:loadTraining,templates:loadTemplates,settings:loadSettings,ozet:loadOzet,besin:loadFoodRegistry})[name]?.();
 }
 function showSub(id){
-  const order=['sub-vucut','sub-beslenme','sub-is'];
+  const order=['sub-vucut','sub-beslenme','sub-supplement'];
   document.querySelectorAll('.sub-tab').forEach((t,i)=>t.classList.toggle('active',order[i]===id));
   document.querySelectorAll('.sub-sec').forEach(s=>s.classList.remove('active'));
   $(id)?.classList.add('active');
@@ -5068,7 +5047,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
 
 <style id="NUTRITION_DATE_FLOW_REBUILD_V1-css">
-#sub-beslenme .cards-grid{display:grid!important;grid-template-columns:minmax(320px,1.05fr) minmax(240px,.58fr) minmax(320px,1fr)!important;gap:14px!important;align-items:start!important}
+#sub-beslenme .cards-grid{display:grid!important;grid-template-columns:1fr minmax(280px,.7fr)!important;gap:14px!important;align-items:start!important}
+#sub-beslenme .cards-grid>.card:nth-child(1),#sub-beslenme .cards-grid>.card:nth-child(2),#sub-beslenme .cards-grid>.card:nth-child(3),#nutrition-flow-panel{grid-column:1/-1!important}
+#sub-supplement .cards-grid{display:grid!important;grid-template-columns:1fr minmax(280px,.7fr)!important;gap:14px!important;align-items:start!important}
 #sub-beslenme .card-blue{font-size:.92em}
 #sub-beslenme .card-blue #water-display{font-size:1.85rem!important;margin:0!important}
 #sub-beslenme .card-blue .water-btns{grid-template-columns:repeat(2,1fr)!important;gap:7px!important}
