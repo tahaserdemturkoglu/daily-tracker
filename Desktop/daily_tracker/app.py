@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Taha Serdem Daily Rapor â Flask + Telegram Bot"""
 
-import os, sqlite3, threading, asyncio, json, logging, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re, re
+import os, sqlite3, threading, asyncio, json, logging, re
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 from flask import Flask, request, jsonify, render_template
@@ -257,6 +257,21 @@ def init_db():
             report_json TEXT NOT NULL,
             generated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS meal_stacks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS meal_stack_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stack_id INTEGER NOT NULL,
+            food_id INTEGER,
+            food_name TEXT NOT NULL,
+            amount REAL DEFAULT 100,
+            unit TEXT DEFAULT 'g',
+            order_num INTEGER DEFAULT 99,
+            FOREIGN KEY(stack_id) REFERENCES meal_stacks(id)
+        );
         CREATE TABLE IF NOT EXISTS workout_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
@@ -273,6 +288,8 @@ def init_db():
         'quick_templates': {'protein_g': 'REAL', 'carbs_g': 'REAL', 'fat_g': 'REAL', 'fiber_g': 'REAL'},
         'meal_entries': {'protein_g': 'REAL', 'carbs_g': 'REAL', 'fat_g': 'REAL', 'fiber_g': 'REAL'},
         'workout_logs': {'set_type': 'TEXT', 'rir': 'INTEGER'},
+        'vitamin_logs': {'status': "TEXT DEFAULT ''"},
+        'mood_logs': {'recovery': 'REAL', 'strain': 'REAL'},
     }
     for table, cols in macro_cols.items():
         existing = {r['name'] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -848,8 +865,8 @@ def api_vitamin():
     data = request.get_json(force=True) or {}
     d = data.pop('date', operation_today())
     conn = get_db()
-    conn.execute("INSERT INTO vitamin_logs (date, name, amount, unit, notes) VALUES (?,?,?,?,?)",
-                 (d, data.get('name',''), data.get('amount',''), data.get('unit',''), data.get('notes','')))
+    conn.execute("INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+                 (d, data.get('name',''), data.get('amount',''), data.get('unit',''), data.get('notes',''), data.get('status','')))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -867,9 +884,9 @@ def api_vitamin_delete(vid):
 def api_vitamin_update(vid):
     data = request.get_json(force=True) or {}
     conn = get_db()
-    conn.execute("UPDATE vitamin_logs SET name=?, amount=?, unit=?, notes=? WHERE id=?",
+    conn.execute("UPDATE vitamin_logs SET name=?, amount=?, unit=?, notes=?, status=? WHERE id=?",
                  (data.get('name','').strip(), data.get('amount','').strip(),
-                  data.get('unit','').strip(), data.get('notes','').strip(), vid))
+                  data.get('unit','').strip(), data.get('notes','').strip(), data.get('status','').strip(), vid))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -1408,36 +1425,32 @@ def api_ai_report_generate(date_str):
     items = []
     # Protein
     if total_prot >= PROT_TARGET:
-        items.append({'type':'ok', 'text': f'Protein hedefi tamamlandÄ± ({round(total_prot)}g / {PROT_TARGET}g)'})
+        items.append({'type':'ok', 'text': f'Protein hedefi tamamlandı ({round(total_prot)}g / {PROT_TARGET}g)'})
     elif total_prot > 0:
         deficit = round(PROT_TARGET - total_prot)
-        items.append({'type':'warn', 'text': f'Protein hedefi eksik â {deficit}g daha gerekiyor ({round(total_prot)}g / {PROT_TARGET}g)'})
+        items.append({'type':'warn', 'text': f'Protein hedefi eksik — {deficit}g daha gerekiyor ({round(total_prot)}g / {PROT_TARGET}g)'})
 
     # Kalori
     if total_cal:
         if CAL_TARGET[0] <= total_cal <= CAL_TARGET[1]:
             items.append({'type':'ok', 'text': f'Kalori hedefi uygun ({round(total_cal)} kcal)'})
         elif total_cal < CAL_TARGET[0]:
-            items.append({'type':'warn', 'text': f'Kalori dÃ¼ÅÃ¼k â {round(CAL_TARGET[0]-total_cal)} kcal eksik ({round(total_cal)} kcal)'})
+            items.append({'type':'warn', 'text': f'Kalori düşük — {round(CAL_TARGET[0]-total_cal)} kcal eksik ({round(total_cal)} kcal)'})
         else:
-            items.append({'type':'warn', 'text': f'Kalori fazla â hedefin {round(total_cal-CAL_TARGET[1])} kcal Ã¼stÃ¼nde ({round(total_cal)} kcal)'})
+            items.append({'type':'warn', 'text': f'Kalori fazla — hedefin {round(total_cal-CAL_TARGET[1])} kcal üstünde ({round(total_cal)} kcal)'})
 
     # Su
     if water_ml >= WATER_TARGET:
-        items.append({'type':'ok', 'text': f'Su hedefi tamamlandÄ± ({water_ml/1000:.1f}L)'})
+        items.append({'type':'ok', 'text': f'Su hedefi tamamlandı ({water_ml/1000:.1f}L)'})
     elif water_ml > 0:
         remain = round((WATER_TARGET - water_ml) / 100) * 100
-        items.append({'type':'warn', 'text': f'Su tÃ¼ketimi dÃ¼ÅÃ¼k â {remain}ml daha iÃ§ilebilir ({water_ml/1000:.1f}L / {WATER_TARGET/1000:.1f}L)'})
-    else:
-        items.append({'type':'warn', 'text': f'Su kaydÄ± yok â gÃ¼nlÃ¼k {WATER_TARGET/1000:.1f}L hedefine ulaÅ'})
+        items.append({'type':'warn', 'text': f'Su tüketimi düşük — {remain}ml daha içilebilir ({water_ml/1000:.1f}L / {WATER_TARGET/1000:.1f}L)'})
 
-    # AdÄ±m
+    # Adım
     if steps >= STEP_TARGET:
-        items.append({'type':'ok', 'text': f'AdÄ±m hedefi tamamlandÄ± ({steps:,} adÄ±m)'})
+        items.append({'type':'ok', 'text': f'Adım hedefi tamamlandı ({steps:,} adım)'})
     elif steps > 0:
-        items.append({'type':'warn', 'text': f'AdÄ±m hedefi tamamlanmadÄ± ({steps:,} / {STEP_TARGET:,} adÄ±m)'})
-    else:
-        items.append({'type':'warn', 'text': f'AdÄ±m kaydÄ± yok â {STEP_TARGET:,} adÄ±m hedefi'})
+        items.append({'type':'warn', 'text': f'Adım hedefi tamamlanmadı ({steps:,} / {STEP_TARGET:,} adım)'})
 
     # Supplement
     key_stacks = ['Sabah Stack', 'Pre Workout Stack', 'Post Workout Stack']
@@ -1450,7 +1463,7 @@ def api_ai_report_generate(date_str):
 
     # Antrenman
     if has_exercise:
-        items.append({'type':'ok', 'text': f'Antrenman tamamlandÄ± ({exercise["type"]})'})
+        items.append({'type':'ok', 'text': f'Antrenman tamamlandı ({exercise["type"]})'})
 
     # Uyku
     if sleep_h:
@@ -1459,15 +1472,15 @@ def api_ai_report_generate(date_str):
         elif sleep_h < SLEEP_TARGET[0]:
             items.append({'type':'warn', 'text': f'Uyku yetersiz ({sleep_h}s / hedef {SLEEP_TARGET[0]}s)'})
 
-    # Ãneri
+    # Öneri
     suggestions = []
     if water_ml < WATER_TARGET and water_ml > 0:
         remain_l = (WATER_TARGET - water_ml) / 1000
-        suggestions.append(f'{remain_l:.1f}L daha su iÃ§ilebilir.')
+        suggestions.append(f'{remain_l:.1f}L daha su içilebilir.')
     if steps < STEP_TARGET and steps > 0:
-        suggestions.append(f'{STEP_TARGET - steps:,} adÄ±m daha atÄ±labilir.')
+        suggestions.append(f'{STEP_TARGET - steps:,} adım daha atılabilir.')
     if total_prot < PROT_TARGET and total_prot > 0:
-        suggestions.append(f'{round(PROT_TARGET - total_prot)}g protein eksik â tavuk veya yumurta eklenebilir.')
+        suggestions.append(f'{round(PROT_TARGET - total_prot)}g protein eksik — tavuk veya yumurta eklenebilir.')
 
     report = {
         'date': date_str,
@@ -2353,17 +2366,29 @@ def _besin_db_for_prompt():
     """Besin DB'deki tum urunleri AI prompt icin formatla."""
     try:
         conn = get_db()
-        rows = conn.execute("SELECT name, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, notes FROM food_registry ORDER BY name").fetchall()
+        rows = conn.execute("SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, serving_size, serving_unit, unit, notes FROM food_registry ORDER BY name").fetchall()
         conn.close()
-        lines = ["BESIN DB (etiket degerleri - bunlari kullan, genel bilgine gore tahmin yapma):"]
+        lines = [
+            "BESIN DB (etiket degerleri - bunlari kullan, genel bilgine gore tahmin yapma):",
+            "Onemli: kullanici alias yazarsa o urunu kullan ve kayit ismini resmi DB ismini kullan.",
+            "Servis birimi varsa (ornek: 1 fis, 1 tablet) o birimi baz al; miktar soylenmezse 1 birim kabul et.",
+        ]
         for r in rows:
             if not r['name']: continue
             cal = r['calories_per_100'] or 0
             p = r['protein_per_100'] or 0
             k = r['carbs_per_100'] or 0
             y = r['fat_per_100'] or 0
-            note = (r['notes'] or '')[:80]
-            lines.append(f"- {r['name']}: 100g={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f} | {note}")
+            unit_lbl = r['unit'] or 'g'
+            base_str = f"100{unit_lbl}={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f}"
+            sv_sz = r['serving_size']
+            sv_unit = r['serving_unit'] or ''
+            serving_str = f" | 1 {sv_unit}={sv_sz}{unit_lbl}" if sv_sz and sv_unit else ""
+            aliases = (r['aliases'] or '').strip()
+            alias_str = f" [alias: {aliases}]" if aliases else ""
+            note = (r['notes'] or '').strip()[:60]
+            note_str = f" | {note}" if note else ""
+            lines.append(f"- {r['name']}: {base_str}{serving_str}{alias_str}{note_str}")
         return '\n'.join(lines)
     except Exception as e:
         return ''
@@ -4629,7 +4654,8 @@ def ensure_food_registry():
         except: pass
     for col, defval in [('aliases',"TEXT DEFAULT ''"),('unit',"TEXT DEFAULT 'g'"),('serving_size','REAL DEFAULT 100'),
                         ('product_id',"TEXT DEFAULT ''"),('official_name',"TEXT DEFAULT ''"),
-                        ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''")]:
+                        ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''"),
+                        ('category',"TEXT DEFAULT ''")]:
         if col not in cols:
             try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} {defval}")
             except: pass
@@ -4652,8 +4678,8 @@ def api_food_registry_add():
         if not data.get('name','').strip():
             return jsonify({'error':'name required'}), 400
         conn = get_db()
-        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases) VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases','')))
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases,category) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category','')))
         conn.commit()
         new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
@@ -4667,8 +4693,8 @@ def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
     conn = get_db()
-    conn.execute("""UPDATE food_registry SET name=?,calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,unit=?,serving_size=?,serving_unit=?,notes=?,aliases=? WHERE id=?""",
-        (data.get('name',''),data.get('calories_per_100'),data.get('protein_per_100'),data.get('carbs_per_100'),data.get('fat_per_100'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),data.get('aliases',''),fid))
+    conn.execute("""UPDATE food_registry SET name=?,calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,unit=?,serving_size=?,serving_unit=?,notes=?,aliases=?,category=? WHERE id=?""",
+        (data.get('name',''),data.get('calories_per_100'),data.get('protein_per_100'),data.get('carbs_per_100'),data.get('fat_per_100'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),data.get('aliases',''),data.get('category',''),fid))
     conn.commit(); conn.close()
     return jsonify({'ok':True})
 
@@ -4679,6 +4705,114 @@ def api_food_registry_delete(fid):
     conn.execute("DELETE FROM food_registry WHERE id=?", (fid,))
     conn.commit(); conn.close()
     return jsonify({'ok':True})
+
+def _meal_stack_calc_item(conn, item):
+    """meal_stack_items satirindan (food_id/food_name/amount/unit) kcal/makro hesapla."""
+    food = None
+    if item['food_id']:
+        food = conn.execute("SELECT * FROM food_registry WHERE id=?", (item['food_id'],)).fetchone()
+    if not food and item['food_name']:
+        food = conn.execute("SELECT * FROM food_registry WHERE name=? OR official_name=?",
+                             (item['food_name'], item['food_name'])).fetchone()
+    if not food:
+        return None
+    food = dict(food)
+    ratio = (item['amount'] or 0) / 100.0
+    return {
+        'food_id': food['id'],
+        'name': food.get('official_name') or food.get('name'),
+        'amount': item['amount'], 'unit': item['unit'],
+        'kcal': round((food.get('calories_per_100') or 0) * ratio, 1),
+        'protein': round((food.get('protein_per_100') or 0) * ratio, 1),
+        'carbs': round((food.get('carbs_per_100') or 0) * ratio, 1),
+        'fat': round((food.get('fat_per_100') or 0) * ratio, 1),
+    }
+
+@app.route('/api/meal-stacks', methods=['GET'])
+def api_meal_stacks_list():
+    conn = get_db()
+    stacks = [dict(r) for r in conn.execute("SELECT * FROM meal_stacks ORDER BY name").fetchall()]
+    for s in stacks:
+        items = [dict(r) for r in conn.execute(
+            "SELECT * FROM meal_stack_items WHERE stack_id=? ORDER BY order_num, id", (s['id'],)).fetchall()]
+        s['items'] = items
+        s['item_count'] = len(items)
+    conn.close()
+    return jsonify(stacks)
+
+@app.route('/api/meal-stacks', methods=['POST'])
+def api_meal_stacks_add():
+    data = request.get_json(force=True) or {}
+    name = (data.get('name') or '').strip()
+    items = data.get('items') or []
+    if not name:
+        return jsonify({'ok': False, 'error': 'name gerekli'}), 400
+    conn = get_db()
+    try:
+        cur = conn.execute("INSERT INTO meal_stacks (name) VALUES (?)", (name,))
+        sid = cur.lastrowid
+        for i, it in enumerate(items):
+            conn.execute(
+                "INSERT INTO meal_stack_items (stack_id,food_id,food_name,amount,unit,order_num) VALUES (?,?,?,?,?,?)",
+                (sid, it.get('food_id'), (it.get('food_name') or '').strip(), it.get('amount') or 100, it.get('unit') or 'g', i))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Bu isimde bir stack zaten var'}), 400
+    conn.close()
+    return jsonify({'ok': True, 'id': sid})
+
+@app.route('/api/meal-stacks/<int:sid>', methods=['PUT'])
+def api_meal_stacks_update(sid):
+    data = request.get_json(force=True) or {}
+    name = (data.get('name') or '').strip()
+    items = data.get('items') or []
+    conn = get_db()
+    if name:
+        conn.execute("UPDATE meal_stacks SET name=? WHERE id=?", (name, sid))
+    conn.execute("DELETE FROM meal_stack_items WHERE stack_id=?", (sid,))
+    for i, it in enumerate(items):
+        conn.execute(
+            "INSERT INTO meal_stack_items (stack_id,food_id,food_name,amount,unit,order_num) VALUES (?,?,?,?,?,?)",
+            (sid, it.get('food_id'), (it.get('food_name') or '').strip(), it.get('amount') or 100, it.get('unit') or 'g', i))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/meal-stacks/<int:sid>', methods=['DELETE'])
+def api_meal_stacks_delete(sid):
+    conn = get_db()
+    conn.execute("DELETE FROM meal_stack_items WHERE stack_id=?", (sid,))
+    conn.execute("DELETE FROM meal_stacks WHERE id=?", (sid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/meal-stacks/<int:sid>/quick-add', methods=['POST'])
+def api_meal_stacks_quick_add(sid):
+    """Stack'teki tum urunleri o gunun meal_entries'ine tek seferde ekle."""
+    data = request.get_json(force=True) or {}
+    d = data.get('date', operation_today())
+    slot = (data.get('slot') or '').strip()
+    if not slot:
+        return jsonify({'ok': False, 'error': 'slot gerekli'}), 400
+    conn = get_db()
+    stack = conn.execute("SELECT * FROM meal_stacks WHERE id=?", (sid,)).fetchone()
+    if not stack:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'stack bulunamadi'}), 404
+    items = conn.execute("SELECT * FROM meal_stack_items WHERE stack_id=? ORDER BY order_num, id", (sid,)).fetchall()
+    added = []
+    for it in items:
+        calc = _meal_stack_calc_item(conn, it)
+        if not calc:
+            continue
+        description = f"{calc['amount']} {calc['unit']} {calc['name']}"
+        conn.execute("""
+            INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,source)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """, (d, slot, calc['name'], description, calc['kcal'], calc['protein'], calc['carbs'], calc['fat'], 'meal_stack'))
+        added.append(calc)
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': d, 'slot': slot, 'stack_name': stack['name'], 'added': added})
 
 @app.route('/api/food-registry/migrate-spec', methods=['POST'])
 def api_food_registry_migrate_spec():
@@ -5008,7 +5142,7 @@ def api_supplement_stack_create():
     sid = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (name,)).fetchone()['id']
     for i, item in enumerate(items):
         conn.execute("INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
-                     (sid, item.get('name',''), item.get('dose',1), item.get('unit','kapsul'), i+1))
+                     (sid, item.get('product_name', item.get('name','')), item.get('dose',1), item.get('unit','kapsul'), i+1))
     conn.commit(); conn.close()
     return jsonify({'ok':True, 'stack_id': sid})
 
@@ -5026,6 +5160,58 @@ def api_supplement_stack_items_replace(sid):
         )
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'stack_id': sid, 'items_count': len(items)})
+
+@app.route('/api/supplements/stacks/<int:sid>', methods=['PUT'])
+def api_supplement_stack_rename(sid):
+    data = request.get_json(force=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'error': 'name gerekli'}), 400
+    conn = get_db()
+    conn.execute("UPDATE supplement_stacks SET name=? WHERE id=?", (name, sid))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/supplements/stacks/<int:sid>', methods=['DELETE'])
+def api_supplement_stack_delete(sid):
+    conn = get_db()
+    conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (sid,))
+    conn.execute("DELETE FROM supplement_stacks WHERE id=?", (sid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/supplement-products', methods=['GET'])
+def api_supplement_products_list():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM supplement_products ORDER BY name").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/supplement-products', methods=['POST'])
+def api_supplement_products_add():
+    data = request.get_json(force=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'error': 'name gerekli'}), 400
+    conn = get_db()
+    try:
+        conn.execute("INSERT INTO supplement_products (name,brand,form,default_dose,default_unit,notes) VALUES (?,?,?,?,?,?)",
+                     (name, data.get('brand',''), data.get('form','kapsul'), data.get('default_dose') or 1,
+                      data.get('default_unit','kapsul'), data.get('notes','')))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Bu isimde bir supplement zaten var'}), 400
+    new_id = conn.execute("SELECT id FROM supplement_products WHERE name=?", (name,)).fetchone()['id']
+    conn.close()
+    return jsonify({'ok': True, 'id': new_id})
+
+@app.route('/api/supplement-products/<int:pid>', methods=['DELETE'])
+def api_supplement_products_delete(pid):
+    conn = get_db()
+    conn.execute("DELETE FROM supplement_products WHERE id=?", (pid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 @app.route('/api/supplements/zinc/last-date', methods=['PATCH'])
 def api_supplement_zinc_last_date():

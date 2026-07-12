@@ -596,6 +596,11 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <div class="form-row"><div class="fg"><label>Enerji</label><div class="slider-row"><input type="range" id="mo-energy" min="1" max="10" value="7" oninput="this.nextElementSibling.textContent=this.value"><span class="sv">7</span></div></div></div>
           <div class="form-row"><div class="fg"><label>Mood</label><div class="slider-row"><input type="range" id="mo-mood" min="1" max="10" value="7" oninput="this.nextElementSibling.textContent=this.value"><span class="sv">7</span></div></div></div>
           <div class="form-row"><div class="fg"><label>Stres</label><div class="slider-row"><input type="range" id="mo-stress" min="1" max="10" value="3" oninput="this.nextElementSibling.textContent=this.value"><span class="sv">3</span></div></div></div>
+          <div style="font-size:.68rem;color:var(--muted);margin:6px 0 4px">🔗 WHOOP bağlanınca otomatik dolacak</div>
+          <div class="form-row">
+            <div class="fg"><label>Recovery %</label><input type="number" id="mo-recovery" placeholder="—"></div>
+            <div class="fg"><label>Strain</label><input type="number" id="mo-strain" step=".1" placeholder="—"></div>
+          </div>
           <button class="btn btn-yellow" onclick="saveMood()">Kaydet</button>
         </div>
         <div class="card ct ct-green">
@@ -680,11 +685,15 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
               <input type="text" id="nu-slot-new" placeholder="Pre Meal..." style="width:100%">
             </div>
           </div>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
+          <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
             <button class="btn btn-sm" id="nu-mode-db" onclick="setMealMode('db')" style="flex:1;background:var(--accent);color:#fff">📦 Besin DB</button>
             <button class="btn btn-sm" id="nu-mode-manual" onclick="setMealMode('manual')" style="flex:1;background:rgba(255,255,255,.08)">✏️ Manuel</button>
+            <button class="btn btn-sm" id="nu-mode-stack" onclick="setMealMode('stack')" style="flex:1;background:rgba(255,255,255,.08)">🧱 Stack Oluştur</button>
+            <button class="btn btn-sm" id="nu-mode-dbmgmt" onclick="setMealMode('dbmgmt')" style="flex:1;background:rgba(255,255,255,.08)">📋 DB Yönetimi</button>
           </div>
           <div id="nu-db-mode">
+            <div id="meal-stack-quick" style="margin-bottom:10px"></div>
+            <div id="nu-food-cat-filter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px"></div>
             <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap">
               <div class="fg" style="flex:3;position:relative">
                 <label>Ürün Ara</label>
@@ -699,7 +708,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-teal" onclick="saveMealFromDB()">Ekle</button>
           </div>
           <div id="nu-manual-mode" style="display:none">
-            <div class="form-row"><div class="fg"><label>Ürün Adı</label><input type="text" id="nu-title" placeholder="Tavuk Göğsü"></div></div>
+            <div class="form-row"><div class="fg"><label>Ürün Adı</label><input type="text" id="nu-title" list="nu-food-name-options" placeholder="Tavuk Göğsü" oninput="autofillMealFromDb(this.value)"></div></div>
+            <datalist id="nu-food-name-options"></datalist>
             <div class="form-row">
               <div class="fg"><label>kcal</label><input type="number" id="nu-cal" placeholder="200"></div>
               <div class="fg"><label>P (g)</label><input type="number" id="nu-prot" step=".1" placeholder="30"></div>
@@ -708,24 +718,71 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
               <div class="fg"><label>K (g)</label><input type="number" id="nu-carb" step=".1" placeholder="0"></div>
               <div class="fg"><label>Y (g)</label><input type="number" id="nu-fat" step=".1" placeholder="5"></div>
             </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted);margin:8px 0;cursor:pointer">
+              <input type="checkbox" id="nu-save-to-db">
+              Bu ürünü Besin DB'ye kalıcı kaydet (bir daha aratınca çıksın)
+            </label>
             <button class="btn btn-teal" onclick="saveMeal()">Kaydet</button>
+          </div>
+          <div id="nu-stack-mode" style="display:none">
+            <div class="fg"><label>Stack Adı</label><input type="text" id="ms-draft-name" placeholder="Kahvaltı Stack"></div>
+            <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap;margin-top:6px">
+              <div class="fg" style="flex:3;position:relative">
+                <label>Ürün Ekle</label>
+                <input type="text" id="ms-row-search" placeholder="patates, tavuk, pirinç..." oninput="mealStackRowSearch(this.value)" autocomplete="off" style="width:100%">
+                <div id="ms-row-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
+              </div>
+              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="ms-row-amount" value="100" min="1" step="1" style="width:100%"></div>
+              <div class="fg" style="flex:0.8"><label>Birim</label><input type="text" id="ms-row-unit" value="g" style="width:100%"></div>
+              <button class="btn btn-teal btn-sm" onclick="addMealStackRow()">+</button>
+            </div>
+            <input type="hidden" id="ms-row-food-id"><input type="hidden" id="ms-row-food-name">
+            <div id="ms-draft-items" style="display:flex;flex-direction:column;gap:5px;margin:10px 0"></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-teal" onclick="saveMealStack()" id="ms-save-btn">Stack'i Kaydet</button>
+              <button class="btn btn-sm btn-ghost" id="ms-cancel-btn" style="display:none" onclick="cancelMealStackEdit()">İptal</button>
+            </div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">Kayıtlı Stack'ler</div>
+            <div id="ms-saved-list"><div class="list-empty">Henüz stack yok</div></div>
+          </div>
+          <div id="nu-dbmgmt-mode" style="display:none">
+            <div class="form-row">
+              <div class="fg" style="flex:3"><label>İsim</label><input type="text" id="numgt-name" placeholder="Ürün adı"></div>
+              <div class="fg"><label>Kcal/100g</label><input type="number" id="numgt-cal" placeholder="0" step="0.1"></div>
+            </div>
+            <div class="form-row">
+              <div class="fg"><label>Protein (g)</label><input type="number" id="numgt-p" placeholder="0" step="0.1"></div>
+              <div class="fg"><label>Karbonhidrat (g)</label><input type="number" id="numgt-k" placeholder="0" step="0.1"></div>
+              <div class="fg"><label>Yağ (g)</label><input type="number" id="numgt-y" placeholder="0" step="0.1"></div>
+            </div>
+            <div class="form-row">
+              <div class="fg" style="flex:0.7"><label>Birim</label><input type="text" id="numgt-unit" placeholder="g" value="g"></div>
+              <div class="fg" style="flex:1.3"><label>Kategori</label>
+                <select id="numgt-category" style="width:100%">
+                  <option value="">— Kategori —</option>
+                  <option>Protein</option><option>Sebze</option><option>Meyve</option><option>Tahıl</option>
+                  <option>Süt Ürünü</option><option>Yağ</option><option>Sos/Baharat</option><option>Atıştırmalık</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-teal" onclick="addMealDbItem()" style="margin-top:6px">+ DB'ye Kaydet</button>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px" id="nu-dbmgmt-count">Besin DB</div>
+            <div id="nu-dbmgmt-list" style="max-height:320px;overflow-y:auto"></div>
           </div>
           <div id="qm-btns" style="margin-top:8px"></div>
         </div>
         <div class="card ct ct-purple">
           <div class="card-head"><span class="card-icon">💊</span><div><div class="card-name">Supplement Ekle</div></div></div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" id="supp-mode-add" onclick="setSuppMode('add')" style="flex:1;background:var(--accent);color:#fff">Tekli Ekle</button>
+            <button class="btn btn-sm" id="supp-mode-stack" onclick="setSuppMode('stack')" style="flex:1;background:rgba(255,255,255,.08)">🧱 Stack Oluştur</button>
+            <button class="btn btn-sm" id="supp-mode-db" onclick="setSuppMode('db')" style="flex:1;background:rgba(255,255,255,.08)">📋 Supplement DB</button>
+          </div>
+          <div id="supp-add-mode">
           <!-- Hızlı Stack — yatay kaydırmalı, taşmaz -->
           <div id="stack-quick-panel" style="margin-bottom:12px">
             <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı Stack</div>
-            <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none">
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('ac-karna')">Aç Karna</button>
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('sabah')">Sabah</button>
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('kahvalti')">Kahvaltı</button>
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('ogle')">Öğlen</button>
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('gece')">Gece</button>
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('pre-workout')">Pre</button>
-              <button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="addSupplementStack('post-workout')">Post</button>
-            </div>
+            <div id="stack-quick-buttons" style="display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none"></div>
           </div>
           <!-- Supplement Arama -->
           <div style="position:relative;margin-bottom:10px">
@@ -737,34 +794,60 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <div class="fg" style="flex:1.4">
               <label>Stack</label>
               <select id="vit-stack" style="width:100%">
-                <option value="">— Seçiniz —</option>
-                <option value="aç karna stack">Aç Karna</option>
-                <option value="sabah stack">Sabah</option>
-                <option value="öğle stack">Öğlen</option>
-                <option value="pre-workout stack">Pre Workout</option>
-                <option value="post-workout stack">Post Workout</option>
-                <option value="gece stack">Gece</option>
+                <option value="">— Seçiniz (sadece bugüne özel) —</option>
               </select>
             </div>
             <div class="fg" style="flex:2">
-              <label>Durum / Not</label>
-              <input type="text" id="vit-notes" placeholder="eksik alındı, gün aşırı...">
+              <label>Not</label>
+              <input type="text" id="vit-notes" placeholder="serbest not...">
             </div>
           </div>
           <!-- Hızlı Durum Chip'leri -->
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
-            <button class="btn btn-xs" style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)" onclick="setVitDurum('alındı',false)">✓ Alındı</button>
-            <button class="btn btn-xs" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)" onclick="setVitDurum('eksik alındı',true)">✕ Eksik</button>
-            <button class="btn btn-xs" style="background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)" onclick="setVitDurum('gün aşırı — bugün atla',true)">⚠️ Gün Aşırı</button>
-            <button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="setVitDurum('yarım doz',false)">½ Yarım Doz</button>
-          </div>
+          <input type="hidden" id="vit-status" value="taken">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="vit-status-chips"></div>
           <div class="form-row">
-            <div class="fg" style="flex:2"><label>İsim</label><input type="text" id="vit-name" placeholder="D3, Omega-3..."></div>
+            <div class="fg" style="flex:2"><label>İsim</label><input type="text" id="vit-name" list="supp-name-options" placeholder="D3, Omega-3..." oninput="autofillSuppFromDb(this.value)"></div>
             <div class="fg"><label>Miktar</label><input type="text" id="vit-amount" placeholder="2"></div>
             <div class="fg"><label>Birim</label><input type="text" id="vit-unit" placeholder="kapsül"></div>
           </div>
+          <datalist id="supp-name-options"></datalist>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted);margin:8px 0;cursor:pointer">
+            <input type="checkbox" id="vit-save-to-db">
+            Bu ürünü Supplement DB'ye kalıcı kaydet (bir daha aratınca çıksın)
+          </label>
           <button class="btn btn-purple" onclick="saveVitamin()">Ekle</button>
           <div id="qs-btns" style="display:none"></div>
+          </div>
+          <div id="supp-stack-mode" style="display:none">
+            <div class="fg"><label>Stack Adı</label><input type="text" id="ss-draft-name" placeholder="Sabah Stack"></div>
+            <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap;margin-top:6px">
+              <div class="fg" style="flex:3;position:relative">
+                <label>Ürün Ekle</label>
+                <input type="text" id="ss-row-search" placeholder="D3, Omega-3, Magnezyum..." oninput="suppStackRowSearch(this.value)" autocomplete="off" style="width:100%">
+                <div id="ss-row-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
+              </div>
+              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="ss-row-dose" value="1" min="0" step="1" style="width:100%"></div>
+              <div class="fg" style="flex:0.8"><label>Birim</label><input type="text" id="ss-row-unit" value="kapsul" style="width:100%"></div>
+              <button class="btn btn-teal btn-sm" onclick="addSuppStackRow()">+</button>
+            </div>
+            <div id="ss-draft-items" style="display:flex;flex-direction:column;gap:5px;margin:10px 0"></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-teal" onclick="saveSuppStack()" id="ss-save-btn">Stack'i Kaydet</button>
+              <button class="btn btn-sm btn-ghost" id="ss-cancel-btn" style="display:none" onclick="cancelSuppStackEdit()">İptal</button>
+            </div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">Kayıtlı Stack'ler</div>
+            <div id="ss-saved-list"><div class="list-empty">Yükleniyor...</div></div>
+          </div>
+          <div id="supp-db-mode" style="display:none">
+            <div class="form-row">
+              <div class="fg" style="flex:2"><label>İsim</label><input type="text" id="supdb-name" placeholder="D3, Omega-3..."></div>
+              <div class="fg"><label>Varsayılan Miktar</label><input type="number" id="supdb-dose" placeholder="1"></div>
+              <div class="fg"><label>Birim</label><input type="text" id="supdb-unit" placeholder="kapsul" value="kapsul"></div>
+            </div>
+            <button class="btn btn-teal" onclick="addSuppDbItem()" style="margin-top:6px">+ DB'ye Kaydet</button>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px" id="supdb-count">Supplement DB</div>
+            <div id="supdb-list" style="max-height:320px;overflow-y:auto"></div>
+          </div>
         </div>
         <!-- Takviye Sırası -->
         <div class="card ct ct-indigo">
@@ -1729,15 +1812,13 @@ function renderVitList(elId,vitamins,canDel){
   const sorted=Object.keys(groups).sort((a,b)=>{const ia=GORDER.indexOf(a)<0?99:GORDER.indexOf(a),ib=GORDER.indexOf(b)<0?99:GORDER.indexOf(b);return ia-ib;});
   el.innerHTML=sorted.map(g=>{
     const squares=groups[g].map(v=>{
-      const notes=(v.notes||'').toLowerCase();
-      const isGunAsiri=notes.includes('gün aşırı')||notes.includes('gun asiri');
-      const isAlınmadı=notes.includes('alınmadı')||notes.includes('alinmadi')||(parseFloat(v.amount||'1')===0&&!isGunAsiri);
-      const isEksik=notes.includes('eksik alındı')||notes.includes('eksik alindi')||isAlınmadı;
-      const isSkip=isEksik||notes.includes('atla')||notes.includes('yarım');
-      const isDone=(notes.includes('alındı')||notes.includes('alindi'))&&!isAlınmadı&&!isSkip&&!isGunAsiri;
-      const nameStyle=isEksik?'text-decoration:line-through;color:#ef4444;':'';
-      const cardBorder=isEksik?'border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06);':isGunAsiri?'border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.05);':'';
-      const badge=isEksik?`<div style="position:absolute;top:0;left:0;right:0;background:#ef4444;color:#fff;font-size:.45rem;font-weight:800;text-align:center;padding:2px 3px;border-radius:9px 9px 0 0">&#10071; eksik</div>`:isGunAsiri?`<div style="position:absolute;top:0;left:0;right:0;background:#d97706;color:#fff;font-size:.45rem;font-weight:800;text-align:center;padding:2px 3px;border-radius:9px 9px 0 0">&#9888; atland&#305;</div>`:isDone?`<div style="position:absolute;top:3px;right:4px;font-size:.5rem;color:#22c55e;font-weight:800">&#10003;</div>`:'';
+      const status=vitStatusOf(v);
+      const m=VIT_STATUS_META[status];
+      const struck=status==='missed'||status==='eod_skipped';
+      const nameStyle=struck?`text-decoration:line-through;color:${m.color};`:'';
+      const cardBorder=(status!=='taken')?`border-color:${m.border};background:${m.bg};`:'';
+      const badge=struck?`<div style="position:absolute;top:0;left:0;right:0;background:${m.color};color:#0a0f1c;font-size:.45rem;font-weight:800;text-align:center;padding:2px 3px;border-radius:9px 9px 0 0">${m.emoji} ${m.label}</div>`
+        :(status!=='taken')?`<div style="position:absolute;top:3px;right:4px;font-size:.5rem;color:${m.color};font-weight:800">${m.emoji}</div>`:'';
       const safeName=(v.name||'').replace(/'/g,"\\'");
       const amt=v.amount?fmtAmt(v.amount):'';
       const unit=v.unit?' '+v.unit:'';
@@ -1802,8 +1883,9 @@ function renderMealList(elId,meals,canDel,elOverride){
     const totHtml=`<span style="color:${kcalColor};font-weight:700">${Math.round(totCal)} kcal</span> · P <b style="color:#4ade80">${Math.round(totP)}</b> · K <b style="color:#60a5fa">${Math.round(totK)}</b> · Y <b style="color:#fb923c">${Math.round(totY)}</b>`;
     const header=`<div class="meal-slot-header"><span class="meal-slot-name">${slotLabel}</span><span class="meal-slot-total">${totHtml}</span></div>`;
     const items=rows.map(m=>{
-      const gram=(m.description&&m.description.trim()&&m.description.trim()!==m.title)?(m.description.trim().replace(/\b(\d+)\.0+\b/g,'$1'))+' ':'';
-      const name=(gram+(m.title||m.slot||'—')).trim();
+      const descTrim=(m.description||'').trim().replace(/\b(\d+)\.0+\b/g,'$1');
+      const titleTrim=(m.title||m.slot||'—').trim();
+      const name=(descTrim && descTrim!==titleTrim) ? (descTrim.includes(titleTrim)?descTrim:(descTrim+' '+titleTrim)) : titleTrim;
       const fmt=v=>+(Math.round(v*10)/10);
       const parts=[];
       if(m.calories) parts.push(`<span class="mi-kcal">${Math.round(m.calories)} kcal</span>`);
@@ -1835,8 +1917,28 @@ async function loadLogPage(){
   if($('wo-h')&&w.hours)$('wo-h').value=w.hours;
   sv('water-cur',((nu.water_ml||0)/1000).toFixed(1)+'L bugün');
   await Promise.all([loadVitamins(),loadTodayMeals(),loadQuickPicks(),loadMealTitles()]);
+  renderFoodCatFilter();
+  loadMealStackQuick();
+  loadFoodNameOptions();
   setMealMode('db');
   if(typeof loadMealOrder==='function') loadMealOrder();
+  renderVitStatusChips();
+  loadSuppStackQuick();
+  loadSuppNameOptions();
+  setSuppMode('add');
+}
+
+function setSuppMode(mode){
+  const panels={add:'supp-add-mode',stack:'supp-stack-mode',db:'supp-db-mode'};
+  const btns={add:'supp-mode-add',stack:'supp-mode-stack',db:'supp-mode-db'};
+  Object.keys(panels).forEach(k=>{
+    const p=$(panels[k]),b=$(btns[k]);
+    if(p)p.style.display=(k===mode)?'':'none';
+    if(b){b.style.background=(k===mode)?'var(--accent)':'rgba(255,255,255,.08)';b.style.color=(k===mode)?'#fff':'';}
+  });
+  if(mode==='stack')loadSuppStacks();
+  if(mode==='db')loadSuppDbList();
+  if(mode==='add')loadSuppStackQuick();
 }
 
 const SLOT_DISPLAY={
@@ -1894,29 +1996,37 @@ function getMealSlot(){
 }
 
 function setMealMode(mode){
-  const dbDiv=$('nu-db-mode'),manDiv=$('nu-manual-mode');
-  const dbBtn=$('nu-mode-db'),manBtn=$('nu-mode-manual');
-  if(mode==='db'){
-    if(dbDiv)dbDiv.style.display='';
-    if(manDiv)manDiv.style.display='none';
-    if(dbBtn)dbBtn.style.background='var(--accent)';
-    if(manBtn)manBtn.style.background='rgba(255,255,255,.08)';
-  }else{
-    if(dbDiv)dbDiv.style.display='none';
-    if(manDiv)manDiv.style.display='';
-    if(dbBtn)dbBtn.style.background='rgba(255,255,255,.08)';
-    if(manBtn)manBtn.style.background='var(--accent)';
-  }
+  const panels={db:'nu-db-mode',manual:'nu-manual-mode',stack:'nu-stack-mode',dbmgmt:'nu-dbmgmt-mode'};
+  const btns={db:'nu-mode-db',manual:'nu-mode-manual',stack:'nu-mode-stack',dbmgmt:'nu-mode-dbmgmt'};
+  Object.keys(panels).forEach(k=>{
+    const p=$(panels[k]),b=$(btns[k]);
+    if(p)p.style.display=(k===mode)?'':'none';
+    if(b)b.style.background=(k===mode)?'var(--accent)':'rgba(255,255,255,.08)';
+    if(b)b.style.color=(k===mode)?'#fff':'';
+  });
+  if(mode==='stack')loadMealStacks();
+  if(mode==='dbmgmt')loadMealDbMgmtList();
+  if(mode==='db')loadMealStackQuick();
 }
 
 let _foodList=null;
+let _foodCat='';
+const FOOD_CATEGORIES=['Protein','Sebze','Meyve','Tahıl','Süt Ürünü','Yağ','Sos/Baharat','Atıştırmalık'];
+async function renderFoodCatFilter(){
+  const el=$('nu-food-cat-filter');if(!el)return;
+  const chip=(label,val)=>`<button class="btn btn-xs" onclick="setFoodCatFilter('${val}')" style="background:${_foodCat===val?'var(--accent)':'rgba(255,255,255,.08)'};color:${_foodCat===val?'#fff':''}">${label}</button>`;
+  el.innerHTML=chip('Tümü','')+FOOD_CATEGORIES.map(c=>chip(c,c)).join('');
+}
+function setFoodCatFilter(val){_foodCat=val;renderFoodCatFilter();foodSearch($('nu-food-search')?.value||'');}
 async function foodSearch(q){
   const res=$('nu-food-results');if(!res)return;
   q=(q||'').trim().toLowerCase();
-  if(!q){res.style.display='none';return;}
   if(!_foodList)_foodList=await API('/api/food-registry')||[];
-  const matches=_foodList.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)||(f.aliases||'').toLowerCase().includes(q)).slice(0,8);
-  if(!matches.length){res.style.display='none';return;}
+  if(!q && !_foodCat){res.style.display='none';return;}
+  let pool=_foodList;
+  if(_foodCat)pool=pool.filter(f=>(f.category||'')===_foodCat);
+  const matches=q?pool.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)||(f.aliases||'').toLowerCase().includes(q)).slice(0,8):pool.slice(0,8);
+  if(!matches.length){res.innerHTML='<div style="padding:8px 12px;color:var(--muted);font-size:.8rem">Sonuç yok</div>';res.style.display='block';return;}
   res.innerHTML=matches.map(f=>`<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background=''">
     <b>${f.official_name||f.name}</b>
     <span style="color:var(--muted);font-size:.75rem;margin-left:8px">${f.calories_per_100||0} kcal · P${f.protein_per_100||0} K${f.carbs_per_100||0} Y${f.fat_per_100||0}/100g</span>
@@ -1997,6 +2107,140 @@ document.addEventListener('click',function(e){
   const res=$('nu-food-results');
   if(res&&!res.contains(e.target)&&e.target.id!=='nu-food-search')res.style.display='none';
 });
+
+/* ═══ MEAL STACKS (Hızlı Stack / Stack Oluştur) ═══ */
+let _mealStacks=null;
+async function loadMealStackQuick(){
+  _mealStacks=await API('/api/meal-stacks')||[];
+  const el=$('meal-stack-quick');if(!el)return;
+  if(!_mealStacks.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı Stack</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">${_mealStacks.map(s=>
+      `<button class="btn btn-xs" style="background:rgba(45,212,191,.15);color:#2dd4bf;border:1px solid rgba(45,212,191,.3)" onclick="quickAddMealStack(${s.id})">🧱 ${s.name} <span style="opacity:.6">(${s.item_count})</span></button>`
+    ).join('')}</div>`;
+}
+async function quickAddMealStack(id){
+  const slot=getMealSlot();
+  const newTitle=($('nu-slot-new')?.value||'').trim();
+  if(newTitle){await POST('/api/meal-titles',{name:newTitle});await loadMealTitles();$('nu-slot-new').value='';}
+  const r=await POST(`/api/meal-stacks/${id}/quick-add`,{slot});
+  if(r.ok===false)return toast(r.error||'Hata',false);
+  toast(`${r.stack_name} eklendi (${(r.added||[]).length} ürün)`);
+  loadTodayMeals();loadDashboard();
+}
+let _msDraftItems=[],_msEditId=null;
+async function mealStackRowSearch(q){
+  const res=$('ms-row-results');if(!res)return;
+  q=(q||'').trim().toLowerCase();
+  if(!q){res.style.display='none';return;}
+  if(!_foodList)_foodList=await API('/api/food-registry')||[];
+  const matches=_foodList.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){res.style.display='none';return;}
+  res.innerHTML=matches.map(f=>`<div onclick="selectMealStackRow(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${f.official_name||f.name}</div>`).join('');
+  res.style.display='block';
+}
+function selectMealStackRow(id,name){
+  $('ms-row-food-id').value=id;$('ms-row-food-name').value=name;
+  $('ms-row-search').value=name;$('ms-row-results').style.display='none';
+}
+function addMealStackRow(){
+  const foodId=parseInt($('ms-row-food-id').value)||null;
+  const foodName=$('ms-row-food-name').value.trim()||$('ms-row-search').value.trim();
+  if(!foodName)return toast('Ürün seç',false);
+  const amount=parseFloat($('ms-row-amount').value)||100;
+  const unit=$('ms-row-unit').value.trim()||'g';
+  _msDraftItems.push({food_id:foodId,food_name:foodName,amount,unit});
+  $('ms-row-search').value='';$('ms-row-food-id').value='';$('ms-row-food-name').value='';
+  renderMsDraftItems();
+}
+function removeMealStackRow(i){_msDraftItems.splice(i,1);renderMsDraftItems();}
+function renderMsDraftItems(){
+  const el=$('ms-draft-items');if(!el)return;
+  if(!_msDraftItems.length){el.innerHTML='<div style="font-size:.75rem;color:var(--muted)">Bu stack\'e henüz satır eklenmedi.</div>';return;}
+  el.innerHTML=_msDraftItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:8px;padding:6px 10px;font-size:.8rem"><b style="flex:1">${it.food_name}</b><span style="color:var(--muted)">${it.amount}${it.unit}</span><button class="del-btn" onclick="removeMealStackRow(${i})">✕</button></div>`).join('');
+}
+async function saveMealStack(){
+  const name=$('ms-draft-name').value.trim();
+  if(!name)return toast('Stack adı gir',false);
+  if(!_msDraftItems.length)return toast('En az 1 ürün ekle',false);
+  const body={name,items:_msDraftItems};
+  const r=_msEditId?await PUT(`/api/meal-stacks/${_msEditId}`,body):await POST('/api/meal-stacks',body);
+  if(r.ok===false)return toast(r.error||'Hata',false);
+  toast(_msEditId?'Stack güncellendi':'Stack kaydedildi');
+  cancelMealStackEdit();
+  loadMealStacks();loadMealStackQuick();
+}
+function cancelMealStackEdit(){
+  _msDraftItems=[];_msEditId=null;
+  $('ms-draft-name').value='';
+  $('ms-save-btn').textContent="Stack'i Kaydet";
+  $('ms-cancel-btn').style.display='none';
+  renderMsDraftItems();
+}
+async function editMealStack(id){
+  const s=(_mealStacks||[]).find(x=>x.id===id);if(!s)return;
+  _msEditId=id;
+  $('ms-draft-name').value=s.name;
+  _msDraftItems=(s.items||[]).map(it=>({food_id:it.food_id,food_name:it.food_name,amount:it.amount,unit:it.unit}));
+  $('ms-save-btn').textContent="Stack'i Güncelle";
+  $('ms-cancel-btn').style.display='';
+  renderMsDraftItems();
+}
+async function deleteMealStack(id,name){
+  confirm_('Stack silinsin mi?',`"${name}" kalıcı olarak silinecek.`,async()=>{
+    await DEL(`/api/meal-stacks/${id}`);
+    toast('Silindi');loadMealStacks();loadMealStackQuick();
+  });
+}
+async function loadMealStacks(){
+  _mealStacks=await API('/api/meal-stacks')||[];
+  const el=$('ms-saved-list');if(!el)return;
+  if(!_mealStacks.length){el.innerHTML='<div class="list-empty">Henüz stack yok</div>';return;}
+  el.innerHTML=_mealStacks.map(s=>`<div style="background:rgba(255,255,255,.04);border-radius:9px;padding:9px 11px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <b style="font-size:.85rem;cursor:pointer" onclick="editMealStack(${s.id})">${s.name}</b>
+      <span style="margin-left:auto;font-size:.7rem;color:#60a5fa;cursor:pointer" onclick="editMealStack(${s.id})">Düzenle ✎</span>
+      <button class="del-btn" onclick="deleteMealStack(${s.id},'${s.name.replace(/'/g,"`")}')">Sil</button>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${(s.items||[]).map(it=>it.food_name).join(', ')||'—'}</div>
+  </div>`).join('');
+}
+
+/* ═══ MEAL DB YÖNETİMİ (inline, Öğün Ekle içinde) ═══ */
+async function addMealDbItem(){
+  const name=($('numgt-name').value||'').trim();
+  if(!name)return toast('İsim gir',false);
+  await POST('/api/food-registry',{
+    name,calories_per_100:+$('numgt-cal').value||0,protein_per_100:+$('numgt-p').value||0,
+    carbs_per_100:+$('numgt-k').value||0,fat_per_100:+$('numgt-y').value||0,
+    unit:$('numgt-unit').value||'g',category:$('numgt-category').value||''
+  });
+  ['numgt-name','numgt-cal','numgt-p','numgt-k','numgt-y'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  $('numgt-category').value='';
+  _foodList=null;
+  toast(name+' Besin DB\'ye eklendi');
+  loadMealDbMgmtList();
+}
+async function delMealDbItem(id){
+  await DEL('/api/food-registry/'+id);
+  _foodList=null;
+  loadMealDbMgmtList();
+}
+async function loadMealDbMgmtList(){
+  const items=await API('/api/food-registry')||[];
+  const el=$('nu-dbmgmt-list');if(!el)return;
+  $('nu-dbmgmt-count').textContent=`Besin DB — ${items.length} ürün`;
+  if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
+  el.innerHTML=items.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border-radius:8px;font-size:.8rem">
+    <span style="flex:2;font-weight:700">${f.name}${f.category?` <span style="color:var(--muted);font-weight:400;font-size:.7rem">· ${f.category}</span>`:''}</span>
+    <span style="color:var(--yellow)">${f.calories_per_100||0} kcal</span>
+    <span style="color:var(--green)">P${f.protein_per_100||0}</span>
+    <span style="color:var(--blue)">K${f.carbs_per_100||0}</span>
+    <span style="color:var(--orange)">Y${f.fat_per_100||0}</span>
+    <button class="del-btn" onclick="delMealDbItem(${f.id})">✕</button>
+  </div>`).join('');
+}
+
 async function loadFoodRegistry(){const items=await API('/api/food-registry')||[];const el=document.getElementById('food-registry-list');if(!el)return;if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}el.innerHTML=items.map(f=>`<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px"><span style="flex:2;font-weight:700;font-size:.9rem">${f.name}</span><span style="color:var(--yellow);font-size:.8rem">${f.calories_per_100||0} kcal/100g</span><span style="color:var(--green);font-size:.8rem">P:${f.protein_per_100||0}g</span><span style="color:var(--blue);font-size:.8rem">K:${f.carbs_per_100||0}g</span><span style="color:var(--orange);font-size:.8rem">Y:${f.fat_per_100||0}g</span><span style="color:var(--muted);font-size:.75rem">${f.notes||''}</span><button class="del-btn" onclick="delFoodItem(${f.id})">✕</button></div>`).join('');}
 async function addFoodItem(){const name=(document.getElementById('fr-name').value||'').trim();if(!name)return;await POST('/api/food-registry',{name,calories_per_100:+document.getElementById('fr-cal').value||0,protein_per_100:+document.getElementById('fr-p').value||0,carbs_per_100:+document.getElementById('fr-k').value||0,fat_per_100:+document.getElementById('fr-y').value||0,unit:document.getElementById('fr-unit')?.value||'g',serving_size:+document.getElementById('fr-serving')?.value||100,serving_unit:document.getElementById('fr-unit')?.value||'g',notes:document.getElementById('fr-notes').value,aliases:''});['fr-name','fr-cal','fr-p','fr-k','fr-y','fr-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});loadFoodRegistry();}
 async function delFoodItem(id){await DEL('/api/food-registry/'+id);loadFoodRegistry();}
@@ -2026,21 +2270,50 @@ function selectSupp(id){
   $('supp-search').value=t.title||'';
   $('supp-results').style.display='none';
 }
-function setVitDurum(durum, zeroAmount){
-  $('vit-notes').value=durum;
-  if(zeroAmount) $('vit-amount').value='0';
-  // Aktif chip görünümü
-  document.querySelectorAll('[onclick^="setVitDurum"]').forEach(b=>b.style.fontWeight='');
-  event.target.style.fontWeight='700';
+/* ═══ SUPPLEMENT STATUS (5 durum) ═══ */
+const VIT_STATUS_META={
+  taken:      {label:'Alındı',            emoji:'✓',  color:'#22c55e', bg:'rgba(34,197,94,.15)',  border:'rgba(34,197,94,.3)'},
+  missed:     {label:'Eksik',              emoji:'✕',  color:'#f87171', bg:'rgba(239,68,68,.15)',  border:'rgba(239,68,68,.3)'},
+  eod_skipped:{label:'Gün Aşırı Atlandı',  emoji:'⚠️', color:'#fbbf24', bg:'rgba(251,191,36,.15)', border:'rgba(251,191,36,.3)'},
+  eod_taken:  {label:'Gün Aşırı Alındı',   emoji:'✅', color:'#4ade80', bg:'rgba(74,222,128,.15)', border:'rgba(74,222,128,.3)'},
+  half_dose:  {label:'Yarım Doz',          emoji:'½',  color:'#a78bfa', bg:'rgba(139,92,246,.15)', border:'rgba(139,92,246,.3)'},
+};
+function vitStatusOf(v){
+  if(v.status && VIT_STATUS_META[v.status])return v.status;
+  // Eski kayitlar (status kolonu yok) icin geriye donuk fallback: notes metnini regex ile parse et
+  const raw=(v.notes||'').toLowerCase();
+  const isGun=/gün aşırı|gun asiri/.test(raw);
+  const isAlindi=/al[ıi]nd[ıi]/.test(raw);
+  if(/eksik al[ıi]nd[ıi]|alinmadi|alınmadı/.test(raw))return'missed';
+  if(isGun&&isAlindi)return'eod_taken';
+  if(isGun)return'eod_skipped';
+  if(/yar[ıi]m/.test(raw))return'half_dose';
+  if(isAlindi||!raw)return'taken';
+  return'taken';
+}
+function renderVitStatusChips(){
+  const el=$('vit-status-chips');if(!el)return;
+  el.innerHTML=Object.entries(VIT_STATUS_META).map(([key,m])=>
+    `<button type="button" class="btn btn-xs" data-vit-status="${key}" style="background:${m.bg};color:${m.color};border:1px solid ${m.border}" onclick="setVitDurum('${key}')">${m.emoji} ${m.label}</button>`
+  ).join('');
+  markActiveVitStatus();
+}
+function markActiveVitStatus(){
+  const cur=$('vit-status')?.value||'taken';
+  document.querySelectorAll('[data-vit-status]').forEach(b=>b.style.fontWeight=(b.dataset.vitStatus===cur)?'900':'600');
+}
+function setVitDurum(status){
+  $('vit-status').value=status;
+  const m=VIT_STATUS_META[status];
+  $('vit-amount').value=(status==='missed')?'0':$('vit-amount').value;
+  markActiveVitStatus();
 }
 async function loadTodayMeals(){renderMealList('meal-today-list',await API('/api/meals/'+today()),true);}
 async function loadQuickPicks(){
   const all=await API('/api/templates');
   if(!Array.isArray(all))return;
   const meals=all.filter(t=>t.kind==='meal'),supps=all.filter(t=>t.kind==='supplement');
-  const qm=$('qm-btns'),qs=$('qs-btns');
-  if(qm&&meals.length)qm.innerHTML=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı yemek</div><div style="display:flex;flex-wrap:wrap;gap:4px">${meals.map(m=>`<button class="btn btn-ghost btn-xs" onclick="quickMeal(${m.id})">${m.title}</button>`).join('')}</div>`;
-  if(qs&&supps.length)qs.innerHTML=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Hızlı supplement</div><div style="display:flex;flex-wrap:wrap;gap:4px">${supps.map(s=>`<button class="btn btn-ghost btn-xs" onclick="quickSupp(${s.id})">${s.title}</button>`).join('')}</div>`;
+  // "Hızlı yemek/supplement" tek-ürün çip duvarı tasarımda yok, kaldırıldı — bkz. Stack Oluştur / Besin DB modları
 }
 async function quickMeal(id){const all=await API('/api/templates');const t=(all||[]).find(x=>x.id===id);if(!t)return;await POST('/api/meals',{slot:t.category||'extra',title:t.title,description:t.description||t.title,calories:t.calories,protein_g:t.protein_g,carbs_g:t.carbs_g,fat_g:t.fat_g,source:'template'});toast(t.title+' eklendi');loadTodayMeals();loadDashboard();}
 async function quickSupp(id){const all=await API('/api/templates');const t=(all||[]).find(x=>x.id===id);if(!t)return;await POST('/api/vitamin',{name:t.title,amount:t.amount||'',unit:t.unit||''});toast(t.title+' eklendi');loadVitamins();loadDashboard();}
@@ -2048,7 +2321,14 @@ async function quickSupp(id){const all=await API('/api/templates');const t=(all|
 /* SAVES */
 async function saveSleep(){const h=parseFloat($('sl-hours').value);if(!h)return toast('Saat gir',false);await POST('/api/log/sleep',{hours:h,quality:parseInt($('sl-q').value)});toast('Uyku kaydedildi');loadLogPage();}
 async function saveExercise(){const t=$('ex-type').value.trim();if(!t)return toast('Tür gir',false);await POST('/api/log/exercise',{type:t,duration:parseInt($('ex-dur').value)||null,intensity:parseInt($('ex-int').value)});toast('Egzersiz kaydedildi');loadLogPage();}
-async function saveMood(){await POST('/api/log/mood',{energy:+$('mo-energy').value,mood:+$('mo-mood').value,stress:+$('mo-stress').value});toast('Ruh hali kaydedildi');loadLogPage();}
+async function saveMood(){
+  const p={energy:+$('mo-energy').value,mood:+$('mo-mood').value,stress:+$('mo-stress').value};
+  const rec=$('mo-recovery').value,str=$('mo-strain').value;
+  if(rec!=='')p.recovery=+rec;
+  if(str!=='')p.strain=+str;
+  await POST('/api/log/mood',p);
+  toast('Ruh hali kaydedildi');loadLogPage();
+}
 async function saveBody(){const p={weight_kg:parseFloat($('bm-kg').value)||null,waist_cm:parseFloat($('bm-waist').value)||null,chest_cm:parseFloat($('bm-chest').value)||null,arm_cm:parseFloat($('bm-arm').value)||null};if(!Object.values(p).some(Boolean))return toast('Değer gir',false);await POST('/api/body/metrics',p);toast('Ölçüm kaydedildi');}
 async function saveSteps(mode='set'){
   const v=parseInt($('steps-input').value)||0;
@@ -2154,6 +2434,19 @@ async function addWater(ml){const cur=await API('/api/today');const now=(cur.nut
 async function addWaterManual(){const l=parseFloat($('water-m').value);if(!l||l<=0)return toast('Litre gir',false);await addWater(Math.round(l*1000));$('water-m').value='';}
 async function setWaterTotal(ml){const total=Math.max(0,Math.round(Number(ml)||0));await POST('/api/log/nutrition',{date:today(),water_ml:total});sv('water-cur',(total/1000).toFixed(1)+'L bugün');if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();else loadDashboard();return total;}
 async function setWaterManualTotal(){const raw=String($('water-m').value||'').replace(',','.');const l=parseFloat(raw);if(!Number.isFinite(l)||l<0)return toast('Toplam litreyi gir',false);const total=await setWaterTotal(l*1000);$('water-m').value='';toast('Su toplamı '+(total/1000).toFixed(1)+'L olarak ayarlandı');}
+function autofillMealFromDb(name){
+  const f=(_foodList||[]).find(x=>(x.official_name||x.name||'').toLowerCase()===(name||'').trim().toLowerCase());
+  if(!f)return;
+  if(!$('nu-cal').value)$('nu-cal').value=f.calories_per_100||'';
+  if(!$('nu-prot').value)$('nu-prot').value=f.protein_per_100||'';
+  if(!$('nu-carb').value)$('nu-carb').value=f.carbs_per_100||'';
+  if(!$('nu-fat').value)$('nu-fat').value=f.fat_per_100||'';
+}
+async function loadFoodNameOptions(){
+  if(!_foodList)_foodList=await API('/api/food-registry')||[];
+  const dl=$('nu-food-name-options');
+  if(dl)dl.innerHTML=_foodList.map(f=>`<option value="${f.official_name||f.name}">`).join('');
+}
 async function saveMeal(){
   const title=($('nu-title')?.value||'').trim();
   if(!title)return toast('Ürün adı gir',false);
@@ -2164,22 +2457,172 @@ async function saveMeal(){
   const newTitle=($('nu-slot-new')?.value||'').trim();
   if(newTitle){await POST('/api/meal-titles',{name:newTitle});await loadMealTitles();$('nu-slot-new').value='';}
   await POST('/api/meals',{slot,title,description:title,calories:cal,protein_g:prot,carbs_g:carb,fat_g:fat,source:'web'});
+  if($('nu-save-to-db')?.checked){
+    await POST('/api/food-registry',{name:title,calories_per_100:cal||0,protein_per_100:prot||0,carbs_per_100:carb||0,fat_per_100:fat||0});
+    _foodList=null;loadFoodNameOptions();
+    $('nu-save-to-db').checked=false;
+  }
   toast('Öğün kaydedildi');
   ['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>{if($(id))$(id).value='';});
   loadTodayMeals();loadDashboard();
+}
+async function loadSuppNameOptions(){
+  if(!_suppProducts)_suppProducts=await API('/api/supplement-products')||[];
+  const dl=$('supp-name-options');
+  if(dl)dl.innerHTML=_suppProducts.map(p=>`<option value="${p.name}">`).join('');
+}
+function autofillSuppFromDb(name){
+  const p=(_suppProducts||[]).find(x=>x.name.toLowerCase()===(name||'').trim().toLowerCase());
+  if(!p)return;
+  if(!$('vit-amount').value)$('vit-amount').value=p.default_dose||1;
+  if(!$('vit-unit').value)$('vit-unit').value=p.default_unit||'kapsul';
 }
 async function saveVitamin(){
   const name=$('vit-name').value.trim();
   if(!name)return toast('İsim gir',false);
   const stack=($('vit-stack')?.value||'').trim();
   const extra=($('vit-notes')?.value||'').trim();
+  const status=$('vit-status')?.value||'taken';
   const notes=stack&&extra?stack+' | '+extra:stack||extra||'';
-  await POST('/api/vitamin',{name,amount:$('vit-amount').value.trim(),unit:$('vit-unit').value.trim(),notes});
-  toast(name+' eklendi');
+  const amount=$('vit-amount').value.trim(),unit=$('vit-unit').value.trim();
+  await POST('/api/vitamin',{name,amount,unit,notes,status});
+  if($('vit-save-to-db')?.checked){
+    await POST('/api/supplement-products',{name,default_dose:parseFloat(amount)||1,default_unit:unit||'kapsul'});
+    _suppProducts=null;loadSuppNameOptions();
+  }
+  toast(name+' eklendi ('+(VIT_STATUS_META[status]?.label||status)+')');
   ['vit-name','vit-amount','vit-unit','supp-search','vit-notes'].forEach(id=>{if($(id))$(id).value='';});
   if($('vit-stack'))$('vit-stack').value='';
   if($('supp-results'))$('supp-results').style.display='none';
+  if($('vit-save-to-db'))$('vit-save-to-db').checked=false;
+  setVitDurum('taken');
   loadVitamins();loadDashboard();
+}
+
+/* ═══ SUPPLEMENT STACKS (Hızlı Stack / Stack Oluştur) ═══ */
+let _suppStacks=null,_suppProducts=null;
+async function loadSuppStackQuick(){
+  _suppStacks=await API('/api/supplements/stacks')||[];
+  const btnsEl=$('stack-quick-buttons');
+  if(btnsEl)btnsEl.innerHTML=_suppStacks.map(s=>
+    `<button class="btn btn-xs btn-ghost" style="white-space:nowrap;flex-shrink:0" onclick="showStackPicker(${s.id})">${s.name}</button>`
+  ).join('')||'<span style="font-size:.72rem;color:var(--muted)">Henüz stack yok</span>';
+  const selEl=$('vit-stack');
+  if(selEl){
+    const cur=selEl.value;
+    selEl.innerHTML='<option value="">— Seçiniz (sadece bugüne özel) —</option>'+_suppStacks.map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+    selEl.value=cur;
+  }
+}
+let _ssDraftItems=[],_ssEditId=null;
+async function suppStackRowSearch(q){
+  const res=$('ss-row-results');if(!res)return;
+  q=(q||'').trim().toLowerCase();
+  if(!q){res.style.display='none';return;}
+  if(!_suppProducts)_suppProducts=await API('/api/supplement-products')||[];
+  const matches=_suppProducts.filter(f=>(f.name||'').toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){res.style.display='none';return;}
+  res.innerHTML=matches.map(f=>`<div onclick="selectSuppStackRow('${f.name.replace(/'/g,"`")}',${f.default_dose||1},'${(f.default_unit||'kapsul').replace(/'/g,"`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${f.name}</div>`).join('');
+  res.style.display='block';
+}
+function selectSuppStackRow(name,dose,unit){
+  $('ss-row-search').value=name;$('ss-row-dose').value=dose;$('ss-row-unit').value=unit;
+  $('ss-row-results').style.display='none';
+}
+function addSuppStackRow(){
+  const name=$('ss-row-search').value.trim();
+  if(!name)return toast('Ürün adı gir',false);
+  const dose=parseFloat($('ss-row-dose').value)||1;
+  const unit=$('ss-row-unit').value.trim()||'kapsul';
+  _ssDraftItems.push({product_name:name,dose,unit});
+  $('ss-row-search').value='';$('ss-row-dose').value='1';$('ss-row-unit').value='kapsul';
+  renderSsDraftItems();
+}
+function removeSuppStackRow(i){_ssDraftItems.splice(i,1);renderSsDraftItems();}
+function renderSsDraftItems(){
+  const el=$('ss-draft-items');if(!el)return;
+  if(!_ssDraftItems.length){el.innerHTML='<div style="font-size:.75rem;color:var(--muted)">Bu stack\'e henüz satır eklenmedi.</div>';return;}
+  el.innerHTML=_ssDraftItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:8px;padding:6px 10px;font-size:.8rem"><b style="flex:1">${it.product_name}</b><span style="color:var(--muted)">${it.dose}${it.unit}</span><button class="del-btn" onclick="removeSuppStackRow(${i})">✕</button></div>`).join('');
+}
+async function saveSuppStack(){
+  const name=$('ss-draft-name').value.trim();
+  if(!name)return toast('Stack adı gir',false);
+  if(!_ssDraftItems.length)return toast('En az 1 ürün ekle',false);
+  let r;
+  if(_ssEditId){
+    await PUT(`/api/supplements/stacks/${_ssEditId}`,{name});
+    r=await PUT(`/api/supplements/stacks/${_ssEditId}/items`,{items:_ssDraftItems});
+  }else{
+    r=await POST('/api/supplements/stacks',{name,items:_ssDraftItems});
+  }
+  if(r.ok===false)return toast(r.error||'Hata',false);
+  toast(_ssEditId?'Stack güncellendi':'Stack kaydedildi');
+  cancelSuppStackEdit();
+  loadSuppStacks();loadSuppStackQuick();
+}
+function cancelSuppStackEdit(){
+  _ssDraftItems=[];_ssEditId=null;
+  $('ss-draft-name').value='';
+  $('ss-save-btn').textContent="Stack'i Kaydet";
+  $('ss-cancel-btn').style.display='none';
+  renderSsDraftItems();
+}
+function editSuppStack(id){
+  const s=(_suppStacks||[]).find(x=>x.id===id);if(!s)return;
+  _ssEditId=id;
+  $('ss-draft-name').value=s.name;
+  _ssDraftItems=(s.items||[]).map(it=>({product_name:it.product_name,dose:it.dose,unit:it.unit}));
+  $('ss-save-btn').textContent="Stack'i Güncelle";
+  $('ss-cancel-btn').style.display='';
+  renderSsDraftItems();
+}
+function deleteSuppStack(id,name){
+  confirm_('Stack silinsin mi?',`"${name}" kalıcı olarak silinecek.`,async()=>{
+    await DEL(`/api/supplements/stacks/${id}`);
+    toast('Silindi');loadSuppStacks();loadSuppStackQuick();
+  });
+}
+async function loadSuppStacks(){
+  _suppStacks=await API('/api/supplements/stacks')||[];
+  const el=$('ss-saved-list');if(!el)return;
+  if(!_suppStacks.length){el.innerHTML='<div class="list-empty">Henüz stack yok</div>';return;}
+  el.innerHTML=_suppStacks.map(s=>`<div style="background:rgba(255,255,255,.04);border-radius:9px;padding:9px 11px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <b style="font-size:.85rem;cursor:pointer" onclick="editSuppStack(${s.id})">${s.name}</b>
+      <span style="margin-left:auto;font-size:.7rem;color:#60a5fa;cursor:pointer" onclick="editSuppStack(${s.id})">Düzenle ✎</span>
+      <button class="del-btn" onclick="deleteSuppStack(${s.id},'${s.name.replace(/'/g,"`")}')">Sil</button>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${(s.items||[]).map(it=>it.product_name).join(', ')||'—'}</div>
+  </div>`).join('');
+}
+
+/* ═══ SUPPLEMENT DB ═══ */
+async function addSuppDbItem(){
+  const name=($('supdb-name').value||'').trim();
+  if(!name)return toast('İsim gir',false);
+  const r=await POST('/api/supplement-products',{name,default_dose:+$('supdb-dose').value||1,default_unit:$('supdb-unit').value||'kapsul'});
+  if(r.ok===false)return toast(r.error||'Hata',false);
+  ['supdb-name','supdb-dose'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  _suppProducts=null;
+  toast(name+' Supplement DB\'ye eklendi');
+  loadSuppDbList();
+}
+async function delSuppDbItem(id){
+  await DEL('/api/supplement-products/'+id);
+  _suppProducts=null;
+  loadSuppDbList();
+}
+async function loadSuppDbList(){
+  const items=await API('/api/supplement-products')||[];
+  _suppProducts=items;
+  const el=$('supdb-list');if(!el)return;
+  $('supdb-count').textContent=`Supplement DB — ${items.length} ürün`;
+  if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
+  el.innerHTML=items.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border-radius:8px;font-size:.8rem">
+    <span style="flex:2;font-weight:700">${f.name}</span>
+    <span style="color:var(--muted)">${f.default_dose||1} ${f.default_unit||'kapsul'}</span>
+    <button class="del-btn" onclick="delSuppDbItem(${f.id})">✕</button>
+  </div>`).join('');
 }
 
 /* ═══════════════════════════════════════════════════
@@ -3126,37 +3569,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     }
   };
 
-  window.saveVitamin = async function(){
-    const name = ($id('vit-name')?.value || '').trim();
-    if(!name){ toastSafe('Takviye adı gerekli', false); return; }
-    const count = $id('vit-dose-count')?.value || $id('vit-amount')?.value || '1';
-    const unit = $id('vit-dose-unit')?.value || $id('vit-unit')?.value || 'kapsül';
-    const notes = [
-      $id('vit-active-name')?.value && ('Aktif: ' + $id('vit-active-name').value),
-      $id('vit-active-amount')?.value && ('Servis: ' + $id('vit-active-amount').value + ' ' + ($id('vit-active-unit')?.value || '')),
-      $id('vit-notes')?.value
-    ].filter(Boolean).join(' | ');
-    const tpl = getSupplementTemplate(window.__selectedSupplementTemplateId);
-    await POST('/api/vitamin', {name, amount:count, unit, notes});
-    if(tpl && (Number(tpl.calories||0)||Number(tpl.protein_g||0)||Number(tpl.carbs_g||0)||Number(tpl.fat_g||0))){
-      const mult = parseNum(count) || 1;
-      await POST('/api/meals', {
-        slot:'supplement',
-        title:name,
-        description:`${count} ${unit} - ${tpl.description || name}`,
-        calories:Math.round(Number(tpl.calories||0)*mult),
-        protein_g:Number(tpl.protein_g||0)*mult,
-        carbs_g:Number(tpl.carbs_g||0)*mult,
-        fat_g:Number(tpl.fat_g||0)*mult,
-        source:'supplement-template'
-      });
-    }
-    ['vit-name','vit-dose-count','vit-active-name','vit-active-amount','vit-active-unit','vit-notes','vit-amount','vit-unit'].forEach(id=>{ const el=$id(id); if(el) el.value=''; });
-    if($id('vit-tpl')) $id('vit-tpl').value='';
-    window.__selectedSupplementTemplateId = null;
-    toastSafe('Takviye eklendi');
-    await window.refreshAllVisibleData();
-  };
+  // saveVitamin artik ana script bloğundaki tanım kullanılıyor (status + Supplement DB checkbox destekli);
+  // applyVitTpl hiçbir yerden çağrılmadığı için buradaki eski override kaldırıldı.
 
   window.deleteMealEntry = async function(id){
     await DEL('/api/meals/' + id);
@@ -3717,90 +4131,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 </script>
 
 
-<style id="VITAMIN_PANEL_SYNC_FIX_V1-css">
-.vit-list{margin-top:12px!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
-.vit-item{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;border:1px solid rgba(148,163,184,.18)!important;background:rgba(2,6,23,.32)!important;border-radius:12px!important;padding:10px 12px!important}
-.vit-info{min-width:0;flex:1}
-.vit-main{font-weight:900;color:var(--text);font-size:.88rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.vit-meta{font-size:.72rem;color:var(--muted);margin-top:3px;line-height:1.35}
-.vit-dose-badge{display:inline-flex;border:1px solid rgba(59,130,246,.25);background:rgba(59,130,246,.12);color:#bfdbfe;border-radius:999px;padding:2px 7px;font-size:.68rem;font-weight:900}
-.vit-empty{border:1px dashed rgba(148,163,184,.22);border-radius:12px;padding:12px;color:var(--muted);background:rgba(2,6,23,.22);font-size:.8rem}
-.vit-panel-status{margin-top:8px;font-size:.72rem;color:#93c5fd}
-</style>
-<script id="VITAMIN_PANEL_SYNC_FIX_V1">
-(function(){
-  if(window.__vitaminPanelSyncFixV1) return;
-  window.__vitaminPanelSyncFixV1 = true;
-  function q(id){ return document.getElementById(id); }
-  function toastSafe(msg,ok=true){ if(typeof toast==='function')toast(msg,ok);else console.log(msg); }
-  function todayStr(){
-    const d=new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }
-  async function j(url,opts){
-    const res=await fetch(url,Object.assign({cache:'no-store'},opts||{}));
-    try{return await res.json();}catch(e){return {ok:res.ok};}
-  }
-  function ensureVitaminStatus(){
-    const list=q('vit-list');
-    if(list && !q('vit-panel-status')){
-      list.insertAdjacentHTML('beforebegin','<div class="vit-panel-status" id="vit-panel-status">Bugünün takviyeleri burada görünür.</div>');
-    }
-  }
-  window.renderVitamins = function(list){
-    const el=q('vit-list'); if(!el)return;
-    ensureVitaminStatus();
-    const rows=Array.isArray(list)?list:[];
-    if(q('vit-panel-status')) q('vit-panel-status').textContent=`Bugün ${rows.length} takviye kaydı var.`;
-    if(!rows.length){
-      el.innerHTML='<div class="vit-empty">Bugün takviye kaydı yok. Şablondan seçip Ekle dediğinde burada görünecek.</div>';
-      return;
-    }
-    el.innerHTML=rows.map(v=>`
-      <div class="vit-item">
-        <div class="vit-info">
-          <div class="vit-main">💊 <span>${v.name || 'Takviye'}</span><span class="vit-dose-badge">${fmtAmt(v.amount||'')} ${v.unit || ''}</span></div>
-          <div class="vit-meta">${v.notes || 'Not yok'}</div>
-        </div>
-        <button class="vit-del" onclick="delVitamin(${v.id})">Sil</button>
-      </div>`).join('');
-  };
-  window.loadVitaminsPanel = async function(){
-    const d=await j('/api/day/' + encodeURIComponent(todayStr()));
-    window.renderVitamins((d && d.vitamins) || []);
-  };
-  window.saveVitamin = async function(){
-    const name=(q('vit-name')?.value || '').trim();
-    if(!name){ toastSafe('Takviye adı gerekli',false); return; }
-    const count=q('vit-dose-count')?.value || q('vit-amount')?.value || '1';
-    const unit=q('vit-dose-unit')?.value || q('vit-unit')?.value || 'kapsül';
-    const notes=[
-      q('vit-active-name')?.value && ('Aktif: '+q('vit-active-name').value),
-      q('vit-active-amount')?.value && ('Servis: '+q('vit-active-amount').value+' '+(q('vit-active-unit')?.value||'')),
-      q('vit-notes')?.value
-    ].filter(Boolean).join(' | ');
-    await POST('/api/vitamin',{name,amount:count,unit,notes});
-    ['vit-name','vit-dose-count','vit-active-name','vit-active-amount','vit-active-unit','vit-notes','vit-amount','vit-unit'].forEach(id=>{const el=q(id);if(el)el.value='';});
-    if(q('vit-tpl'))q('vit-tpl').value='';
-    toastSafe('Takviye eklendi');
-    await window.loadVitaminsPanel();
-    if(typeof loadDashboard==='function')await loadDashboard();
-    if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();
-  };
-  window.delVitamin = async function(id){
-    await DEL('/api/vitamin/'+id);
-    toastSafe('Takviye silindi');
-    await window.loadVitaminsPanel();
-    if(typeof loadDashboard==='function')await loadDashboard();
-  };
-  const oldRefreshAll=window.refreshAllVisibleData;
-  window.refreshAllVisibleData=async function(){
-    if(typeof oldRefreshAll==='function')await oldRefreshAll();
-    await window.loadVitaminsPanel();
-  };
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(window.loadVitaminsPanel,650));
-})();
-</script>
 
 
 <style id="SUPPLEMENT_STACK_UI_V1-css">
@@ -3811,96 +4141,32 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .stack-quick-btn:hover{transform:translateY(-2px);border-color:rgba(34,197,94,.55);background:linear-gradient(135deg,rgba(34,197,94,.20),rgba(59,130,246,.16))}
 @media(max-width:760px){.stack-quick-buttons{grid-template-columns:1fr 1fr}}
 </style>
-<script id="SUPPLEMENT_STACK_UI_V1">
+<script id="SUPPLEMENT_STACK_UI_V2">
 (function(){
-  if(window.__supplementStackUiV1) return;
-  window.__supplementStackUiV1 = true;
-  const STACKS = {
-    'ac-karna': [
-      ['NAC','1','kapsul','Aç karna stack | NOW NAC 600 mg'],
-      ['Probiyotik','1','doz','Aç karna stack | Garden of Life probiotic']
-    ],
-    'sabah': [
-      ['Life Extension Mega EPA/DHA','3','kapsul','sabah stack'],
-      ['Thorne Vitamin D + K2','4','damla','sabah stack'],
-      ['California Gold Nutrition C','1','kapsul','sabah stack'],
-      ['NOW Magtein','1','kapsul','sabah stack'],
-      ['NOW L-Theanine Double Strength','1','kapsul','sabah stack'],
-      ['Optimum Nutrition Collagen','1','ölçek','sabah stack'],
-      ['NOW Zinc Picolinate 50mg','1','kapsul','sabah stack | gün aşırı'],
-      ['NOW Astaxanthin 10mg','1','kapsul','sabah stack'],
-      ['Life Extension MacuGuard','1','softgel','sabah stack'],
-    ],
-    'kahvalti': [
-      ['Omega-3','3','kapsul','Kahvaltı stack | Life Extension Mega EPA/DHA'],
-      ['D3+K2','4','damla','Kahvaltı stack | Thorne Vitamin D + K2'],
-      ['Life Extension MacuGuard','1','softgel','Kahvaltı stack | Life Extension MacuGuard with Saffron'],
-      ['Çinko','1','kapsul','Kahvaltı stack | NOW Zinc Picolinate 50 mg | gün aşırı'],
-      ['NOW Astaxanthin 10mg','1','kapsul','Kahvaltı stack | NOW Astaxanthin 10mg'],
-      ['California Gold Nutrition C','1','kapsul','Kahvaltı stack | Vitamin C'],
-      ['NOW Magtein','1','kapsul','Kahvaltı stack | Magnesium L-Threonate'],
-      ['NOW L-Theanine Double Strength','1','kapsul','Kahvaltı stack | NOW L-Theanine Double Strength'],
-      ['ON Collagen','1','ölçek','Kahvaltı stack | Optimum Nutrition Collagen'],
-    ],
-    'ogle': [
-      ['Creatine','5','g','Ogle stack | KFD Creatine'],
-      ['Collagen Peptides','20','g','Ogle stack | Optimum Nutrition Collagen Peptides'],
-      ['HydrationUP','1','paket','Ogle stack | Electrolyte']
-    ],
-    'gece': [
-      ['Glycine','3','kapsul','Gece Stack | NOW Glycine 1000 mg'],
-      ['Melatonin','3','kapsul','Gece Stack | NOW Melatonin 1 mg'],
-      ['KSM-66 Ashwagandha','1','kapsul','Gece Stack | NutraBio KSM-66 Ashwagandha'],
-      ['L-Theanine','1','kapsul','Gece Stack | NOW L-Theanine Double Strength 200 mg'],
-      ['Magnesium Glycinate','3','kapsul','Gece Stack | NOW Magnesium Glycinate']
-    ],
-    'pre-workout': [
-      ['Taurine','2','g','Pre-workout stack | Taurine'],
-      ['Beta Alanine','2','g','Pre-workout stack | Beta Alanine'],
-      ['Elektrolit ON','8','g','Pre-workout stack | Optimum Nutrition Elektrolit'],
-      ['L-Citrulline','8','g','Pre-workout stack | 3000Core Citrulline']
-    ],
-    'post-workout': [
-      ['Creatine','5','g','Post-workout stack | KFD Creatine']
-    ]
-  };
-  function q(id){return document.getElementById(id);}
+  if(window.__supplementStackUiV2) return;
+  window.__supplementStackUiV2 = true;
   function toastSafe(msg,ok=true){ if(typeof toast==='function') toast(msg,ok); else console.log(msg); }
-  function ensureStackButtons(){
-    const target=q('qs-btns') || q('vit-list');
-    if(!target || q('stack-quick-panel')) return;
-    target.insertAdjacentHTML('beforebegin', `<div class="stack-quick-panel" id="stack-quick-panel">
-      <div class="stack-quick-title">Hızlı Stack</div>
-      <div class="stack-quick-buttons">
-        <button class="stack-quick-btn" onclick="addSupplementStack('ac-karna')">Aç Karna</button>
-        <button class="stack-quick-btn" onclick="addSupplementStack('sabah')">Sabah</button>
-        <button class="stack-quick-btn" onclick="addSupplementStack('kahvalti')">Kahvaltı</button>
-        <button class="stack-quick-btn" onclick="addSupplementStack('ogle')">Öğlen</button>
-        <button class="stack-quick-btn" onclick="addSupplementStack('gece')">Gece</button>
-        <button class="stack-quick-btn" onclick="addSupplementStack('pre-workout')">Pre</button>
-        <button class="stack-quick-btn" onclick="addSupplementStack('post-workout')">Post</button>
-      </div>
-    </div>`);
-  }
+
   // Per-item status state for the current picker
   let _stackPickerData = [];
 
-  function showStackPicker(slot){
-    const rows = STACKS[slot] || [];
-    if(!rows.length) return;
+  async function showStackPicker(stackId){
+    const stacks = (typeof _suppStacks!=='undefined' && _suppStacks) || await fetch('/api/supplements/stacks',{cache:'no-store'}).then(r=>r.json()).catch(()=>[]);
+    const stack = (stacks||[]).find(s=>s.id===stackId);
+    if(!stack || !stack.items || !stack.items.length) return;
 
-    // Build initial statuses: default from notes, gün aşırı items pre-marked
-    _stackPickerData = rows.map(([name,amount,unit,notes])=>({
-      name, amount, unit, baseNotes: notes,
-      status: /(gün aşırı|gun asiri)/i.test(notes||'') ? 'gün aşırı — bugün atla' : 'alındı'
+    let zincSkip=false;
+    try{
+      const z=await fetch('/api/supplements/zinc',{cache:'no-store'}).then(r=>r.json());
+      zincSkip = z && z.take_today===false;
+    }catch(e){}
+
+    const META = (typeof VIT_STATUS_META!=='undefined') ? VIT_STATUS_META : {};
+    _stackPickerData = stack.items.map(it=>({
+      name: it.product_name, amount: it.dose, unit: it.unit,
+      status: (zincSkip && /zinc/i.test(it.product_name||'')) ? 'eod_skipped' : 'taken'
     }));
 
-    const slotLabel = {
-      'ac-karna':'Aç Karna','sabah':'Sabah','kahvalti':'Kahvaltı',
-      'ogle':'Öğlen','gece':'Gece','pre-workout':'Pre Workout','post-workout':'Post Workout'
-    }[slot] || slot;
-
-    // Remove old picker if exists
     const old = document.getElementById('stack-picker-panel');
     if(old) old.remove();
 
@@ -3911,22 +4177,19 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     function render(){
       panel.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span style="font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#67e8f9">💊 ${slotLabel} Stack</span>
+          <span style="font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#67e8f9">💊 ${stack.name}</span>
           <button onclick="document.getElementById('stack-picker-panel').remove()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1rem;line-height:1">✕</button>
         </div>
         ${_stackPickerData.map((item,i)=>{
-          const s = item.status;
-          const isEksik = s==='eksik alındı';
-          const isGun = s.includes('gün aşırı');
-          const isYarim = s==='yarım doz';
-          const isAlinDi = s==='alındı';
+          const m=META[item.status]||{};
+          const struck = item.status==='missed'||item.status==='eod_skipped';
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);gap:8px">
-            <span style="font-size:.75rem;font-weight:700;flex:1;${isEksik||isGun?'text-decoration:line-through;opacity:.6':''}${isEksik?';color:#f87171':''}${isGun?';color:#f59e0b':''}">${item.name}<small style="color:var(--muted);font-weight:400;margin-left:4px">${item.amount} ${item.unit}</small></span>
-            <div style="display:flex;gap:4px;flex-shrink:0">
-              <button onclick="_stackPickerSet(${i},'alındı')" style="padding:3px 7px;border-radius:6px;border:1px solid;cursor:pointer;font-size:.62rem;font-weight:800;background:${isAlinDi?'rgba(34,197,94,.25)':'rgba(34,197,94,.06)'};border-color:${isAlinDi?'#22c55e':'rgba(34,197,94,.2)'};color:${isAlinDi?'#22c55e':'#64748b'}">✓</button>
-              <button onclick="_stackPickerSet(${i},'eksik alındı')" style="padding:3px 7px;border-radius:6px;border:1px solid;cursor:pointer;font-size:.62rem;font-weight:800;background:${isEksik?'rgba(239,68,68,.25)':'rgba(239,68,68,.06)'};border-color:${isEksik?'#ef4444':'rgba(239,68,68,.2)'};color:${isEksik?'#ef4444':'#64748b'}">✕</button>
-              <button onclick="_stackPickerSet(${i},'gün aşırı — bugün atla')" style="padding:3px 7px;border-radius:6px;border:1px solid;cursor:pointer;font-size:.62rem;font-weight:800;background:${isGun?'rgba(245,158,11,.25)':'rgba(245,158,11,.06)'};border-color:${isGun?'#f59e0b':'rgba(245,158,11,.2)'};color:${isGun?'#f59e0b':'#64748b'}">⚠️</button>
-              <button onclick="_stackPickerSet(${i},'yarım doz')" style="padding:3px 7px;border-radius:6px;border:1px solid;cursor:pointer;font-size:.62rem;font-weight:800;background:${isYarim?'rgba(167,139,250,.25)':'rgba(167,139,250,.06)'};border-color:${isYarim?'#a78bfa':'rgba(167,139,250,.2)'};color:${isYarim?'#a78bfa':'#64748b'}">½</button>
+            <span style="font-size:.75rem;font-weight:700;flex:1;${struck?'text-decoration:line-through;opacity:.6;':''}color:${m.color||'inherit'}">${item.name}<small style="color:var(--muted);font-weight:400;margin-left:4px">${item.amount} ${item.unit}</small></span>
+            <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;max-width:180px">
+              ${Object.entries(META).map(([key,sm])=>{
+                const active=item.status===key;
+                return `<button onclick="_stackPickerSet(${i},'${key}')" title="${sm.label}" style="padding:3px 6px;border-radius:6px;border:1px solid;cursor:pointer;font-size:.62rem;font-weight:800;background:${active?sm.bg.replace('.15','.3'):'rgba(100,116,139,.06)'};border-color:${active?sm.color:'rgba(100,116,139,.2)'};color:${active?sm.color:'#64748b'}">${sm.emoji}</button>`;
+              }).join('')}
             </div>
           </div>`;
         }).join('')}
@@ -3942,9 +4205,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
     window._stackPickerSave = async function(){
       for(const item of _stackPickerData){
-        // notes = status string directly — renderVitList checks for 'eksik','gün aşırı','alındı','yarım' substrings
+        const label=(META[item.status]||{}).label||item.status;
         await fetch('/api/vitamin',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({name:item.name,amount:item.amount,unit:item.unit,notes:item.baseNotes+' | '+item.status}),cache:'no-store'});
+          body:JSON.stringify({name:item.name,amount:item.amount,unit:item.unit,notes:stack.name+' | '+label,status:item.status}),cache:'no-store'});
       }
       toastSafe(_stackPickerData.length+' takviye eklendi');
       document.getElementById('stack-picker-panel')?.remove();
@@ -3954,18 +4217,13 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
     render();
 
-    // Insert after stack-quick-panel
     const anchor = document.getElementById('stack-quick-panel') || document.getElementById('supp-search')?.closest('.card');
     if(anchor) anchor.after(panel);
     else document.body.appendChild(panel);
   }
 
+  window.showStackPicker = showStackPicker;
   window.addSupplementStack = showStackPicker;
-  const oldLoadLog=window.loadLogPage;
-  if(typeof oldLoadLog==='function'){
-    window.loadLogPage=async function(){ await oldLoadLog(); ensureStackButtons(); };
-  }
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(ensureStackButtons,900));
 })();
 </script>
 
@@ -5429,13 +5687,15 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const SCLR={'Aç Karna Stack':'#67e8f9','Sabah Stack':'#38bdf8','Pre-Workout Stack':'#fb923c','Post-Workout':'#4ade80','Gece Stack':'#a78bfa','Diğer':'#94a3b8'};
     box.innerHTML=Object.keys(groups).sort((a,b)=>(order.indexOf(a)<0?99:order.indexOf(a))-(order.indexOf(b)<0?99:order.indexOf(b))).map(g=>{
       const sc=SCLR[g]||'#67e8f9';
-      const items=groups[g].map(v=>{const raw=String(v.notes||''),name=v.name||'Takviye',isZinc=/NOW Zinc Picolinate 50mg/i.test(name),isEksik=/eksik al[iı]nd[iı]/i.test(raw),isGun=/gün aşırı|gun asiri/i.test(raw),reported=/kullanici bildirimi/i.test(raw),detail=raw.split('|').map(x=>x.trim()).filter(x=>x&&!/stack$/i.test(x)&&!/kullanici bildirimi/i.test(x)&&!/eksik al[iı]nd[iı]/i.test(x)).join(' · ');
-        if(isEksik)return `<div class="mission-stack-item" style="border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06)"><b style="color:#f87171;text-decoration:line-through">❌ ${v.name||'Takviye'}</b><span style="color:#f87171;font-size:.62rem">eksik alındı</span></div>`;
-        if(isZinc)return `<div class="mission-stack-item" style="border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.05)"><b style="color:#4ade80">✅ ${name}</b><span style="color:#4ade80;font-size:.62rem">1 kapsul · gün aşırı alındı</span></div>`;
-        if(isGun)return `<div class="mission-stack-item" style="border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05)"><b style="color:#fbbf24">⚠️ ${v.name||'Takviye'}</b><span style="color:#fbbf24;font-size:.62rem">⚠️ gün aşırı — atlandı</span></div>`;
+      const items=groups[g].map(v=>{
+        const raw=String(v.notes||'');
+        const status=(typeof vitStatusOf==='function')?vitStatusOf(v):'taken';
+        const m=(typeof VIT_STATUS_META!=='undefined'?VIT_STATUS_META:{})[status]||{label:'Alındı',emoji:'💊',color:'#e7edf7',bg:'transparent',border:'rgba(255,255,255,.08)'};
+        const reported=/kullanici bildirimi/i.test(raw);
         const isYarinAtla=/yar[ıi]n\s+atla/i.test(raw);
-        const cleanDetail=detail.replace(/yar[ıi]n\s+atla/gi,'').replace(/alındı\s*—?\s*/gi,'').replace(/·\s*$/,'').trim();
-        return `<div class="mission-stack-item"${isYarinAtla?' style="border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.03)"':''}><b>💊 ${v.name||'Takviye'}</b><span>${[v.amount?fmtAmt(v.amount):'',v.unit].filter(Boolean).join(' ')||'doz'}${cleanDetail?' · '+cleanDetail:''}</span>${isYarinAtla?'<span style="color:#fbbf24;font-size:.6rem;font-weight:800;border:1px solid rgba(251,191,36,.3);border-radius:6px;padding:1px 5px;margin-left:4px">⚠️ yarın atla</span>':''}${reported?'<span class="mission-user-badge">Kullanıcı bildirimi</span>':''}</div>`;
+        const struck=status==='missed'||status==='eod_skipped';
+        const amtLabel=v.amount?`${fmtAmt(v.amount)} ${v.unit||''}`.trim():(v.unit||'doz');
+        return `<div class="mission-stack-item" style="border-color:${m.border};background:${m.bg}"><b style="color:${m.color}${struck?';text-decoration:line-through':''}">${m.emoji} ${v.name||'Takviye'}</b><span style="color:${m.color};font-size:.62rem">${status==='taken'?amtLabel:m.label}</span>${isYarinAtla?'<span style="color:#fbbf24;font-size:.6rem;font-weight:800;border:1px solid rgba(251,191,36,.3);border-radius:6px;padding:1px 5px;margin-left:4px">⚠️ yarın atla</span>':''}${reported?'<span class="mission-user-badge">Kullanıcı bildirimi</span>':''}</div>`;
       }).join('');
       return `<div style="border:1px solid ${sc}28;border-radius:13px;padding:10px 12px 11px;background:linear-gradient(135deg,${sc}0d 0%,transparent 70%);margin-bottom:10px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,${sc}66,transparent)"></div><div style="display:flex;align-items:center;gap:7px;margin-bottom:9px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${sc};box-shadow:0 0 8px ${sc},0 0 16px ${sc}77"></span><span style="font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:${sc};text-shadow:0 0 14px ${sc}80">${g}</span></div><div class="mission-stack-grid">${items}</div></div>`;
     }).join('');
@@ -6857,4 +7117,10 @@ input:focus,select:focus,textarea:focus {
   background:rgba(148,163,184,.16)!important;
 }
 .toast {
-  background:lin
+  background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
+  color:#03101d!important;
+  box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
+}
+</style>
+</body>
+</html>

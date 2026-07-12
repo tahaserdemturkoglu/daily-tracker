@@ -2,3 +2,4 @@ flask>=3.0.0
 python-telegram-bot[job-queue]>=20.0
 anthropic>=0.25.0
 gunicorn>=21.0.0
+tzdata; sys_platform == "win32"
