@@ -1230,7 +1230,8 @@ def api_body_metrics_save():
             waist_cm=COALESCE(excluded.waist_cm, waist_cm),
             chest_cm=COALESCE(excluded.chest_cm, chest_cm),
             arm_cm=COALESCE(excluded.arm_cm, arm_cm),
-            notes=COALESCE(NULLIF(excluded.notes,''), notes)
+            notes=COALESCE(NULLIF(excluded.notes,''), notes),
+            ts=CURRENT_TIMESTAMP
     """, (d, weight, weight_night, waist, chest, arm, notes))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'date': d})
