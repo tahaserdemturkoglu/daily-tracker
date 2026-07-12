@@ -694,18 +694,21 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <div id="nu-db-mode">
             <div id="meal-stack-quick" style="margin-bottom:10px"></div>
             <div id="nu-food-cat-filter" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px"></div>
-            <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap">
-              <div class="fg" style="flex:3;position:relative">
-                <label>Ürün Ara</label>
-                <input type="text" id="nu-food-search" placeholder="patates, tavuk, pirinç..." oninput="foodSearch(this.value)" autocomplete="off" style="width:100%">
-                <div id="nu-food-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
-              </div>
-              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="nu-food-amount" value="100" min="1" step="1" oninput="updateFoodPreview()" style="width:100%"></div>
-              <div class="fg" style="flex:0.8"><label>Birim</label><input type="text" id="nu-food-unit" value="g" style="width:100%"></div>
+            <div class="fg" style="margin-bottom:8px">
+              <label>Ürün Ara</label>
+              <input type="text" id="nu-food-search" placeholder="patates, tavuk, pirinç..." oninput="foodSearch(this.value)" autocomplete="off" style="width:100%">
             </div>
-            <div id="nu-food-preview" style="font-size:.75rem;color:#60a5fa;padding:4px 0;min-height:18px"></div>
-            <input type="hidden" id="nu-food-id"><input type="hidden" id="nu-food-name">
-            <button class="btn btn-teal" onclick="saveMealFromDB()">Ekle</button>
+            <div id="nu-food-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:10px;max-height:420px;overflow-y:auto"></div>
+            <div id="nu-food-add-form" style="display:none;background:rgba(255,255,255,.04);border-radius:10px;padding:10px;margin-bottom:8px">
+              <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap">
+                <div class="fg" style="flex:2"><b id="nu-food-selected-name" style="font-size:.85rem"></b></div>
+                <div class="fg" style="flex:1"><label>Miktar</label><input type="number" id="nu-food-amount" value="100" min="1" step="1" oninput="updateFoodPreview()" style="width:100%"></div>
+                <div class="fg" style="flex:0.7"><label>Birim</label><input type="text" id="nu-food-unit" value="g" style="width:100%"></div>
+              </div>
+              <div id="nu-food-preview" style="font-size:.75rem;color:#60a5fa;padding:4px 0;min-height:18px"></div>
+              <input type="hidden" id="nu-food-id"><input type="hidden" id="nu-food-name">
+              <button class="btn btn-teal" onclick="saveMealFromDB()">Ekle</button>
+            </div>
           </div>
           <div id="nu-manual-mode" style="display:none">
             <div class="form-row"><div class="fg"><label>Ürün Adı</label><input type="text" id="nu-title" list="nu-food-name-options" placeholder="Tavuk Göğsü" oninput="autofillMealFromDb(this.value)"></div></div>
@@ -1987,7 +1990,7 @@ function setMealMode(mode){
   });
   if(mode==='stack')loadMealStacks();
   if(mode==='dbmgmt')loadMealDbMgmtList();
-  if(mode==='db')loadMealStackQuick();
+  if(mode==='db'){loadMealStackQuick();foodSearch($('nu-food-search')?.value||'');}
 }
 
 let _foodList=null;
@@ -2000,28 +2003,30 @@ async function renderFoodCatFilter(){
 }
 function setFoodCatFilter(val){_foodCat=val;renderFoodCatFilter();foodSearch($('nu-food-search')?.value||'');}
 async function foodSearch(q){
-  const res=$('nu-food-results');if(!res)return;
+  const grid=$('nu-food-grid');if(!grid)return;
   q=(q||'').trim().toLowerCase();
   if(!_foodList)_foodList=await API('/api/food-registry')||[];
-  if(!q && !_foodCat){res.style.display='none';return;}
   let pool=_foodList;
   if(_foodCat)pool=pool.filter(f=>(f.category||'')===_foodCat);
-  const matches=q?pool.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)||(f.aliases||'').toLowerCase().includes(q)).slice(0,8):pool.slice(0,8);
-  if(!matches.length){res.innerHTML='<div style="padding:8px 12px;color:var(--muted);font-size:.8rem">Sonuç yok</div>';res.style.display='block';return;}
-  res.innerHTML=matches.map(f=>`<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background=''">
-    <b>${f.official_name||f.name}</b>
-    <span style="color:var(--muted);font-size:.75rem;margin-left:8px">${f.calories_per_100||0} kcal · P${f.protein_per_100||0} K${f.carbs_per_100||0} Y${f.fat_per_100||0}/100g</span>
+  const matches=q?pool.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)||(f.aliases||'').toLowerCase().includes(q)):pool;
+  if(!matches.length){grid.innerHTML='<div style="grid-column:1/-1;padding:12px;color:var(--muted);font-size:.8rem">Sonuç yok</div>';return;}
+  grid.innerHTML=matches.map(f=>`<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:start">
+      <b style="font-size:.82rem;line-height:1.25">${f.official_name||f.name}</b>
+      <span style="color:var(--yellow);font-size:.72rem;white-space:nowrap;flex-shrink:0">${f.calories_per_100||0}kcal/100g</span>
+    </div>
+    <div style="font-size:.72rem;margin-top:5px;display:flex;gap:6px">
+      <span style="color:#22c55e">P${f.protein_per_100||0}</span><span style="color:#3b82f6">K${f.carbs_per_100||0}</span><span style="color:#f97316">Y${f.fat_per_100||0}</span>
+    </div>
   </div>`).join('');
-  res.style.display='block';
-  // Store data for preview
-  res._data=matches;
 }
 
 function selectFood(id,name){
   $('nu-food-id').value=id;
   $('nu-food-name').value=name;
-  $('nu-food-search').value=name;
-  $('nu-food-results').style.display='none';
+  $('nu-food-selected-name').textContent=name;
+  $('nu-food-add-form').style.display='';
+  $('nu-food-add-form').scrollIntoView({behavior:'smooth',block:'nearest'});
   updateFoodPreview();
 }
 
