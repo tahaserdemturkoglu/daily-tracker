@@ -1317,7 +1317,7 @@ function toggleTheme(){const h=document.documentElement,themes=['dark','light','
 /* SETTINGS */
 const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight_goal:0,steps:10000};
 // TEK KAYNAK — öğün sırası buradan yönetilir
-const G_SLOT_ORDER=['kahvalti','kahvaltı','snack','meal1','pre_meal','snack2','pre_snack','post_meal','post_snack','meal2','meal3','aksam','akşam','gece','ara','ogle','öğle','extra'];
+const G_SLOT_ORDER=['kahvalti','kahvaltı','snack','meal1','pre_meal','snack2','pre_snack','post_meal','post_snack','meal2','meal3','aksam','akşam','gece','ara','ogle','öğle','cheat_meal','extra'];
 function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
 // Karb cycle plan — DB'den yuklenir, localStorage sadece fallback
 let CYCLE_PLAN={};
@@ -1863,6 +1863,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='ara') return 'Ara Öğün';
     if(s==='aksam') return 'Akşam';
     if(s==='gece') return 'Gece';
+    if(s==='cheat_meal') return 'Cheat Meal';
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
@@ -1952,6 +1953,7 @@ const SLOT_DISPLAY={
   snack:'🍎 Snack',          snack2:'🍎 Snack 2',
   aksam:'🌙 Akşam',          akşam:'🌙 Akşam', gece:'🌙 Gece',
   ogle:'🥗 Öğle',            öğle:'🥗 Öğle',
+  cheat_meal:'🍰 Cheat Meal',
   extra:'✨ Ekstra',
 };
 function normSlotKey(s){
