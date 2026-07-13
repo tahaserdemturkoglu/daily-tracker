@@ -802,7 +802,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <!-- Supplement Arama -->
           <div style="position:relative;margin-bottom:10px">
             <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Supplement Ara</label>
-            <input type="text" id="supp-search" placeholder="omega-3, magnezyum, D3..." oninput="suppSearch(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+            <input type="text" id="supp-search" placeholder="omega-3, magnezyum, D3..." oninput="suppSearch(this.value)" onfocus="suppSearch(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
             <div id="supp-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:180px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0;box-shadow:0 8px 24px rgba(0,0,0,.4)"></div>
           </div>
           <div class="form-row" style="margin-bottom:6px">
@@ -838,7 +838,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap;margin-top:6px">
               <div class="fg" style="flex:3;position:relative">
                 <label>Ürün Ekle</label>
-                <input type="text" id="ss-row-search" placeholder="D3, Omega-3, Magnezyum..." oninput="suppStackRowSearch(this.value)" autocomplete="off" style="width:100%">
+                <input type="text" id="ss-row-search" placeholder="D3, Omega-3, Magnezyum..." oninput="suppStackRowSearch(this.value)" onfocus="suppStackRowSearch(this.value)" autocomplete="off" style="width:100%">
                 <div id="ss-row-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
               </div>
               <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="ss-row-dose" value="1" min="0" step="1" style="width:100%"></div>
@@ -2136,8 +2136,10 @@ async function saveMealFromDB(){
 }
 
 document.addEventListener('click',function(e){
-  const res=$('nu-food-results');
-  if(res&&!res.contains(e.target)&&e.target.id!=='nu-food-search')res.style.display='none';
+  [['nu-food-results','nu-food-search'],['supp-results','supp-search'],['ss-row-results','ss-row-search']].forEach(([resId,inputId])=>{
+    const res=$(resId);
+    if(res&&!res.contains(e.target)&&e.target.id!==inputId)res.style.display='none';
+  });
 });
 
 /* ═══ MEAL STACKS (Hızlı Stack / Stack Oluştur) ═══ */
@@ -2288,18 +2290,18 @@ let _suppList=null;
 async function suppSearch(q){
   const res=$('supp-results');if(!res)return;
   q=(q||'').trim().toLowerCase();
-  if(q.length<1){res.style.display='none';return;}
-  if(!_suppList){const all=await API('/api/templates');_suppList=(all||[]).filter(t=>t.kind==='supplement');}
-  const matches=_suppList.filter(f=>(f.title||'').toLowerCase().includes(q)).slice(0,10);
-  res.innerHTML=matches.map(f=>`<div onclick="selectSupp(${f.id})" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background=''"><span style="font-weight:600">${f.title}</span>${f.amount?`<span style="color:var(--muted);font-size:.75rem">${f.amount} ${f.unit||''}</span>`:''}</div>`).join('');
-  res.style.display=matches.length?'block':'none';
+  if(!_suppProducts)_suppProducts=await API('/api/supplement-products')||[];
+  const matches=q?_suppProducts.filter(f=>(f.name||'').toLowerCase().includes(q)):_suppProducts;
+  if(!matches.length){res.innerHTML='<div style="padding:8px 12px;color:var(--muted);font-size:.8rem">Sonuç yok</div>';res.style.display='block';return;}
+  res.innerHTML=matches.map(f=>`<div onclick="selectSupp(${f.id})" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background=''"><span style="font-weight:600">${f.name}</span><span style="color:var(--muted);font-size:.75rem">${f.default_dose||1} ${f.default_unit||''}</span></div>`).join('');
+  res.style.display='block';
 }
 function selectSupp(id){
-  const t=(_suppList||[]).find(f=>f.id===id);if(!t)return;
-  $('vit-name').value=t.title||'';
-  $('vit-amount').value=t.amount||'';
-  $('vit-unit').value=t.unit||'';
-  $('supp-search').value=t.title||'';
+  const t=(_suppProducts||[]).find(f=>f.id===id);if(!t)return;
+  $('vit-name').value=t.name||'';
+  $('vit-amount').value=t.default_dose||1;
+  $('vit-unit').value=t.default_unit||'';
+  $('supp-search').value=t.name||'';
   $('supp-results').style.display='none';
 }
 /* ═══ SUPPLEMENT STATUS (5 durum) ═══ */
@@ -2557,10 +2559,9 @@ let _ssDraftItems=[],_ssEditId=null;
 async function suppStackRowSearch(q){
   const res=$('ss-row-results');if(!res)return;
   q=(q||'').trim().toLowerCase();
-  if(!q){res.style.display='none';return;}
   if(!_suppProducts)_suppProducts=await API('/api/supplement-products')||[];
-  const matches=_suppProducts.filter(f=>(f.name||'').toLowerCase().includes(q)).slice(0,8);
-  if(!matches.length){res.style.display='none';return;}
+  const matches=q?_suppProducts.filter(f=>(f.name||'').toLowerCase().includes(q)):_suppProducts;
+  if(!matches.length){res.innerHTML='<div style="padding:8px 12px;color:var(--muted);font-size:.8rem">Sonuç yok</div>';res.style.display='block';return;}
   res.innerHTML=matches.map(f=>`<div onclick="selectSuppStackRow('${f.name.replace(/'/g,"`")}',${f.default_dose||1},'${(f.default_unit||'kapsul').replace(/'/g,"`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${f.name}</div>`).join('');
   res.style.display='block';
 }
