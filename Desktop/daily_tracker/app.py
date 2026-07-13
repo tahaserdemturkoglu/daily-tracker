@@ -5018,9 +5018,152 @@ def fix_mojibake_supplement_names():
     finally:
         conn.close()
 
+def import_real_besin_supplement_db():
+    """Kullanicinin verdigi gercek Besin DB + Supplement DB verisini yukle (upsert by name).
+    Onceki yer-tutucu (placeholder) supplement stack'lerinin yerini alir, food_registry'ye
+    eksik urunleri ekler/gunceller. Loglar (vitamin_logs/supplement_log_items) urun adini
+    snapshot olarak tuttugu icin bu degisiklik gecmis kayitlari etkilemez."""
+    conn = get_db()
+    cols = {r['name'] for r in conn.execute("PRAGMA table_info(food_registry)").fetchall()}
+    if 'quick_amounts' not in cols:
+        conn.execute("ALTER TABLE food_registry ADD COLUMN quick_amounts TEXT DEFAULT ''")
+
+    CAT_LABELS = {'protein':'Protein','sebze':'Sebze','meyve':'Meyve','tahil':'Tahıl',
+                  'sut':'Süt Ürünü','yag':'Yağ','sos':'Sos/Baharat','atistirmalik':'Atıştırmalık'}
+
+    FOODS = [
+        ('Alpro Badem Sütü Şekersiz', 24, 0.4, 3.1, 1.1, 'ml', 'sut', 'Şekersiz. 100ml=24kcal P0.4 K3.1 Y1.1', [100,200,250]),
+        ('Badem', 606, 20, 7.6, 52, 'g', 'atistirmalik', 'Almond entry restored from old blank record.', [10,30,100]),
+        ('Carrefour BIO Yumurta', 137, 12.4, 1.3, 9.1, 'g', 'protein', '[ETIKETLI] Kullanici etiketi: 100g = 137 kcal, P12.4, K1.3, Y9.1.', [50,100,150]),
+        ('Carrefour Tam Tahıllı Tost Ekmeği', 252, 9.5, 45, 2.1, 'g', 'tahil', '1 kromka ~23g / etiket: 252kcal P9.5 K45 Y2.1 per 100g', [23,46,69]),
+        ('Domates', 18, 0.9, 3.9, 0.2, 'g', 'sebze', 'Genel domates - çeri/salkım/normal', [100,150,200]),
+        ('Genç Patates', 70, 1.9, 15, 0.1, 'g', 'sebze', 'Ziemniaki Młode - Carrefour, çiğ ağırlık, airfryer uygun', [100,150,200]),
+        ('GymBeam Sprey Yağ', 1500, 0, 0, 165, 'fış', 'yag', '[KULLANICI ONAYLI] 1 fış/basış = 15 kcal, 1.65Y.', [1,2,5]),
+        ('Hindi Göğüs', 104, 22, 0, 2, 'g', 'protein', 'Carrefour taze hindi göğüs fileto. Ham çiğ.', [100,150,200]),
+        ('Kaju', 553, 18, 30, 44, 'g', 'atistirmalik', 'Çiğ kaju', [10,30,100]),
+        ('Kakao', 309, 24, 13, 11, 'g', 'atistirmalik', 'Saf kakao tozu şekersiz', [5,10,15]),
+        ('Karışık Yeşillik', 20, 2, 3, 0.3, 'g', 'sebze', 'Marul roka ıspanak', [50,100,150]),
+        ('Keto Ketçap', 41, 2, 6.2, 0.5, 'g', 'sos', 'Şekersiz keto / etiket: P2.0 K6.2 Y<0.5 per 100g', [5,10,20]),
+        ('Kırmızı Elma', 52, 0.3, 14, 0.2, 'g', 'meyve', '', [100,150,200]),
+        ('Marul', 14, 1.4, 2.9, 0.2, 'g', 'sebze', 'İç marul / iceberg.', [50,100,150]),
+        ('Muz', 89, 1.1, 23, 0.3, 'g', 'meyve', '', [100,120,200]),
+        ('Salatalık', 15, 0.7, 3.6, 0.1, 'g', 'sebze', '', [100,150,200]),
+        ('Skyr Yoğurt', 64, 12, 4.1, 0, 'g', 'sut', '', [100,150,200]),
+        ('Tavuk Baharatı', 286, 18.1, 50.4, 8.2, 'g', 'sos', '', [3,5,10]),
+        ('Tavuk Gogsu', 115, 23, 0, 1.5, 'g', 'protein', 'Kullanıcı onaylı: 100g çiğ tavuk göğsü = 115 kcal, P23, K0, Y1.5', [100,150,200]),
+        ('Turşu', 11, 0.8, 1.5, 0.1, 'g', 'sebze', 'Salatalık turşusu.', [50,100,150]),
+        ('Valio PROfeel Protein Pudding Chocolate', 85, 11, 6.2, 1.6, 'g', 'sut', '[ETIKETLI/FOTOGRAF] 1 kap ~182g: ~155 kcal, P20, K11.3, Y2.9.', [182]),
+        ('Yasmin Pirinc', 360, 7, 79, 0.6, 'g', 'tahil', 'Kuru çiğ. Kullanıcı onaylı: 100g = 360 kcal, P7, K79, Y0.6', [60,80,100]),
+        ('Yulaf', 371, 13, 58, 7, 'g', 'tahil', 'Tam yulaf', [20,40,60]),
+        ('Yumurta Akı', 58, 10.3, 1.2, 0.8, 'g', 'protein', 'etiket: 58kcal P10.3 K1.2 Y0.8 per 100g', [100,150,250]),
+        ('Çikolatalı Protein Bar 33%', 386, 33, 23, 18, 'g', 'atistirmalik', '[ETIKETLI/FOTOGRAF] 1 paket = 50g: 193 kcal, P16.5, K11.5, Y9.', [50]),
+        ('Çilek', 32, 0.7, 7.7, 0.3, 'g', 'meyve', '', [100,150,200]),
+    ]
+    for name, kcal, prot, carb, fat, unit, cat_key, note, quick in FOODS:
+        cat = CAT_LABELS.get(cat_key, '')
+        qa = json.dumps(quick)
+        existing = conn.execute("SELECT id FROM food_registry WHERE name=?", (name,)).fetchone()
+        if existing:
+            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,
+                            fat_per_100=?,unit=?,category=?,notes=?,quick_amounts=? WHERE id=?""",
+                         (kcal, prot, carb, fat, unit, cat, note, qa, existing['id']))
+        else:
+            conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,category,notes,quick_amounts)
+                            VALUES (?,?,?,?,?,?,?,?,?)""",
+                         (name, kcal, prot, carb, fat, unit, cat, note, qa))
+    conn.commit()
+
+    # Ogun sablonu: Kahvalti Stack
+    kahvalti_items = [('Carrefour BIO Yumurta', 100, 'g'), ('Carrefour Tam Tahıllı Tost Ekmeği', 46, 'g'), ('Domates', 100, 'g')]
+    ms = conn.execute("SELECT id FROM meal_stacks WHERE name='Kahvaltı Stack'").fetchone()
+    if not ms:
+        cur = conn.execute("INSERT INTO meal_stacks (name) VALUES (?)", ('Kahvaltı Stack',))
+        msid = cur.lastrowid
+        for i, (n, a, u) in enumerate(kahvalti_items):
+            food = conn.execute("SELECT id FROM food_registry WHERE name=?", (n,)).fetchone()
+            conn.execute("INSERT INTO meal_stack_items (stack_id,food_id,food_name,amount,unit,order_num) VALUES (?,?,?,?,?,?)",
+                         (msid, food['id'] if food else None, n, a, u, i))
+        conn.commit()
+
+    # Supplement products (22 - gercek marka isimleri)
+    PRODUCTS = [
+        ('NOW NAC 600mg', 1, 'kapsül'), ('Garden of Life Probiyotik', 1, 'doz'),
+        ('Optimum Nutrition Collagen Peptides', 1, 'ölçek'), ('Thorne Vitamin D + K2', 1, 'damla'),
+        ('Life Extension Mega EPA/DHA', 1, 'kapsül'), ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
+        ('Life Extension MacuGuard with Saffron', 1, 'kapsül'), ('Life Extension BioActive Complete B-Complex', 1, 'kapsül'),
+        ('California Gold Nutrition C 1000mg', 1, 'tablet'), ('NOW L-Theanine Double Strength', 1, 'kapsül'),
+        ('NOW Zinc Picolinate 50mg', 1, 'kapsül'), ('NOW Astaxanthin 10mg', 1, 'kapsül'),
+        ('NOW Magnesium Glycinate', 1, 'kapsül'), ('NOW Melatonin 1mg', 1, 'tablet'),
+        ('NOW Glycine 1000mg', 1, 'kapsül'), ('KSM-66 Ashwagandha', 1, 'kapsül'), ('L-Theanine', 1, 'kapsül'),
+        ('5% Nutrition L-Citrulline 3000', 1, 'ölçek'), ('KFD Premium Beta-Alanin', 1, 'ölçek'),
+        ('Optimum Nutrition Elektrolit', 1, 'ölçek'), ('Swedish Supplements Taurine', 1, 'ölçek'),
+        ('KFD Creatine Monohydrate', 1, 'ölçek'),
+    ]
+    for name, dose, unit in PRODUCTS:
+        existing = conn.execute("SELECT id FROM supplement_products WHERE name=?", (name,)).fetchone()
+        if not existing:
+            conn.execute("INSERT INTO supplement_products (name,default_dose,default_unit) VALUES (?,?,?)", (name, dose, unit))
+    conn.commit()
+
+    # Eski genel/yer-tutucu urun isimleri artik daha spesifik gercek marka isimleriyle var - eskisini sil
+    SUPERSEDED_PRODUCT_NAMES = [
+        'Garden of Life Probiotic', 'Life Extension Mega EPA/DHA (Omega-3)', 'Life Extension B-Complex',
+        'Life Extension MacuGuard', 'California Gold Nutrition C', 'NOW Magtein', 'Elektrolit',
+        'Citrulline', 'Taurine', 'Beta Alanine', 'Creatine Monohydrate', 'Magnesium Glycinate',
+        'Glycine', 'Melatonin', 'Optimum Nutrition Collagen',
+    ]
+    for old_name in SUPERSEDED_PRODUCT_NAMES:
+        conn.execute("DELETE FROM supplement_products WHERE name=?", (old_name,))
+    conn.commit()
+
+    # Eski yer-tutucu stack'leri sil, gercek 5 stack ile degistir (loglar snapshot oldugu icin gecmis etkilenmez)
+    OLD_PLACEHOLDER_STACKS = ['Aç Karna Stack', 'Sabah Stack', 'Pre Workout Stack', 'Post Workout Stack', 'Gece Stack']
+    for old_name in OLD_PLACEHOLDER_STACKS:
+        row = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (old_name,)).fetchone()
+        if row:
+            conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (row['id'],))
+            conn.execute("DELETE FROM supplement_stacks WHERE id=?", (row['id'],))
+    conn.commit()
+
+    STACKS_REAL = [
+        ('Aç Karna', 1, [
+            ('NOW NAC 600mg', 1, 'kapsül'), ('Garden of Life Probiyotik', 1, 'doz'),
+        ]),
+        ('Sabah/Kahvaltı', 2, [
+            ('Optimum Nutrition Collagen Peptides', 1, 'ölçek'), ('Thorne Vitamin D + K2', 1, 'damla'),
+            ('Life Extension Mega EPA/DHA', 1, 'kapsül'), ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
+            ('Life Extension MacuGuard with Saffron', 1, 'kapsül'), ('Life Extension BioActive Complete B-Complex', 1, 'kapsül'),
+            ('California Gold Nutrition C 1000mg', 1, 'tablet'), ('NOW L-Theanine Double Strength', 1, 'kapsül'),
+            ('NOW Zinc Picolinate 50mg', 1, 'kapsül'), ('NOW Astaxanthin 10mg', 1, 'kapsül'),
+        ]),
+        ('Gece', 3, [
+            ('NOW Magnesium Glycinate', 1, 'kapsül'), ('NOW Melatonin 1mg', 1, 'tablet'),
+            ('NOW Glycine 1000mg', 1, 'kapsül'), ('KSM-66 Ashwagandha', 1, 'kapsül'), ('L-Theanine', 1, 'kapsül'),
+        ]),
+        ('Pre-workout', 4, [
+            ('5% Nutrition L-Citrulline 3000', 1, 'ölçek'), ('KFD Premium Beta-Alanin', 1, 'ölçek'),
+            ('Optimum Nutrition Elektrolit', 1, 'ölçek'), ('Swedish Supplements Taurine', 1, 'ölçek'),
+        ]),
+        ('Post-workout', 5, [
+            ('KFD Creatine Monohydrate', 1, 'ölçek'),
+        ]),
+    ]
+    for sname, order, items in STACKS_REAL:
+        existing = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (sname,)).fetchone()
+        if existing:
+            continue
+        cur = conn.execute("INSERT INTO supplement_stacks (name,category,active,order_num) VALUES (?,?,1,?)", (sname, 'custom', order))
+        sid = cur.lastrowid
+        for j, (pname, dose, unit) in enumerate(items):
+            conn.execute("INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
+                         (sid, pname, dose, unit, j))
+    conn.commit()
+    conn.close()
+
 try:
     seed_supplement_data()
     fix_mojibake_supplement_names()
+    import_real_besin_supplement_db()
 except Exception as e:
     import logging; logging.getLogger('daily').warning(f"supplement seed failed: {e}")
 
