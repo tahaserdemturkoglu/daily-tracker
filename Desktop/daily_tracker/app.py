@@ -79,6 +79,13 @@ app = Flask(__name__, template_folder='templates')
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
+# WHOOP entegrasyonu (whoop_integration.py kendi DB_PATH'ini DATABASE_PATH env'inden okur -
+# ana app'in gerçek DB_PATH'iyle her zaman aynı dosyaya işaret etsin diye burada eşitliyoruz).
+os.environ.setdefault('DATABASE_PATH', DB_PATH)
+from whoop_integration import whoop_bp, init_whoop_tables
+app.register_blueprint(whoop_bp)
+init_whoop_tables()
+
 # âââ ANTRENMAN DÃNGÃSÃ âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 TRAINING_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
 TRAINING_COLORS = {

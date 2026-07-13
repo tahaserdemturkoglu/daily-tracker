@@ -605,7 +605,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <div class="form-row"><div class="fg"><label>Enerji</label><div class="slider-row"><input type="range" id="mo-energy" min="1" max="10" value="7" oninput="this.nextElementSibling.textContent=this.value"><span class="sv">7</span></div></div></div>
           <div class="form-row"><div class="fg"><label>Mood</label><div class="slider-row"><input type="range" id="mo-mood" min="1" max="10" value="7" oninput="this.nextElementSibling.textContent=this.value"><span class="sv">7</span></div></div></div>
           <div class="form-row"><div class="fg"><label>Stres</label><div class="slider-row"><input type="range" id="mo-stress" min="1" max="10" value="3" oninput="this.nextElementSibling.textContent=this.value"><span class="sv">3</span></div></div></div>
-          <div style="font-size:.68rem;color:var(--muted);margin:6px 0 4px">🔗 WHOOP bağlanınca otomatik dolacak</div>
+          <div style="font-size:.68rem;color:var(--muted);margin:6px 0 4px" id="whoop-status">🔗 WHOOP bağlanınca otomatik dolacak</div>
           <div class="form-row">
             <div class="fg"><label>Recovery %</label><input type="number" id="mo-recovery" placeholder="—"></div>
             <div class="fg"><label>Strain</label><input type="number" id="mo-strain" step=".1" placeholder="—"></div>
@@ -640,7 +640,6 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="w-btn" onclick="quickSteps(10000)">10K</button>
             <button class="w-btn" style="color:#f87171;border-color:rgba(248,113,113,.3)" onclick="deleteSteps()">✕ Sıfırla</button>
           </div>
-          <div style="font-size:.68rem;color:var(--muted);margin-top:8px">🔗 WHOOP bağlanınca otomatik senkronize edilecek</div>
         </div>
       </div>
     </div>
@@ -1797,6 +1796,7 @@ async function loadLogPage(){
   if($('sl-hours')&&sl.hours)$('sl-hours').value=sl.hours;
   if($('wo-h')&&w.hours)$('wo-h').value=w.hours;
   sv('water-cur',((nu.water_ml||0)/1000).toFixed(1)+'L bugün');
+  loadWhoopData();
   await Promise.all([loadVitamins(),loadTodayMeals(),loadQuickPicks(),loadMealTitles()]);
   renderFoodCatFilter();
   loadMealStackQuick();
@@ -1807,6 +1807,24 @@ async function loadLogPage(){
   loadSuppStackQuick();
   loadSuppNameOptions();
   setSuppMode('add');
+}
+
+async function loadWhoopData(){
+  const statusEl=$('whoop-status');
+  try{
+    const d=await API('/whoop/daily/'+today());
+    if(d&&d.found){
+      if(statusEl)statusEl.innerHTML=`✅ WHOOP bağlı · bugünün verisi senkronize`;
+      if($('mo-recovery')&&!$('mo-recovery').value&&d.recovery_score!=null)$('mo-recovery').value=d.recovery_score;
+      if($('mo-strain')&&!$('mo-strain').value&&d.strain!=null)$('mo-strain').value=d.strain;
+      if($('sl-hours')&&!$('sl-hours').value&&d.sleep_hours!=null)$('sl-hours').value=d.sleep_hours;
+    } else if(statusEl){
+      const st=await API('/whoop/status');
+      statusEl.innerHTML=st&&st.connected
+        ? '🔗 WHOOP bağlı, bugün için veri henüz yok'
+        : '🔗 <a href="/whoop/connect" style="color:var(--yellow)">WHOOP\'a bağlan</a>';
+    }
+  }catch(e){}
 }
 
 function setSuppMode(mode){

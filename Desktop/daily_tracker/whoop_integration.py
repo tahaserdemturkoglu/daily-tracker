@@ -1,0 +1,327 @@
+# -*- coding: utf-8 -*-
+"""
+WHOOP v2 API entegrasyonu — daily-tracker
+==========================================
+Flask blueprint. Mevcut app'e eklemek için:
+
+    from whoop_integration import whoop_bp, init_whoop_tables
+    app.register_blueprint(whoop_bp)
+    init_whoop_tables()  # DB init'in çağrıldığı yerde
+
+Railway env değişkenleri (zorunlu):
+    WHOOP_CLIENT_ID
+    WHOOP_CLIENT_SECRET
+    WHOOP_REDIRECT_URI = https://web-production-87c2c.up.railway.app/whoop/callback
+
+Notlar:
+- WHOOP v2 rotating refresh token kullanır: her refresh'te YENİ refresh token
+  döner ve eskisi geçersiz olur. Bu modül her seferinde DB'ye yenisini yazar.
+- WHOOP adım saymaz. Otomatik dolan alanlar: Recovery %, Strain, HRV, RHR,
+  uyku süresi/performansı, yakılan kalori.
+- Tek kullanıcılı sistem varsayımı (mevcut tracker gibi).
+"""
+
+import os
+import time
+import json
+import sqlite3
+from datetime import datetime, timedelta, timezone
+
+import requests
+from flask import Blueprint, request, redirect, jsonify
+
+# ---------------------------------------------------------------- config ---
+WHOOP_CLIENT_ID = os.environ.get("WHOOP_CLIENT_ID", "")
+WHOOP_CLIENT_SECRET = os.environ.get("WHOOP_CLIENT_SECRET", "")
+WHOOP_REDIRECT_URI = os.environ.get(
+    "WHOOP_REDIRECT_URI",
+    "https://web-production-87c2c.up.railway.app/whoop/callback",
+)
+
+AUTH_URL = "https://api.prod.whoop.com/oauth/oauth2/auth"
+TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
+API_BASE = "https://api.prod.whoop.com/developer/v2"
+SCOPES = "offline read:recovery read:sleep read:cycles read:workout read:body_measurement read:profile"
+
+# Türkiye saati (DST yok)
+TR_TZ = timezone(timedelta(hours=3))
+
+# DB yolu — mevcut app hangi dosyayı kullanıyorsa onu ver
+DB_PATH = os.environ.get("DATABASE_PATH", "tracker.db")
+
+whoop_bp = Blueprint("whoop", __name__)
+
+
+def _db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_whoop_tables():
+    conn = _db()
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS whoop_tokens (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            access_token TEXT,
+            refresh_token TEXT,
+            expires_at REAL,           -- epoch seconds
+            connected_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS whoop_daily (
+            date TEXT PRIMARY KEY,      -- YYYY-MM-DD (TR lokal)
+            recovery_score INTEGER,     -- %
+            strain REAL,                -- 0-21
+            hrv_ms REAL,
+            rhr_bpm REAL,
+            spo2 REAL,
+            skin_temp_c REAL,
+            sleep_hours REAL,
+            sleep_performance INTEGER,  -- %
+            sleep_efficiency REAL,      -- %
+            kcal_burned REAL,
+            raw_json TEXT,
+            synced_at TEXT
+        );
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+# ---------------------------------------------------------------- tokens ---
+def _save_tokens(access_token, refresh_token, expires_in):
+    conn = _db()
+    conn.execute(
+        """INSERT INTO whoop_tokens (id, access_token, refresh_token, expires_at, connected_at)
+           VALUES (1, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             access_token=excluded.access_token,
+             refresh_token=excluded.refresh_token,
+             expires_at=excluded.expires_at""",
+        (access_token, refresh_token, time.time() + expires_in - 60,
+         datetime.now(TR_TZ).isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _get_access_token():
+    """Geçerli access token döner; süresi dolduysa refresh eder (rotating)."""
+    conn = _db()
+    row = conn.execute("SELECT * FROM whoop_tokens WHERE id = 1").fetchone()
+    conn.close()
+    if not row or not row["refresh_token"]:
+        return None
+    if row["expires_at"] and time.time() < row["expires_at"]:
+        return row["access_token"]
+    # refresh — WHOOP her seferinde yeni refresh token döndürür
+    r = requests.post(TOKEN_URL, data={
+        "grant_type": "refresh_token",
+        "refresh_token": row["refresh_token"],
+        "client_id": WHOOP_CLIENT_ID,
+        "client_secret": WHOOP_CLIENT_SECRET,
+        "scope": "offline",
+    }, timeout=30)
+    if r.status_code != 200:
+        return None
+    tok = r.json()
+    _save_tokens(tok["access_token"], tok["refresh_token"], tok.get("expires_in", 3600))
+    return tok["access_token"]
+
+
+def _api_get(path, params=None):
+    token = _get_access_token()
+    if not token:
+        return None
+    r = requests.get(f"{API_BASE}{path}",
+                     headers={"Authorization": f"Bearer {token}"},
+                     params=params or {}, timeout=30)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+
+def _paged(path, params):
+    """Koleksiyon endpoint'lerini next_token ile tüketir."""
+    out, token = [], None
+    for _ in range(10):  # güvenlik limiti
+        p = dict(params)
+        if token:
+            p["nextToken"] = token
+        data = _api_get(path, p)
+        if not data:
+            break
+        out.extend(data.get("records", []))
+        token = data.get("next_token")
+        if not token:
+            break
+    return out
+
+
+# ---------------------------------------------------------------- routes ---
+@whoop_bp.route("/whoop/connect")
+def whoop_connect():
+    """Kullanıcıyı WHOOP OAuth ekranına yönlendirir."""
+    url = (f"{AUTH_URL}?response_type=code"
+           f"&client_id={WHOOP_CLIENT_ID}"
+           f"&redirect_uri={WHOOP_REDIRECT_URI}"
+           f"&scope={SCOPES.replace(' ', '%20')}"
+           f"&state=daily-tracker")
+    return redirect(url)
+
+
+@whoop_bp.route("/whoop/callback")
+def whoop_callback():
+    code = request.args.get("code")
+    if not code:
+        return "WHOOP yetkilendirme reddedildi.", 400
+    r = requests.post(TOKEN_URL, data={
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": WHOOP_CLIENT_ID,
+        "client_secret": WHOOP_CLIENT_SECRET,
+        "redirect_uri": WHOOP_REDIRECT_URI,
+    }, timeout=30)
+    if r.status_code != 200:
+        return f"Token alınamadı: {r.text}", 400
+    tok = r.json()
+    _save_tokens(tok["access_token"], tok["refresh_token"], tok.get("expires_in", 3600))
+    sync_whoop_data(days=7)
+    return redirect("/?whoop=connected")
+
+
+@whoop_bp.route("/whoop/status")
+def whoop_status():
+    conn = _db()
+    row = conn.execute("SELECT connected_at FROM whoop_tokens WHERE id = 1").fetchone()
+    last = conn.execute(
+        "SELECT date, synced_at FROM whoop_daily ORDER BY date DESC LIMIT 1").fetchone()
+    conn.close()
+    return jsonify({
+        "connected": bool(row),
+        "connected_at": row["connected_at"] if row else None,
+        "last_sync_date": last["date"] if last else None,
+        "last_synced_at": last["synced_at"] if last else None,
+    })
+
+
+@whoop_bp.route("/whoop/sync", methods=["POST", "GET"])
+def whoop_sync_route():
+    days = int(request.args.get("days", 3))
+    result = sync_whoop_data(days=days)
+    if result is None:
+        return jsonify({"ok": False, "error": "WHOOP bağlı değil veya token yenilenemedi"}), 401
+    return jsonify({"ok": True, "synced_dates": result})
+
+
+@whoop_bp.route("/whoop/daily/<date>")
+def whoop_daily(date):
+    """Vücut sekmesi bu endpoint'ten okur. date = YYYY-MM-DD"""
+    conn = _db()
+    row = conn.execute("SELECT * FROM whoop_daily WHERE date = ?", (date,)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"found": False})
+    d = dict(row)
+    d.pop("raw_json", None)
+    d["found"] = True
+    return jsonify(d)
+
+
+# ------------------------------------------------------------------ sync ---
+def sync_whoop_data(days=3):
+    """Son N günün recovery/sleep/cycle verisini çekip whoop_daily'ye yazar.
+    Dönen değer: senkronlanan tarih listesi, ya da None (auth hatası)."""
+    if _get_access_token() is None:
+        return None
+
+    start = (datetime.now(timezone.utc) - timedelta(days=days + 1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    params = {"limit": 25, "start": start}
+
+    recoveries = _paged("/recovery", params)
+    sleeps = _paged("/activity/sleep", params)
+    cycles = _paged("/cycle", params)
+
+    daily = {}  # date -> dict
+
+    def bucket(dt_str):
+        """UTC timestamp -> TR lokal tarih (uyanılan gün)."""
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt.astimezone(TR_TZ).strftime("%Y-%m-%d")
+
+    # sleep: id -> tarih eşlemesi (recovery sleep_id ile bağlanır)
+    sleep_by_id = {}
+    for s in sleeps:
+        if s.get("nap"):
+            continue
+        end = s.get("end")
+        if not end:
+            continue
+        d = bucket(end)
+        sleep_by_id[s["id"]] = d
+        stage = (s.get("score") or {}).get("stage_summary") or {}
+        total_ms = sum(stage.get(k, 0) or 0 for k in (
+            "total_light_sleep_time_milli",
+            "total_slow_wave_sleep_time_milli",
+            "total_rem_sleep_time_milli"))
+        rec = daily.setdefault(d, {})
+        rec["sleep_hours"] = round(total_ms / 3600000, 2) if total_ms else None
+        rec["sleep_performance"] = (s.get("score") or {}).get("sleep_performance_percentage")
+        rec["sleep_efficiency"] = (s.get("score") or {}).get("sleep_efficiency_percentage")
+
+    for r in recoveries:
+        score = r.get("score") or {}
+        d = sleep_by_id.get(r.get("sleep_id"))
+        if not d:
+            d = bucket(r.get("updated_at") or r.get("created_at"))
+        rec = daily.setdefault(d, {})
+        rec["recovery_score"] = score.get("recovery_score")
+        rec["hrv_ms"] = score.get("hrv_rmssd_milli")
+        rec["rhr_bpm"] = score.get("resting_heart_rate")
+        rec["spo2"] = score.get("spo2_percentage")
+        rec["skin_temp_c"] = score.get("skin_temp_celsius")
+
+    for c in cycles:
+        start_ts = c.get("start")
+        if not start_ts:
+            continue
+        d = bucket(start_ts)
+        score = c.get("score") or {}
+        rec = daily.setdefault(d, {})
+        # gün içinde cycle güncellenir; en son değer kazanır
+        rec["strain"] = score.get("strain")
+        kj = score.get("kilojoule")
+        rec["kcal_burned"] = round(kj * 0.239006, 0) if kj else None
+
+    now = datetime.now(TR_TZ).isoformat()
+    conn = _db()
+    for d, rec in daily.items():
+        conn.execute(
+            """INSERT INTO whoop_daily
+               (date, recovery_score, strain, hrv_ms, rhr_bpm, spo2, skin_temp_c,
+                sleep_hours, sleep_performance, sleep_efficiency, kcal_burned,
+                raw_json, synced_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(date) DO UPDATE SET
+                 recovery_score=COALESCE(excluded.recovery_score, recovery_score),
+                 strain=COALESCE(excluded.strain, strain),
+                 hrv_ms=COALESCE(excluded.hrv_ms, hrv_ms),
+                 rhr_bpm=COALESCE(excluded.rhr_bpm, rhr_bpm),
+                 spo2=COALESCE(excluded.spo2, spo2),
+                 skin_temp_c=COALESCE(excluded.skin_temp_c, skin_temp_c),
+                 sleep_hours=COALESCE(excluded.sleep_hours, sleep_hours),
+                 sleep_performance=COALESCE(excluded.sleep_performance, sleep_performance),
+                 sleep_efficiency=COALESCE(excluded.sleep_efficiency, sleep_efficiency),
+                 kcal_burned=COALESCE(excluded.kcal_burned, kcal_burned),
+                 synced_at=excluded.synced_at""",
+            (d, rec.get("recovery_score"), rec.get("strain"), rec.get("hrv_ms"),
+             rec.get("rhr_bpm"), rec.get("spo2"), rec.get("skin_temp_c"),
+             rec.get("sleep_hours"), rec.get("sleep_performance"),
+             rec.get("sleep_efficiency"), rec.get("kcal_burned"),
+             json.dumps(rec, ensure_ascii=False), now),
+        )
+    conn.commit()
+    conn.close()
+    return sorted(daily.keys())
