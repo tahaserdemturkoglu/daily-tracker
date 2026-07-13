@@ -177,7 +177,12 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
 /* ══════ LISTS ══════ */
 .vit-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
-#vit-list{max-height:640px}
+#vit-list{max-height:640px;padding-right:4px}
+#vit-list::-webkit-scrollbar{width:10px}
+#vit-list::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:5px}
+#vit-list::-webkit-scrollbar-thumb{background:var(--purple,#b44dff);border-radius:5px;border:2px solid transparent;background-clip:padding-box}
+#supp-order-card{position:relative}
+#supp-order-card.has-more-below::after{content:'';position:absolute;left:16px;right:16px;bottom:14px;height:36px;background:linear-gradient(180deg,transparent,var(--bg2,#0b1220) 85%);pointer-events:none;border-radius:0 0 14px 14px}
 .vit-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:8px;padding:7px 12px;font-size:.84rem;border-left:3px solid var(--purple);gap:8px}
 .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:4px;transition:color .15s;flex-shrink:0}
 .del-btn:hover{color:var(--red)}
@@ -2312,6 +2317,20 @@ async function loadVitamins(){
   renderVitList('vit-list',vits,true);
   const sub=$('vit-list-sub');
   if(sub) sub.textContent=vits.length?vits.length+' takviye kaydı':'Bugünkü protokol';
+  updateVitListScrollHint();
+}
+function updateVitListScrollHint(){
+  const list=$('vit-list'),card=$('supp-order-card');
+  if(!list||!card)return;
+  const check=()=>{
+    const hasMore=list.scrollHeight-list.scrollTop-list.clientHeight>4;
+    card.classList.toggle('has-more-below',hasMore);
+  };
+  check();
+  if(!list.dataset.scrollHintBound){
+    list.addEventListener('scroll',check);
+    list.dataset.scrollHintBound='1';
+  }
 }
 
 let _suppList=null;
