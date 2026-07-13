@@ -177,7 +177,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
 /* ══════ LISTS ══════ */
 .vit-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
-#vit-list{max-height:640px;padding-right:4px}
+#vit-list{max-height:640px;padding-right:4px;scrollbar-width:auto;scrollbar-color:var(--purple,#b44dff) rgba(255,255,255,.04)}
 #vit-list::-webkit-scrollbar{width:10px}
 #vit-list::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:5px}
 #vit-list::-webkit-scrollbar-thumb{background:var(--purple,#b44dff);border-radius:5px;border:2px solid transparent;background-clip:padding-box}
@@ -654,14 +654,9 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <div class="fg"><label>Günlük Su Hedefi (ml)</label><input type="number" id="water-goal-input" step="100" placeholder="3000"></div>
             <button class="btn btn-blue btn-sm" onclick="saveWaterGoal()">Kaydet</button>
           </div>
-          <div id="daily-macro-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:.75rem;padding:6px 8px;background:rgba(255,255,255,.05);border-radius:8px">
-            <span style="color:var(--muted)">Bugün:</span>
-            <span>🔥 <b id="mb-cal">—</b> kcal</span>
-            <span>P <b id="mb-prot" style="color:#00e5ff">—</b>g</span>
-            <span>K <b id="mb-carb" style="color:#ffb800">—</b>g</span>
-            <span>Y <b id="mb-fat" style="color:#ff6b6b">—</b>g</span>
-            <span>👟 <b id="mb-steps" style="color:#a78bfa">—</b></span>
-            <span id="mb-supp-row" style="display:none">💊 <b id="mb-supp" style="color:#34d399">—</b></span>
+          <div id="daily-macro-bar" style="display:none">
+            <b id="mb-cal"></b><b id="mb-prot"></b><b id="mb-carb"></b><b id="mb-fat"></b><b id="mb-steps"></b>
+            <span id="mb-supp-row"><b id="mb-supp"></b></span>
           </div>
           <div id="daily-ai-report-bar" style="display:none;font-size:.72rem;padding:5px 8px;background:rgba(255,255,255,.04);border-radius:7px;margin-bottom:8px"></div>
           <div class="water-btns">
@@ -670,7 +665,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="w-btn" onclick="addWater(500)">+500ml</button>
             <button class="w-btn" onclick="addWater(750)">+750ml</button>
           </div>
-          <div class="form-row">
+          <div class="form-row" style="margin-top:6px">
             <div class="fg"><label>Manuel (L)</label><input type="number" id="water-m" step=".1" placeholder="1.5"></div>
             <button class="btn btn-teal btn-sm" onclick="addWaterManual()">+ Ekle</button>
             <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
@@ -5186,10 +5181,11 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 #page-log{width:100%!important;max-width:1180px!important;margin:0 auto!important}
 #sub-vucut .cards-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important}
 #sub-beslenme .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
-#water-card,#meal-list-card{grid-column:1/-1!important}
-#nutrition-flow-panel{order:1!important}
+#water-card{grid-column:1/-1!important}
+#meal-list-card{order:1!important}
 #meal-order-card{order:2!important;position:sticky!important;top:12px!important}
-#meal-add-card{order:3!important}
+#nutrition-flow-panel{order:3!important;grid-column:1/-1!important}
+#meal-add-card{order:4!important}
 #sub-supplement .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
 #nu-food-grid{grid-template-columns:repeat(auto-fill,minmax(150px,180px))!important}
 #water-card{font-size:.92em;padding:14px!important}
@@ -5266,9 +5262,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     if(!rows.length){ box.innerHTML='<div class="meal-entry-empty">Bu tarihte öğün kaydı yok.</div>'; return; }
     const fmt=v=>{const n=Number(v||0); return Number.isInteger(n)?n:Math.round(n*10)/10;};
     box.innerHTML=rows.map(m=>`
-      <div class="meal-entry-card">
+      <div class="meal-entry-card" data-mid="${m.id}" data-title="${(m.title||'').replace(/"/g,'&quot;')}">
         <div class="meal-entry-top" style="font-size:.72rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em">${(m.slot||'').replace(/_/g,' ')}</div>
-        <div>
+        <div class="meal-entry-view">
           <div style="font-weight:700;font-size:.88rem">${m.title||m.description||'—'}</div>
           ${m.description&&m.description!==m.title?`<div style="font-size:.76rem;color:var(--muted);margin-top:2px">${m.description}</div>`:''}
           <div class="meal-entry-macros" style="display:flex;gap:8px;margin-top:6px;font-size:.72rem">
@@ -5279,19 +5275,60 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
           </div>
         </div>
         <div class="meal-entry-actions">
-          <button class="btn btn-xs btn-ghost" onclick="editMealAmount(${m.id},'${(m.title||'').replace(/'/g,"`")}','${(m.description||'').replace(/'/g,"`")}')">✎</button>
+          <button class="btn btn-xs btn-ghost" onclick="editMealAmount(${m.id})">✎</button>
           <button class="del-btn" onclick="confirmDelMeal(${m.id},'${(m.title||'').replace(/'/g,"`")}')">✕</button>
         </div>
       </div>`).join('');
   };
-  window.editMealAmount=async function(id,title,description){
-    const curMatch=(description||'').match(/^([\d.]+)\s*\w*\s+/);
-    const newAmountStr=prompt('Gramaj (g):',curMatch?curMatch[1]:'100');
-    if(newAmountStr===null)return;
-    const amount=parseFloat(newAmountStr);
-    if(!amount||amount<=0)return toast('Geçersiz miktar',false);
+  window.editMealAmount=async function(id){
+    const card=document.querySelector(`.meal-entry-card[data-mid="${id}"]`);
+    if(!card)return;
+    const title=card.dataset.title||'';
     if(!_foodList)_foodList=await API('/api/food-registry')||[];
-    const food=(_foodList||[]).find(f=>(f.official_name||f.name||'').toLowerCase()===(title||'').toLowerCase());
+    const food=(_foodList||[]).find(f=>(f.official_name||f.name||'').toLowerCase()===title.toLowerCase());
+    const rows=await API('/api/meals/'+selectedNutritionDate());
+    const m=(rows||[]).find(x=>x.id===id);
+    const curMatch=(m&&m.description||'').match(/^([\d.]+)\s*\w*\s+/);
+    const curAmount=curMatch?curMatch[1]:'100';
+    const view=card.querySelector('.meal-entry-view');
+    view.dataset.origHtml=view.innerHTML;
+    view.innerHTML=`
+      <div style="font-weight:700;font-size:.85rem;margin-bottom:6px">${title}</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="fg" style="flex:0 0 120px"><label>Miktar (g)</label><input type="number" id="mea-amount-${id}" value="${curAmount}" min="1" step="1" oninput="mealAmountPreview(${id})" style="width:100%"></div>
+        <button class="btn btn-teal btn-sm" style="width:auto;margin-top:0" onclick="saveMealAmountEdit(${id})">Tamam</button>
+        <button class="btn btn-sm btn-ghost" style="width:auto;margin-top:0" onclick="cancelMealAmountEdit(${id})">İptal</button>
+      </div>
+      <div id="mea-preview-${id}" style="font-size:.8rem;font-weight:600;color:#60a5fa;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:6px 10px;margin-top:8px"></div>
+      ${!food?'<div style="font-size:.7rem;color:var(--muted);margin-top:4px">Besin DB eşleşmesi yok — makrolar değişmeyecek, sadece etiket güncellenir.</div>':''}`;
+    window._meaFoodCache=window._meaFoodCache||{};
+    window._meaFoodCache[id]=food||null;
+    mealAmountPreview(id);
+  };
+  window.mealAmountPreview=function(id){
+    const food=(window._meaFoodCache||{})[id];
+    const prev=$('mea-preview-'+id);
+    const amount=parseFloat($('mea-amount-'+id)?.value)||0;
+    if(!prev)return;
+    if(!food){ prev.textContent=amount?`${amount} g olarak kaydedilecek`:''; return; }
+    const r=amount/100;
+    const kcal=Math.round((food.calories_per_100||0)*r);
+    const p=Math.round((food.protein_per_100||0)*r*10)/10;
+    const k=Math.round((food.carbs_per_100||0)*r*10)/10;
+    const y=Math.round((food.fat_per_100||0)*r*10)/10;
+    prev.innerHTML=`${amount}g → <b>${kcal} kcal</b> · P ${p}g · K ${k}g · Y ${y}g`;
+  };
+  window.cancelMealAmountEdit=function(id){
+    const card=document.querySelector(`.meal-entry-card[data-mid="${id}"]`);
+    const view=card&&card.querySelector('.meal-entry-view');
+    if(view&&view.dataset.origHtml)view.innerHTML=view.dataset.origHtml;
+  };
+  window.saveMealAmountEdit=async function(id){
+    const amount=parseFloat($('mea-amount-'+id)?.value);
+    if(!amount||amount<=0)return toast('Geçersiz miktar',false);
+    const card=document.querySelector(`.meal-entry-card[data-mid="${id}"]`);
+    const title=card&&card.dataset.title||'';
+    const food=(window._meaFoodCache||{})[id];
     let payload;
     if(food){
       const r=amount/100;
@@ -5307,7 +5344,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     }
     const res=await PUT('/api/meals/'+id,payload);
     if(res&&res.ok===false)return toast(res.error||'Hata',false);
-    toast(food?'Gramaj güncellendi ('+amount+'g)':'Not güncellendi (Besin DB eşleşmesi yok, makrolar aynı kaldı)');
+    toast(food?'Gramaj güncellendi ('+amount+'g)':'Not güncellendi');
     await window.loadMealEntries();
     if(typeof loadTodayMeals==='function')loadTodayMeals();
     if(typeof loadDashboard==='function')loadDashboard();
