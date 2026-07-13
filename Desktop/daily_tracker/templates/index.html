@@ -712,12 +712,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
                 <div class="fg" style="flex:1"><label>Miktar</label><input type="number" id="nu-food-amount" value="100" min="1" step="1" oninput="updateFoodPreview()" style="width:100%"></div>
                 <div class="fg" style="flex:0.7"><label>Birim</label><input type="text" id="nu-food-unit" value="g" style="width:100%"></div>
               </div>
-              <div style="display:flex;gap:5px;margin:6px 0;flex-wrap:wrap">
-                <button class="btn btn-xs btn-ghost" onclick="setFoodAmount(50)">50g</button>
-                <button class="btn btn-xs btn-ghost" onclick="setFoodAmount(100)">100g</button>
-                <button class="btn btn-xs btn-ghost" onclick="setFoodAmount(150)">150g</button>
-                <button class="btn btn-xs btn-ghost" onclick="setFoodAmount(200)">200g</button>
-              </div>
+              <div id="nu-food-quick-amounts" style="display:flex;gap:5px;margin:6px 0;flex-wrap:wrap"></div>
               <div id="nu-food-preview" style="font-size:.75rem;color:#60a5fa;padding:4px 0;min-height:18px"></div>
               <input type="hidden" id="nu-food-id"><input type="hidden" id="nu-food-name">
               <button class="btn btn-teal" onclick="saveMealFromDB()">Ekle</button>
@@ -2050,7 +2045,7 @@ async function foodSearch(q){
   grid.innerHTML=matches.map(f=>`<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:start">
       <b style="font-size:.82rem;line-height:1.25">${f.official_name||f.name}</b>
-      <span style="color:var(--yellow);font-size:.72rem;white-space:nowrap;flex-shrink:0">${f.calories_per_100||0}kcal/100g</span>
+      <span style="color:var(--yellow);font-size:.72rem;white-space:nowrap;flex-shrink:0">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span>
     </div>
     <div style="font-size:.72rem;margin-top:5px;display:flex;gap:6px">
       <span style="color:#22c55e">P${f.protein_per_100||0}</span><span style="color:#3b82f6">K${f.carbs_per_100||0}</span><span style="color:#f97316">Y${f.fat_per_100||0}</span>
@@ -2065,6 +2060,19 @@ function selectFood(id,name){
   $('nu-food-selected-name').textContent=name;
   $('nu-food-add-form').style.display='';
   $('nu-food-add-form').scrollIntoView({behavior:'smooth',block:'nearest'});
+  const food=(_foodList||[]).find(f=>f.id===id);
+  if(food){
+    $('nu-food-unit').value=food.unit||'g';
+    $('nu-food-amount').value=100;
+    let quick=[];
+    try{quick=JSON.parse(food.quick_amounts||'[]');}catch(e){}
+    const qEl=$('nu-food-quick-amounts');
+    if(qEl){
+      qEl.innerHTML=(quick.length?quick:[50,100,150,200]).map(a=>
+        `<button class="btn btn-xs btn-ghost" onclick="setFoodAmount(${a})">${a}${food.unit||'g'}</button>`
+      ).join('');
+    }
+  }
   updateFoodPreview();
 }
 
