@@ -1788,6 +1788,8 @@ def ensure_training_day_logs_table():
     """)
     conn.commit(); conn.close()
 
+_ANTRENMAN_TYPE_LABEL = {'wu': 'Isınma', 'ws': 'Çalışma', 'bo': 'Back-off'}
+
 @app.route('/api/training/day/<date_str>')
 def api_training_day_detail(date_str):
     ensure_training_day_logs_table()
@@ -1799,7 +1801,6 @@ def api_training_day_detail(date_str):
     logs = [dict(r) for r in conn.execute(
         "SELECT * FROM training_day_logs WHERE date=? ORDER BY id", (date_str,)
     ).fetchall()]
-    conn.close()
     for r in program_rows:
         r['set_details'] = _training_parse_sets(r)
     for r in logs:
@@ -1807,6 +1808,27 @@ def api_training_day_detail(date_str):
             r['set_details'] = json.loads(r.get('sets_json') or '[]')
         except Exception:
             r['set_details'] = []
+    # Antrenman paneli (yeni sistem) o gün için seans kaydetmişse, aynı 'logs' şekline çevirip ekle -
+    # Rapor sayfasındaki Antrenman kartı artık buradan da veri görsün.
+    settings_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    conn.close()
+    if settings_row:
+        try:
+            sessions = json.loads(settings_row['value'])
+            session = next((s for s in sessions if s.get('date') == date_str), None)
+            if session:
+                for ex in session.get('exercises', []):
+                    logs.append({
+                        'exercise': ex.get('name', 'Hareket'),
+                        'training_day': session.get('label', td),
+                        'set_details': [
+                            {'set': i + 1, 'type': _ANTRENMAN_TYPE_LABEL.get(s.get('type'), 'Çalışma'),
+                             'reps': s.get('reps'), 'weight': ('BW' if s.get('bw') else s.get('weight'))}
+                            for i, s in enumerate(ex.get('sets', []))
+                        ]
+                    })
+        except Exception as _e:
+            import logging; logging.getLogger('daily').warning(f"antrenman session merge into /api/training/day failed: {_e}")
     return jsonify({'date': date_str, 'training_day': td, 'program': program_rows, 'logs': logs})
 
 @app.route('/api/training/day/<date_str>/log', methods=['POST'])

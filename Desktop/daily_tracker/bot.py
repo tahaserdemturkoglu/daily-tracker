@@ -330,19 +330,37 @@ def extended_context():
                 diff = round(last_w - first_w, 1)
                 lines.append(f"  Trend: {'+' if diff>0 else ''}{diff}kg son 30 gunde")
 
-    # 2. Antrenman PR'ları (her harekette en yüksek ağırlık)
+    # 2. Antrenman PR'ları (her harekette en yüksek ağırlık) - eski workout_logs + yeni
+    #    Antrenman paneli (antrenman_sessions) kayıtları birlikte, en yüksek ağırlık kazanır.
     try:
-        prs = conn.execute(
+        pr_map = {}  # lower(exercise) -> {'exercise':orig_name, 'max_w':float, 'max_r':int}
+        rows = conn.execute(
             "SELECT exercise, MAX(CAST(REPLACE(REPLACE(weight,' kg',''),'kg','') AS REAL)) as max_w, "
             "MAX(CAST(reps AS INTEGER)) as max_r "
             "FROM workout_logs WHERE weight IS NOT NULL AND weight != '' "
-            "GROUP BY lower(exercise) ORDER BY COUNT(*) DESC LIMIT 12"
+            "GROUP BY lower(exercise)"
         ).fetchall()
-        if prs:
+        for r in rows:
+            if r['max_w']:
+                pr_map[r['exercise'].lower()] = {'exercise': r['exercise'], 'max_w': r['max_w'], 'max_r': r['max_r']}
+        settings_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+        if settings_row:
+            for session in json.loads(settings_row['value']):
+                for ex in session.get('exercises', []):
+                    key = (ex.get('name') or '').lower()
+                    if not key:
+                        continue
+                    for s in ex.get('sets', []):
+                        if s.get('bw') or not s.get('weight'):
+                            continue
+                        w = s['weight']
+                        cur = pr_map.get(key)
+                        if not cur or w > cur['max_w']:
+                            pr_map[key] = {'exercise': ex['name'], 'max_w': w, 'max_r': s.get('reps')}
+        if pr_map:
             lines.append('ANTRENMAN PR / EN YUK AGIRLIKLAR:')
-            for pr in prs:
-                if pr['max_w']:
-                    lines.append(f"  {pr['exercise']}: {pr['max_w']}kg x {pr['max_r'] or '?'} tekrar")
+            for pr in list(pr_map.values())[:12]:
+                lines.append(f"  {pr['exercise']}: {pr['max_w']}kg x {pr['max_r'] or '?'} tekrar")
     except Exception:
         pass
 
