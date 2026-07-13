@@ -1,0 +1,4314 @@
+{
+  "sessions": [
+    {
+      "date": "2026-06-22",
+      "short": "22 Haz",
+      "dateLabel": "22 Haziran Pazartesi",
+      "dow": "Pzt",
+      "label": "Push",
+      "split": "push",
+      "dur": "1:05",
+      "exercises": [
+        {
+          "id": "a1",
+          "name": "Lateral Raise",
+          "muscle": "shoulder",
+          "muscleLabel": "Omuz",
+          "pr": {
+            "weight": 14,
+            "reps": 10,
+            "label": "14kg × 10"
+          },
+          "sets": [
+            {
+              "id": "a1s1",
+              "type": "wu",
+              "weight": 8,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a1s2",
+              "type": "wu",
+              "weight": 10,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a1s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a1s4",
+              "type": "ws",
+              "weight": 14,
+              "reps": 10,
+              "done": true,
+              "drops": [
+                {
+                  "id": "a1d1",
+                  "weight": 7,
+                  "reps": 10,
+                  "done": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "a2",
+          "name": "Chest Supported Rear Delt Row",
+          "muscle": "shoulder",
+          "muscleLabel": "Arka Omuz",
+          "pr": {
+            "weight": 6,
+            "reps": 12,
+            "label": "6kg × 12"
+          },
+          "sets": [
+            {
+              "id": "a2s1",
+              "type": "ws",
+              "weight": 6,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "a2s2",
+              "type": "ws",
+              "weight": 6,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "a2s3",
+              "type": "ws",
+              "weight": 6,
+              "reps": 12,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "a3",
+          "name": "Cable Lower Chest Press",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 50,
+            "reps": 7,
+            "label": "50kg × 7"
+          },
+          "sets": [
+            {
+              "id": "a3s1",
+              "type": "wu",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a3s2",
+              "type": "wu",
+              "weight": 27,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a3s3",
+              "type": "ws",
+              "weight": 41,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a3s4",
+              "type": "ws",
+              "weight": 50,
+              "reps": 7,
+              "done": true,
+              "drops": [
+                {
+                  "id": "a3d1",
+                  "weight": 27,
+                  "reps": 8,
+                  "done": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "a4",
+          "name": "Low to High Single DB Fly",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 7,
+            "reps": 12,
+            "label": "7kg × 12"
+          },
+          "sets": [
+            {
+              "id": "a4s1",
+              "type": "ws",
+              "weight": 7,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a4s2",
+              "type": "ws",
+              "weight": 7,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a4s3",
+              "type": "ws",
+              "weight": 7,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "a5",
+          "name": "Face Pull",
+          "muscle": "back",
+          "muscleLabel": "Arka Omuz",
+          "pr": {
+            "weight": 25,
+            "reps": 12,
+            "label": "25kg × 12"
+          },
+          "sets": [
+            {
+              "id": "a5s1",
+              "type": "ws",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a5s2",
+              "type": "ws",
+              "weight": 25,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "a6",
+          "name": "Cable Triceps Extension",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": {
+            "weight": 46,
+            "reps": 8,
+            "label": "46kg × 8"
+          },
+          "sets": [
+            {
+              "id": "a6s1",
+              "type": "wu",
+              "weight": 25,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a6s2",
+              "type": "ws",
+              "weight": 36,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a6s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "a7",
+          "name": "Cable Triceps Pushdown",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": {
+            "weight": 41,
+            "reps": 8,
+            "label": "41kg × 8"
+          },
+          "sets": [
+            {
+              "id": "a7s1",
+              "type": "wu",
+              "weight": 27,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a7s2",
+              "type": "ws",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "a7s3",
+              "type": "ws",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-23",
+      "short": "23 Haz",
+      "dateLabel": "23 Haziran Salı",
+      "dow": "Sal",
+      "label": "Pull",
+      "split": "pull",
+      "dur": "1:10",
+      "exercises": [
+        {
+          "id": "b1",
+          "name": "Chest Supported Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": {
+            "weight": 20,
+            "reps": 11,
+            "label": "20kg × 11"
+          },
+          "sets": [
+            {
+              "id": "b1s1",
+              "type": "wu",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b1s2",
+              "type": "wu",
+              "weight": 16,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b1s3",
+              "type": "ws",
+              "weight": 20,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b1s4",
+              "type": "ws",
+              "weight": 20,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b1s5",
+              "type": "bo",
+              "weight": 16,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "name": "Lat Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Üst Lat",
+          "pr": {
+            "weight": 66,
+            "reps": 9,
+            "label": "66kg × 9"
+          },
+          "sets": [
+            {
+              "id": "b2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b2s2",
+              "type": "ws",
+              "weight": 52,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b2s3",
+              "type": "ws",
+              "weight": 66,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "name": "Close Grip Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Alt Lat",
+          "pr": {
+            "weight": 52,
+            "reps": 9,
+            "label": "52kg × 9"
+          },
+          "sets": [
+            {
+              "id": "b3s1",
+              "type": "ws",
+              "weight": 52,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b3s2",
+              "type": "ws",
+              "weight": 52,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b3s3",
+              "type": "bo",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "name": "Wide Grip Cable Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": {
+            "weight": 39,
+            "reps": 10,
+            "label": "39kg × 10"
+          },
+          "sets": [
+            {
+              "id": "b4s1",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b4s2",
+              "type": "ws",
+              "weight": 39,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b4s3",
+              "type": "ws",
+              "weight": 39,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "name": "Lat Pullover",
+          "muscle": "back",
+          "muscleLabel": "Sırt",
+          "pr": {
+            "weight": 32,
+            "reps": 12,
+            "label": "32kg × 12"
+          },
+          "sets": [
+            {
+              "id": "b5s1",
+              "type": "ws",
+              "weight": 25,
+              "reps": 15,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b5s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "name": "Hyperextension",
+          "muscle": "back",
+          "muscleLabel": "Bel",
+          "pr": {
+            "weight": 8,
+            "reps": 12,
+            "label": "8kg × 12"
+          },
+          "sets": [
+            {
+              "id": "b6s1",
+              "type": "ws",
+              "weight": 8,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b6s2",
+              "type": "ws",
+              "weight": 8,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b7",
+          "name": "Cable Bayesian Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": {
+            "weight": 23,
+            "reps": 10,
+            "label": "23kg × 10"
+          },
+          "sets": [
+            {
+              "id": "b7s1",
+              "type": "wu",
+              "weight": 14,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b7s2",
+              "type": "ws",
+              "weight": 21,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b7s3",
+              "type": "ws",
+              "weight": 21,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b7s4",
+              "type": "ws",
+              "weight": 23,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "b8",
+          "name": "Dumbbell Hammer Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": {
+            "weight": 14,
+            "reps": 10,
+            "label": "14kg × 10"
+          },
+          "sets": [
+            {
+              "id": "b8s1",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "b8s2",
+              "type": "ws",
+              "weight": 14,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-24",
+      "short": "24 Haz",
+      "dateLabel": "24 Haziran Çarşamba",
+      "dow": "Çar",
+      "label": "Leg",
+      "split": "leg",
+      "dur": "1:12",
+      "exercises": [
+        {
+          "id": "c1",
+          "name": "Leg Extension",
+          "muscle": "leg",
+          "muscleLabel": "Quad",
+          "pr": {
+            "weight": 91,
+            "reps": 11,
+            "label": "91kg × 11"
+          },
+          "sets": [
+            {
+              "id": "c1s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c1s2",
+              "type": "wu",
+              "weight": 41,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c1s3",
+              "type": "wu",
+              "weight": 55,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c1s4",
+              "type": "ws",
+              "weight": 68,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c1s5",
+              "type": "ws",
+              "weight": 82,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c1s6",
+              "type": "ws",
+              "weight": 91,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "c2",
+          "name": "Leg Curl",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 45,
+            "reps": 11,
+            "label": "45kg × 11"
+          },
+          "sets": [
+            {
+              "id": "c2s1",
+              "type": "wu",
+              "weight": 28,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c2s2",
+              "type": "wu",
+              "weight": 36,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c2s3",
+              "type": "ws",
+              "weight": 45,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c2s4",
+              "type": "ws",
+              "weight": 45,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "c3",
+          "name": "Bulgarian Split Squat",
+          "muscle": "leg",
+          "muscleLabel": "Bacak",
+          "pr": {
+            "weight": 10,
+            "reps": 11,
+            "label": "10kg × 11"
+          },
+          "sets": [
+            {
+              "id": "c3s1",
+              "type": "wu",
+              "weight": 0,
+              "reps": 11,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "c3s2",
+              "type": "ws",
+              "weight": 10,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "c3s3",
+              "type": "ws",
+              "weight": 10,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "c4",
+          "name": "Hyperextension",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 0,
+            "reps": 10,
+            "label": "BW × 10"
+          },
+          "sets": [
+            {
+              "id": "c4s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "c4s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "c4s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "c5",
+          "name": "Calf Raise",
+          "muscle": "leg",
+          "muscleLabel": "Kaf",
+          "pr": {
+            "weight": 0,
+            "reps": 25,
+            "label": "BW × 25"
+          },
+          "sets": [
+            {
+              "id": "c5s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "c5s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "c5s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-25",
+      "short": "25 Haz",
+      "dateLabel": "25 Haziran Perşembe",
+      "dow": "Per",
+      "label": "Upper",
+      "split": "upper",
+      "dur": "1:15",
+      "exercises": [
+        {
+          "id": "d1",
+          "name": "Chest Supported Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": {
+            "weight": 22,
+            "reps": 10,
+            "label": "22kg × 10"
+          },
+          "sets": [
+            {
+              "id": "d1s1",
+              "type": "wu",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d1s2",
+              "type": "wu",
+              "weight": 16,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d1s3",
+              "type": "ws",
+              "weight": 20,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d1s4",
+              "type": "ws",
+              "weight": 22,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d1s5",
+              "type": "bo",
+              "weight": 16,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d2",
+          "name": "Lat Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Üst Lat",
+          "pr": {
+            "weight": 59,
+            "reps": 10,
+            "label": "59kg × 10"
+          },
+          "sets": [
+            {
+              "id": "d2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d2s2",
+              "type": "ws",
+              "weight": 45,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d2s3",
+              "type": "ws",
+              "weight": 59,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "Lat Pullover",
+          "muscle": "back",
+          "muscleLabel": "Sırt",
+          "pr": {
+            "weight": 32,
+            "reps": 12,
+            "label": "32kg × 12"
+          },
+          "sets": [
+            {
+              "id": "d3s1",
+              "type": "ws",
+              "weight": 27,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d3s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d4",
+          "name": "Cable Lower Chest Press",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 46,
+            "reps": 10,
+            "label": "46kg × 10"
+          },
+          "sets": [
+            {
+              "id": "d4s1",
+              "type": "wu",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d4s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d4s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d4s4",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d5",
+          "name": "Low to High Single DB Fly",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 8,
+            "reps": 12,
+            "label": "8kg × 12"
+          },
+          "sets": [
+            {
+              "id": "d5s1",
+              "type": "ws",
+              "weight": 8,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d5s2",
+              "type": "ws",
+              "weight": 8,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d5s3",
+              "type": "ws",
+              "weight": 8,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d6",
+          "name": "Lateral Raise",
+          "muscle": "shoulder",
+          "muscleLabel": "Omuz",
+          "pr": {
+            "weight": 12,
+            "reps": 13,
+            "label": "12kg × 13"
+          },
+          "sets": [
+            {
+              "id": "d6s1",
+              "type": "wu",
+              "weight": 8,
+              "reps": 15,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d6s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d6s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d6s4",
+              "type": "ws",
+              "weight": 12,
+              "reps": 13,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d7",
+          "name": "Chest Supported Rear Delt Row",
+          "muscle": "shoulder",
+          "muscleLabel": "Arka Omuz",
+          "pr": {
+            "weight": 6,
+            "reps": 11,
+            "label": "6kg × 11"
+          },
+          "sets": [
+            {
+              "id": "d7s1",
+              "type": "ws",
+              "weight": 6,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "d7s2",
+              "type": "ws",
+              "weight": 6,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "d8",
+          "name": "Cable Triceps Extension",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": {
+            "weight": 46,
+            "reps": 10,
+            "label": "46kg × 10"
+          },
+          "sets": [
+            {
+              "id": "d8s1",
+              "type": "ws",
+              "weight": 23,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d8s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d8s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d8s4",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "d9",
+          "name": "Preacher Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": {
+            "weight": 12,
+            "reps": 10,
+            "label": "12kg × 10"
+          },
+          "sets": [
+            {
+              "id": "d9s1",
+              "type": "ws",
+              "weight": 8,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d9s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "d9s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-26",
+      "short": "26 Haz",
+      "dateLabel": "26 Haziran Cuma",
+      "dow": "Cum",
+      "label": "Lower",
+      "split": "lower",
+      "dur": "0:00",
+      "exercises": [
+        {
+          "id": "e1",
+          "name": "Leg Extension",
+          "muscle": "leg",
+          "muscleLabel": "Quad",
+          "pr": {
+            "weight": 96,
+            "reps": 10,
+            "label": "96kg × 10"
+          },
+          "sets": [
+            {
+              "id": "e1s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e1s2",
+              "type": "wu",
+              "weight": 50,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e1s3",
+              "type": "ws",
+              "weight": 68,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e1s4",
+              "type": "ws",
+              "weight": 86,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e1s5",
+              "type": "ws",
+              "weight": 96,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "e2",
+          "name": "Leg Curl",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 50,
+            "reps": 11,
+            "label": "50kg × 11"
+          },
+          "sets": [
+            {
+              "id": "e2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e2s2",
+              "type": "wu",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e2s3",
+              "type": "ws",
+              "weight": 50,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "e2s4",
+              "type": "ws",
+              "weight": 50,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "e3",
+          "name": "Dumbbell Lateral Lunge",
+          "muscle": "leg",
+          "muscleLabel": "Bacak",
+          "pr": {
+            "weight": 0,
+            "reps": 22,
+            "label": "BW × 22"
+          },
+          "sets": [
+            {
+              "id": "e3s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 16,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "e3s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 20,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "e3s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 22,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "e4",
+          "name": "Hyperextension",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 0,
+            "reps": 12,
+            "label": "BW × 12"
+          },
+          "sets": [
+            {
+              "id": "e4s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "e4s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "e5",
+          "name": "Calf Raise",
+          "muscle": "leg",
+          "muscleLabel": "Kaf",
+          "pr": {
+            "weight": 0,
+            "reps": 25,
+            "label": "BW × 25"
+          },
+          "sets": [
+            {
+              "id": "e5s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "e5s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-29",
+      "short": "29 Haz",
+      "dateLabel": "29 Haziran Pazartesi",
+      "dow": "Pzt",
+      "label": "Push",
+      "split": "push",
+      "dur": "1:05",
+      "exercises": [
+        {
+          "id": "f1",
+          "name": "Lateral Raise",
+          "muscle": "shoulder",
+          "muscleLabel": "Omuz",
+          "pr": {
+            "weight": 14,
+            "reps": 11,
+            "label": "14kg × 11"
+          },
+          "sets": [
+            {
+              "id": "f1s1",
+              "type": "wu",
+              "weight": 8,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f1s2",
+              "type": "wu",
+              "weight": 10,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f1s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 13,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f1s4",
+              "type": "ws",
+              "weight": 14,
+              "reps": 11,
+              "done": true,
+              "drops": [
+                {
+                  "id": "f1d1",
+                  "weight": 7,
+                  "reps": 11,
+                  "done": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "f2",
+          "name": "Chest Supported Rear Delt Row",
+          "muscle": "shoulder",
+          "muscleLabel": "Arka Omuz",
+          "pr": {
+            "weight": 7,
+            "reps": 10,
+            "label": "7kg × 10"
+          },
+          "sets": [
+            {
+              "id": "f2s1",
+              "type": "ws",
+              "weight": 6,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "f2s2",
+              "type": "ws",
+              "weight": 6,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "f2s3",
+              "type": "ws",
+              "weight": 6,
+              "reps": 12,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "f2s4",
+              "type": "ws",
+              "weight": 7,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 14,
+                "reps": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "f3",
+          "name": "Cable Lower Chest Press",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 41,
+            "reps": 11,
+            "label": "41kg × 11"
+          },
+          "sets": [
+            {
+              "id": "f3s1",
+              "type": "wu",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f3s2",
+              "type": "wu",
+              "weight": 27,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f3s3",
+              "type": "ws",
+              "weight": 41,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f3s4",
+              "type": "ws",
+              "weight": 50,
+              "reps": 1,
+              "done": true,
+              "drops": [
+                {
+                  "id": "f3d1",
+                  "weight": 27,
+                  "reps": 8,
+                  "done": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "f4",
+          "name": "Low to High Single DB Fly",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 9,
+            "reps": 12,
+            "label": "9kg × 12"
+          },
+          "sets": [
+            {
+              "id": "f4s1",
+              "type": "ws",
+              "weight": 7,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f4s2",
+              "type": "ws",
+              "weight": 7,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Fly (ağır)",
+                "muscle": "chest",
+                "muscleLabel": "Göğüs",
+                "weight": 8,
+                "reps": 11
+              }
+            },
+            {
+              "id": "f4s3",
+              "type": "ws",
+              "weight": 7,
+              "reps": 12,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Fly (ağır)",
+                "muscle": "chest",
+                "muscleLabel": "Göğüs",
+                "weight": 9,
+                "reps": 12
+              }
+            }
+          ]
+        },
+        {
+          "id": "f5",
+          "name": "Face Pull",
+          "muscle": "back",
+          "muscleLabel": "Arka Omuz",
+          "pr": {
+            "weight": 25,
+            "reps": 12,
+            "label": "25kg × 12"
+          },
+          "sets": [
+            {
+              "id": "f5s1",
+              "type": "ws",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f5s2",
+              "type": "ws",
+              "weight": 25,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "f6",
+          "name": "Cable Triceps Extension",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": {
+            "weight": 46,
+            "reps": 9,
+            "label": "46kg × 9"
+          },
+          "sets": [
+            {
+              "id": "f6s1",
+              "type": "wu",
+              "weight": 25,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f6s2",
+              "type": "ws",
+              "weight": 36,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f6s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "f7",
+          "name": "Cable Triceps Pushdown",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": {
+            "weight": 41,
+            "reps": 8,
+            "label": "41kg × 8"
+          },
+          "sets": [
+            {
+              "id": "f7s1",
+              "type": "wu",
+              "weight": 27,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f7s2",
+              "type": "ws",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "f7s3",
+              "type": "ws",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-06-30",
+      "short": "30 Haz",
+      "dateLabel": "30 Haziran Salı",
+      "dow": "Sal",
+      "label": "Pull",
+      "split": "pull",
+      "dur": "1:10",
+      "exercises": [
+        {
+          "id": "g1",
+          "name": "Chest Supported Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": {
+            "weight": 20,
+            "reps": 12,
+            "label": "20kg × 12"
+          },
+          "sets": [
+            {
+              "id": "g1s1",
+              "type": "wu",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g1s2",
+              "type": "wu",
+              "weight": 16,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g1s3",
+              "type": "ws",
+              "weight": 20,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g1s4",
+              "type": "ws",
+              "weight": 20,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g1s5",
+              "type": "bo",
+              "weight": 16,
+              "reps": 13,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g2",
+          "name": "Lat Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Üst Lat",
+          "pr": {
+            "weight": 66,
+            "reps": 8,
+            "label": "66kg × 8"
+          },
+          "sets": [
+            {
+              "id": "g2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g2s2",
+              "type": "ws",
+              "weight": 52,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g2s3",
+              "type": "ws",
+              "weight": 66,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g3",
+          "name": "Close Grip Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Alt Lat",
+          "pr": {
+            "weight": 52,
+            "reps": 9,
+            "label": "52kg × 9"
+          },
+          "sets": [
+            {
+              "id": "g3s1",
+              "type": "ws",
+              "weight": 52,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g3s2",
+              "type": "ws",
+              "weight": 52,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g3s3",
+              "type": "bo",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g4",
+          "name": "Wide Grip Cable Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": {
+            "weight": 39,
+            "reps": 10,
+            "label": "39kg × 10"
+          },
+          "sets": [
+            {
+              "id": "g4s1",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g4s2",
+              "type": "ws",
+              "weight": 39,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g4s3",
+              "type": "ws",
+              "weight": 39,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g5",
+          "name": "Lat Pullover",
+          "muscle": "back",
+          "muscleLabel": "Sırt",
+          "pr": {
+            "weight": 32,
+            "reps": 12,
+            "label": "32kg × 12"
+          },
+          "sets": [
+            {
+              "id": "g5s1",
+              "type": "ws",
+              "weight": 25,
+              "reps": 15,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g5s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g6",
+          "name": "Hyperextension",
+          "muscle": "back",
+          "muscleLabel": "Bel",
+          "pr": {
+            "weight": 0,
+            "reps": 12,
+            "label": "BW × 12"
+          },
+          "sets": [
+            {
+              "id": "g6s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "g6s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g7",
+          "name": "Cable Bayesian Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": {
+            "weight": 23,
+            "reps": 10,
+            "label": "23kg × 10"
+          },
+          "sets": [
+            {
+              "id": "g7s1",
+              "type": "wu",
+              "weight": 14,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g7s2",
+              "type": "ws",
+              "weight": 21,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g7s3",
+              "type": "ws",
+              "weight": 21,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g7s4",
+              "type": "ws",
+              "weight": 23,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "g8",
+          "name": "Dumbbell Hammer Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": {
+            "weight": 14,
+            "reps": 10,
+            "label": "14kg × 10"
+          },
+          "sets": [
+            {
+              "id": "g8s1",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "g8s2",
+              "type": "ws",
+              "weight": 14,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-01",
+      "short": "1 Tem",
+      "dateLabel": "1 Temmuz Çarşamba",
+      "dow": "Çar",
+      "label": "Leg",
+      "split": "leg",
+      "dur": "1:12",
+      "exercises": [
+        {
+          "id": "h1",
+          "name": "Leg Extension",
+          "muscle": "leg",
+          "muscleLabel": "Quad",
+          "pr": {
+            "weight": 95,
+            "reps": 11,
+            "label": "95kg × 11"
+          },
+          "sets": [
+            {
+              "id": "h1s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h1s2",
+              "type": "wu",
+              "weight": 41,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h1s3",
+              "type": "wu",
+              "weight": 55,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h1s4",
+              "type": "ws",
+              "weight": 72,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h1s5",
+              "type": "ws",
+              "weight": 86,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h1s6",
+              "type": "ws",
+              "weight": 95,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "h2",
+          "name": "Leg Curl",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 45,
+            "reps": 12,
+            "label": "45kg × 12"
+          },
+          "sets": [
+            {
+              "id": "h2s1",
+              "type": "wu",
+              "weight": 28,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h2s2",
+              "type": "wu",
+              "weight": 36,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h2s3",
+              "type": "ws",
+              "weight": 45,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h2s4",
+              "type": "ws",
+              "weight": 45,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "h3",
+          "name": "Bulgarian Split Squat",
+          "muscle": "leg",
+          "muscleLabel": "Bacak",
+          "pr": {
+            "weight": 10,
+            "reps": 11,
+            "label": "10kg × 11"
+          },
+          "sets": [
+            {
+              "id": "h3s1",
+              "type": "wu",
+              "weight": 0,
+              "reps": 11,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "h3s2",
+              "type": "ws",
+              "weight": 10,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "h3s3",
+              "type": "ws",
+              "weight": 10,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "h4",
+          "name": "Hyperextension",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 0,
+            "reps": 10,
+            "label": "BW × 10"
+          },
+          "sets": [
+            {
+              "id": "h4s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "h4s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "h4s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "h5",
+          "name": "Calf Raise",
+          "muscle": "leg",
+          "muscleLabel": "Kaf",
+          "pr": {
+            "weight": 0,
+            "reps": 25,
+            "label": "BW × 25"
+          },
+          "sets": [
+            {
+              "id": "h5s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "h5s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "h5s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-02",
+      "short": "2 Tem",
+      "dateLabel": "2 Temmuz Perşembe",
+      "dow": "Per",
+      "label": "Upper",
+      "split": "upper",
+      "dur": "1:15",
+      "exercises": [
+        {
+          "id": "i1",
+          "name": "Chest Supported Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": {
+            "weight": 22,
+            "reps": 10,
+            "label": "22kg × 10"
+          },
+          "sets": [
+            {
+              "id": "i1s1",
+              "type": "wu",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i1s2",
+              "type": "wu",
+              "weight": 16,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i1s3",
+              "type": "ws",
+              "weight": 20,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i1s4",
+              "type": "ws",
+              "weight": 22,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i1s5",
+              "type": "bo",
+              "weight": 16,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i2",
+          "name": "Lat Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Üst Lat",
+          "pr": {
+            "weight": 59,
+            "reps": 10,
+            "label": "59kg × 10"
+          },
+          "sets": [
+            {
+              "id": "i2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i2s2",
+              "type": "ws",
+              "weight": 45,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i2s3",
+              "type": "ws",
+              "weight": 59,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i3",
+          "name": "Lat Pullover",
+          "muscle": "back",
+          "muscleLabel": "Sırt",
+          "pr": {
+            "weight": 32,
+            "reps": 12,
+            "label": "32kg × 12"
+          },
+          "sets": [
+            {
+              "id": "i3s1",
+              "type": "ws",
+              "weight": 27,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i3s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i4",
+          "name": "Cable Lower Chest Press",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 46,
+            "reps": 10,
+            "label": "46kg × 10"
+          },
+          "sets": [
+            {
+              "id": "i4s1",
+              "type": "wu",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i4s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i4s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i4s4",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i5",
+          "name": "Low to High Single DB Fly",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": {
+            "weight": 8,
+            "reps": 12,
+            "label": "8kg × 12"
+          },
+          "sets": [
+            {
+              "id": "i5s1",
+              "type": "ws",
+              "weight": 8,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i5s2",
+              "type": "ws",
+              "weight": 8,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i5s3",
+              "type": "ws",
+              "weight": 8,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i6",
+          "name": "Lateral Raise",
+          "muscle": "shoulder",
+          "muscleLabel": "Omuz",
+          "pr": {
+            "weight": 12,
+            "reps": 13,
+            "label": "12kg × 13"
+          },
+          "sets": [
+            {
+              "id": "i6s1",
+              "type": "wu",
+              "weight": 8,
+              "reps": 15,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i6s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i6s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i6s4",
+              "type": "ws",
+              "weight": 12,
+              "reps": 13,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i7",
+          "name": "Chest Supported Rear Delt Row",
+          "muscle": "shoulder",
+          "muscleLabel": "Arka Omuz",
+          "pr": {
+            "weight": 6,
+            "reps": 11,
+            "label": "6kg × 11"
+          },
+          "sets": [
+            {
+              "id": "i7s1",
+              "type": "ws",
+              "weight": 6,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "i7s2",
+              "type": "ws",
+              "weight": 6,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "i8",
+          "name": "Cable Triceps Extension",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": {
+            "weight": 46,
+            "reps": 10,
+            "label": "46kg × 10"
+          },
+          "sets": [
+            {
+              "id": "i8s1",
+              "type": "ws",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i8s2",
+              "type": "ws",
+              "weight": 46,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i8s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i8s4",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "i9",
+          "name": "Preacher Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": {
+            "weight": 12,
+            "reps": 10,
+            "label": "12kg × 10"
+          },
+          "sets": [
+            {
+              "id": "i9s1",
+              "type": "ws",
+              "weight": 8,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i9s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "i9s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-03",
+      "short": "3 Tem",
+      "dateLabel": "3 Temmuz Cuma",
+      "dow": "Cum",
+      "label": "Lower",
+      "split": "lower",
+      "dur": "1:10",
+      "exercises": [
+        {
+          "id": "j1",
+          "name": "Leg Extension",
+          "muscle": "leg",
+          "muscleLabel": "Quad",
+          "pr": {
+            "weight": 96,
+            "reps": 10,
+            "label": "96kg × 10"
+          },
+          "sets": [
+            {
+              "id": "j1s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j1s2",
+              "type": "wu",
+              "weight": 50,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j1s3",
+              "type": "ws",
+              "weight": 82,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j1s4",
+              "type": "ws",
+              "weight": 96,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j1s5",
+              "type": "ws",
+              "weight": 96,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "j2",
+          "name": "Leg Curl",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 50,
+            "reps": 11,
+            "label": "50kg × 11"
+          },
+          "sets": [
+            {
+              "id": "j2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j2s2",
+              "type": "wu",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j2s3",
+              "type": "ws",
+              "weight": 50,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "j2s4",
+              "type": "ws",
+              "weight": 50,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "j3",
+          "name": "Dumbbell Lateral Lunge",
+          "muscle": "leg",
+          "muscleLabel": "Bacak",
+          "pr": {
+            "weight": 0,
+            "reps": 22,
+            "label": "BW × 22"
+          },
+          "sets": [
+            {
+              "id": "j3s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 16,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "j3s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 20,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "j3s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 22,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "j4",
+          "name": "Hyperextension",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": {
+            "weight": 0,
+            "reps": 12,
+            "label": "BW × 12"
+          },
+          "sets": [
+            {
+              "id": "j4s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "j4s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "j5",
+          "name": "Calf Raise",
+          "muscle": "leg",
+          "muscleLabel": "Kaf",
+          "pr": {
+            "weight": 0,
+            "reps": 25,
+            "label": "BW × 25"
+          },
+          "sets": [
+            {
+              "id": "j5s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "j5s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-06",
+      "short": "6 Tem",
+      "dateLabel": "6 Temmuz Pazartesi",
+      "dow": "Pzt",
+      "label": "Push",
+      "split": "push",
+      "dur": "1:05",
+      "exercises": [
+        {
+          "id": "k1",
+          "name": "Lateral Raise",
+          "muscle": "shoulder",
+          "muscleLabel": "Omuz",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k1s1",
+              "type": "wu",
+              "weight": 8,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k1s2",
+              "type": "wu",
+              "weight": 10,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k1s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 13,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k1s4",
+              "type": "ws",
+              "weight": 14,
+              "reps": 12,
+              "done": true,
+              "drops": [
+                {
+                  "id": "k1d1",
+                  "weight": 7,
+                  "reps": 12,
+                  "done": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "k2",
+          "name": "Chest Supported Rear Delt Row",
+          "muscle": "shoulder",
+          "muscleLabel": "Arka Omuz",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k2s1",
+              "type": "ws",
+              "weight": 6,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "k2s2",
+              "type": "ws",
+              "weight": 6,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "k2s3",
+              "type": "ws",
+              "weight": 7,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 14,
+                "reps": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "k3",
+          "name": "Cable Lower Chest Press",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k3s1",
+              "type": "wu",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k3s2",
+              "type": "wu",
+              "weight": 27,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k3s3",
+              "type": "ws",
+              "weight": 41,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k3s4",
+              "type": "ws",
+              "weight": 50,
+              "reps": 8,
+              "done": true,
+              "drops": [
+                {
+                  "id": "k3d1",
+                  "weight": 27,
+                  "reps": 8,
+                  "done": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "k4",
+          "name": "Low to High Single DB Fly",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k4s1",
+              "type": "ws",
+              "weight": 7,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k4s2",
+              "type": "ws",
+              "weight": 8,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k4s3",
+              "type": "ws",
+              "weight": 9,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "k5",
+          "name": "Face Pull",
+          "muscle": "back",
+          "muscleLabel": "Arka Omuz",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k5s1",
+              "type": "ws",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k5s2",
+              "type": "ws",
+              "weight": 25,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "k6",
+          "name": "Cable Triceps Extension",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k6s1",
+              "type": "wu",
+              "weight": 25,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k6s2",
+              "type": "ws",
+              "weight": 36,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k6s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "k7",
+          "name": "Cable Triceps Pushdown",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": null,
+          "sets": [
+            {
+              "id": "k7s1",
+              "type": "wu",
+              "weight": 27,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k7s2",
+              "type": "ws",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "k7s3",
+              "type": "ws",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-07",
+      "short": "7 Tem",
+      "dateLabel": "7 Temmuz Salı",
+      "dow": "Sal",
+      "label": "Pull",
+      "split": "pull",
+      "dur": "1:10",
+      "exercises": [
+        {
+          "id": "l1",
+          "name": "Chest Supported Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l1s1",
+              "type": "wu",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l1s2",
+              "type": "wu",
+              "weight": 16,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l1s3",
+              "type": "ws",
+              "weight": 20,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l1s4",
+              "type": "ws",
+              "weight": 20,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l1s5",
+              "type": "bo",
+              "weight": 16,
+              "reps": 14,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l2",
+          "name": "Lat Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Üst Lat",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l2s2",
+              "type": "ws",
+              "weight": 52,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l2s3",
+              "type": "ws",
+              "weight": 66,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l3",
+          "name": "Close Grip Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Alt Lat",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l3s1",
+              "type": "ws",
+              "weight": 52,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l3s2",
+              "type": "ws",
+              "weight": 52,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l3s3",
+              "type": "bo",
+              "weight": 32,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l4",
+          "name": "Wide Grip Cable Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l4s1",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l4s2",
+              "type": "ws",
+              "weight": 39,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l4s3",
+              "type": "ws",
+              "weight": 39,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l5",
+          "name": "Lat Pullover",
+          "muscle": "back",
+          "muscleLabel": "Sırt",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l5s1",
+              "type": "ws",
+              "weight": 25,
+              "reps": 15,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l5s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l6",
+          "name": "Hyperextension",
+          "muscle": "back",
+          "muscleLabel": "Bel",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l6s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "l6s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l7",
+          "name": "Cable Bayesian Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l7s1",
+              "type": "wu",
+              "weight": 14,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l7s2",
+              "type": "ws",
+              "weight": 21,
+              "reps": 9,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l7s3",
+              "type": "ws",
+              "weight": 23,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "l8",
+          "name": "Dumbbell Hammer Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": null,
+          "sets": [
+            {
+              "id": "l8s1",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "l8s2",
+              "type": "ws",
+              "weight": 14,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-08",
+      "short": "8 Tem",
+      "dateLabel": "8 Temmuz Çarşamba",
+      "dow": "Çar",
+      "label": "Leg",
+      "split": "leg",
+      "dur": "1:10",
+      "exercises": [
+        {
+          "id": "m1",
+          "name": "Leg Extension",
+          "muscle": "leg",
+          "muscleLabel": "Quad",
+          "pr": null,
+          "sets": [
+            {
+              "id": "m1s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m1s2",
+              "type": "wu",
+              "weight": 50,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m1s3",
+              "type": "ws",
+              "weight": 82,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m1s4",
+              "type": "ws",
+              "weight": 96,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m1s5",
+              "type": "ws",
+              "weight": 96,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "m2",
+          "name": "Leg Curl",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": null,
+          "sets": [
+            {
+              "id": "m2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m2s2",
+              "type": "wu",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m2s3",
+              "type": "ws",
+              "weight": 50,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m2s4",
+              "type": "ws",
+              "weight": 50,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "m3",
+          "name": "Bulgarian Split Squat",
+          "muscle": "leg",
+          "muscleLabel": "Bacak",
+          "pr": null,
+          "sets": [
+            {
+              "id": "m3s1",
+              "type": "wu",
+              "weight": 0,
+              "reps": 11,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "m3s2",
+              "type": "ws",
+              "weight": 10,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "m3s3",
+              "type": "ws",
+              "weight": 10,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "m4",
+          "name": "Hyperextension",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": null,
+          "sets": [
+            {
+              "id": "m4s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "m4s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "m4s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 10,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "m5",
+          "name": "Calf Raise",
+          "muscle": "leg",
+          "muscleLabel": "Kaf",
+          "pr": null,
+          "sets": [
+            {
+              "id": "m5s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "m5s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "m5s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-09",
+      "short": "9 Tem",
+      "dateLabel": "9 Temmuz Perşembe",
+      "dow": "Per",
+      "label": "Upper",
+      "split": "upper",
+      "dur": "1:15",
+      "exercises": [
+        {
+          "id": "n1",
+          "name": "Chest Supported Row",
+          "muscle": "back",
+          "muscleLabel": "Üst Sırt",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n1s1",
+              "type": "wu",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n1s2",
+              "type": "wu",
+              "weight": 16,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n1s3",
+              "type": "ws",
+              "weight": 20,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n1s4",
+              "type": "ws",
+              "weight": 22,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n1s5",
+              "type": "bo",
+              "weight": 16,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n2",
+          "name": "Lat Pulldown",
+          "muscle": "back",
+          "muscleLabel": "Üst Lat",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n2s2",
+              "type": "ws",
+              "weight": 45,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n2s3",
+              "type": "ws",
+              "weight": 59,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n3",
+          "name": "Lat Pullover",
+          "muscle": "back",
+          "muscleLabel": "Sırt",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n3s1",
+              "type": "ws",
+              "weight": 27,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n3s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n4",
+          "name": "Cable Lower Chest Press",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n4s1",
+              "type": "wu",
+              "weight": 21,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n4s2",
+              "type": "ws",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n4s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n4s4",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n5",
+          "name": "Low to High Single DB Fly",
+          "muscle": "chest",
+          "muscleLabel": "Göğüs",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n5s1",
+              "type": "ws",
+              "weight": 9,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n5s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n5s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n6",
+          "name": "Lateral Raise",
+          "muscle": "shoulder",
+          "muscleLabel": "Omuz",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n6s1",
+              "type": "wu",
+              "weight": 8,
+              "reps": 15,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n6s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n6s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 12,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n6s4",
+              "type": "ws",
+              "weight": 12,
+              "reps": 13,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n7",
+          "name": "Chest Supported Rear Delt Row",
+          "muscle": "shoulder",
+          "muscleLabel": "Arka Omuz",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n7s1",
+              "type": "ws",
+              "weight": 6,
+              "reps": 10,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            },
+            {
+              "id": "n7s2",
+              "type": "ws",
+              "weight": 6,
+              "reps": 11,
+              "done": true,
+              "drops": [],
+              "ss": {
+                "name": "Oturarak Front Raise",
+                "muscle": "shoulder",
+                "muscleLabel": "Ön Omuz",
+                "weight": 12,
+                "reps": 10
+              }
+            }
+          ]
+        },
+        {
+          "id": "n8",
+          "name": "Cable Triceps Extension",
+          "muscle": "arm",
+          "muscleLabel": "Triceps",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n8s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n8s2",
+              "type": "ws",
+              "weight": 46,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n8s3",
+              "type": "ws",
+              "weight": 46,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n8s4",
+              "type": "ws",
+              "weight": 46,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "n9",
+          "name": "Preacher Curl",
+          "muscle": "arm",
+          "muscleLabel": "Biceps",
+          "pr": null,
+          "sets": [
+            {
+              "id": "n9s1",
+              "type": "ws",
+              "weight": 8,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n9s2",
+              "type": "ws",
+              "weight": 12,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "n9s3",
+              "type": "ws",
+              "weight": 12,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-07-10",
+      "short": "10 Tem",
+      "dateLabel": "10 Temmuz Cuma",
+      "dow": "Cum",
+      "label": "Lower",
+      "split": "lower",
+      "dur": "1:10",
+      "exercises": [
+        {
+          "id": "o1",
+          "name": "Leg Extension",
+          "muscle": "leg",
+          "muscleLabel": "Quad",
+          "pr": null,
+          "sets": [
+            {
+              "id": "o1s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o1s2",
+              "type": "wu",
+              "weight": 50,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o1s3",
+              "type": "ws",
+              "weight": 82,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o1s4",
+              "type": "ws",
+              "weight": 96,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o1s5",
+              "type": "ws",
+              "weight": 100,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "o2",
+          "name": "Leg Curl",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": null,
+          "sets": [
+            {
+              "id": "o2s1",
+              "type": "wu",
+              "weight": 32,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o2s2",
+              "type": "wu",
+              "weight": 41,
+              "reps": 8,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o2s3",
+              "type": "ws",
+              "weight": 50,
+              "reps": 11,
+              "done": true,
+              "drops": []
+            },
+            {
+              "id": "o2s4",
+              "type": "ws",
+              "weight": 55,
+              "reps": 10,
+              "done": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "o3",
+          "name": "Dumbbell Lateral Lunge",
+          "muscle": "leg",
+          "muscleLabel": "Bacak",
+          "pr": null,
+          "sets": [
+            {
+              "id": "o3s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 20,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "o3s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 20,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "o3s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 24,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "o4",
+          "name": "Hyperextension",
+          "muscle": "leg",
+          "muscleLabel": "Hamstring",
+          "pr": null,
+          "sets": [
+            {
+              "id": "o4s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "o4s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            },
+            {
+              "id": "o4s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 12,
+              "done": true,
+              "bw": true,
+              "drops": []
+            }
+          ]
+        },
+        {
+          "id": "o5",
+          "name": "Calf Raise",
+          "muscle": "leg",
+          "muscleLabel": "Kaf",
+          "pr": null,
+          "sets": [
+            {
+              "id": "o5s1",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "o5s2",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            },
+            {
+              "id": "o5s3",
+              "type": "ws",
+              "weight": 0,
+              "reps": 25,
+              "done": true,
+              "bw": true,
+              "note": "15 (Slow) + 10 (Fast)",
+              "drops": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "photos": [
+    {
+      "date": "2026-07-02",
+      "label": "2 Temmuz",
+      "weight": null,
+      "bodyfat": null,
+      "note": "Temel sağlam, orantı güzel — dar bel + geniş omuz (V-taper) genetik olarak iyi yerdesin. Omuz ve biceps dolgun, karın düşük yağla belli. Öncelik: <b>sırt genişliği (lat alt-dış süpürme)</b> ve <b>alt göğüs</b>. Bench yerine pull ağırlıklı gitmen doğru — devam. Bir sonraki çekimde bacak pozu da ekle.",
+      "photos": [
+        {
+          "src": "assets/photos/0702-front.png",
+          "pose": "Ön"
+        },
+        {
+          "src": "assets/photos/0702-back.png",
+          "pose": "Arka"
+        },
+        {
+          "src": "assets/photos/0702-side.png",
+          "pose": "Yan"
+        },
+        {
+          "src": "assets/photos/0702-front-db.png",
+          "pose": "Ön Çift Biceps"
+        },
+        {
+          "src": "assets/photos/0702-back-db.png",
+          "pose": "Arka Çift Biceps"
+        },
+        {
+          "src": "assets/photos/0702-back-lat.png",
+          "pose": "Arka Lat Spread"
+        },
+        {
+          "src": "assets/photos/0702-front-lat.png",
+          "pose": "Ön Lat Spread"
+        },
+        {
+          "src": "assets/photos/0702-front-ab.png",
+          "pose": "Karın-Bacak"
+        },
+        {
+          "src": "assets/photos/0702-front-ab2.png",
+          "pose": "Ab Vacuum"
+        },
+        {
+          "src": "assets/photos/0702-side-r.png",
+          "pose": "Yan (sağ)"
+        }
+      ]
+    }
+  ]
+}

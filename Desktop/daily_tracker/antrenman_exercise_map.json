@@ -1,0 +1,130 @@
+{
+  "Chest Supported Row": {
+    "muscle": "back",
+    "muscleLabel": "Sırt"
+  },
+  "Lat Pulldown": {
+    "muscle": "back",
+    "muscleLabel": "Sırt"
+  },
+  "Lat Pullover Relaxing": {
+    "muscle": "back",
+    "muscleLabel": "Sırt"
+  },
+  "Cable Row": {
+    "muscle": "back",
+    "muscleLabel": "Sırt"
+  },
+  "Face Pull": {
+    "muscle": "back",
+    "muscleLabel": "Arka Omuz"
+  },
+  "Cable Lower Chest Press": {
+    "muscle": "chest",
+    "muscleLabel": "Göğüs"
+  },
+  "Low to High Single DB Fly": {
+    "muscle": "chest",
+    "muscleLabel": "Göğüs"
+  },
+  "Incline DB Press": {
+    "muscle": "chest",
+    "muscleLabel": "Göğüs"
+  },
+  "Pec Deck Fly": {
+    "muscle": "chest",
+    "muscleLabel": "Göğüs"
+  },
+  "Lateral Raise": {
+    "muscle": "shoulder",
+    "muscleLabel": "Omuz"
+  },
+  "Overhead Press": {
+    "muscle": "shoulder",
+    "muscleLabel": "Omuz"
+  },
+  "Chest Supported Rear Delt Row": {
+    "muscle": "shoulder",
+    "muscleLabel": "Arka Omuz"
+  },
+  "Oturarak Front Raise": {
+    "muscle": "shoulder",
+    "muscleLabel": "Ön Omuz"
+  },
+  "Cable Triceps Extension": {
+    "muscle": "arm",
+    "muscleLabel": "Triceps"
+  },
+  "Cable Triceps Pushdown": {
+    "muscle": "arm",
+    "muscleLabel": "Triceps"
+  },
+  "Preacher Curl": {
+    "muscle": "arm",
+    "muscleLabel": "Biceps"
+  },
+  "Skull Crusher": {
+    "muscle": "arm",
+    "muscleLabel": "Triceps"
+  },
+  "Hammer Curl": {
+    "muscle": "arm",
+    "muscleLabel": "Biceps"
+  },
+  "Squat": {
+    "muscle": "leg",
+    "muscleLabel": "Bacak"
+  },
+  "Romanian Deadlift": {
+    "muscle": "leg",
+    "muscleLabel": "Bacak"
+  },
+  "Leg Press": {
+    "muscle": "leg",
+    "muscleLabel": "Bacak"
+  },
+  "Leg Curl": {
+    "muscle": "leg",
+    "muscleLabel": "Bacak"
+  },
+  "Close Grip Pulldown": {
+    "muscle": "back",
+    "muscleLabel": "Alt Lat"
+  },
+  "Wide Grip Cable Row": {
+    "muscle": "back",
+    "muscleLabel": "Üst Sırt"
+  },
+  "Lat Pullover": {
+    "muscle": "back",
+    "muscleLabel": "Sırt"
+  },
+  "Hyperextension": {
+    "muscle": "back",
+    "muscleLabel": "Bel"
+  },
+  "Cable Bayesian Curl": {
+    "muscle": "arm",
+    "muscleLabel": "Biceps"
+  },
+  "Dumbbell Hammer Curl": {
+    "muscle": "arm",
+    "muscleLabel": "Biceps"
+  },
+  "Leg Extension": {
+    "muscle": "leg",
+    "muscleLabel": "Quad"
+  },
+  "Bulgarian Split Squat": {
+    "muscle": "leg",
+    "muscleLabel": "Bacak"
+  },
+  "Calf Raise": {
+    "muscle": "leg",
+    "muscleLabel": "Kaf"
+  },
+  "Dumbbell Lateral Lunge": {
+    "muscle": "leg",
+    "muscleLabel": "Bacak"
+  }
+}

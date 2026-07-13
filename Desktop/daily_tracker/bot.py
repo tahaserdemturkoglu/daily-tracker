@@ -2705,6 +2705,91 @@ def save_workout_log(date_str, result_sets):
     return summary, td_name
 
 
+_ANTRENMAN_EXERCISE_MAP = None
+def _antrenman_exercise_map():
+    global _ANTRENMAN_EXERCISE_MAP
+    if _ANTRENMAN_EXERCISE_MAP is None:
+        try:
+            with open(os.path.join(BASE_DIR, 'antrenman_exercise_map.json'), 'r', encoding='utf-8') as f:
+                _ANTRENMAN_EXERCISE_MAP = json.load(f)
+        except Exception:
+            _ANTRENMAN_EXERCISE_MAP = {}
+    return _ANTRENMAN_EXERCISE_MAP
+
+_TR_DOW_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+_TR_DOW_FULL  = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
+_TR_MONTH_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+_TR_MONTH_FULL  = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+_SPLIT_LOWER = {'Push': 'push', 'Pull': 'pull', 'Leg': 'leg', 'Upper': 'upper', 'Lower': 'lower'}
+_SET_TYPE_CODE = {'Warm Up': 'wu', 'Working Set': 'ws', 'Back Off Set': 'bo', 'Drop Set': 'ws'}
+
+def build_antrenman_session(date_str, result_sets, td_name):
+    """Bot'un ayristirdigi duz set listesini Antrenman panelinin session semasina cevirir.
+    Not: Drop Set'ler panelin 'drops' iç-dizisi yerine ayrı working-set girdisi olarak
+    eklenir (bot formatinda hangi sete drop oldugu bilgisi yok) - basit ama veri kaybetmeyen bir yaklasim."""
+    d = date.fromisoformat(date_str)
+    ex_map = _antrenman_exercise_map()
+
+    exercises_order = []
+    exercises_by_name = {}
+    for i, s in enumerate(result_sets):
+        name = s['exercise']
+        if name not in exercises_by_name:
+            info = ex_map.get(name, {'muscle': 'other', 'muscleLabel': 'Diğer'})
+            exercises_by_name[name] = {
+                'id': f'bot{len(exercises_order)+1}',
+                'name': name, 'muscle': info.get('muscle', 'other'),
+                'muscleLabel': info.get('muscleLabel', 'Diğer'),
+                'pr': None, 'feel': '', 'sets': []
+            }
+            exercises_order.append(name)
+        weight_raw = (s.get('weight') or '').strip()
+        weight_num = 0
+        bw = not weight_raw
+        m = re.search(r'[\d.,]+', weight_raw)
+        if m:
+            try:
+                weight_num = float(m.group(0).replace(',', '.'))
+            except ValueError:
+                weight_num = 0
+        try:
+            reps_num = int(re.sub(r'\D', '', str(s.get('reps') or '0')) or 0)
+        except ValueError:
+            reps_num = 0
+        exercises_by_name[name]['sets'].append({
+            'id': f'bot{len(exercises_order)}s{len(exercises_by_name[name]["sets"])+1}',
+            'type': _SET_TYPE_CODE.get(s.get('set_type'), 'ws'),
+            'weight': weight_num, 'reps': reps_num, 'done': True,
+            'bw': bw, 'note': '', 'drops': []
+        })
+
+    return {
+        'date': date_str,
+        'short': f"{d.day} {_TR_MONTH_SHORT[d.month-1]}",
+        'dateLabel': f"{d.day} {_TR_MONTH_FULL[d.month-1]} {_TR_DOW_FULL[d.weekday()]}",
+        'dow': _TR_DOW_SHORT[d.weekday()],
+        'label': td_name,
+        'split': _SPLIT_LOWER.get(td_name, 'push'),
+        'dur': '',
+        'exercises': [exercises_by_name[n] for n in exercises_order],
+    }
+
+def upsert_antrenman_session(session):
+    """antrenman_sessions blob'una tarihe gore idempotent ekler/uzerine yazar
+    (Antrenman panelinin /api/antrenman/ingest'iyle ayni mantik, dogrudan DB'ye)."""
+    conn = get_db()
+    conn.execute("CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT, ts TEXT DEFAULT CURRENT_TIMESTAMP)")
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    sessions = json.loads(row['value']) if row else []
+    sessions = [s for s in sessions if s.get('date') != session['date']]
+    sessions.append(session)
+    sessions.sort(key=lambda s: s.get('date', ''))
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_sessions', ?)",
+                 (json.dumps(sessions, ensure_ascii=False),))
+    conn.commit()
+    conn.close()
+
+
 def bulk_log_parse(raw_text):
     """
     Cok satirli toplu log mesajini parse eder.
@@ -2910,6 +2995,10 @@ async def cmd_chat_ai(u, c):
         if workout:
             w_date, w_sets = workout
             w_summary, w_tdname = save_workout_log(w_date, w_sets)
+            try:
+                upsert_antrenman_session(build_antrenman_session(w_date, w_sets, w_tdname))
+            except Exception as _e:
+                logging.getLogger('daily').warning(f"antrenman session upsert failed: {_e}")
             ex_count = len({s['exercise'] for s in w_sets})
             set_count = len(w_sets)
             reply_lines = [

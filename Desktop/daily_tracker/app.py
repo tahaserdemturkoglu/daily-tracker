@@ -534,7 +534,7 @@ def no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    if response.content_type and 'html' in response.content_type and response.data:
+    if response.content_type and 'html' in response.content_type and not response.direct_passthrough and response.data:
         response.data = response.data.replace('⏭'.encode('utf-8'), '⚠️'.encode('utf-8'))
     return response
 
@@ -1959,6 +1959,81 @@ def api_muscle_heatmap():
     ).fetchall()
     conn.close()
     return jsonify([{'date': r['date'], 'exercise': r['exercise']} for r in rows])
+
+# --- ANTRENMAN PANELI (yeni, session-tabanli) -------------------------------
+
+def _antrenman_seed_if_empty(conn):
+    """Ilk acilista antrenman_sessions/antrenman_photos boşsa, prototipten
+    cikarilan gercek gecmis veriyle tohumla (bir kereligine)."""
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    if row is not None:
+        return
+    seed_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'antrenman_seed.json')
+    sessions, photos = [], []
+    try:
+        with open(seed_path, 'r', encoding='utf-8') as f:
+            seed = json.load(f)
+        sessions = seed.get('sessions', [])
+        photos = seed.get('photos', [])
+    except Exception as _e:
+        import logging; logging.getLogger('daily').warning(f"antrenman seed load failed: {_e}")
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_sessions', ?)",
+                 (json.dumps(sessions, ensure_ascii=False),))
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_photos', ?)",
+                 (json.dumps(photos, ensure_ascii=False),))
+    conn.commit()
+
+@app.route('/api/antrenman/sessions', methods=['GET', 'PUT'])
+def api_antrenman_sessions():
+    conn = get_db()
+    _antrenman_seed_if_empty(conn)
+    if request.method == 'PUT':
+        sessions = request.get_json(force=True)
+        if not isinstance(sessions, list):
+            conn.close()
+            return jsonify({'ok': False, 'error': 'sessions bir dizi olmali'}), 400
+        conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_sessions', ?)",
+                     (json.dumps(sessions, ensure_ascii=False),))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    conn.close()
+    return jsonify(json.loads(row['value']) if row else [])
+
+@app.route('/api/antrenman/photos', methods=['GET', 'PUT'])
+def api_antrenman_photos():
+    conn = get_db()
+    _antrenman_seed_if_empty(conn)
+    if request.method == 'PUT':
+        photos = request.get_json(force=True)
+        if not isinstance(photos, list):
+            conn.close()
+            return jsonify({'ok': False, 'error': 'photos bir dizi olmali'}), 400
+        conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_photos', ?)",
+                     (json.dumps(photos, ensure_ascii=False),))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_photos'").fetchone()
+    conn.close()
+    return jsonify(json.loads(row['value']) if row else [])
+
+@app.route('/api/antrenman/ingest', methods=['POST'])
+def api_antrenman_ingest():
+    """Bot tarafindan ayristirilmis tek bir seansi ekler/uzerine yazar (date'e gore idempotent)."""
+    session = request.get_json(force=True) or {}
+    if not session.get('date'):
+        return jsonify({'ok': False, 'error': 'date gerekli'}), 400
+    conn = get_db()
+    _antrenman_seed_if_empty(conn)
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    sessions = json.loads(row['value']) if row else []
+    sessions = [s for s in sessions if s.get('date') != session['date']]
+    sessions.append(session)
+    sessions.sort(key=lambda s: s.get('date', ''))
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_sessions', ?)",
+                 (json.dumps(sessions, ensure_ascii=False),))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 # âââ TELEGRAM BOT ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
