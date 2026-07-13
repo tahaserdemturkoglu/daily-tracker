@@ -723,8 +723,12 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             </div>
           </div>
           <div id="nu-manual-mode" style="display:none">
-            <div class="form-row"><div class="fg"><label>Ürün Adı</label><input type="text" id="nu-title" list="nu-food-name-options" placeholder="Tavuk Göğsü" oninput="autofillMealFromDb(this.value)"></div></div>
+            <div class="form-row" style="align-items:flex-end">
+              <div class="fg" style="flex:2"><label>Ürün Adı</label><input type="text" id="nu-title" list="nu-food-name-options" placeholder="Tavuk Göğsü" oninput="autofillMealFromDb(this.value)"></div>
+              <div class="fg" style="flex:1"><label>Miktar (g)</label><input type="number" id="nu-manual-amount" value="100" min="1" step="1" oninput="rescaleManualMeal()"></div>
+            </div>
             <datalist id="nu-food-name-options"></datalist>
+            <div id="nu-manual-db-hint" style="display:none;font-size:.72rem;color:#60a5fa;padding:2px 0 6px"></div>
             <div class="form-row">
               <div class="fg"><label>kcal</label><input type="number" id="nu-cal" placeholder="200"></div>
               <div class="fg"><label>P (g)</label><input type="number" id="nu-prot" step=".1" placeholder="30"></div>
@@ -2485,13 +2489,26 @@ async function addWater(ml){const cur=await API('/api/today');const now=(cur.nut
 async function addWaterManual(){const l=parseFloat($('water-m').value);if(!l||l<=0)return toast('Litre gir',false);await addWater(Math.round(l*1000));$('water-m').value='';}
 async function setWaterTotal(ml){const total=Math.max(0,Math.round(Number(ml)||0));await POST('/api/log/nutrition',{date:today(),water_ml:total});sv('water-cur',(total/1000).toFixed(1)+'L bugün');if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();else loadDashboard();return total;}
 async function setWaterManualTotal(){const raw=String($('water-m').value||'').replace(',','.');const l=parseFloat(raw);if(!Number.isFinite(l)||l<0)return toast('Toplam litreyi gir',false);const total=await setWaterTotal(l*1000);$('water-m').value='';toast('Su toplamı '+(total/1000).toFixed(1)+'L olarak ayarlandı');}
+let _manualFoodMatch=null;
 function autofillMealFromDb(name){
   const f=(_foodList||[]).find(x=>(x.official_name||x.name||'').toLowerCase()===(name||'').trim().toLowerCase());
-  if(!f)return;
-  if(!$('nu-cal').value)$('nu-cal').value=f.calories_per_100||'';
-  if(!$('nu-prot').value)$('nu-prot').value=f.protein_per_100||'';
-  if(!$('nu-carb').value)$('nu-carb').value=f.carbs_per_100||'';
-  if(!$('nu-fat').value)$('nu-fat').value=f.fat_per_100||'';
+  _manualFoodMatch=f||null;
+  const hint=$('nu-manual-db-hint');
+  if(f){
+    if(hint){hint.style.display='';hint.textContent=`📦 Besin DB'de bulundu — ${f.calories_per_100||0}kcal/100${f.unit||'g'}, miktara göre otomatik hesaplanıyor`;}
+    rescaleManualMeal();
+  } else if(hint){
+    hint.style.display='none';
+  }
+}
+function rescaleManualMeal(){
+  if(!_manualFoodMatch)return;
+  const amount=parseFloat($('nu-manual-amount')?.value)||100;
+  const r=amount/100;
+  $('nu-cal').value=Math.round((_manualFoodMatch.calories_per_100||0)*r);
+  $('nu-prot').value=Math.round((_manualFoodMatch.protein_per_100||0)*r*10)/10;
+  $('nu-carb').value=Math.round((_manualFoodMatch.carbs_per_100||0)*r*10)/10;
+  $('nu-fat').value=Math.round((_manualFoodMatch.fat_per_100||0)*r*10)/10;
 }
 async function loadFoodNameOptions(){
   if(!_foodList)_foodList=await API('/api/food-registry')||[];
@@ -2504,10 +2521,12 @@ async function saveMeal(){
   const slot=getMealSlot();
   if(!slot||slot==='-- Seç --')return toast('Öğün başlığı seç',false);
   const cal=parseInt($('nu-cal')?.value)||null,prot=parseFloat($('nu-prot')?.value)||null,carb=parseFloat($('nu-carb')?.value)||null,fat=parseFloat($('nu-fat')?.value)||null;
+  const amount=parseFloat($('nu-manual-amount')?.value)||null;
+  const description=(_manualFoodMatch&&amount)?`${amount} g ${title}`:title;
   // Yeni başlık varsa kaydet
   const newTitle=($('nu-slot-new')?.value||'').trim();
   if(newTitle){await POST('/api/meal-titles',{name:newTitle});await loadMealTitles();$('nu-slot-new').value='';}
-  await POST('/api/meals',{slot,title,description:title,calories:cal,protein_g:prot,carbs_g:carb,fat_g:fat,source:'web'});
+  await POST('/api/meals',{slot,title,description,calories:cal,protein_g:prot,carbs_g:carb,fat_g:fat,source:'web'});
   if($('nu-save-to-db')?.checked){
     await POST('/api/food-registry',{name:title,calories_per_100:cal||0,protein_per_100:prot||0,carbs_per_100:carb||0,fat_per_100:fat||0});
     _foodList=null;loadFoodNameOptions();
@@ -2515,6 +2534,9 @@ async function saveMeal(){
   }
   toast('Öğün kaydedildi');
   ['nu-title','nu-cal','nu-prot','nu-carb','nu-fat'].forEach(id=>{if($(id))$(id).value='';});
+  $('nu-manual-amount').value=100;
+  _manualFoodMatch=null;
+  if($('nu-manual-db-hint'))$('nu-manual-db-hint').style.display='none';
   loadTodayMeals();loadDashboard();
 }
 async function loadSuppNameOptions(){
@@ -5131,18 +5153,20 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 #page-log{width:100%!important;max-width:1180px!important;margin:0 auto!important}
 #sub-vucut .cards-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important}
 #sub-beslenme .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
-#water-card,#meal-list-card,#nutrition-flow-panel{grid-column:1/-1!important}
-#meal-add-card{order:1!important}
+#water-card,#meal-list-card{grid-column:1/-1!important}
+#nutrition-flow-panel{order:1!important}
 #meal-order-card{order:2!important;position:sticky!important;top:12px!important}
+#meal-add-card{order:3!important}
 #sub-supplement .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
 #supp-order-card{position:sticky!important;top:12px!important}
 #nu-food-grid{grid-template-columns:repeat(auto-fill,minmax(150px,180px))!important}
-#sub-beslenme .card-blue{font-size:.92em}
-#sub-beslenme .card-blue #water-display{font-size:1.85rem!important;margin:0!important}
-#sub-beslenme .card-blue .water-btns{grid-template-columns:repeat(2,1fr)!important;gap:7px!important}
-#sub-beslenme .card-blue .w-btn{padding:8px 8px!important;min-height:34px!important}
-#sub-beslenme .card-blue .form-row{gap:7px!important;margin-top:8px!important}
-#nutrition-flow-panel{grid-column:1 / span 2;border:1px solid rgba(59,130,246,.26);background:linear-gradient(180deg,rgba(15,23,42,.94),rgba(2,6,23,.64));border-radius:18px;padding:16px;min-height:360px}
+#water-card{font-size:.92em;padding:14px!important}
+#water-card #water-display{font-size:1.6rem!important;margin:0!important}
+#water-card .water-btns{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:6px!important;margin-bottom:8px!important}
+#water-card .w-btn{padding:6px 4px!important;min-height:30px!important;font-size:.76rem!important}
+#water-card .form-row{gap:7px!important;margin-top:0!important}
+#water-card #daily-macro-bar{padding:5px 8px!important;font-size:.72rem!important;margin-bottom:6px!important}
+#nutrition-flow-panel{border:1px solid rgba(59,130,246,.26);background:linear-gradient(180deg,rgba(15,23,42,.94),rgba(2,6,23,.64));border-radius:18px;padding:16px;min-height:360px}
 .nf-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(148,163,184,.16)}
 .nf-title{font-size:1.05rem;font-weight:950;color:#f9fafb}
 .nf-sub{font-size:.76rem;color:#94a3b8;margin-top:4px}
@@ -5175,7 +5199,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
       const panel=document.createElement('div');
       panel.id='nutrition-flow-panel';
       panel.innerHTML=`<div class="nf-head"><div><div class="nf-title">Günlük Yemek Akışı</div><div class="nf-sub">Seçili tarihte yediğin tüm öğünler sıra sıra burada görünür.</div></div><div class="nf-date"><label>Tarih</label><input type="date" id="nu-log-date" value="${today()}" onchange="loadMealEntries()"></div></div><div class="nf-summary" id="nf-summary"></div><div class="meal-entry-list" id="meal-entry-list"><div class="meal-entry-empty">Yükleniyor...</div></div>`;
-      const water=document.querySelector('#sub-beslenme .card-blue');
+      const water=document.getElementById('water-card');
       if(water && water.nextSibling) grid.insertBefore(panel, water.nextSibling);
       else grid.appendChild(panel);
     }
