@@ -1845,7 +1845,9 @@ function renderVitList(elId,vitamins,canDel){
     }).join('');
     const STACK_COLORS={'AÇ KARNA STACK':'#67e8f9','SABAH STACK':'#38bdf8','PRE-WORKOUT STACK':'#fb923c','POST-WORKOUT':'#4ade80','GECE STACK':'#a78bfa','DİĞER':'#94a3b8'};
     const gc=STACK_COLORS[g]||'#67e8f9';
-    return `<div class="meal-slot-group" style="border-top-color:${gc}55;overflow:hidden"><div style="position:absolute;top:16px;bottom:16px;left:0;width:2px;border-radius:2px;background:linear-gradient(180deg,transparent 0%,${gc} 46%,${gc}99 60%,transparent 100%);box-shadow:0 0 12px 2px ${gc}66;pointer-events:none"></div><div class="meal-slot-header" style="background:linear-gradient(90deg,${gc}18 0%,transparent 80%);border-bottom-color:${gc}30"><div style="display:flex;align-items:center;gap:7px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${gc};box-shadow:0 0 8px ${gc},0 0 16px ${gc}77;flex-shrink:0"></span><span style="font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:${gc};text-shadow:0 0 18px ${gc}80">💊 ${g}</span></div></div><div style="display:flex;flex-direction:column;gap:5px;padding:8px 12px 10px">${squares}</div></div>`;
+    const groupIds=groups[g].map(v=>v.id);
+    const bulkDelBtn=canDel?`<button class="btn btn-xs btn-ghost" style="margin-left:auto;font-size:.62rem;opacity:.7" onclick="confirmDelVitGroup('${g.replace(/'/g,"\\'")}',[${groupIds.join(',')}])">🗑 Grubu Sil</button>`:'';
+    return `<div class="meal-slot-group" style="border-top-color:${gc}55;overflow:hidden"><div style="position:absolute;top:16px;bottom:16px;left:0;width:2px;border-radius:2px;background:linear-gradient(180deg,transparent 0%,${gc} 46%,${gc}99 60%,transparent 100%);box-shadow:0 0 12px 2px ${gc}66;pointer-events:none"></div><div class="meal-slot-header" style="background:linear-gradient(90deg,${gc}18 0%,transparent 80%);border-bottom-color:${gc}30"><div style="display:flex;align-items:center;gap:7px;width:100%"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${gc};box-shadow:0 0 8px ${gc},0 0 16px ${gc}77;flex-shrink:0"></span><span style="font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:${gc};text-shadow:0 0 18px ${gc}80">💊 ${g}</span>${bulkDelBtn}</div></div><div style="display:flex;flex-direction:column;gap:5px;padding:8px 12px 10px">${squares}</div></div>`;
   }).join('');
 }
 function renderMealList(elId,meals,canDel,elOverride){
@@ -1916,6 +1918,14 @@ function renderMealList(elId,meals,canDel,elOverride){
 
 /* CONFIRM DELETES */
 function confirmDelVit(id,name){confirm_('Takviye silinsin mi?',`"${name}" kalıcı olarak silinecek.`,async()=>{await DEL('/api/vitamin/'+id);toast('Silindi',true);loadVitamins();loadDashboard();});}
+function confirmDelVitGroup(groupName,ids){
+  if(!ids||!ids.length)return;
+  confirm_(groupName+' grubu silinsin mi?',`Bu gruptaki ${ids.length} takviye kaydı kalıcı olarak silinecek.`,async()=>{
+    await Promise.all(ids.map(id=>DEL('/api/vitamin/'+id)));
+    toast(ids.length+' kayıt silindi',true);
+    loadVitamins();loadDashboard();
+  });
+}
 function confirmDelMeal(id,name){confirm_('Öğün silinsin mi?',`"${name}" kalıcı olarak silinecek.`,async()=>{const r=await API('/api/meals/'+today());const m=(r||[]).find(x=>x.id===id);await DEL('/api/meals/'+id);toast('Silindi',true,async()=>{if(m)await POST('/api/meals',{slot:m.slot,title:m.title,description:m.description,calories:m.calories,protein_g:m.protein_g,carbs_g:m.carbs_g,fat_g:m.fat_g,source:'web'});loadTodayMeals();loadDashboard();});loadTodayMeals();loadDashboard();});}
 function confirmDelSet(id){confirm_('Set silinsin mi?','Bu set kalıcı olarak silinecek.',async()=>{await DEL('/api/workout/set/'+id);toast('Set silindi');selectDay(trDate);});}
 function confirmDelTpl(id){confirm_('Şablon silinsin mi?','Bu şablon kalıcı olarak silinecek.',async()=>{await DEL('/api/templates/'+id);toast('Silindi');loadTemplates();});}
@@ -5246,9 +5256,38 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
           </div>
         </div>
         <div class="meal-entry-actions">
+          <button class="btn btn-xs btn-ghost" onclick="editMealAmount(${m.id},'${(m.title||'').replace(/'/g,"`")}','${(m.description||'').replace(/'/g,"`")}')">✎</button>
           <button class="del-btn" onclick="confirmDelMeal(${m.id},'${(m.title||'').replace(/'/g,"`")}')">✕</button>
         </div>
       </div>`).join('');
+  };
+  window.editMealAmount=async function(id,title,description){
+    const curMatch=(description||'').match(/^([\d.]+)\s*\w*\s+/);
+    const newAmountStr=prompt('Gramaj (g):',curMatch?curMatch[1]:'100');
+    if(newAmountStr===null)return;
+    const amount=parseFloat(newAmountStr);
+    if(!amount||amount<=0)return toast('Geçersiz miktar',false);
+    if(!_foodList)_foodList=await API('/api/food-registry')||[];
+    const food=(_foodList||[]).find(f=>(f.official_name||f.name||'').toLowerCase()===(title||'').toLowerCase());
+    let payload;
+    if(food){
+      const r=amount/100;
+      payload={
+        description:`${amount} g ${title}`,
+        calories:Math.round((food.calories_per_100||0)*r),
+        protein_g:Math.round((food.protein_per_100||0)*r*10)/10,
+        carbs_g:Math.round((food.carbs_per_100||0)*r*10)/10,
+        fat_g:Math.round((food.fat_per_100||0)*r*10)/10
+      };
+    } else {
+      payload={description:`${amount} g ${title}`};
+    }
+    const res=await PUT('/api/meals/'+id,payload);
+    if(res&&res.ok===false)return toast(res.error||'Hata',false);
+    toast(food?'Gramaj güncellendi ('+amount+'g)':'Not güncellendi (Besin DB eşleşmesi yok, makrolar aynı kaldı)');
+    await window.loadMealEntries();
+    if(typeof loadTodayMeals==='function')loadTodayMeals();
+    if(typeof loadDashboard==='function')loadDashboard();
   };
   window.loadMealEntries=async function(){
     ensureNutritionFlow();
