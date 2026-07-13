@@ -4517,29 +4517,6 @@ async def cmd_chat_ai(u, c):
     tg_store_message('out', reply, chat_id, 'AI Coach', actions)
     await u.message.reply_text(reply)
 
-def start_telegram_bot():
-    if not TELEGRAM_TOKEN:
-        log.warning("TELEGRAM_TOKEN ayarli degil."); return
-    try:
-        from telegram.ext import Application, CommandHandler, MessageHandler, filters
-    except ImportError:
-        log.warning("python-telegram-bot kurulu degil."); return
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    app2 = Application.builder().token(TELEGRAM_TOKEN).build()
-    for cmd, fn in [("start",cmd_start),("uyku",cmd_uyku),("egzersiz",cmd_egzersiz),
-                    ("yemek",cmd_yemek),("su",cmd_su),("is",cmd_is),("antrenor",cmd_antrenor),
-                    ("mood",cmd_mood),("vitamin",cmd_vitamin),("bugun",cmd_bugun),
-                    ("rapor",cmd_rapor),("antrenman",cmd_antrenman),
-                    ("hafta",cmd_hafta),("streak",cmd_streak)]:
-        app2.add_handler(CommandHandler(cmd, fn))
-    app2.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
-    log.info("Telegram bot baslatildi...")
-    app2.run_polling(drop_pending_updates=True, stop_signals=None)
-
-
 # TELEGRAM_STANDALONE_ALWAYS_ON_V1
 TELEGRAM_LOCK_PATH = os.path.join(BASE_DIR, 'telegram_bot.lock')
 _TELEGRAM_LOCK_HANDLE = None
@@ -4589,6 +4566,10 @@ def release_telegram_bot_lock():
     _TELEGRAM_LOCK_HANDLE = None
 
 def start_telegram_bot():
+    """Standalone polling fallback. Uretimde start.py webhook modu kullanir
+    (DISABLE_EMBEDDED_BOT=1) - bu fonksiyon sadece lokal calistirma / 'python app.py
+    --telegram-only' icin var, ayni anda ikisi calismamali (Telegram tek getUpdates
+    poller'a izin verir)."""
     if not TELEGRAM_TOKEN:
         log.warning("TELEGRAM_TOKEN ayarli degil."); return
     if not acquire_telegram_bot_lock():
