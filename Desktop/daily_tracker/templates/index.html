@@ -5177,11 +5177,30 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     p.date=($('nu-date')&&$('nu-date').value)||selectedNutritionDate();
     return p;
   };
-  const oldRender=window.renderMealEntries;
   window.renderMealEntries=function(rows){
     ensureNutritionFlow();
+    rows=Array.isArray(rows)?rows:[];
     setNutritionSummary(rows);
-    if(typeof oldRender==='function') return oldRender(rows);
+    const box=$('meal-entry-list'); if(!box) return;
+    if(!rows.length){ box.innerHTML='<div class="meal-entry-empty">Bu tarihte öğün kaydı yok.</div>'; return; }
+    const fmt=v=>{const n=Number(v||0); return Number.isInteger(n)?n:Math.round(n*10)/10;};
+    box.innerHTML=rows.map(m=>`
+      <div class="meal-entry-card">
+        <div class="meal-entry-top" style="font-size:.72rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em">${(m.slot||'').replace(/_/g,' ')}</div>
+        <div>
+          <div style="font-weight:700;font-size:.88rem">${m.title||m.description||'—'}</div>
+          ${m.description&&m.description!==m.title?`<div style="font-size:.76rem;color:var(--muted);margin-top:2px">${m.description}</div>`:''}
+          <div class="meal-entry-macros" style="display:flex;gap:8px;margin-top:6px;font-size:.72rem">
+            <span style="color:var(--yellow)">${fmt(m.calories)} kcal</span>
+            <span style="color:#22c55e">P:${fmt(m.protein_g)}</span>
+            <span style="color:#3b82f6">K:${fmt(m.carbs_g)}</span>
+            <span style="color:#f97316">Y:${fmt(m.fat_g)}</span>
+          </div>
+        </div>
+        <div class="meal-entry-actions">
+          <button class="del-btn" onclick="confirmDelMeal(${m.id},'${(m.title||'').replace(/'/g,"`")}')">✕</button>
+        </div>
+      </div>`).join('');
   };
   window.loadMealEntries=async function(){
     ensureNutritionFlow();
