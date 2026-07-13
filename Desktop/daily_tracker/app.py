@@ -4674,9 +4674,12 @@ def api_food_registry_add():
 def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
+    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','unit','serving_size','serving_unit','notes','aliases','category']
+    sent = {k: data[k] for k in fields if k in data}
+    if not sent:
+        return jsonify({'ok': False, 'error': 'Güncellenecek alan yok'}), 400
     conn = get_db()
-    conn.execute("""UPDATE food_registry SET name=?,calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,unit=?,serving_size=?,serving_unit=?,notes=?,aliases=?,category=? WHERE id=?""",
-        (data.get('name',''),data.get('calories_per_100'),data.get('protein_per_100'),data.get('carbs_per_100'),data.get('fat_per_100'),data.get('unit','g'),data.get('serving_size'),data.get('serving_unit'),data.get('notes',''),data.get('aliases',''),data.get('category',''),fid))
+    conn.execute(f"UPDATE food_registry SET {','.join(k+'=?' for k in sent)} WHERE id=?", (*sent.values(), fid))
     conn.commit(); conn.close()
     return jsonify({'ok':True})
 
@@ -5378,6 +5381,25 @@ def api_supplement_products_add():
     new_id = conn.execute("SELECT id FROM supplement_products WHERE name=?", (name,)).fetchone()['id']
     conn.close()
     return jsonify({'ok': True, 'id': new_id})
+
+@app.route('/api/supplement-products/<int:pid>', methods=['PUT'])
+def api_supplement_products_update(pid):
+    data = request.get_json(force=True) or {}
+    fields = ['name','brand','form','default_dose','default_unit','notes']
+    sent = {k: data[k] for k in fields if k in data}
+    if 'name' in sent and not sent['name'].strip():
+        return jsonify({'ok': False, 'error': 'name gerekli'}), 400
+    if not sent:
+        return jsonify({'ok': False, 'error': 'Güncellenecek alan yok'}), 400
+    conn = get_db()
+    try:
+        conn.execute(f"UPDATE supplement_products SET {','.join(k+'=?' for k in sent)} WHERE id=?", (*sent.values(), pid))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'ok': False, 'error': 'Bu isimde bir supplement zaten var'}), 400
+    conn.close()
+    return jsonify({'ok': True})
 
 @app.route('/api/supplement-products/<int:pid>', methods=['DELETE'])
 def api_supplement_products_delete(pid):

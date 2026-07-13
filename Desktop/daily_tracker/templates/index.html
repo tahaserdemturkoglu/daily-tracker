@@ -6,6 +6,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Taha Serdem · Daily Rapor</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#05080f;--bg2:#0b1220;--bg3:#101929;--bg4:#16223a;
@@ -54,7 +57,7 @@
   --g-pink:linear-gradient(135deg,#ec4899,#8b5cf6);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;display:flex;min-height:100vh;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;display:flex;min-height:100vh;overflow-x:hidden}
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -174,6 +177,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
 /* ══════ LISTS ══════ */
 .vit-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto}
+#vit-list{max-height:640px}
 .vit-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:8px;padding:7px 12px;font-size:.84rem;border-left:3px solid var(--purple);gap:8px}
 .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px 6px;border-radius:4px;transition:color .15s;flex-shrink:0}
 .del-btn:hover{color:var(--red)}
@@ -713,7 +717,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
                 <div class="fg" style="flex:0.7"><label>Birim</label><input type="text" id="nu-food-unit" value="g" style="width:100%"></div>
               </div>
               <div id="nu-food-quick-amounts" style="display:flex;gap:5px;margin:6px 0;flex-wrap:wrap"></div>
-              <div id="nu-food-preview" style="font-size:.75rem;color:#60a5fa;padding:4px 0;min-height:18px"></div>
+              <div id="nu-food-preview" style="font-size:.85rem;font-weight:600;color:#60a5fa;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:8px 10px;margin:4px 0;min-height:18px"></div>
               <input type="hidden" id="nu-food-id"><input type="hidden" id="nu-food-name">
               <button class="btn btn-teal" onclick="saveMealFromDB()">Ekle</button>
             </div>
@@ -865,7 +869,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           </div>
         </div>
         <!-- Takviye Sırası -->
-        <div class="card ct ct-indigo">
+        <div class="card ct ct-indigo" id="supp-order-card">
           <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Takviye Sırası</div><div class="card-sub" id="vit-list-sub">Bugünkü protokol</div></div>
             <button class="btn btn-sm btn-ghost" style="font-size:.7rem;margin-left:auto" onclick="loadVitamins()">↻</button>
           </div>
@@ -1983,26 +1987,20 @@ function normSlotKey(s){
   if(/aksam|akşam/.test(k)) return 'aksam';
   return s.toLowerCase();
 }
+const CANONICAL_MEAL_SLOTS=['kahvalti','meal1','meal2','meal3','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','aksam','ogle','gece','cheat_meal'];
 async function loadMealTitles(dateStr){
   const sel=$('nu-slot');if(!sel)return;
   const cur=sel.value;
-  const d=dateStr||(typeof selectedNutritionDate==='function'?selectedNutritionDate():today());
-  let meals=[];
-  try{ meals=await API('/api/meals/'+d)||[]; }catch(e){}
-  // O güne ait unique slotları G_SLOT_ORDER sırasında çek
-  const seen=new Set(), orderedSlots=[];
-  G_SLOT_ORDER.forEach(key=>{
-    if(!seen.has(key) && meals.some(m=>(m.slot||'').toLowerCase()===key||(m.slot||'').toLowerCase()===key.replace('_',''))){
-      seen.add(key); orderedSlots.push(key);
-    }
+  let custom=[];
+  try{ custom=await API('/api/meal-titles')||[]; }catch(e){}
+  const seen=new Set(), opts=[];
+  CANONICAL_MEAL_SLOTS.forEach(k=>{ if(!seen.has(k)){seen.add(k); opts.push({key:k,label:SLOT_DISPLAY[k]||k});} });
+  custom.forEach(t=>{
+    const key=normSlotKey(t.name).replace(/\s+/g,'');
+    if(!seen.has(key)){ seen.add(key); opts.push({key,label:SLOT_DISPLAY[key]||t.name}); }
   });
-  if(!orderedSlots.length){
-    sel.innerHTML='<option value="">-- Seç (bugün kayıt yok) --</option>';
-  } else {
-    sel.innerHTML='<option value="">-- Seç --</option>'+
-      orderedSlots.map(k=>`<option value="${k}">${SLOT_DISPLAY[k]||k}</option>`).join('');
-  }
-  if(cur && orderedSlots.includes(cur)) sel.value=cur;
+  sel.innerHTML='<option value="">-- Seç --</option>'+opts.map(o=>`<option value="${o.key}">${o.label}</option>`).join('');
+  if(cur && opts.some(o=>o.key===cur)) sel.value=cur;
 }
 
 function getMealSlot(){
@@ -2266,13 +2264,25 @@ async function loadMealDbMgmtList(){
   $('nu-dbmgmt-count').textContent=`Besin DB — ${items.length} ürün`;
   if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
   el.innerHTML=items.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border-radius:8px;font-size:.8rem">
-    <span style="flex:2;font-weight:700">${f.name}${f.category?` <span style="color:var(--muted);font-weight:400;font-size:.7rem">· ${f.category}</span>`:''}</span>
+    <span style="flex:2;font-weight:700" id="fdb-name-${f.id}">${f.name}${f.category?` <span style="color:var(--muted);font-weight:400;font-size:.7rem">· ${f.category}</span>`:''}</span>
     <span style="color:var(--yellow)">${f.calories_per_100||0} kcal</span>
     <span style="color:var(--green)">P${f.protein_per_100||0}</span>
     <span style="color:var(--blue)">K${f.carbs_per_100||0}</span>
     <span style="color:var(--orange)">Y${f.fat_per_100||0}</span>
+    <button class="btn btn-xs btn-ghost" onclick="renameFoodDbItem(${f.id},'${(f.name||'').replace(/'/g,"`")}')">✎</button>
     <button class="del-btn" onclick="delMealDbItem(${f.id})">✕</button>
   </div>`).join('');
+}
+async function renameFoodDbItem(id,curName){
+  const name=prompt('Yeni isim:',curName);
+  if(name===null)return;
+  const trimmed=name.trim();
+  if(!trimmed||trimmed===curName)return;
+  const r=await PUT('/api/food-registry/'+id,{name:trimmed});
+  if(r&&r.ok===false)return toast(r.error||'Hata',false);
+  _foodList=null;
+  toast('İsim güncellendi: '+trimmed);
+  loadMealDbMgmtList();
 }
 
 async function loadFoodRegistry(){const items=await API('/api/food-registry')||[];const el=document.getElementById('food-registry-list');if(!el)return;if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}el.innerHTML=items.map(f=>`<div class="card" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:6px"><span style="flex:2;font-weight:700;font-size:.9rem">${f.name}</span><span style="color:var(--yellow);font-size:.8rem">${f.calories_per_100||0} kcal/100g</span><span style="color:var(--green);font-size:.8rem">P:${f.protein_per_100||0}g</span><span style="color:var(--blue);font-size:.8rem">K:${f.carbs_per_100||0}g</span><span style="color:var(--orange);font-size:.8rem">Y:${f.fat_per_100||0}g</span><span style="color:var(--muted);font-size:.75rem">${f.notes||''}</span><button class="del-btn" onclick="delFoodItem(${f.id})">✕</button></div>`).join('');}
@@ -2306,7 +2316,7 @@ function selectSupp(id){
 }
 /* ═══ SUPPLEMENT STATUS (5 durum) ═══ */
 const VIT_STATUS_META={
-  taken:      {label:'Alındı',            emoji:'✓',  color:'#22c55e', bg:'rgba(34,197,94,.15)',  border:'rgba(34,197,94,.3)'},
+  taken:      {label:'Alındı',            emoji:'✓',  color:'#e7edf7', bg:'rgba(255,255,255,.06)', border:'rgba(255,255,255,.14)'},
   missed:     {label:'Eksik',              emoji:'✕',  color:'#f87171', bg:'rgba(239,68,68,.15)',  border:'rgba(239,68,68,.3)'},
   eod_skipped:{label:'Gün Aşırı Atlandı',  emoji:'⚠️', color:'#fbbf24', bg:'rgba(251,191,36,.15)', border:'rgba(251,191,36,.3)'},
   eod_taken:  {label:'Gün Aşırı Alındı',   emoji:'✅', color:'#4ade80', bg:'rgba(74,222,128,.15)', border:'rgba(74,222,128,.3)'},
@@ -2661,8 +2671,20 @@ async function loadSuppDbList(){
   el.innerHTML=items.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border-radius:8px;font-size:.8rem">
     <span style="flex:2;font-weight:700">${f.name}</span>
     <span style="color:var(--muted)">${f.default_dose||1} ${f.default_unit||'kapsul'}</span>
+    <button class="btn btn-xs btn-ghost" onclick="renameSuppDbItem(${f.id},'${(f.name||'').replace(/'/g,"`")}')">✎</button>
     <button class="del-btn" onclick="delSuppDbItem(${f.id})">✕</button>
   </div>`).join('');
+}
+async function renameSuppDbItem(id,curName){
+  const name=prompt('Yeni isim:',curName);
+  if(name===null)return;
+  const trimmed=name.trim();
+  if(!trimmed||trimmed===curName)return;
+  const r=await PUT('/api/supplement-products/'+id,{name:trimmed});
+  if(r&&r.ok===false)return toast(r.error||'Hata',false);
+  _suppProducts=null;
+  toast('İsim güncellendi: '+trimmed);
+  loadSuppDbList();
 }
 
 /* ═══════════════════════════════════════════════════
@@ -5112,6 +5134,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 #meal-add-card{order:1!important}
 #meal-order-card{order:2!important;position:sticky!important;top:12px!important}
 #sub-supplement .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
+#supp-order-card{position:sticky!important;top:12px!important}
 #nu-food-grid{grid-template-columns:repeat(auto-fill,minmax(150px,180px))!important}
 #sub-beslenme .card-blue{font-size:.92em}
 #sub-beslenme .card-blue #water-display{font-size:1.85rem!important;margin:0!important}
