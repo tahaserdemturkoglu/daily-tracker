@@ -5168,7 +5168,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 #meal-order-card{order:2!important;position:sticky!important;top:12px!important}
 #meal-add-card{order:3!important}
 #sub-supplement .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
-#supp-order-card{position:sticky!important;top:12px!important}
 #nu-food-grid{grid-template-columns:repeat(auto-fill,minmax(150px,180px))!important}
 #water-card{font-size:.92em;padding:14px!important}
 #water-card #water-display{font-size:1.6rem!important;margin:0!important}
@@ -5193,6 +5192,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 .meal-entry-actions{flex-direction:column!important;margin:0!important;min-width:86px}
 @media(max-width:1180px){ #sub-beslenme .cards-grid{grid-template-columns:1fr!important} #nutrition-flow-panel{grid-column:1/-1} .meal-entry-card{grid-template-columns:1fr!important} .meal-entry-actions{flex-direction:row!important} }
 @media(max-width:620px){.nf-head{display:block}.nf-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:1180px){ #sub-supplement .cards-grid{grid-template-columns:1fr!important} }
 </style>
 <script id="NUTRITION_DATE_FLOW_REBUILD_V1">
 (function(){
