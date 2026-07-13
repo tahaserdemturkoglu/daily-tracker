@@ -4895,9 +4895,10 @@ def seed_supplement_data():
 
     # Products
     PRODUCTS = [
+        ('Whey Protein',                   '',                    'olcek',   1, 'ölçek'),
         ('NOW NAC 600mg',                  'NOW',                 'kapsul',  1, 'kapsul'),
         ('Garden of Life Probiotic',       'Garden of Life',      'kapsul',  1, 'kapsul'),
-        ('Life Extension Mega EPA/DHA',    'Life Extension',      'kapsul',  3, 'kapsul'),
+        ('Life Extension Mega EPA/DHA (Omega-3)', 'Life Extension', 'kapsul', 3, 'kapsul'),
         ('Thorne Vitamin D + K2',          'Thorne',              'damla',   4, 'damla'),
         ('Life Extension B-Complex',       'Life Extension',      'kapsul',  1, 'kapsul'),
         ('Life Extension MacuGuard',       'Life Extension',      'kapsul',  1, 'kapsul'),
@@ -4929,7 +4930,7 @@ def seed_supplement_data():
             ('Garden of Life Probiotic',       1, 'kapsul'),
         ]),
         ('Sabah Stack',      'morning',    2, [
-            ('Life Extension Mega EPA/DHA',    3, 'kapsul'),
+            ('Life Extension Mega EPA/DHA (Omega-3)', 3, 'kapsul'),
             ('Thorne Vitamin D + K2',          4, 'damla'),
             ('Life Extension B-Complex',       1, 'kapsul'),
             ('Life Extension MacuGuard',       1, 'kapsul'),
@@ -4947,6 +4948,7 @@ def seed_supplement_data():
         ]),
         ('Post Workout Stack','postworkout',4, [
             ('Creatine Monohydrate', 5, 'g'),
+            ('Whey Protein',         1, 'ölçek'),
         ]),
         ('Gece Stack',       'night',      5, [
             ('Magnesium Glycinate',            3, 'kapsul'),
@@ -4979,6 +4981,10 @@ def fix_mojibake_supplement_names():
     UNIT_FIXES = {
         'Ã¶lÃ§ek': 'ölçek',
     }
+    NAME_FIXES = {
+        # daha net/tanidik isim (kullanici "omega 3" olarak arayacak)
+        'Life Extension Mega EPA/DHA': 'Life Extension Mega EPA/DHA (Omega-3)',
+    }
     conn = get_db()
     try:
         for bad, good in FIXES.items():
@@ -4986,6 +4992,26 @@ def fix_mojibake_supplement_names():
         for bad, good in UNIT_FIXES.items():
             conn.execute("UPDATE supplement_stack_items SET unit=? WHERE unit=?", (good, bad))
             conn.execute("UPDATE supplement_products SET default_unit=? WHERE default_unit=?", (good, bad))
+        for bad, good in NAME_FIXES.items():
+            conn.execute("UPDATE supplement_products SET name=? WHERE name=?", (good, bad))
+            conn.execute("UPDATE supplement_stack_items SET product_name=? WHERE product_name=?", (good, bad))
+        # Whey Protein onceki seed'lerde yoktu - eksikse kataloga ve Post Workout Stack'e ekle
+        has_whey = conn.execute("SELECT id FROM supplement_products WHERE name='Whey Protein'").fetchone()
+        if not has_whey:
+            conn.execute("INSERT INTO supplement_products (name,brand,form,default_dose,default_unit) VALUES (?,?,?,?,?)",
+                         ('Whey Protein', '', 'olcek', 1, 'ölçek'))
+        pw_stack = conn.execute("SELECT id FROM supplement_stacks WHERE name='Post Workout Stack'").fetchone()
+        if pw_stack:
+            has_whey_item = conn.execute(
+                "SELECT id FROM supplement_stack_items WHERE stack_id=? AND product_name='Whey Protein'",
+                (pw_stack['id'],)).fetchone()
+            if not has_whey_item:
+                max_order = conn.execute(
+                    "SELECT COALESCE(MAX(order_num),0) AS m FROM supplement_stack_items WHERE stack_id=?",
+                    (pw_stack['id'],)).fetchone()['m']
+                conn.execute(
+                    "INSERT INTO supplement_stack_items (stack_id,product_name,dose,unit,order_num) VALUES (?,?,?,?,?)",
+                    (pw_stack['id'], 'Whey Protein', 1, 'ölçek', max_order + 1))
         conn.commit()
     except Exception as e:
         log.warning(f"fix_mojibake_supplement_names failed: {e}")
