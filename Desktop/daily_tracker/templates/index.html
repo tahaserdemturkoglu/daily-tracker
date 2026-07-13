@@ -637,7 +637,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     </div>
     <div class="sub-sec" id="sub-beslenme">
       <div class="cards-grid">
-        <div class="card ct ct-blue">
+        <div class="card ct ct-blue" id="water-card">
           <div class="card-head"><span class="card-icon">💧</span><div><div class="card-name">Su</div><div class="card-sub" id="water-cur">0L bugün</div></div>
             <button class="btn btn-sm btn-ghost" style="margin-left:auto;font-size:.72rem" onclick="toggleWaterGoalPanel()">🎯 Hedefler</button>
           </div>
@@ -667,7 +667,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
           </div>
         </div>
-        <div class="card ct ct-indigo">
+        <div class="card ct ct-indigo" id="meal-list-card">
           <div class="card-head"><span class="card-icon">📋</span><div><div class="card-name">Öğün Listesi</div></div></div>
           <div class="meal-list" id="meal-today-list"><div class="list-empty">Kayıt yok</div></div>
         </div>
@@ -5097,11 +5097,13 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
 
 <style id="NUTRITION_DATE_FLOW_REBUILD_V1-css">
-#sub-beslenme .cards-grid{display:grid!important;grid-template-columns:1fr minmax(280px,.7fr)!important;gap:14px!important;align-items:start!important}
-#sub-beslenme .cards-grid>.card:nth-child(1),#sub-beslenme .cards-grid>.card:nth-child(2),#sub-beslenme .cards-grid>.card:nth-child(3),#nutrition-flow-panel{grid-column:1/-1!important}
+#page-log{max-width:1180px!important;margin:0 auto!important}
+#sub-beslenme .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
+#water-card,#meal-list-card,#nutrition-flow-panel{grid-column:1/-1!important}
 #meal-add-card{order:1!important}
 #meal-order-card{order:2!important;position:sticky!important;top:12px!important}
-#sub-supplement .cards-grid{display:grid!important;grid-template-columns:1fr minmax(280px,.7fr)!important;gap:14px!important;align-items:start!important}
+#sub-supplement .cards-grid{display:grid!important;grid-template-columns:minmax(0,760px) minmax(280px,380px)!important;gap:14px!important;align-items:start!important;justify-content:start!important}
+#nu-food-grid{grid-template-columns:repeat(auto-fill,minmax(150px,180px))!important}
 #sub-beslenme .card-blue{font-size:.92em}
 #sub-beslenme .card-blue #water-display{font-size:1.85rem!important;margin:0!important}
 #sub-beslenme .card-blue .water-btns{grid-template-columns:repeat(2,1fr)!important;gap:7px!important}
