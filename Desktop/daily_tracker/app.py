@@ -409,25 +409,181 @@ def auto_cycle_day_type():
     dow = op_date.weekday()  # 0=Pazartesi, 6=Pazar
     return DOW_TO_CYCLE.get(dow, 'Off2'), op_date.isoformat()
 
+# --- Karb Cycle Paneli v2 (day_index-tabanli, serbest metin tip adi) --------
+def ensure_cycle_days_table():
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS cycle_days (
+            day_index INTEGER PRIMARY KEY,
+            type TEXT NOT NULL,
+            protein_g INTEGER DEFAULT 0,
+            carb_g INTEGER DEFAULT 0,
+            fat_g INTEGER DEFAULT 0
+        )
+    """)
+    existing = conn.execute("SELECT COUNT(*) FROM cycle_days").fetchone()[0]
+    if existing == 0:
+        # Ilk kurulum: gercek carb_cycle_plan degerlerini tasi (kaybolmasin), yoksa varsayilanla tohumla
+        by_type = {r['day_type']: r for r in conn.execute("SELECT * FROM carb_cycle_plan").fetchall()}
+        for day_index, day_type in DOW_TO_CYCLE.items():
+            label = {'Off1': 'Off 1', 'Off2': 'Off 2'}.get(day_type, day_type)
+            row = by_type.get(day_type)
+            if row:
+                protein, carb, fat = row['protein'], row['carb'], row['fat']
+            else:
+                seed = CARB_CYCLE_DEFAULT[day_index]
+                protein, carb, fat = seed['protein'], seed['carb'], seed['fat']
+            conn.execute(
+                "INSERT OR IGNORE INTO cycle_days (day_index, type, protein_g, carb_g, fat_g) VALUES (?,?,?,?,?)",
+                (day_index, label, protein, carb, fat)
+            )
+    conn.commit(); conn.close()
+
+ensure_cycle_days_table()
+
+def get_cycle_active_day():
+    """Bugun icin aktif cycle gun index'i. Manuel secim varsa (o gune ozel), yoksa haftanin gunu."""
+    today_str = operation_today()
+    conn = get_db()
+    row = conn.execute("SELECT value FROM user_settings WHERE key=?", (f'cycle_active_day_{today_str}',)).fetchone()
+    conn.close()
+    if row and row['value'] not in (None, ''):
+        try:
+            return int(row['value'])
+        except ValueError:
+            pass
+    return operation_date().weekday()
+
+def set_cycle_active_day(day_index):
+    today_str = operation_today()
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
+                 (f'cycle_active_day_{today_str}', str(day_index)))
+    conn.commit(); conn.close()
+
+def generate_cycle_ai_comment():
+    """Karb Cycle plani kaydedildiginde Claude Haiku'dan 2-3 cumlelik Turkce degerlendirme ister,
+    user_settings['cycle_ai_comment'] icine yazar. API key yoksa/basarisizsa sessizce vazgecer."""
+    import urllib.request, urllib.error
+    if not ANTHROPIC_API_KEY:
+        return
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM cycle_days ORDER BY day_index").fetchall()
+    plan = [{'day_index': r['day_index'], 'type': r['type'], 'protein_g': r['protein_g'],
+             'carb_g': r['carb_g'], 'fat_g': r['fat_g'],
+             'kcal': 4*r['protein_g'] + 4*r['carb_g'] + 9*r['fat_g']} for r in rows]
+    weight_row = conn.execute("SELECT value FROM user_settings WHERE key='weight_goal'").fetchone()
+    water_row = conn.execute("SELECT value FROM user_settings WHERE key='water'").fetchone()
+    conn.close()
+    last7 = []
+    for i in range(7):
+        ds = (operation_date() - timedelta(days=i)).isoformat()
+        m = meal_macro_totals(ds)
+        if m['calories']:
+            last7.append({'date': ds, **m})
+    payload = {
+        'plan': plan,
+        'hedef_kilo': weight_row['value'] if weight_row else None,
+        'su_hedefi_ml': water_row['value'] if water_row else None,
+        'son_7_gun_gerceklesen': last7,
+    }
+    system_prompt = (
+        'Sen bir beslenme/karb-cycle kocusun. Kullanicinin haftalik karb cycle planini (7 gun, '
+        'her gun icin tip/protein/karb/yag/kcal), hedef kilosunu, su hedefini ve son 7 gundeki '
+        'gercek beslenme ortalamalarini JSON olarak alacaksin. Sadece 2-3 cumlelik, Turkce, '
+        'samimi ama net bir degerlendirme yaz: plan hangi bantta (kesim <1850 / koruma / bulk >2050 '
+        'ortalama kcal), antrenman gunleri ile off gunleri arasindaki karb dagilimi mantikli mi, '
+        'gercek beslenme planla ne kadar uyumlu, varsa somut bir oneri. Baska hicbir sey yazma, '
+        'sadece bu degerlendirme metnini don.'
+    )
+    body = {
+        'model': ANTHROPIC_MODEL,
+        'max_tokens': 300,
+        'system': system_prompt,
+        'messages': [{'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
+    }
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages',
+        data=json.dumps(body).encode('utf-8'),
+        headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        comment = result['content'][0]['text'].strip()
+    except Exception as _e:
+        import logging; logging.getLogger('daily').warning(f"cycle AI comment request failed: {_e}")
+        return
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('cycle_ai_comment', ?)", (comment,))
+    conn.commit(); conn.close()
+
+@app.route('/api/cycle/ai-comment', methods=['GET'])
+def api_cycle_ai_comment():
+    conn = get_db()
+    row = conn.execute("SELECT value FROM user_settings WHERE key='cycle_ai_comment'").fetchone()
+    conn.close()
+    return jsonify({'comment': row['value'] if row else ''})
+
+@app.route('/api/cycle', methods=['GET'])
+def api_cycle_get():
+    ensure_cycle_days_table()
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM cycle_days ORDER BY day_index").fetchall()
+    conn.close()
+    days = [{'day_index': r['day_index'], 'type': r['type'], 'protein_g': r['protein_g'],
+             'carb_g': r['carb_g'], 'fat_g': r['fat_g']} for r in rows]
+    return jsonify({'days': days, 'active_day': get_cycle_active_day()})
+
+@app.route('/api/cycle', methods=['PUT'])
+def api_cycle_put():
+    data = request.get_json(force=True)
+    days = data if isinstance(data, list) else (data or {}).get('days', [])
+    if not isinstance(days, list) or len(days) != 7:
+        return jsonify({'ok': False, 'error': '7 gunluk dizi gerekli'}), 400
+    conn = get_db()
+    for d in days:
+        conn.execute(
+            "UPDATE cycle_days SET type=?, protein_g=?, carb_g=?, fat_g=? WHERE day_index=?",
+            (str(d.get('type', ''))[:16], int(d.get('protein_g') or 0), int(d.get('carb_g') or 0),
+             int(d.get('fat_g') or 0), int(d.get('day_index')))
+        )
+    conn.commit(); conn.close()
+    try:
+        generate_cycle_ai_comment()
+    except Exception as _e:
+        import logging; logging.getLogger('daily').warning(f"cycle AI comment failed: {_e}")
+    return jsonify({'ok': True})
+
+@app.route('/api/cycle/active-day', methods=['PATCH'])
+def api_cycle_active_day():
+    data = request.get_json(force=True) or {}
+    day_index = data.get('day_index')
+    if day_index is None:
+        return jsonify({'ok': False, 'error': 'day_index gerekli'}), 400
+    set_cycle_active_day(int(day_index))
+    return jsonify({'ok': True, 'active_day': int(day_index)})
+
 @app.route('/api/carb-cycle', methods=['GET'])
 def api_carb_cycle_get():
-    """Karb cycle planini + bugunun hedeflerini dondur.
-    Gun tipi: once manual override (cycle_day_type_YYYY-MM-DD), sonra otomatik haftanin gunu."""
+    """Geriye donuk uyumluluk sarmalayicisi: yeni cycle_days tablosundan eski (type-keyed)
+    formatta dondurur. Dashboard/getT() gibi eski tuketiciler degismeden calismaya devam eder."""
+    ensure_cycle_days_table()
     conn = get_db()
-    rows = conn.execute("SELECT * FROM carb_cycle_plan ORDER BY cal DESC").fetchall()
-    auto_type, today_str = auto_cycle_day_type()
-    # Manuel override: key = cycle_day_type_2026-07-05 (gun bazli)
-    manual_row = conn.execute(
-        "SELECT value FROM user_settings WHERE key=?", (f'cycle_day_type_{today_str}',)
-    ).fetchone()
+    rows = conn.execute("SELECT * FROM cycle_days ORDER BY day_index").fetchall()
     conn.close()
-    plan = {r['day_type']: {'cal': r['cal'], 'protein': r['protein'],
-                            'carb': r['carb'], 'fat': r['fat'], 'notes': r['notes']}
+    plan = {r['type']: {'cal': 4*r['protein_g'] + 4*r['carb_g'] + 9*r['fat_g'],
+                        'protein': r['protein_g'], 'carb': r['carb_g'], 'fat': r['fat_g'], 'notes': ''}
             for r in rows}
-    today_type = manual_row['value'] if manual_row else auto_type
+    active_idx = get_cycle_active_day()
+    active_row = next((r for r in rows if r['day_index'] == active_idx), None)
+    today_type = active_row['type'] if active_row else ''
+    auto_row = next((r for r in rows if r['day_index'] == operation_date().weekday()), None)
+    auto_type = auto_row['type'] if auto_row else ''
     today_targets = plan.get(today_type)
     return jsonify({'plan': plan, 'today_type': today_type, 'today_targets': today_targets,
-                    'auto_type': auto_type, 'is_manual': bool(manual_row)})
+                    'auto_type': auto_type, 'is_manual': active_idx != operation_date().weekday()})
 
 
 @app.route('/api/carb-cycle', methods=['PUT'])
@@ -468,12 +624,13 @@ def api_carb_cycle_select():
     today_str = operation_today()
     conn = get_db()
     if day_type:
-        # Gun bazli manual override
-        conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
-                     (f'cycle_day_type_{today_str}', day_type))
+        row = conn.execute("SELECT day_index FROM cycle_days WHERE type=?", (day_type,)).fetchone()
+        if row:
+            conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
+                         (f'cycle_active_day_{today_str}', str(row['day_index'])))
     else:
         # Secimi kaldir (otomatiÄe don)
-        conn.execute("DELETE FROM user_settings WHERE key=?", (f'cycle_day_type_{today_str}',))
+        conn.execute("DELETE FROM user_settings WHERE key=?", (f'cycle_active_day_{today_str}',))
     # Eski genel key de guncelle (geriye uyumluluk)
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
                  ('cycle_day_type', day_type))

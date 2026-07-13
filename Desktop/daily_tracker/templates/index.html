@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#05080f;--bg2:#0b1220;--bg3:#101929;--bg4:#16223a;
@@ -344,6 +345,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <button class="nav-btn" onclick="showPage('templates')"><span class="nav-icon">📌</span>Şablonlar</button>
     <button class="nav-btn" onclick="showPage('report')"><span class="nav-icon">📊</span>Rapor</button>
     <button class="nav-btn" onclick="showPage('besin')"><span class="nav-icon">🥗</span>Besin DB</button>
+    <button class="nav-btn" onclick="showPage('cycle')"><span class="nav-icon">🔄</span>Karb Cycle</button>
   <button class="nav-btn" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>Ayarlar</button>
   </nav>
   <div style="display:none">
@@ -1053,30 +1055,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   <!-- ═══ AYARLAR ═══ -->
   <div class="page" id="page-settings">
     <div class="pg-title">Ayarlar</div>
-    <div class="pg-sub">Karb cycle hedefleri ve sistem ayarları</div>
-
-    <!-- Karb Cycle Plan -->
-    <div class="card ct ct-red" style="max-width:560px">
-      <div class="card-head"><span class="card-icon">🔄</span><div><div class="card-name">Karb Cycle Planı</div><div class="card-sub" style="font-size:.72rem;color:var(--muted)">DB'den okunuyor — sidebar seçimiyle aktif hedef belirlenir</div></div></div>
-      <div id="cycle-plan-table" style="margin-top:8px"></div><div id="cycle-edit-panel" style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px"><div style="font-size:.68rem;font-weight:700;margin-bottom:5px;opacity:.75">&#9998; Hedefleri D&#252;zenle</div><table style="width:100%;border-collapse:collapse;font-size:.6rem"><thead><tr style="opacity:.45"><th style="text-align:left;padding:2px 3px">G&#252;n</th><th style="padding:2px 3px;text-align:center">Kcal</th><th style="padding:2px 3px;text-align:center">P</th><th style="padding:2px 3px;text-align:center">K</th><th style="padding:2px 3px;text-align:center">Y</th></tr></thead><tbody id="cycle-edit-tbody"></tbody></table><button onclick="saveCyclePlanEdits()" style="margin-top:7px;width:100%;padding:4px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:6px;font-size:.62rem;font-weight:700;cursor:pointer">&#128190; Kaydet</button><div id="cycle-edit-msg" style="font-size:.58rem;text-align:center;margin-top:3px;opacity:.8"></div></div>
-      <div style="margin-top:10px;font-size:.72rem;color:var(--muted)">Düzenlemek için kalori/makro alanına tıkla, Enter ile kaydet.</div>
-    </div>
-
-    <!-- Su & Kilo hedefleri -->
-    <div class="card ct ct-blue" style="max-width:560px;margin-top:14px">
-      <div class="card-head"><span class="card-icon">💧</span><div><div class="card-name">Günlük Hedefler</div></div></div>
-      <div class="form-row">
-        <div class="fg"><label>Su hedefi (ml)</label><input type="number" id="s-water" placeholder="5000"></div>
-        <div class="fg"><label>Hedef Kilo (kg)</label><input type="number" id="s-weight-goal" step=".5" placeholder="66"></div>
-      </div>
-      <!-- Hidden compat fields — used by getT() fallback -->
-      <input type="hidden" id="s-cal" value="1720">
-      <input type="hidden" id="s-cal-training" value="1920">
-      <input type="hidden" id="s-prot" value="140">
-      <input type="hidden" id="s-carb" value="200">
-      <input type="hidden" id="s-fat" value="40">
-      <button class="btn btn-blue" onclick="saveSettings()">Kaydet</button>
-    </div>
+    <div class="pg-sub">Sistem ayarları</div>
 
     <!-- AI Sistem -->
     <div class="card ct ct-teal" style="max-width:560px;margin-top:14px">
@@ -1114,6 +1093,13 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <button class="btn-primary" onclick="addFoodItem()" style="margin-top:8px">Kaydet</button>
   </div>
   <div id="food-registry-list" style="max-width:700px"></div>
+</div>
+
+<!-- ═══ KARB CYCLE ═══ -->
+<div class="page" id="page-cycle">
+  <div class="pg-title">Karb Cycle</div>
+  <div class="pg-sub">DB'den okunuyor — gün seçimiyle aktif hedef belirlenir · Push / Pull / Legs / Upper / Lower + 2 off</div>
+  <div id="cc-root" style="max-width:1180px"></div>
 </div>
 
 <!-- CONFIRM MODAL -->
@@ -1228,68 +1214,461 @@ function getT(training_day){
     return t;
   }catch{return DEF;}
 }
-async function renderCyclePlanTable(){
-  const el=$('cycle-plan-table');
-  if(!el)return;
-  const r=await fetch('/api/carb-cycle').then(r=>r.json()).catch(()=>null);
-  if(!r||!r.plan){el.innerHTML='<div style="color:var(--muted);font-size:.8rem">Yüklenemedi</div>';return;}
-  const ORDER=['Push','Pull','Legs','Upper','Lower','Off1','Off2'];
-  const COLORS={Push:'#ff6b6b',Pull:'#fbbf24',Legs:'#4ade80',Upper:'#38bdf8',Lower:'#a78bfa',Off1:'#94a3b8',Off2:'#64748b'};
-  const LABELS={Push:'Push — Pazartesi',Pull:'Pull — Salı',Legs:'Legs — Çarşamba',Upper:'Upper — Perşembe',Lower:'Lower — Cuma',Off1:'Off 1 — Cumartesi',Off2:'Off 2 — Pazar'};
-  const today_type=r.today_type||'';
-  let html=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
-    <thead><tr style="color:var(--muted);font-size:.68rem;text-transform:uppercase">
-      <th style="text-align:left;padding:4px 6px">Gün</th>
-      <th style="padding:4px 6px">Kcal</th>
-      <th style="padding:4px 6px">P</th>
-      <th style="padding:4px 6px">K</th>
-      <th style="padding:4px 6px">Y</th>
-      <th style="padding:4px 6px"></th>
-    </tr></thead><tbody>`;
-  for(const dt of ORDER){
-    const v=r.plan[dt]||{};
-    const isActive=dt===today_type;
-    const c=COLORS[dt]||'#94a3b8';
-    html+=`<tr id="cpr-${dt}" style="border-top:1px solid rgba(255,255,255,.04);${isActive?'background:rgba(255,255,255,.04)':''}">
-      <td style="padding:6px 6px;font-weight:700;color:${c}">${isActive?'▶ ':''}${LABELS[dt]}</td>
-      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="cal" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.cal||0}</span></td>
-      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="protein" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.protein||0}g</span></td>
-      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="carb" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.carb||0}g</span></td>
-      <td style="padding:6px;text-align:center"><span class="cpe" data-dt="${dt}" data-field="fat" onclick="editCycleCell(this)" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent" title="Düzenle">${v.fat||0}g</span></td>
-      <td style="padding:6px;text-align:center"><button onclick="selectDayType('${dt}');renderCyclePlanTable()" style="font-size:.65rem;padding:2px 8px;border-radius:6px;border:1px solid ${c}33;background:${c}11;color:${c};cursor:pointer">${isActive?'✓ Aktif':'Seç'}</button></td>
-    </tr>`;
-  }
-  html+='</tbody></table>';
-  el.innerHTML=html;
+/* ═══ KARB CYCLE (page-cycle) ═══ */
+const CC_WEEK=[{s:'PZT',f:'Pazartesi'},{s:'SAL',f:'Salı'},{s:'ÇAR',f:'Çarşamba'},{s:'PER',f:'Perşembe'},{s:'CUM',f:'Cuma'},{s:'CMT',f:'Cumartesi'},{s:'PAZ',f:'Pazar'}];
+const CC_PRESETS={
+  ppl:  [{p:140,k:200,y:40},{p:140,k:250,y:40},{p:140,k:300,y:40},{p:140,k:250,y:40},{p:140,k:200,y:40},{p:140,k:120,y:50},{p:140,k:80,y:50}],
+  guc:  [{p:150,k:260,y:45},{p:150,k:300,y:45},{p:150,k:340,y:45},{p:150,k:300,y:45},{p:150,k:260,y:45},{p:150,k:180,y:55},{p:150,k:140,y:55}],
+  kesim:[{p:160,k:150,y:35},{p:160,k:180,y:35},{p:160,k:210,y:35},{p:160,k:180,y:35},{p:160,k:150,y:35},{p:160,k:90,y:45},{p:160,k:60,y:45}]
+};
+const CC_AC='#57c7e6';
+let CC_PLAN=[], CC_DRAFT=[], CC_ACTIVE_DAY=0, CC_CLIP=null, CC_CLIP_FROM=null, CC_DRAG=null, CC_TPL='';
+let CC_CONFIRM_SAVE=false, CC_CONFIRM_RESET=false;
+let CC_WATER=3000, CC_WEIGHT=0, CC_SAVED_WATER=3000, CC_SAVED_WEIGHT=0, CC_GOALS_FLASH=false;
+let CC_AI_COMMENT='Plan kaydedilince AI koç yorumu burada görünecek.';
+let CC_SAVE_TIMER=null, CC_RESET_TIMER=null, CC_GOALS_TIMER=null;
+
+function ccKcal(d){ return 4*d.p+4*d.k+9*d.y; }
+function ccLevel(k){
+  if(k>=250) return {name:'Yüksek', c:'#f0a952', bg:'rgba(240,169,82,0.14)', bd:'rgba(240,169,82,0.45)'};
+  if(k>=150) return {name:'Orta',  c:'#57c7e6', bg:'rgba(87,199,230,0.14)', bd:'rgba(87,199,230,0.45)'};
+  return {name:'Düşük', c:'#8b93d6', bg:'rgba(139,147,214,0.14)', bd:'rgba(139,147,214,0.45)'};
+}
+function ccIsDirty(){
+  const norm=arr=>arr.map(d=>({type:d.type,p:d.p,k:d.k,y:d.y}));
+  return JSON.stringify(norm(CC_DRAFT))!==JSON.stringify(norm(CC_PLAN));
+}
+function ccClonePlanToDraft(){ CC_DRAFT=CC_PLAN.map((d,i)=>({id:'d'+(i+1),type:d.type,p:d.p,k:d.k,y:d.y})); CC_TPL=''; }
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function loadCyclePage(){
+  try{
+    const r=await API('/api/cycle');
+    CC_PLAN=(r.days||[]).slice().sort((a,b)=>a.day_index-b.day_index).map(d=>({type:d.type,p:d.protein_g,k:d.carb_g,y:d.fat_g}));
+    CC_ACTIVE_DAY=(r.active_day!=null)?r.active_day:0;
+    ccClonePlanToDraft();
+  }catch(e){console.warn('cycle load failed',e);}
+  try{
+    const s=await API('/api/settings');
+    CC_WATER=CC_SAVED_WATER=+(s.water||3000);
+    CC_WEIGHT=CC_SAVED_WEIGHT=+(s.weight_goal||0);
+  }catch(e){}
+  try{
+    const ai=await API('/api/cycle/ai-comment');
+    if(ai&&ai.comment) CC_AI_COMMENT=ai.comment;
+  }catch(e){}
+  renderCyclePage();
 }
 
-function editCycleCell(span){
-  if(span.querySelector('input'))return;
-  const raw=span.textContent.replace(/[^0-9.]/g,'');
-  const inp=document.createElement('input');
-  inp.type='number';inp.value=raw;inp.style.cssText='width:60px;padding:2px 4px;border-radius:4px;border:1px solid var(--accent);background:var(--card);color:var(--text);font-size:.8rem';
-  const dt=span.dataset.dt, field=span.dataset.field;
-  inp.onblur=()=>saveCycleCell(dt,field,inp.value);
-  inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){renderCyclePlanTable();}};
-  span.innerHTML='';span.appendChild(inp);inp.focus();inp.select();
+function ccWeeklyOf(days){
+  const sumP=days.reduce((a,d)=>a+d.p,0), sumK=days.reduce((a,d)=>a+d.k,0), sumY=days.reduce((a,d)=>a+d.y,0);
+  const kcalTot=days.reduce((a,d)=>a+ccKcal(d),0);
+  const pKc=4*sumP,kKc=4*sumK,yKc=9*sumY,tot=(pKc+kKc+yKc)||1;
+  const pPct=100*pKc/tot,kPct=100*kKc/tot,yPct=100*yKc/tot;
+  return {
+    kcalTot:kcalTot.toLocaleString('tr-TR'), kcalAvg:Math.round(kcalTot/7).toLocaleString('tr-TR'),
+    sumPstr:sumP+'g',sumKstr:sumK+'g',sumYstr:sumY+'g',pAvg:Math.round(sumP/7),
+    pPctStr:Math.round(pPct)+'%',kPctStr:Math.round(kPct)+'%',yPctStr:Math.round(yPct)+'%',
+    donutBg:'conic-gradient(#5bd1c4 0 '+pPct+'%, #f0a952 0 '+(pPct+kPct)+'%, #b48ee8 0 100%)'
+  };
 }
 
-async function saveCycleCell(dt,field,val){
-  // Read current row values
-  const row=document.getElementById('cpr-'+dt);
-  if(!row)return;
-  const cells={};
-  row.querySelectorAll('.cpe').forEach(s=>{
-    const v=s.querySelector('input')?s.querySelector('input').value:s.textContent.replace(/[^0-9.]/g,'');
-    cells[s.dataset.field]=parseInt(v)||0;
+function ccRenderActivePanel(){
+  const weekly=ccWeeklyOf(CC_PLAN);
+  const avgNum=Math.round(CC_PLAN.reduce((a,d)=>a+ccKcal(d),0)/7);
+  const gPos=Math.max(0,Math.min(100,100*(avgNum-1400)/1200));
+  const gBand=avgNum<1850?{n:'Kesim',c:'#57c7e6'}:(avgNum<=2050?{n:'Koruma',c:'#8b93d6'}:{n:'Bulk',c:'#f0a952'});
+  const todayIdx=(new Date().getDay()+6)%7;
+  const todayD=CC_PLAN[CC_ACTIVE_DAY]||CC_PLAN[0]||{type:'',p:0,k:0,y:0};
+  const todayLv=ccLevel(todayD.k);
+
+  let stripHtml='';
+  CC_PLAN.forEach((d,i)=>{
+    const isA=i===CC_ACTIVE_DAY;
+    const lv=ccLevel(d.k);
+    const kcal=ccKcal(d);
+    const pK=4*d.p,kK=4*d.k,yK=9*d.y,tot=(pK+kK+yK)||1;
+    const isToday=i===todayIdx;
+    const tag=isA?(isToday?'✓ AKTİF · BUGÜN':'✓ AKTİF'):(isToday?'BUGÜN':'SEÇ');
+    const tagColor=isA?'#7ad7f0':(isToday?'#f0a952':'#4a5b78');
+    const bg=isA?lv.bg:'rgba(255,255,255,0.02)';
+    const bd=isA?lv.bd:'#1c2942';
+    const shadow=isA?('0 0 0 1px '+lv.bd+' inset'):'none';
+    stripHtml+=`<button onclick="ccSelectDay(${i})" title="Aktif hedef olarak seç" style="display:flex;flex-direction:column;gap:6px;padding:11px 9px;border-radius:12px;background:${bg};border:1px solid ${bd};box-shadow:${shadow};cursor:pointer;font:inherit;color:inherit;text-align:left;width:100%;transition:all .15s ease">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:#8194b0;letter-spacing:.05em">${CC_WEEK[i].s}</span>
+        <span style="width:6px;height:6px;border-radius:50%;background:${lv.c}"></span>
+      </div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:#e6edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(d.type)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#fff">${kcal.toLocaleString('tr-TR')}</div>
+      <div style="height:4px;border-radius:3px;overflow:hidden;display:flex;background:#0c1424">
+        <span style="width:${(100*pK/tot).toFixed(1)}%;background:#5bd1c4"></span>
+        <span style="width:${(100*kK/tot).toFixed(1)}%;background:#f0a952"></span>
+        <span style="width:${(100*yK/tot).toFixed(1)}%;background:#b48ee8"></span>
+      </div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.06em;color:${tagColor}">${tag}</div>
+    </button>`;
   });
-  cells[field]=parseInt(val)||0;
-  await fetch('/api/carb-cycle',{method:'PATCH',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({day_type:dt,cal:cells.cal||0,protein:cells.protein||0,carb:cells.carb||0,fat:cells.fat||0})});
-  // Reload CYCLE_PLAN in memory too
-  await loadCyclePlan();
-  renderCyclePlanTable();
-  toast('Karb cycle güncellendi');
+
+  const goalsDirty = CC_WATER!==CC_SAVED_WATER || CC_WEIGHT!==CC_SAVED_WEIGHT;
+  const goalsLabel = CC_GOALS_FLASH?'✓ Kaydedildi':(goalsDirty?'Hedefleri Kaydet':'Hedefler kayıtlı');
+  const goalsStyleStr = CC_GOALS_FLASH
+    ? `background:rgba(91,209,196,0.15);border:1px solid rgba(91,209,196,0.5);color:#5bd1c4;cursor:default`
+    : goalsDirty
+      ? `background:linear-gradient(90deg,${CC_AC},#6a7bf0);border:none;color:#04121e;cursor:pointer`
+      : `background:rgba(255,255,255,0.04);border:1px solid #24324c;color:#4a5b78;cursor:default`;
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${CC_AC}">AKTİF CYCLE</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;color:#fff;margin-top:3px">Bu Hafta</div>
+      </div>
+      <span style="padding:6px 12px;border-radius:999px;background:${todayLv.bg};border:1px solid ${todayLv.bd};color:${todayLv.c};font-size:12px;font-weight:600">${todayLv.name} Karb</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:7px">${stripHtml}</div>
+    <div style="display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:14px;background:linear-gradient(135deg,rgba(87,199,230,0.06),rgba(106,123,240,0.05));border:1px solid #223250">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#7b8ca8">AKTİF HEDEF</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;color:#fff;margin-top:3px">${escHtml(todayD.type)} — ${CC_WEEK[CC_ACTIVE_DAY].f}</div>
+        </div>
+        <span style="padding:5px 11px;border-radius:999px;background:rgba(87,199,230,0.12);border:1px solid rgba(87,199,230,0.4);color:#7ad7f0;font-size:11px;font-weight:700">✓ Aktif</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;color:#fff;letter-spacing:-.02em">${ccKcal(todayD).toLocaleString('tr-TR')}</span>
+        <span style="font-size:14px;color:#7b8ca8">kcal hedef</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid #23314a">
+          <span style="width:8px;height:8px;border-radius:50%;background:#5bd1c4"></span>
+          <span style="font-size:11px;color:#8194b0;letter-spacing:.04em">PROTEİN</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#e6edf7">${todayD.p}g</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid #23314a">
+          <span style="width:8px;height:8px;border-radius:50%;background:#f0a952"></span>
+          <span style="font-size:11px;color:#8194b0;letter-spacing:.04em">KARB</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#e6edf7">${todayD.k}g</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid #23314a">
+          <span style="width:8px;height:8px;border-radius:50%;background:#b48ee8"></span>
+          <span style="font-size:11px;color:#8194b0;letter-spacing:.04em">YAĞ</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#e6edf7">${todayD.y}g</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:18px;align-items:center;padding:16px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid #1c2942">
+      <div style="position:relative;width:120px;height:120px;border-radius:50%;background:${weekly.donutBg};flex:0 0 auto">
+        <div style="position:absolute;inset:13px;border-radius:50%;background:#0b1220;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#fff">${weekly.kcalAvg}</span>
+          <span style="font-size:9px;color:#6d7f9c;letter-spacing:.05em">Ø KCAL/GÜN</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;flex:1">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#7b8ca8;margin-bottom:2px">HAFTALIK MAKRO DAĞILIMI</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="width:9px;height:9px;border-radius:2px;background:#5bd1c4"></span>
+          <span style="font-size:12px;color:#9db0cc;flex:1">Protein</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e6edf7">${weekly.sumPstr}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6d7f9c;width:34px;text-align:right">${weekly.pPctStr}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="width:9px;height:9px;border-radius:2px;background:#f0a952"></span>
+          <span style="font-size:12px;color:#9db0cc;flex:1">Karbonhidrat</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e6edf7">${weekly.sumKstr}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6d7f9c;width:34px;text-align:right">${weekly.kPctStr}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="width:9px;height:9px;border-radius:2px;background:#b48ee8"></span>
+          <span style="font-size:12px;color:#9db0cc;flex:1">Yağ</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e6edf7">${weekly.sumYstr}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6d7f9c;width:34px;text-align:right">${weekly.yPctStr}</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid #1c2942">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#7b8ca8">HEDEF BANDI</span>
+        <span style="font-size:12px;font-weight:700;color:${gBand.c}">${gBand.n} · Ø ${weekly.kcalAvg} kcal</span>
+      </div>
+      <div style="position:relative;height:8px;border-radius:5px;background:linear-gradient(90deg,rgba(87,199,230,0.55) 0 37.5%,rgba(139,147,214,0.55) 37.5% 54.2%,rgba(240,169,82,0.55) 54.2% 100%)">
+        <div style="position:absolute;top:-3px;left:${gPos.toFixed(1)}%;width:3px;height:14px;border-radius:2px;background:#fff;box-shadow:0 0 6px rgba(255,255,255,0.6)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:10px;color:#6d7f9c">Kesim &lt; 1.850</span>
+        <span style="font-size:10px;color:#6d7f9c">Koruma</span>
+        <span style="font-size:10px;color:#6d7f9c">Bulk &gt; 2.050</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid #1c2942">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:19px;color:#fff">${weekly.kcalTot}</div>
+        <div style="font-size:10px;color:#6d7f9c;letter-spacing:.06em;margin-top:3px">HAFTALIK KCAL</div>
+      </div>
+      <div style="padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid #1c2942">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:19px;color:#fff">${weekly.kcalAvg}</div>
+        <div style="font-size:10px;color:#6d7f9c;letter-spacing:.06em;margin-top:3px">Ø GÜNLÜK KCAL</div>
+      </div>
+      <div style="padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid #1c2942">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:19px;color:#fff">${weekly.pAvg}g</div>
+        <div style="font-size:10px;color:#6d7f9c;letter-spacing:.06em;margin-top:3px">Ø PROTEİN/GÜN</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div style="font-size:10px;color:#7b8ca8;letter-spacing:.08em;margin-bottom:6px">SU HEDEFİ (ML)</div>
+        <input type="number" value="${CC_WATER}" onchange="ccOnWater(this.value)" style="width:100%;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:15px;background:#0c1424;border:1px solid #24324c;border-radius:10px;color:#e6edf7;padding:11px 12px;outline:none">
+      </div>
+      <div>
+        <div style="font-size:10px;color:#7b8ca8;letter-spacing:.08em;margin-bottom:6px">HEDEF KİLO (KG)</div>
+        <input type="number" value="${CC_WEIGHT}" onchange="ccOnWeight(this.value)" style="width:100%;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:15px;background:#0c1424;border:1px solid #24324c;border-radius:10px;color:#e6edf7;padding:11px 12px;outline:none">
+      </div>
+    </div>
+    <button onclick="ccSaveGoals()" style="width:100%;box-sizing:border-box;padding:11px;border-radius:10px;font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;${goalsStyleStr}">${goalsLabel}</button>
+    <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:14px;background:rgba(180,142,232,0.05);border:1px solid rgba(180,142,232,0.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#b48ee8">AI KOÇ — CLAUDE HAIKU</span>
+        <span style="font-size:10px;color:#6d7f9c">plan kaydedilince güncellenir</span>
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#c3d0e4">${escHtml(CC_AI_COMMENT)}</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding-top:2px">
+        <span style="font-size:11px;color:#8194b0">Bot: <a href="https://t.me/taha_serdem_daily_rapor_bot" target="_blank" style="color:#57c7e6">@taha_serdem_daily_rapor_bot</a></span>
+        <span style="font-size:11px;color:#5bd1c4">✓ Railway aktif</span>
+      </div>
+    </div>
+  `;
+}
+
+function ccRenderDraftPanel(){
+  const dirty=ccIsDirty();
+  const weekly=ccWeeklyOf(CC_DRAFT);
+  const statusText=dirty?'● Kaydedilmemiş değişiklik':'Aktif planla aynı';
+  const statusStyle=dirty?'font-size:11px;font-weight:700;color:#f0a952':'font-size:11px;color:#6d7f9c';
+
+  const presetDefs=[['ppl','PPLUL'],['guc','Bulk'],['kesim','Cut']];
+  let presetHtml='';
+  presetDefs.forEach(([key,label])=>{
+    const active=CC_TPL===key;
+    const style=active
+      ? `padding:8px 13px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif;background:rgba(87,199,230,0.14);border:1px solid ${CC_AC};color:${CC_AC}`
+      : `padding:8px 13px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif;background:rgba(255,255,255,0.03);border:1px solid #24324c;color:#8194b0`;
+    presetHtml+=`<button onclick="ccApplyPreset('${key}')" style="${style}">${label}</button>`;
+  });
+
+  const btnBase='width:28px;height:28px;border-radius:7px;font-size:13px;display:flex;align-items:center;justify-content:center;border:none';
+  let rowsHtml='';
+  CC_DRAFT.forEach((d,i)=>{
+    const lv=ccLevel(d.k);
+    const kcal=ccKcal(d);
+    const dragging=CC_DRAG===d.id;
+    const rowStyle=`display:grid;grid-template-columns:26px 108px 1fr auto;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:${dragging?'rgba(87,199,230,0.08)':'rgba(255,255,255,0.02)'};border:1px solid ${dragging?'rgba(87,199,230,0.5)':'#1c2942'};opacity:${dragging?0.6:1}`;
+    const copied=CC_CLIP_FROM===d.id;
+    const copyStyle=copied
+      ? `${btnBase};background:rgba(87,199,230,0.16);border:1px solid ${CC_AC};color:${CC_AC};cursor:pointer`
+      : `${btnBase};background:rgba(255,255,255,0.04);border:1px solid #24324c;color:#8194b0;cursor:pointer`;
+    const pasteStyle=CC_CLIP
+      ? `${btnBase};background:rgba(87,199,230,0.08);border:1px solid rgba(87,199,230,0.45);color:#7ad7f0;cursor:pointer`
+      : `${btnBase};background:rgba(255,255,255,0.04);border:1px solid #24324c;color:#8194b0;opacity:0.28;cursor:default`;
+    rowsHtml+=`<div draggable="true" ondragstart="ccDragStart('${d.id}')" ondragover="event.preventDefault()" ondrop="event.preventDefault();ccDrop('${d.id}')" style="${rowStyle}">
+      <div style="cursor:grab;color:#4a5b78;font-size:14px;line-height:1;user-select:none;text-align:center">⋮⋮</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <input type="text" value="${escHtml(d.type)}" onchange="ccEditType('${d.id}',this.value)" maxlength="16" title="Adı düzenlemek için tıkla" style="width:100%;box-sizing:border-box;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:#e6edf7;background:transparent;border:none;border-bottom:1px dashed #2a3a58;border-radius:0;padding:0 0 2px;outline:none">
+        <span style="font-size:10px;color:#6d7f9c">${CC_WEEK[i].f} · ${lv.name}</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:9px;color:#6d7f9c;letter-spacing:.06em">P</span>
+          <input type="text" inputmode="numeric" value="${d.p}" onchange="ccEditMacro('${d.id}','p',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #5bd1c4;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:9px;color:#6d7f9c;letter-spacing:.06em">K</span>
+          <input type="text" inputmode="numeric" value="${d.k}" onchange="ccEditMacro('${d.id}','k',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #f0a952;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:9px;color:#6d7f9c;letter-spacing:.06em">Y</span>
+          <input type="text" inputmode="numeric" value="${d.y}" onchange="ccEditMacro('${d.id}','y',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #b48ee8;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="text-align:right">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#fff">${kcal.toLocaleString('tr-TR')}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button onclick="ccCopyDay('${d.id}')" title="Bu günü kopyala" style="${copyStyle}">${copied?'✓':'⎘'}</button>
+          <button onclick="ccPasteDay('${d.id}')" title="Kopyalanan makroları bu güne yapıştır" style="${pasteStyle}">⤵</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  const warns=[];
+  CC_DRAFT.forEach((d,i)=>{
+    if(d.p<100) warns.push(CC_WEEK[i].f+': protein düşük ('+d.p+'g)');
+    if(d.y<25) warns.push(CC_WEEK[i].f+': yağ çok düşük ('+d.y+'g)');
+  });
+  const warningHtml = warns.length
+    ? `<div style="padding:9px 12px;border-radius:10px;background:rgba(240,169,82,0.08);border:1px dashed rgba(240,169,82,0.4)"><span style="font-size:12px;color:#f0a952">⚠ ${warns.slice(0,2).join(' · ')}${warns.length>2?(' · +'+(warns.length-2)+' uyarı daha'):''}</span></div>`
+    : '';
+
+  const clipSrc=CC_CLIP_FROM ? CC_DRAFT.find(x=>x.id===CC_CLIP_FROM) : null;
+  const clipHtml = clipSrc
+    ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(87,199,230,0.07);border:1px dashed rgba(87,199,230,0.35)"><span style="font-size:12px;color:#7ad7f0">⎘ ${escHtml(clipSrc.type)} (${clipSrc.p}P / ${clipSrc.k}K / ${clipSrc.y}Y) kopyalandı — istediğin günde ⤵ ile yapıştır</span></div>`
+    : '';
+
+  const actBase="padding:11px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:'Manrope',sans-serif;border:none";
+  const resetLabel = CC_CONFIRM_RESET ? 'Emin misin?' : 'Geri Al';
+  const resetStyle = CC_CONFIRM_RESET
+    ? `${actBase};background:rgba(240,169,82,0.14);border:1px solid rgba(240,169,82,0.6);color:#f0a952;cursor:pointer`
+    : `${actBase};background:rgba(255,255,255,0.03);border:1px solid #24324c;color:${dirty?'#9db0cc':'#4a5b78'};cursor:${dirty?'pointer':'default'}`;
+  const saveLabel = CC_CONFIRM_SAVE ? 'Onayla: Aktif Planı Değiştir' : 'Kaydet';
+  const saveStyle = CC_CONFIRM_SAVE
+    ? `${actBase};font-weight:700;background:#f0a952;color:#04121e;cursor:pointer;padding:11px 20px`
+    : dirty
+      ? `${actBase};font-weight:700;background:linear-gradient(90deg,${CC_AC},#6a7bf0);color:#04121e;cursor:pointer;padding:11px 20px`
+      : `${actBase};font-weight:700;background:rgba(255,255,255,0.04);border:1px solid #24324c;color:#4a5b78;cursor:default;padding:11px 20px`;
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${CC_AC}">YENİ CYCLE PLANLAMA</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;color:#fff;margin-top:3px">Hedefleri Düzenle</div>
+      </div>
+      <span style="${statusStyle}">${statusText}</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:#7b8ca8;margin-right:2px">Şablon:</span>
+      ${presetHtml}
+    </div>
+    <div style="display:grid;grid-template-columns:26px 108px 1fr auto;align-items:center;gap:12px;padding:0 12px">
+      <div></div>
+      <div style="font-size:10px;color:#6d7f9c;letter-spacing:.08em">GÜN</div>
+      <div style="font-size:10px;color:#6d7f9c;letter-spacing:.08em">MAKRO (P · K · Y)</div>
+      <div style="font-size:10px;color:#6d7f9c;letter-spacing:.08em;text-align:right">KCAL</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">${rowsHtml}</div>
+    ${warningHtml}
+    ${clipHtml}
+    <div style="display:flex;align-items:center;gap:12px;margin-top:4px;padding-top:16px;border-top:1px solid #1c2942">
+      <div style="flex:1">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:16px;color:#fff">${weekly.kcalTot} <span style="font-size:12px;color:#6d7f9c">kcal / hafta</span></div>
+        <div style="font-size:11px;color:#6d7f9c;margin-top:2px">Kaydet'e basana kadar aktif plan değişmez</div>
+      </div>
+      <button onclick="ccResetDraft()" style="${resetStyle}">${resetLabel}</button>
+      <button onclick="ccSaveDraft()" style="${saveStyle}">${saveLabel}</button>
+    </div>
+  `;
+}
+
+function renderCyclePage(){
+  const root=$('cc-root');
+  if(!root)return;
+  if(!CC_PLAN.length){ root.innerHTML='<div style="color:var(--muted);padding:20px">Yükleniyor...</div>'; return; }
+  root.innerHTML=`
+    <div style="background:#0b1220;border:1px solid #1c2942;border-radius:22px;padding:24px;display:grid;grid-template-columns:1fr 566px;gap:18px;align-items:start">
+      <div style="background:rgba(255,255,255,0.015);border:1px solid #1a2740;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:18px">${ccRenderActivePanel()}</div>
+      <div style="background:rgba(255,255,255,0.015);border:1px solid #1a2740;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px">${ccRenderDraftPanel()}</div>
+    </div>`;
+}
+
+function ccSelectDay(day_index){
+  CC_ACTIVE_DAY=day_index;
+  renderCyclePage();
+  fetch('/api/cycle/active-day',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({day_index})})
+    .then(()=>{ if(typeof loadCyclePlan==='function') loadCyclePlan(); });
+}
+function ccEditType(id,val){
+  const v=val.slice(0,16);
+  CC_DRAFT=CC_DRAFT.map(d=>d.id===id?{...d,type:v}:d);
+  renderCyclePage();
+}
+function ccEditMacro(id,field,val){
+  let v=parseInt(val,10); if(isNaN(v))v=0; v=Math.max(0,Math.min(999,v));
+  CC_DRAFT=CC_DRAFT.map(d=>d.id===id?{...d,[field]:v}:d);
+  renderCyclePage();
+}
+function ccCopyDay(id){
+  const d=CC_DRAFT.find(x=>x.id===id); if(!d)return;
+  CC_CLIP={p:d.p,k:d.k,y:d.y}; CC_CLIP_FROM=id;
+  renderCyclePage();
+}
+function ccPasteDay(id){
+  if(!CC_CLIP)return;
+  CC_DRAFT=CC_DRAFT.map(d=>d.id===id?{...d,...CC_CLIP}:d);
+  renderCyclePage();
+}
+function ccApplyPreset(key){
+  const P=CC_PRESETS[key]; if(!P)return;
+  CC_DRAFT=CC_DRAFT.map((d,i)=>({...d,...P[i]}));
+  CC_TPL=key;
+  renderCyclePage();
+}
+function ccDragStart(id){ CC_DRAG=id; }
+function ccDrop(targetId){
+  const dragId=CC_DRAG;
+  if(!dragId||dragId===targetId){ CC_DRAG=null; renderCyclePage(); return; }
+  const arr=[...CC_DRAFT];
+  const from=arr.findIndex(d=>d.id===dragId);
+  const to=arr.findIndex(d=>d.id===targetId);
+  const m=arr.splice(from,1)[0];
+  arr.splice(to,0,m);
+  CC_DRAFT=arr; CC_DRAG=null;
+  renderCyclePage();
+}
+function ccResetDraft(){
+  if(!ccIsDirty())return;
+  if(!CC_CONFIRM_RESET){
+    CC_CONFIRM_RESET=true; CC_CONFIRM_SAVE=false;
+    renderCyclePage();
+    clearTimeout(CC_RESET_TIMER);
+    CC_RESET_TIMER=setTimeout(()=>{CC_CONFIRM_RESET=false;renderCyclePage();},4000);
+    return;
+  }
+  clearTimeout(CC_RESET_TIMER);
+  ccClonePlanToDraft();
+  CC_CONFIRM_RESET=false; CC_CLIP=null; CC_CLIP_FROM=null;
+  renderCyclePage();
+}
+async function ccSaveDraft(){
+  if(!ccIsDirty())return;
+  if(!CC_CONFIRM_SAVE){
+    CC_CONFIRM_SAVE=true; CC_CONFIRM_RESET=false;
+    renderCyclePage();
+    clearTimeout(CC_SAVE_TIMER);
+    CC_SAVE_TIMER=setTimeout(()=>{CC_CONFIRM_SAVE=false;renderCyclePage();},4000);
+    return;
+  }
+  clearTimeout(CC_SAVE_TIMER);
+  const payload=CC_DRAFT.map((d,i)=>({day_index:i,type:d.type,protein_g:d.p,carb_g:d.k,fat_g:d.y}));
+  const res=await PUT('/api/cycle',payload);
+  if(res && res.ok){
+    CC_PLAN=CC_DRAFT.map(d=>({type:d.type,p:d.p,k:d.k,y:d.y}));
+    ccClonePlanToDraft();
+    CC_CONFIRM_SAVE=false; CC_CLIP=null; CC_CLIP_FROM=null;
+    toast('Karb cycle planı kaydedildi');
+    renderCyclePage();
+    if(typeof loadCyclePlan==='function') loadCyclePlan();
+    setTimeout(async()=>{
+      try{const ai=await API('/api/cycle/ai-comment'); if(ai&&ai.comment){CC_AI_COMMENT=ai.comment;renderCyclePage();}}catch(e){}
+    },2500);
+  }else{
+    toast('Kaydetme başarısız',false);
+    CC_CONFIRM_SAVE=false;
+    renderCyclePage();
+  }
+}
+function ccOnWater(val){ let v=parseInt(val,10); if(isNaN(v))v=0; CC_WATER=v; renderCyclePage(); }
+function ccOnWeight(val){ let v=parseInt(val,10); if(isNaN(v))v=0; CC_WEIGHT=v; renderCyclePage(); }
+function ccSaveGoals(){
+  const goalsDirty = CC_WATER!==CC_SAVED_WATER || CC_WEIGHT!==CC_SAVED_WEIGHT;
+  if(!goalsDirty || CC_GOALS_FLASH) return;
+  const t={...getT(),water:CC_WATER,weight_goal:CC_WEIGHT};
+  localStorage.setItem('targets',JSON.stringify(t));
+  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
+  CC_SAVED_WATER=CC_WATER; CC_SAVED_WEIGHT=CC_WEIGHT; CC_GOALS_FLASH=true;
+  renderCyclePage();
+  clearTimeout(CC_GOALS_TIMER);
+  CC_GOALS_TIMER=setTimeout(()=>{CC_GOALS_FLASH=false;renderCyclePage();},2000);
+  loadDashboard();
 }
 
 function toggleWaterGoalPanel(){
@@ -1308,19 +1687,8 @@ function saveWaterGoal(){
   $('water-goal-panel').style.display='none';
   loadDashboard();loadLogPage();
 }
-function saveSettings(){
-  const t={cal:+$('s-cal').value||DEF.cal,cal_training:+($('s-cal-training')&&$('s-cal-training').value)||DEF.cal_training,prot:+$('s-prot').value||DEF.prot,carb:+$('s-carb').value||DEF.carb,fat:+$('s-fat').value||DEF.fat,water:+$('s-water').value||DEF.water,weight_goal:+($('s-weight-goal').value)||0};
-  localStorage.setItem('targets',JSON.stringify(t));
-  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
-  toast('Hedefler kaydedildi');loadDashboard();
-}
 async function loadSettings(){
-  renderCyclePlanTable();
-  renderCycleEditTable();
   try{const s=await fetch('/api/settings').then(r=>r.json());if(Object.keys(s).length){const merged={...DEF,...s};localStorage.setItem('targets',JSON.stringify(merged));}}catch(e){}
-  const t=getT();['cal','prot','carb','fat','water'].forEach(k=>$('s-'+k)&&($('s-'+k).value=t[k]));
-  if($('s-cal-training')&&t.cal_training)$('s-cal-training').value=t.cal_training;
-  if($('s-weight-goal')&&t.weight_goal)$('s-weight-goal').value=t.weight_goal;
 }
 
 /* TOAST */
@@ -1351,14 +1719,12 @@ function closeConfirm(){$('confirm-modal').classList.remove('show');}
 $('confirm-modal').addEventListener('click',e=>{if(e.target===$('confirm-modal'))closeConfirm();});
 
 /* NAV */
-async function renderCycleEditTable(){var tbody=document.getElementById('cycle-edit-tbody');if(!tbody)return;try{var r=await fetch('/api/carb-cycle').then(function(r){return r.json();});var plan=r.plan||{};var order=['Push','Pull','Legs','Upper','Lower','Off1','Off2'];var html='';for(var i=0;i<order.length;i++){var dt=order[i];var v=plan[dt]||{cal:0,protein:0,carb:0,fat:0};var is='background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:3px;color:inherit;text-align:center;font-size:.58rem;padding:1px';html+='<tr data-dt="'+dt+'"><td style="padding:2px 3px;opacity:.8">'+dt+'</td>'+'<td><input type="number" value="'+v.cal+'" data-f="cal" style="width:44px;'+is+'"></td>'+'<td><input type="number" value="'+v.protein+'" data-f="protein" style="width:32px;'+is+'"></td>'+'<td><input type="number" value="'+v.carb+'" data-f="carb" style="width:32px;'+is+'"></td>'+'<td><input type="number" value="'+v.fat+'" data-f="fat" style="width:32px;'+is+'"></td></tr>';}tbody.innerHTML=html;}catch(e){}}
-async function saveCyclePlanEdits(){var rows=document.querySelectorAll('#cycle-edit-tbody tr');var updates={};rows.forEach(function(row){var dt=row.dataset.dt;var inps=row.querySelectorAll('input');updates[dt]={cal:+inps[0].value,protein:+inps[1].value,carb:+inps[2].value,fat:+inps[3].value};});var msg=document.getElementById('cycle-edit-msg');if(msg)msg.textContent='Kaydediliyor...';try{var res=await fetch('/api/carb-cycle',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(updates)});var d=await res.json();if(msg)msg.textContent=d.ok?'&#10003; Kaydedildi':'&#10005; Hata';if(d.ok){await loadCyclePlan();renderCyclePlanTable();renderCycleEditTable();}}catch(e){if(msg)msg.textContent='&#10005; Hata';}setTimeout(function(){var m=document.getElementById('cycle-edit-msg');if(m)m.textContent='';},3000);}
 function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   $('page-'+name)?.classList.add('active');
   document.querySelector(`.nav-btn[onclick*="${name}"]`)?.classList.add('active');
-  ({dashboard:loadDashboard,log:loadLogPage,calendar:loadCalendar,report:loadReport,templates:loadTemplates,settings:loadSettings,ozet:loadOzet,besin:loadFoodRegistry})[name]?.();
+  ({dashboard:loadDashboard,log:loadLogPage,calendar:loadCalendar,report:loadReport,templates:loadTemplates,settings:loadSettings,ozet:loadOzet,besin:loadFoodRegistry,cycle:loadCyclePage})[name]?.();
 }
 function showSub(id){
   const order=['sub-vucut','sub-beslenme','sub-supplement'];
