@@ -4904,7 +4904,7 @@ def seed_supplement_data():
         ('California Gold Nutrition C',    'California Gold Nutrition', 'kapsul', 1, 'kapsul'),
         ('NOW Magtein',                    'NOW',                 'kapsul',  1, 'kapsul'),
         ('NOW L-Theanine Double Strength', 'NOW',                 'kapsul',  1, 'kapsul'),
-        ('Optimum Nutrition Collagen',     'Optimum Nutrition',   'olcek',   1, 'Ã¶lÃ§ek'),
+        ('Optimum Nutrition Collagen',     'Optimum Nutrition',   'olcek',   1, 'ölçek'),
         ('NOW Zinc Picolinate 50mg',       'NOW',                 'kapsul',  1, 'kapsul'),
         ('Elektrolit',                     '',                    'g',       8, 'g'),
         ('Citrulline',                     '',                    'g',       8, 'g'),
@@ -4924,7 +4924,7 @@ def seed_supplement_data():
 
     # Stacks
     STACKS = [
-        ('AÃ§ Karna Stack',   'fasted',     1, [
+        ('Aç Karna Stack',   'fasted',     1, [
             ('NOW NAC 600mg',                  1, 'kapsul'),
             ('Garden of Life Probiotic',       1, 'kapsul'),
         ]),
@@ -4936,7 +4936,7 @@ def seed_supplement_data():
             ('California Gold Nutrition C',    1, 'kapsul'),
             ('NOW Magtein',                    1, 'kapsul'),
             ('NOW L-Theanine Double Strength', 1, 'kapsul'),
-            ('Optimum Nutrition Collagen',     1, 'Ã¶lÃ§ek'),
+            ('Optimum Nutrition Collagen',     1, 'ölçek'),
             ('NOW Zinc Picolinate 50mg',       1, 'kapsul'),
         ]),
         ('Pre Workout Stack','preworkout', 3, [
@@ -4971,8 +4971,30 @@ def seed_supplement_data():
     conn.commit()
     conn.close()
 
+def fix_mojibake_supplement_names():
+    """Onceki bozuk-encoding ile seed edilmis kayitlari duzelt (ornek: 'AÃ§ Karna Stack')."""
+    FIXES = {
+        'AÃ§ Karna Stack': 'Aç Karna Stack',
+    }
+    UNIT_FIXES = {
+        'Ã¶lÃ§ek': 'ölçek',
+    }
+    conn = get_db()
+    try:
+        for bad, good in FIXES.items():
+            conn.execute("UPDATE supplement_stacks SET name=? WHERE name=?", (good, bad))
+        for bad, good in UNIT_FIXES.items():
+            conn.execute("UPDATE supplement_stack_items SET unit=? WHERE unit=?", (good, bad))
+            conn.execute("UPDATE supplement_products SET default_unit=? WHERE default_unit=?", (good, bad))
+        conn.commit()
+    except Exception as e:
+        log.warning(f"fix_mojibake_supplement_names failed: {e}")
+    finally:
+        conn.close()
+
 try:
     seed_supplement_data()
+    fix_mojibake_supplement_names()
 except Exception as e:
     import logging; logging.getLogger('daily').warning(f"supplement seed failed: {e}")
 
