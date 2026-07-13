@@ -109,9 +109,20 @@ def operation_cutoff_hour(now=None):
 _GUNAYDIN_DATE_OVERRIDE: str | None = None  # günaydın komutuyla set edilir → vardiya atlanır
 
 def set_gunaydin_override():
-    """Günaydın algılandığında bugünü zorla operasyon günü yap."""
+    """Günaydın algılandığında bugünü zorla operasyon günü yap.
+    Hem bot'un kendi bellek-içi durumuna hem de paylaşılan DB'ye yazar -
+    web tarafı (app.py, /api/steps dahil) da aynı override'ı görsün diye."""
     global _GUNAYDIN_DATE_OVERRIDE
-    _GUNAYDIN_DATE_OVERRIDE = date.today().isoformat()
+    today_str = date.today().isoformat()
+    _GUNAYDIN_DATE_OVERRIDE = today_str
+    try:
+        conn = get_db()
+        conn.execute("CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT, ts TEXT DEFAULT CURRENT_TIMESTAMP)")
+        conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('force_operation_date', ?)", (today_str,))
+        conn.commit()
+        conn.close()
+    except Exception as _e:
+        logging.getLogger('daily').warning(f"gunaydin force_operation_date write failed: {_e}")
 
 def operation_date(now=None):
     """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar.

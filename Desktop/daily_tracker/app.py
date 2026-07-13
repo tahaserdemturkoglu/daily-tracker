@@ -57,13 +57,21 @@ def operation_cutoff_hour(now=None):
 
 
 def operation_date(now=None):
-    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir."""
+    """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir.
+    force_operation_date (günaydın override) sadece gerçek takvim günüyle eşleştiği sürece
+    geçerlidir - ertesi gün otomatik temizlenir, yoksa sonsuza dek o günde kilitli kalırdı."""
     try:
         conn = sqlite3.connect(DB_PATH)
         row = conn.execute("SELECT value FROM user_settings WHERE key='force_operation_date'").fetchone()
-        conn.close()
         if row and row[0]:
-            return date.fromisoformat(row[0])
+            override = date.fromisoformat(row[0])
+            real_today = (now or now_istanbul()).date()
+            if override == real_today:
+                conn.close()
+                return override
+            conn.execute("DELETE FROM user_settings WHERE key='force_operation_date'")
+            conn.commit()
+        conn.close()
     except:
         pass
     now = now or now_istanbul()
