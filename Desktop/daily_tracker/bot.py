@@ -420,32 +420,100 @@ def extended_context():
     except Exception:
         pass
 
+    # 6. Karb Cycle plani (web panelinden yonetilir) + bugunun aktif hedefi + AI Koc'un son yorumu
+    try:
+        cycle_rows = conn.execute("SELECT * FROM cycle_days ORDER BY day_index").fetchall()
+        if cycle_rows:
+            ai_row = conn.execute("SELECT value FROM user_settings WHERE key='cycle_ai_comment'").fetchone()
+            target = get_active_cycle_target()
+            WEEK = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+            lines.append('KARB CYCLE PLANI (haftalik, kullanici web panelinden duzenler):')
+            for r in cycle_rows:
+                p, k, y = r['protein_g'] or 0, r['carb_g'] or 0, r['fat_g'] or 0
+                kcal = 4 * p + 4 * k + 9 * y
+                mark = ' <- BUGUNUN AKTIF HEDEFI' if target and r['day_index'] == target['day_index'] else ''
+                lines.append(f"  {WEEK[r['day_index']]} {r['type']}: {kcal}kcal (P{p}/K{k}/Y{y}g){mark}")
+            if target:
+                lines.append(
+                    f"BUGUNUN GERCEK HEDEFI: {target['type']} -> {target['kcal']}kcal "
+                    f"P{target['protein_g']}g K{target['carb_g']}g Y{target['fat_g']}g "
+                    "(beslenme/kalori yorumunu buna gore yap, sabit varsayilan kullanma)"
+                )
+            if ai_row and ai_row['value']:
+                lines.append(f"WEB PANELI AI KOC'UN SON DEGERLENDIRMESI: {ai_row['value']}")
+    except Exception:
+        pass
+
     conn.close()
     return ('\n'.join(lines) + '\n') if lines else ''
 
+def get_active_cycle_target():
+    """Bugunun (veya web panelinden manuel secilmis) aktif Karb Cycle hedefini dondurur.
+    cycle_days tablosu yoksa/bossa None. Ayri conn kullanir, extended_context()'in conn'una bagli degildir."""
+    today_str = operation_today()
+    conn = get_db()
+    row = None
+    try:
+        override = conn.execute(
+            "SELECT value FROM user_settings WHERE key=?", (f'cycle_active_day_{today_str}',)
+        ).fetchone()
+        day_index = None
+        if override and override['value'] not in (None, ''):
+            try:
+                day_index = int(override['value'])
+            except ValueError:
+                day_index = None
+        if day_index is None:
+            day_index = operation_date().weekday()
+        row = conn.execute("SELECT * FROM cycle_days WHERE day_index=?", (day_index,)).fetchone()
+    except Exception:
+        row = None
+    conn.close()
+    if not row:
+        return None
+    p, k, y = row['protein_g'] or 0, row['carb_g'] or 0, row['fat_g'] or 0
+    return {'day_index': row['day_index'], 'type': row['type'],
+            'protein_g': p, 'carb_g': k, 'fat_g': y, 'kcal': 4 * p + 4 * k + 9 * y}
+
 def user_profile_context():
-    """Kullanici profili, hedefler ve site ayarlarini DB'den oku."""
+    """Kullanici profili ve hedefleri DB'den oku. Kalori/makro hedefi Karb Cycle'in
+    bugunku aktif gununden gelir (eski sabit user_settings degerleri sadece tablo
+    yoksa/bossa yedek olarak kullanilir — o anahtarlarin hepsini korumasizca
+    dokmek antrenman_sessions gibi devasa JSON bloblari da siziyordu)."""
     conn = get_db()
     conn.execute("""CREATE TABLE IF NOT EXISTS user_profile (
         key TEXT PRIMARY KEY, value TEXT, ts TEXT DEFAULT CURRENT_TIMESTAMP)""")
     profile_rows = conn.execute("SELECT key, value FROM user_profile").fetchall()
-    # Sitedeki hedefleri de oku
     try:
-        settings_rows = conn.execute("SELECT key, value FROM user_settings").fetchall()
+        legacy = {r['key']: r['value'] for r in conn.execute(
+            "SELECT key, value FROM user_settings WHERE key IN ('cal','prot','carb','fat','water','weight_goal')"
+        ).fetchall()}
     except Exception:
-        settings_rows = []
+        legacy = {}
     conn.close()
 
+    target = get_active_cycle_target()
+    hedef_lines = []
+    if target:
+        hedef_lines.append(f"  antrenman_gunu: {target['type']}")
+        hedef_lines.append(f"  kalori_hedef: {target['kcal']}")
+        hedef_lines.append(f"  protein_hedef_g: {target['protein_g']}")
+        hedef_lines.append(f"  karb_hedef_g: {target['carb_g']}")
+        hedef_lines.append(f"  yag_hedef_g: {target['fat_g']}")
+    else:
+        for k, label in [('cal', 'kalori_hedef'), ('prot', 'protein_hedef_g'),
+                          ('carb', 'karb_hedef_g'), ('fat', 'yag_hedef_g')]:
+            if legacy.get(k):
+                hedef_lines.append(f"  {label}: {legacy[k]}")
+    if legacy.get('water'):
+        hedef_lines.append(f"  su_hedef_ml: {legacy['water']}")
+    if legacy.get('weight_goal'):
+        hedef_lines.append(f"  kilo_hedef_kg: {legacy['weight_goal']}")
+
     lines = []
-    settings = {r['key']: r['value'] for r in settings_rows}
-    if settings:
-        name_map = {'cal': 'kalori_hedef', 'prot': 'protein_hedef_g',
-                    'carb': 'karb_hedef_g', 'fat': 'yag_hedef_g',
-                    'water': 'su_hedef_ml', 'weight_goal': 'kilo_hedef_kg'}
-        lines.append('HEDEFLER (siteden):')
-        for k, v in settings.items():
-            label = name_map.get(k, k)
-            lines.append(f"  {label}: {v}")
+    if hedef_lines:
+        lines.append('HEDEFLER:')
+        lines.extend(hedef_lines)
 
     profile = {r['key']: r['value'] for r in profile_rows}
     if profile:
@@ -544,9 +612,19 @@ def save_owner_chat_id(chat_id):
 
 # TRAINING
 def training_day(date_str):
-    # Weekday-based: Mon=Push, Tue=Pull, Wed=Leg, Thu=Upper, Fri=Lower, Sat=Off, Sun=Off
+    """Haftanin gunune denk gelen antrenman tipini Karb Cycle tablosundan okur
+    (kullanici web panelinden isim degistirmis/gunleri surukleyip yeniden
+    sıralamış olabilir). Tablo yoksa/bossa eski sabit haftalik desene duser."""
     WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
     d = date.fromisoformat(date_str)
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT type FROM cycle_days WHERE day_index=?", (d.weekday(),)).fetchone()
+        conn.close()
+        if row and row['type']:
+            return row['type']
+    except Exception:
+        pass
     return WEEKDAY_CYCLE[d.weekday()]
 
 # HELPERS
@@ -2562,7 +2640,8 @@ async def night_check(context):
 
     cal_val   = int(cal['c'] or 0) if cal else 0
     water_val = int(water['w'] or 0) if water else 0
-    cal_hedef = int(settings.get('cal', 2500))
+    cycle_target = get_active_cycle_target()
+    cal_hedef = cycle_target['kcal'] if cycle_target else int(settings.get('cal', 2500))
     su_hedef  = int(settings.get('water', 3000))
 
     lines = [f"🌙 Gece Özeti — {today}"]
@@ -3261,9 +3340,8 @@ async def cmd_chat_ai(u, c):
         and not any(w in n for w in ['yaptim', 'yapti', 'kg', 'tekrar', 'set ', 'rep ', 'kaydet', 'kayit'])
     )
     if _is_workout_query:
-        WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
-        today_split = WEEKDAY_CYCLE[operation_date().weekday()]
-        if today_split == 'Off':
+        today_split = training_day(operation_today())
+        if 'Off' in today_split:
             reply = "🛌 Bugün Off day. Dinlen."
         else:
             last_date, formatted = last_split_workout(today_split)
@@ -3333,7 +3411,7 @@ async def cmd_chat_ai(u, c):
 def enforce_training_day_on_actions(actions, date_val=None):
     """AI yanilsa bile kayitlar resmi sistem gunune baglanir."""
     official = training_day(date_val or operation_today())
-    valid_days = {"Push", "Pull", "Leg", "Upper", "Lower", "Off"}
+    valid_days = {"Push", "Pull", "Leg", "Legs", "Upper", "Lower", "Off", "Off 1", "Off 2"}
     fixed = []
     for action in actions or []:
         if not isinstance(action, dict):
