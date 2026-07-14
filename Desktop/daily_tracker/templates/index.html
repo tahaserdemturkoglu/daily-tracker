@@ -1069,10 +1069,9 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
       </div>
     </div>
   </div>
-</div>
 
-<!-- ═══ BESİN VERİTABANI ═══ -->
-<div class="page" id="page-besin">
+  <!-- ═══ BESİN VERİTABANI ═══ -->
+  <div class="page" id="page-besin">
   <div class="pg-title">Besin Veritabanı</div>
   <div class="pg-sub">Kayıtlı besinler ve makro değerleri</div>
   <div class="card ct ct-blue" style="max-width:600px;margin-bottom:16px">
@@ -1095,11 +1094,12 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   <div id="food-registry-list" style="max-width:700px"></div>
 </div>
 
-<!-- ═══ KARB CYCLE ═══ -->
-<div class="page" id="page-cycle">
-  <div class="pg-title">Karb Cycle</div>
-  <div class="pg-sub">DB'den okunuyor — gün seçimiyle aktif hedef belirlenir · Push / Pull / Legs / Upper / Lower + 2 off</div>
-  <div id="cc-root" style="max-width:1180px"></div>
+  <!-- ═══ KARB CYCLE ═══ -->
+  <div class="page" id="page-cycle">
+    <div class="pg-title">Karb Cycle</div>
+    <div class="pg-sub">DB'den okunuyor — gün seçimiyle aktif hedef belirlenir · Push / Pull / Legs / Upper / Lower + 2 off</div>
+    <div id="cc-root"></div>
+  </div>
 </div>
 
 <!-- CONFIRM MODAL -->
@@ -1564,8 +1564,8 @@ function renderCyclePage(){
   if(!root)return;
   if(!CC_PLAN.length){ root.innerHTML='<div style="color:var(--muted);padding:20px">Yükleniyor...</div>'; return; }
   root.innerHTML=`
-    <div style="background:#0b1220;border:1px solid #1c2942;border-radius:22px;padding:24px;display:grid;grid-template-columns:1fr 566px;gap:18px;align-items:start">
-      <div style="background:rgba(255,255,255,0.015);border:1px solid #1a2740;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:18px">${ccRenderActivePanel()}</div>
+    <div style="background:#0b1220;border:1px solid #1c2942;border-radius:22px;padding:24px;display:grid;grid-template-columns:minmax(0,1fr) 620px;gap:20px;align-items:start;max-width:1600px">
+      <div style="background:rgba(255,255,255,0.015);border:1px solid #1a2740;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:18px">${ccRenderActivePanel()}</div>
       <div style="background:rgba(255,255,255,0.015);border:1px solid #1a2740;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px">${ccRenderDraftPanel()}</div>
     </div>`;
 }
