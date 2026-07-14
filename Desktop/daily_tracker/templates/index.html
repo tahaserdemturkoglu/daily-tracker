@@ -3461,7 +3461,12 @@ function calDayCellHtml(d){
     </div>
     <div style="margin-top:auto;display:flex;flex-direction:column;gap:5px">
       <span style="display:inline-block;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:4px 9px;border-radius:6px">${d.training}${d.is_override?' 🔁':''}</span>
-      ${kcal?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${kcal.toLocaleString('tr-TR')} kcal</span>`:''}
+      ${kcal?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${kcal.toLocaleString('tr-TR')} kcal</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;display:flex;gap:7px">
+        <span style="color:#5bd1c4">P${d.target.protein_g}</span>
+        <span style="color:#f0a952">K${d.target.carb_g}</span>
+        <span style="color:#b48ee8">Y${d.target.fat_g}</span>
+      </span>`:''}
     </div>
   </div>`;
 }
