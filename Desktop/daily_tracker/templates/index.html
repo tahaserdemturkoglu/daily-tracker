@@ -982,27 +982,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   <div class="page" id="page-calendar">
     <div class="pg-title">Takvim</div>
     <div class="pg-sub">Antrenman programı — güne tıkla detay gör</div>
-    <div class="legend">
-      <div class="leg-item"><div class="leg-dot" style="background:#cc0000"></div>Push</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#0066cc"></div>Pull</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#ff8800"></div>Leg</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#7c3aed"></div>Upper</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#22c55e"></div>Lower</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#444"></div>Off</div>
-      <div class="leg-item"><span style="font-size:.8rem">💊</span>Vitamin var</div>
-      <div class="leg-item"><div class="leg-dot" style="background:rgba(255,255,255,.5);border-radius:50%"></div>Veri var</div>
-    </div>
-    <div class="cal-nav">
-      <button onclick="calMove(-1)">‹</button>
-      <div class="cal-month" id="cal-month"></div>
-      <button onclick="calMove(1)">›</button>
-    </div>
-    <div class="cal-grid">
-      <div class="cal-dow">Pzt</div><div class="cal-dow">Sal</div><div class="cal-dow">Çar</div>
-      <div class="cal-dow">Per</div><div class="cal-dow">Cum</div><div class="cal-dow">Cmt</div><div class="cal-dow">Paz</div>
-      <div id="cal-days" style="display:contents"></div>
-    </div>
-    <div id="day-panel" style="display:none" class="day-panel"></div>
+    <div id="cal-root"></div>
   </div>
 
   <!-- ═══ RAPOR ═══ -->
@@ -2902,9 +2882,9 @@ let trDate=today(), activeSetType='Working Set';
 
 function selectSetType(t){
   activeSetType=t;
-  $('stb-wu').className='st-btn'+(t==='Warm-up'?' active-wu':'');
-  $('stb-ws').className='st-btn'+(t==='Working Set'?' active-ws':'');
-  $('stb-bo').className='st-btn'+(t==='Back-off'?' active-bo':'');
+  if($('stb-wu'))$('stb-wu').className='st-btn'+(t==='Warm-up'?' active-wu':'');
+  if($('stb-ws'))$('stb-ws').className='st-btn'+(t==='Working Set'?' active-ws':'');
+  if($('stb-bo'))$('stb-bo').className='st-btn'+(t==='Back-off'?' active-bo':'');
   if($('stb-ds'))$('stb-ds').className='st-btn'+(t==='Drop Set'?' active-ds':'');
   if($('stb-ss'))$('stb-ss').className='st-btn'+(t==='Super Set'?' active-ss':'');
 }
@@ -3367,110 +3347,282 @@ async function renderOzMonthly(){
 }
 
 /* ═══════════════════════════════════════════════════
-   CALENDAR
+   CALENDAR (Takvim)
 ════════════════════════════════════════════════════ */
-let calY=new Date().getFullYear(),calM=new Date().getMonth()+1;
-function loadCalendar(){renderCal(calY,calM);}
-function calMove(dir){calM+=dir;if(calM>12){calM=1;calY++;}if(calM<1){calM=12;calY--;}renderCal(calY,calM);}
+const CAL_COLORS={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444444'};
+const CAL_DESC={
+  Push:'İtiş günü — göğüs, omuz ve triceps. Ağır bileşik hareketlerle başla.',
+  Pull:'Çekiş günü — sırt ve biceps. Formu bozmadan çek.',
+  Leg:'Bacak günü — kaçış yok. Squat ile başla.',
+  Upper:'Üst vücut tekrar — daha yüksek tekrar, pompa odaklı.',
+  Lower:'Alt vücut tekrar — kalça ve tek bacak vurgusu.',
+  Off:'Bugün dinlenme. Kas antrenmanla yıkılır, dinlenmeyle büyür.'
+};
+const CAL_DOW=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+const CAL_SPLITS=['Push','Pull','Leg','Upper','Lower','Off'];
+const CAL_WEEKDAY_CYCLE=['Push','Pull','Leg','Upper','Lower','Off','Off'];
+const CAL_SPLIT_DAYINDEX={Push:0,Pull:1,Leg:2,Upper:3,Lower:4,Off:5};
 
-async function renderCal(y,m){
-  sv('cal-month',new Date(y,m-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'}));
-  const [days,vitDays]=await Promise.all([API('/api/calendar/'+y+'/'+m), getVitDays(y,m)]);
-  const el=$('cal-days');if(!el)return;
-  const firstDow=(new Date(y,m-1,1).getDay()+6)%7;
-  let html=Array(firstDow).fill('<div class="cal-day empty"></div>').join('');
-  days.forEach(d=>{
-    const isT=d.date===today(),hasVit=vitDays.has(d.date);
-    html+=`<div class="cal-day ${isT?'today':''} ${d.has_data?'has-data':''} ${hasVit?'has-vit':''}" style="background:${d.color}22;border-color:${d.color}55;border-style:solid" onclick="showDayPanel('${d.date}')">
-      <div class="cal-num" style="color:${d.color}">${d.day}</div>
-      <div class="cal-type" style="color:${d.color}">${d.training}</div>
-    </div>`;
-  });
-  el.innerHTML=html;
+let CAL_Y=new Date().getFullYear(), CAL_M=new Date().getMonth()+1;
+let CAL_DAYS=[], CAL_WEEK=null, CAL_SEL=null, CAL_DETAIL=null;
+
+async function loadCalendar(){
+  if(!CAL_SEL) CAL_SEL=today();
+  await calRenderMonth();
+}
+async function calRenderMonth(){
+  const reqs=[API(`/api/calendar/${CAL_Y}/${CAL_M}`)];
+  if(!CAL_WEEK) reqs.push(API('/api/cycle'));
+  const res=await Promise.all(reqs);
+  CAL_DAYS=Array.isArray(res[0])?res[0]:[];
+  if(res[1]) CAL_WEEK=res[1];
+  renderCalendarPage();
+  calLoadDetail();
+}
+function calMove(dir){
+  CAL_M+=dir;
+  if(CAL_M>12){CAL_M=1;CAL_Y++;}
+  if(CAL_M<1){CAL_M=12;CAL_Y--;}
+  calRenderMonth();
+}
+function calGoToday(){
+  const t=today(), d=new Date(t+'T12:00:00');
+  CAL_Y=d.getFullYear(); CAL_M=d.getMonth()+1; CAL_SEL=t;
+  calRenderMonth();
+}
+function calSelectDay(dateStr){
+  CAL_SEL=dateStr; CAL_DETAIL=null;
+  renderCalendarPage();
+  calLoadDetail();
+}
+function calNaturalSplit(dateStr){
+  const dow=(new Date(dateStr+'T12:00:00').getDay()+6)%7;
+  return CAL_WEEKDAY_CYCLE[dow];
+}
+async function calPickSplit(dateStr,split){
+  const natural=calNaturalSplit(dateStr);
+  if(split===natural){
+    await fetch('/api/cycle/active-day',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:dateStr})});
+  }else{
+    await fetch('/api/cycle/active-day',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({day_index:CAL_SPLIT_DAYINDEX[split],date:dateStr})});
+  }
+  await calRenderMonth();
+  if(typeof loadCyclePlan==='function') loadCyclePlan();
 }
 
-async function getVitDays(y,m){
-  try{
-    const conn=await fetch(`/api/vitamins/month/${y}/${m}`).then(r=>r.json()).catch(()=>[]);
-    return new Set((conn||[]).map(v=>v.date));
-  }catch{return new Set();}
-}
-
-async function showDayPanel(dateStr){
-  const panel=$('day-panel');
-  panel.style.display='block';
-  panel.innerHTML=`<div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">Yükleniyor...</div>`;
-  const [d,meals,aiReport]=await Promise.all([
-    API('/api/day/'+dateStr),
+async function calLoadDetail(){
+  const dateStr=CAL_SEL;
+  const dayObj=CAL_DAYS.find(x=>x.date===dateStr);
+  const td=dayObj?dayObj.training:'Off';
+  const [meals,dayData,progRows]=await Promise.all([
     API('/api/meals/'+dateStr),
-    API('/api/ai-report/'+dateStr)
+    API('/api/day/'+dateStr),
+    td!=='Off' ? API('/api/training/exercises/'+encodeURIComponent(td)) : Promise.resolve([])
   ]);
-  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},w=d.work||{},mo=d.mood||{};
-  const totCal=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.calories||0),0):0;
-  const totP=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.protein_g||0),0):0;
-  const totC=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.carbs_g||0),0):0;
-  const totF=Array.isArray(meals)?meals.reduce((s,m)=>s+(m.fat_g||0),0):0;
-  const vits=d.vitamins||[];
-  const steps=d.steps?.steps||0;
+  if(dateStr!==CAL_SEL) return;
+  const mealsArr=Array.isArray(meals)?meals:[];
+  const totals={
+    calories: mealsArr.reduce((s,m)=>s+(m.calories||0),0),
+    protein_g: mealsArr.reduce((s,m)=>s+(m.protein_g||0),0),
+    carbs_g: mealsArr.reduce((s,m)=>s+(m.carbs_g||0),0),
+    fat_g: mealsArr.reduce((s,m)=>s+(m.fat_g||0),0),
+  };
+  CAL_DETAIL={totals, vitamins:(dayData&&dayData.vitamins)||[], note:(dayData&&dayData.note)||'', program:Array.isArray(progRows)?progRows:[]};
+  calRenderDetail();
+}
 
-  // Meal listesi - slot gruplu
-  let mealHtml='';
-  if(Array.isArray(meals)&&meals.length){
-    // renderMealList ile aynı format
-    const tmpEl=document.createElement('div');
-    renderMealList(tmpEl.id||'_tmp_',meals,false,tmpEl);
-    mealHtml=`<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin:10px 0 6px">🍽️ Öğünler</div>
-      <div id="day-panel-meals"></div>`;
-  }
+function calBuildCells(){
+  const firstDow=(new Date(CAL_Y,CAL_M-1,1).getDay()+6)%7;
+  const cells=Array(firstDow).fill(null);
+  CAL_DAYS.forEach(d=>cells.push(d));
+  while(cells.length%7!==0) cells.push(null);
+  return cells;
+}
+function calDayCellHtml(d){
+  if(!d) return `<div style="min-height:74px"></div>`;
+  const isToday=d.date===today();
+  const isSel=d.date===CAL_SEL;
+  const c=CAL_COLORS[d.training]||'#444';
+  const isOff=d.training==='Off';
+  return `<div onclick="calSelectDay('${d.date}')" style="min-height:74px;border-radius:10px;border:1px solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${isSel?'rgba(87,199,230,.1)':'var(--bg2)'};padding:8px 9px;cursor:pointer;display:flex;flex-direction:column;gap:6px;opacity:${isOff?0.7:1};transition:border-color .15s">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:${isToday?800:500};color:${isToday?c:'var(--text)'}">${String(d.day).padStart(2,'0')}</span>
+      <span style="display:flex;align-items:center;gap:4px">
+        ${d.session_done?`<span style="font-size:10px;font-weight:900;color:#22c55e" title="Antrenman yapıldı">✓</span>`:''}
+        ${isToday?`<span style="width:6px;height:6px;border-radius:50%;background:${c}"></span>`:''}
+      </span>
+    </div>
+    <div style="margin-top:auto">
+      <span style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:2px 6px;border-radius:5px">${d.training}${d.is_override?' 🔁':''}</span>
+    </div>
+  </div>`;
+}
 
-  // AI raporu
-  let aiHtml='';
-  if(aiReport&&aiReport.items){
-    const rows=aiReport.items.map(it=>`
-      <div style="display:flex;align-items:flex-start;gap:6px;padding:4px 0;font-size:.78rem">
-        <span style="font-size:.9rem;flex-shrink:0">${it.type==='ok'?'✓':'⚠'}</span>
-        <span style="color:${it.type==='ok'?'#4ade80':'#fbbf24'}">${it.text}</span>
-      </div>`).join('');
-    const suggs=aiReport.suggestions?.length?`<div style="margin-top:6px;font-size:.72rem;color:var(--muted)"><b>Öneri:</b> ${aiReport.suggestions.join(' ')}</div>`:'';
-    aiHtml=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin:10px 0">
-      <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:6px">🤖 AI Raporu</div>
-      ${rows}${suggs}
+function calSplitOptionsHtml(dayObj){
+  return CAL_SPLITS.map(s=>{
+    const active=s===dayObj.training;
+    const c=CAL_COLORS[s];
+    const style=active?`background:${c};color:#fff;border:1px solid ${c}`:`background:transparent;color:var(--muted);border:1px solid var(--border)`;
+    return `<button onclick="calPickSplit('${dayObj.date}','${s}')" style="font-size:10px;font-weight:800;letter-spacing:.3px;padding:5px 10px;border-radius:7px;cursor:pointer;${style}">${s}</button>`;
+  }).join('');
+}
+function calProgramHtml(dayObj){
+  if(dayObj.training==='Off'){
+    return `<div style="background:var(--bg2);border:1px dashed var(--border);border-radius:12px;padding:18px;text-align:center">
+      <div style="font-size:14px;font-weight:700;color:var(--muted)">Dinlenme günü</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px">uyku · beslenme · hafif yürüyüş</div>
     </div>`;
   }
+  const prog=(CAL_DETAIL&&CAL_DETAIL.program)||[];
+  if(!prog.length) return `<div style="color:var(--muted);font-size:.78rem">Program bulunamadı</div>`;
+  return prog.map(ex=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+    <span style="font-size:13px;font-weight:600">${ex.exercise}</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${ex.sets||''}${ex.sets&&ex.reps?'×':''}${ex.reps||''}</span>
+  </div>`).join('');
+}
+function calMakroHtml(dayObj){
+  const totals=CAL_DETAIL&&CAL_DETAIL.totals;
+  if(!totals) return `<div style="color:var(--muted);font-size:.78rem">Yükleniyor...</div>`;
+  const target=dayObj.target;
+  const rows=[
+    {label:'KCAL',real:Math.round(totals.calories),tgt:target?target.kcal:null,unit:''},
+    {label:'PROTEİN',real:Math.round(totals.protein_g),tgt:target?target.protein_g:null,unit:'g'},
+    {label:'KARB',real:Math.round(totals.carbs_g),tgt:target?target.carb_g:null,unit:'g'},
+    {label:'YAĞ',real:Math.round(totals.fat_g),tgt:target?target.fat_g:null,unit:'g'},
+  ];
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${rows.map(r=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">${r.label}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700">${r.real}${r.unit}<span style="font-size:10px;color:var(--muted);font-weight:500"> / ${r.tgt!=null?r.tgt+r.unit:'—'}</span></div>
+    </div>`).join('')}
+  </div>`;
+}
+function calStackHtml(){
+  const vits=(CAL_DETAIL&&CAL_DETAIL.vitamins)||[];
+  if(!vits.length) return `<div style="color:var(--muted);font-size:.78rem;padding:10px;text-align:center;border:1px dashed var(--border);border-radius:10px">Bu gün için takviye kaydı yok</div>`;
+  return vits.map(v=>{
+    const st=vitStatusOf(v);
+    const meta=VIT_STATUS_META[st]||VIT_STATUS_META.taken;
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid ${meta.border};border-radius:10px;padding:8px 10px">
+      <span style="font-size:13px">${meta.emoji}</span>
+      <span style="flex:1;font-size:12px;font-weight:600">${v.name}${v.amount?' '+fmtAmt(v.amount):''}${v.unit?' '+v.unit:''}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:${meta.color}">${meta.label}</span>
+    </div>`;
+  }).join('');
+}
+function calNoteHtml(){
+  const note=(CAL_DETAIL&&CAL_DETAIL.note)||'';
+  return `<textarea id="cal-note-input" placeholder="Not ekle (ör. gün aşırı, yarım doz...)" rows="2" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical;outline:none;width:100%;box-sizing:border-box">${note}</textarea>
+  <button onclick="calSaveNote()" class="btn btn-sm btn-ghost" style="margin-top:6px;width:100%">Notu Kaydet</button>`;
+}
+async function calSaveNote(){
+  const el=$('cal-note-input'); if(!el) return;
+  const val=el.value;
+  await POST('/api/note',{date:CAL_SEL,note:val});
+  toast('Not kaydedildi');
+  if(CAL_DETAIL) CAL_DETAIL.note=val;
+  const idx=CAL_DAYS.findIndex(x=>x.date===CAL_SEL);
+  if(idx>=0) CAL_DAYS[idx].note=val;
+}
+function calWeekStripHtml(){
+  if(!CAL_WEEK||!Array.isArray(CAL_WEEK.days)) return '';
+  return `<div style="display:flex;gap:5px">
+    ${CAL_WEEK.days.map((r,i)=>{
+      const label=CAL_WEEKDAY_CYCLE[i];
+      const c=CAL_COLORS[label]||'#444';
+      const isOff=label==='Off';
+      return `<div style="flex:1;text-align:center;padding:7px 2px;border-radius:7px;background:${isOff?'transparent':'var(--bg2)'};border:1px solid ${isOff?'var(--border)':c+'44'}">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${CAL_DOW[i]}</div>
+        <div style="font-size:9px;font-weight:800;color:${isOff?'var(--muted)':c};margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.type}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
 
-  panel.innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="font-size:1rem;font-weight:900">${new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}</div>
-      <div style="background:${d.color||'#333'};color:#fff;padding:3px 12px;border-radius:6px;font-size:.72rem;font-weight:900;text-transform:uppercase">${d.training||'—'}</div>
+function calDetailInnerHtml(dayObj){
+  if(!dayObj) return `<div style="color:var(--muted)">Gün seçilmedi</div>`;
+  const d=new Date(dayObj.date+'T12:00:00');
+  const dateLabel=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+  const c=CAL_COLORS[dayObj.training]||'#444';
+  return `
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted)">SEÇİLİ GÜN</div>
+      <div style="font-weight:800;font-size:1.3rem;margin-top:4px">${dateLabel}</div>
+      <div style="margin-top:8px">
+        <span style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#fff;background:${c};padding:5px 14px;border-radius:8px">${dayObj.training.toUpperCase()}${dayObj.session_done?' ✓':''}</span>
+      </div>
+      ${CAL_DESC[dayObj.training]?`<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5">${CAL_DESC[dayObj.training]}</div>`:''}
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted)">GÜNÜ DEĞİŞTİR</span>
+          ${dayObj.is_override?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:#d98e04">TELAFİ</span>`:''}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${calSplitOptionsHtml(dayObj)}</div>
+      </div>
     </div>
-    <!-- Özet makro satırı -->
-    ${totCal?`<div style="display:flex;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.04);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:.78rem">
-      <span>🔥 <b style="color:var(--yellow)">${Math.round(totCal)}</b> kcal</span>
-      <span>P <b style="color:#4ade80">${Math.round(totP)}g</b></span>
-      <span>K <b style="color:#60a5fa">${Math.round(totC)}g</b></span>
-      <span>Y <b style="color:#f97316">${Math.round(totF)}g</b></span>
-      ${nu.water_ml?`<span>💧 <b style="color:#22d3ee">${(nu.water_ml/1000).toFixed(1)}L</b></span>`:''}
-      ${steps?`<span>👟 <b>${steps.toLocaleString('tr-TR')}</b></span>`:''}
-    </div>`:''}
-    <!-- Diğer veriler -->
-    <div class="day-data-grid">
-      ${sl.hours?`<div class="day-data-item"><div class="day-lbl">Uyku</div><div class="day-val">${fmtSleep(sl.hours)} / ${sl.quality||'?'}/10</div></div>`:''}
-      ${ex.type?`<div class="day-data-item"><div class="day-lbl">Egzersiz</div><div class="day-val">${ex.type} ${ex.duration?ex.duration+'dk':''}</div></div>`:''}
-      ${mo.energy?`<div class="day-data-item"><div class="day-lbl">Enerji/Mood</div><div class="day-val">${mo.energy}/${mo.mood||'?'}</div></div>`:''}
-      ${w.hours?`<div class="day-data-item"><div class="day-lbl">İş</div><div class="day-val">${w.hours}s</div></div>`:''}
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">PROGRAM</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${calProgramHtml(dayObj)}</div>
     </div>
-    <!-- AI raporu -->
-    ${aiHtml}
-    <!-- Supplementler -->
-    ${vits.length?`<div style="margin-bottom:8px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:5px">💊 Takviyeler</div>${vits.map(v=>`<span style="display:inline-block;background:rgba(180,77,255,.15);border:1px solid rgba(180,77,255,.3);color:var(--purple);border-radius:6px;padding:3px 9px;font-size:.75rem;font-weight:700;margin:2px">${v.name}${v.amount?' '+fmtAmt(v.amount):''}${v.unit?' '+v.unit:''}</span>`).join('')}</div>`:''}
-    <!-- Öğünler -->
-    ${mealHtml}
-    ${d.note?`<div style="margin-top:10px;font-size:.82rem;color:var(--muted);font-style:italic">"${d.note}"</div>`:''}
-    <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="$('day-panel').style.display='none'">Kapat ✕</button>`;
-  // Öğünleri slot gruplu render et
-  if(Array.isArray(meals)&&meals.length){
-    renderMealList('day-panel-meals',meals,false);
-  }
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">MAKRO <span style="color:var(--muted);opacity:.7">(gerçek / hedef)</span></div>
+      ${calMakroHtml(dayObj)}
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">TAKVİYE</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${calStackHtml()}</div>
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">NOT</div>
+      ${calNoteHtml()}
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">HAFTALIK DÖNGÜ</div>
+      ${calWeekStripHtml()}
+    </div>`;
+}
+function calRenderDetail(){
+  const wrap=$('cal-detail-wrap'); if(!wrap) return;
+  const dayObj=CAL_DAYS.find(x=>x.date===CAL_SEL)||null;
+  wrap.innerHTML=calDetailInnerHtml(dayObj);
+}
+
+function renderCalendarPage(){
+  const root=$('cal-root'); if(!root) return;
+  const monthLabel=new Date(CAL_Y,CAL_M-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+  const cells=calBuildCells();
+  const todayObj=CAL_DAYS.find(x=>x.date===today());
+  const selObj=CAL_DAYS.find(x=>x.date===CAL_SEL)||null;
+  root.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">bugün</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:var(--bg2);border:1px solid var(--border);padding:4px 10px;border-radius:8px">${fmtD(today())}</span>
+      ${todayObj?`<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:#fff;background:${CAL_COLORS[todayObj.training]};padding:5px 12px;border-radius:7px">${todayObj.training.toUpperCase()}</span>`:''}
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      ${CAL_SPLITS.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${CAL_COLORS[s]}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s}</span></div>`).join('')}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <button onclick="calMove(-1)" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer">‹</button>
+        <div style="font-weight:800;font-size:1.15rem;min-width:150px;text-align:center;text-transform:capitalize">${monthLabel}</div>
+        <button onclick="calMove(1)" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer">›</button>
+        <button onclick="calGoToday()" style="height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer">bugün</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">
+        ${CAL_DOW.map(d=>`<div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted)">${d}</div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+        ${cells.map(calDayCellHtml).join('')}
+      </div>
+    </div>
+    <div id="cal-detail-wrap" style="border-radius:16px;border:1px solid var(--border);background:rgba(255,255,255,.02);padding:18px;display:flex;flex-direction:column;gap:16px">
+      ${calDetailInnerHtml(selObj)}
+    </div>
+  </div>`;
 }
 
 /* ═══════════════════════════════════════════════════

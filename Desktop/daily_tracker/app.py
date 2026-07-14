@@ -98,18 +98,31 @@ init_whoop_tables()
 TRAINING_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
 TRAINING_COLORS = {
     'Push':  '#cc0000',
-    'Pull':  '#990000',
-    'Leg':   '#ff2222',
-    'Upper': '#aa1111',
-    'Lower': '#881111',
-    'Off':   '#333333',
+    'Pull':  '#0066cc',
+    'Leg':   '#ff8800',
+    'Upper': '#7c3aed',
+    'Lower': '#22c55e',
+    'Off':   '#444444',
 }
 
 def training_day(date_str):
-    # Weekday-based: Mon=Push, Tue=Pull, Wed=Leg, Thu=Upper, Fri=Lower, Sat=Off, Sun=Off
+    """Bu tarihin resmi antrenman/split kategorisini dondurur (Push/Pull/Leg/Upper/Lower/Off).
+    Once o tarihe ozel manuel telafi override'i (cycle_active_day_<tarih>, Takvim'den veya
+    Karb Cycle panelinden ayni mekanizma) kontrol edilir, yoksa haftanin gunune gore sabit
+    PPLUL deseni kullanilir. Geriye donuk uyumluluk icin hep bu 6 sabit isimden birini dondurur
+    (training_exercises tablosu ve TRAINING_COLORS bu isimlerle anahtarli)."""
     WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
     d = date.fromisoformat(date_str)
-    return WEEKDAY_CYCLE[d.weekday()]
+    day_index = d.weekday()
+    try:
+        conn = get_db()
+        override = conn.execute("SELECT value FROM user_settings WHERE key=?", (f'cycle_active_day_{date_str}',)).fetchone()
+        conn.close()
+        if override and override['value'] not in (None, ''):
+            day_index = int(override['value'])
+    except Exception:
+        pass
+    return WEEKDAY_CYCLE[day_index % 7]
 
 # âââ DATABASE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 def get_db():
@@ -454,11 +467,17 @@ def get_cycle_active_day():
             pass
     return operation_date().weekday()
 
-def set_cycle_active_day(day_index):
-    today_str = operation_today()
+def set_cycle_active_day(day_index, date_str=None):
+    date_str = date_str or operation_today()
     conn = get_db()
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
-                 (f'cycle_active_day_{today_str}', str(day_index)))
+                 (f'cycle_active_day_{date_str}', str(day_index)))
+    conn.commit(); conn.close()
+
+def clear_cycle_active_day(date_str=None):
+    date_str = date_str or operation_today()
+    conn = get_db()
+    conn.execute("DELETE FROM user_settings WHERE key=?", (f'cycle_active_day_{date_str}',))
     conn.commit(); conn.close()
 
 def generate_cycle_ai_comment():
@@ -562,8 +581,17 @@ def api_cycle_active_day():
     day_index = data.get('day_index')
     if day_index is None:
         return jsonify({'ok': False, 'error': 'day_index gerekli'}), 400
-    set_cycle_active_day(int(day_index))
-    return jsonify({'ok': True, 'active_day': int(day_index)})
+    date_str = data.get('date') or operation_today()
+    set_cycle_active_day(int(day_index), date_str)
+    return jsonify({'ok': True, 'active_day': int(day_index), 'date': date_str})
+
+@app.route('/api/cycle/active-day', methods=['DELETE'])
+def api_cycle_active_day_clear():
+    """Belirli bir tarihin telafi override'ini temizler (o gun tekrar haftanin dogal gunune doner)."""
+    data = request.get_json(force=True) or {}
+    date_str = data.get('date') or operation_today()
+    clear_cycle_active_day(date_str)
+    return jsonify({'ok': True, 'date': date_str})
 
 @app.route('/api/carb-cycle', methods=['GET'])
 def api_carb_cycle_get():
@@ -1492,17 +1520,41 @@ def api_calendar(year, month):
     days_in_month = cal_mod.monthrange(year, month)[1]
     result = []
     conn = get_db()
+    WEEKDAY_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
+    cycle_rows = {r['day_index']: r for r in conn.execute("SELECT * FROM cycle_days ORDER BY day_index").fetchall()}
+    # Bu ayda gercek antrenman seansi yapilmis gunler (antrenman panelinin gercek verisi)
+    session_dates = set()
+    try:
+        sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+        if sess_row and sess_row['value']:
+            for s in json.loads(sess_row['value']):
+                if s.get('date'):
+                    session_dates.add(s['date'])
+    except Exception:
+        pass
     for day in range(1, days_in_month + 1):
         d = f"{year:04d}-{month:02d}-{day:02d}"
         tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs')
         has_data = any(conn.execute(f"SELECT id FROM {t} WHERE date=?", (d,)).fetchone() for t in tables)
         note_row = conn.execute("SELECT note FROM daily_notes WHERE date=?", (d,)).fetchone()
-        td = training_day(d)
+        override_row = conn.execute("SELECT value FROM user_settings WHERE key=?", (f'cycle_active_day_{d}',)).fetchone()
+        is_override = bool(override_row and override_row['value'] not in (None, ''))
+        day_index = int(override_row['value']) if is_override else date.fromisoformat(d).weekday()
+        td = WEEKDAY_CYCLE[day_index % 7]
+        cyc = cycle_rows.get(day_index)
+        target = None
+        if cyc:
+            target = {'type': cyc['type'], 'protein_g': cyc['protein_g'], 'carb_g': cyc['carb_g'], 'fat_g': cyc['fat_g'],
+                      'kcal': 4 * cyc['protein_g'] + 4 * cyc['carb_g'] + 9 * cyc['fat_g']}
         result.append({
             'date': d, 'day': day,
             'training': td,
             'color': TRAINING_COLORS[td],
             'has_data': has_data,
+            'session_done': d in session_dates,
+            'is_override': is_override,
+            'day_index': day_index,
+            'target': target,
             'note': note_row['note'] if note_row else '',
         })
     conn.close()
