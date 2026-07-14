@@ -488,13 +488,13 @@ def generate_cycle_ai_comment():
         'son_7_gun_gerceklesen': last7,
     }
     system_prompt = (
-        'Sen bir beslenme/karb-cycle kocusun. Kullanicinin haftalik karb cycle planini (7 gun, '
-        'her gun icin tip/protein/karb/yag/kcal), hedef kilosunu, su hedefini ve son 7 gundeki '
-        'gercek beslenme ortalamalarini JSON olarak alacaksin. Sadece 2-3 cumlelik, Turkce, '
-        'samimi ama net bir degerlendirme yaz: plan hangi bantta (kesim <1850 / koruma / bulk >2050 '
-        'ortalama kcal), antrenman gunleri ile off gunleri arasindaki karb dagilimi mantikli mi, '
-        'gercek beslenme planla ne kadar uyumlu, varsa somut bir oneri. Baska hicbir sey yazma, '
-        'sadece bu degerlendirme metnini don.'
+        'Sen bir beslenme/karb-cycle koçusun. Kullanıcının haftalık karb cycle planını (7 gün, '
+        'her gün için tip/protein/karb/yağ/kcal), hedef kilosunu, su hedefini ve son 7 gündeki '
+        'gerçek beslenme ortalamalarını JSON olarak alacaksın. Sadece 2-3 cümlelik, Türkçe, '
+        'samimi ama net bir değerlendirme yaz: plan hangi bantta (kesim <1850 / koruma / bulk >2050 '
+        'ortalama kcal), antrenman günleri ile off günleri arasındaki karb dağılımı mantıklı mı, '
+        'gerçek beslenme planla ne kadar uyumlu, varsa somut bir öneri. Başka hiçbir şey yazma, '
+        'sadece bu değerlendirme metnini dön.'
     )
     body = {
         'model': ANTHROPIC_MODEL,
