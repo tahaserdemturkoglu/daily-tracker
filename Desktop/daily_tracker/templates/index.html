@@ -3438,6 +3438,11 @@ function calBuildCells(){
   while(cells.length%7!==0) cells.push(null);
   return cells;
 }
+function calHexA(hex,a){
+  const h=hex.replace('#','');
+  const r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 function calDayCellHtml(d){
   if(!d) return `<div style="min-height:112px"></div>`;
   const isToday=d.date===today();
@@ -3445,8 +3450,8 @@ function calDayCellHtml(d){
   const c=CAL_COLORS[d.training]||'#444';
   const isOff=d.training==='Off';
   const kcal=d.target?d.target.kcal:null;
-  const wash=isOff?'var(--bg2)':c+'14';
-  return `<div onclick="calSelectDay('${d.date}')" style="min-height:112px;border-radius:12px;border:${isSel?'2px':'1px'} solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${isSel?'rgba(87,199,230,.14)':wash};padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:10px;opacity:${isOff?0.75:1};transition:border-color .15s">
+  const wash=isOff?'var(--bg2)':calHexA(c,.18);
+  return `<div onclick="calSelectDay('${d.date}')" style="min-height:112px;border-radius:12px;border:${isSel?'2px':'1px'} solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${wash};box-shadow:${isSel?'0 0 0 3px rgba(87,199,230,.18)':'none'};padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:10px;opacity:${isOff?0.75:1};transition:border-color .15s">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:${isToday?800:500};color:${isToday?c:'var(--text)'}">${String(d.day).padStart(2,'0')}</span>
       <span style="display:flex;align-items:center;gap:6px">
