@@ -3145,7 +3145,7 @@ async def cmd_chat_ai(u, c):
         await u.message.reply_text(_stack_result)
         return
 
-    # "TÃ¼m vitaminler tamam" kisayolu â€” template'lerden direkt log at
+    # "Tüm vitaminler tamam" kisayolu — template'lerden direkt log at
     _all_vitamins = any(w in n for w in ['tum vitaminler','hepsini aldim','vitaminler tamam',
                                           'suppler tamam','suppler aldim','supplement tamam',
                                           'stacki aldim','stack aldim','sabah stacki tamam'])
