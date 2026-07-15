@@ -1620,12 +1620,13 @@ async function loadNewDashboard(){
   try{
     ndInjectStyle();
     const t0=today();
-    const [d,macro,week7,bm,aiRes,stacks,meals]=await Promise.all([
+    const [d,macro,week7,bm,aiRes,stacks,meals,whoopStatus,whoopDaily]=await Promise.all([
       API('/api/today'),API('/api/macro/today'),API('/api/macro/range?days=7&detail=1'),
       API('/api/body/metrics?days=30'),API('/api/dashboard/ai-insights'),
-      API('/api/supplements/stacks'),API('/api/meals/'+t0)
+      API('/api/supplements/stacks'),API('/api/meals/'+t0),
+      API('/whoop/status').catch(()=>({connected:false})),API('/whoop/daily/'+t0).catch(()=>({found:false}))
     ]);
-    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[]};
+    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false}};
     renderNewDashboard();
   }catch(e){console.warn('loadNewDashboard:',e);}
 }
@@ -1844,7 +1845,13 @@ function ndMealsSummaryHtml(groups,cal,prot,carb,fat){
   </div>`;
 }
 
-function ndTrainingWhoopHtml(week7,todayType,whoopConnected){
+function ndWhoopStat(label,val,color){
+  return `<div style="background:${ndHexA(color,.06)};border:1px solid ${ndHexA(color,.35)};border-radius:10px;padding:10px 12px">
+    <div style="font-size:11px;color:${color}">${label}</div>
+    <div style="font-size:16px;font-weight:700;margin-top:3px;color:${color}">${val}</div>
+  </div>`;
+}
+function ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,calAlinan){
   const tstr=today();
   const cells=week7.map(e=>{
     const isToday=e.date===tstr;
@@ -1863,10 +1870,42 @@ function ndTrainingWhoopHtml(week7,todayType,whoopConnected){
   const doneCount=week7.filter(e=>e.training_done).length;
   const totalNonOff=week7.filter(e=>e.training_type&&e.training_type!=='Off').length;
   const streak=(ND_STATE&&ND_STATE.d.streak)||0;
-  const whoopBadge=whoopConnected
-    ?`<span style="background:${ndHexA(ND.whoop,.12)};border:1px solid ${ndHexA(ND.whoop,.4)};color:${ND.whoop};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">senkron</span>`
-    :`<span style="background:#161B28;border:1px solid ${ND.border2};color:${ND.muted};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">bağlı değil</span>`;
-  const whoopBody=whoopConnected?'':`<div style="background:${ND.bg};border:1px dashed ${ND.border2};border-radius:10px;padding:14px;text-align:center;color:${ND.muted};font-size:12px">WHOOP hesabı henüz bağlanmadı. Bağlanınca uyku, recovery, HRV ve strain burada görünecek.</div>`;
+  const connected=!!(whoopStatus&&whoopStatus.connected);
+  const freshToday=connected&&whoopStatus.last_sync_date===today();
+  const whoopBadge=!connected
+    ?`<span style="background:#161B28;border:1px solid ${ND.border2};color:${ND.muted};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">bağlı değil</span>`
+    :freshToday
+    ?`<span style="background:${ndHexA(ND.whoop,.12)};border:1px solid ${ndHexA(ND.whoop,.4)};color:${ND.whoop};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">✓ senkron</span>`
+    :`<span style="background:${ndHexA(ND.kcal,.12)};border:1px solid ${ndHexA(ND.kcal,.4)};color:${ND.kcal};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">son senkron: ${whoopStatus.last_sync_date||'—'}</span>`;
+  let whoopBody;
+  if(!connected){
+    whoopBody=`<div style="background:${ND.bg};border:1px dashed ${ND.border2};border-radius:10px;padding:14px;text-align:center;color:${ND.muted};font-size:12px">WHOOP hesabı henüz bağlanmadı. Bağlanınca uyku, recovery, HRV ve strain burada görünecek.</div>`;
+  }else if(!whoopDaily||!whoopDaily.found){
+    whoopBody=`<div style="background:${ND.bg};border:1px dashed ${ND.border2};border-radius:10px;padding:14px;text-align:center;color:${ND.muted};font-size:12px">Bugün için henüz WHOOP verisi senkronize edilmedi.</div>`;
+  }else{
+    const w=whoopDaily;
+    const sleepTxt=w.sleep_hours!=null?w.sleep_hours.toFixed(1)+'sa'+(w.sleep_performance!=null?' · %'+Math.round(w.sleep_performance):''):'—';
+    const recTxt=w.recovery_score!=null?w.recovery_score+'%':'—';
+    const strainTxt=w.strain!=null?w.strain.toFixed(1):'—';
+    const hrvTxt=w.hrv_ms!=null?Math.round(w.hrv_ms)+'ms'+(w.rhr_bpm!=null?' · '+Math.round(w.rhr_bpm)+' bpm':''):'—';
+    const kcalTxt=w.kcal_burned!=null?Math.round(w.kcal_burned).toLocaleString('tr-TR')+' kcal':'—';
+    const spo2Txt=w.spo2!=null?'%'+w.spo2.toFixed(1):null;
+    const balance=w.kcal_burned!=null?Math.round(calAlinan-w.kcal_burned):null;
+    whoopBody=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      ${ndWhoopStat('🌙 Uyku',sleepTxt,ND.whoop)}
+      ${ndWhoopStat('🔋 Recovery',recTxt,ND.whoop)}
+      ${ndWhoopStat('⚡ Strain',strainTxt,ND.whoop)}
+      ${ndWhoopStat('🫀 HRV',hrvTxt,ND.whoop)}
+    </div>
+    <div style="display:grid;grid-template-columns:${spo2Txt?'1fr 1fr':'1fr'};gap:8px;margin-top:8px">
+      ${ndWhoopStat('🔥 Yakılan',kcalTxt,ND.whoop)}
+      ${spo2Txt?ndWhoopStat('🫁 SpO2',spo2Txt,ND.whoop):''}
+    </div>
+    ${balance!=null?`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 14px">
+      <div style="font-size:12px;color:${ND.muted2}">⚖ Enerji dengesi: <b style="color:${ND.text}">${Math.round(calAlinan).toLocaleString('tr-TR')} alınan</b> − <b style="color:${ND.whoop}">${Math.round(w.kcal_burned).toLocaleString('tr-TR')} yakılan</b></div>
+      <div style="font-size:13px;font-weight:700;color:${balance>0?ND.danger:ND.whoop}">${balance>0?'+':''}${balance.toLocaleString('tr-TR')} kcal</div>
+    </div>`:''}`;
+  }
   const tc=TC[todayType]||'#444';
   return `<div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -2102,7 +2141,7 @@ function ndCloseDayModal(){$('nd-day-modal-holder')?.remove();}
 
 function renderNewDashboard(){
   const root=$('dash-root');if(!root||!ND_STATE)return;
-  const {d,macro,week7,bm,ai,stacks,meals}=ND_STATE;
+  const {d,macro,week7,bm,ai,stacks,meals,whoopStatus,whoopDaily}=ND_STATE;
   const t=getT(d.training_day);
   const tot=macro.totals||{};
   const cal=tot.calories||0,prot=tot.protein_g||0,carb=tot.carbs_g||0,fat=tot.fat_g||0;
@@ -2120,7 +2159,7 @@ function renderNewDashboard(){
       <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
         <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;display:grid;grid-template-columns:1fr 1.3fr;gap:24px">
           ${ndMealsSummaryHtml(groups,cal,prot,carb,fat)}
-          ${ndTrainingWhoopHtml(week7,todayType,false)}
+          ${ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,cal)}
         </div>
         ${ndAiCoachHtml(ai)}
       </div>
@@ -3703,10 +3742,11 @@ async function calLoadDetail(){
   const dateStr=CAL_SEL;
   const dayObj=CAL_DAYS.find(x=>x.date===dateStr);
   const td=dayObj?dayObj.training:'Off';
-  const [meals,dayData,progRows]=await Promise.all([
+  const [meals,dayData,progRows,whoopDaily]=await Promise.all([
     API('/api/meals/'+dateStr),
     API('/api/day/'+dateStr),
-    td!=='Off' ? API('/api/training/exercises/'+encodeURIComponent(td)) : Promise.resolve([])
+    td!=='Off' ? API('/api/training/exercises/'+encodeURIComponent(td)) : Promise.resolve([]),
+    API('/whoop/daily/'+dateStr).catch(()=>({found:false}))
   ]);
   if(dateStr!==CAL_SEL) return;
   const mealsArr=Array.isArray(meals)?meals:[];
@@ -3719,7 +3759,7 @@ async function calLoadDetail(){
   CAL_DETAIL={
     totals, vitamins:(dayData&&dayData.vitamins)||[], note:(dayData&&dayData.note)||'', program:Array.isArray(progRows)?progRows:[],
     body:(dayData&&dayData.body)||{}, water_ml:(dayData&&dayData.nutrition&&dayData.nutrition.water_ml)||0, sleep_hours:(dayData&&dayData.sleep&&dayData.sleep.hours)||0,
-    steps:(dayData&&dayData.steps&&dayData.steps.steps)||0, meals:mealsArr,
+    steps:(dayData&&dayData.steps&&dayData.steps.steps)||0, meals:mealsArr, whoop:whoopDaily||{found:false},
   };
   calRenderDetail();
 }
@@ -3779,7 +3819,26 @@ function calStatsHtml(){
   </div>`;
 }
 function calWhoopHtml(){
-  return `<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:10px;padding:12px;text-align:center;color:var(--muted);font-size:11px">🔗 WHOOP henüz bağlanmadı. Bağlanınca uyku, recovery, HRV ve strain burada görünecek.</div>`;
+  const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
+  if(!w.found){
+    return `<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:10px;padding:12px;text-align:center;color:var(--muted);font-size:11px">🔗 Bu gün için WHOOP verisi yok.</div>`;
+  }
+  const stat=(label,val)=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+    <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">${label}</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:#2fd6b0;margin-top:2px">${val}</div>
+  </div>`;
+  const sleepTxt=w.sleep_hours!=null?w.sleep_hours.toFixed(1)+'sa':'—';
+  const recTxt=w.recovery_score!=null?w.recovery_score+'%':'—';
+  const strainTxt=w.strain!=null?w.strain.toFixed(1):'—';
+  const hrvTxt=w.hrv_ms!=null?Math.round(w.hrv_ms)+'ms':'—';
+  const kcalTxt=w.kcal_burned!=null?Math.round(w.kcal_burned).toLocaleString('tr-TR'):'—';
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${stat('🌙 UYKU',sleepTxt)}
+    ${stat('🔋 RECOVERY',recTxt)}
+    ${stat('⚡ STRAIN',strainTxt)}
+    ${stat('🫀 HRV',hrvTxt)}
+    ${stat('🔥 YAKILAN',kcalTxt+' kcal')}
+  </div>`;
 }
 function calMealLogHtml(){
   const meals=(CAL_DETAIL&&CAL_DETAIL.meals)||[];

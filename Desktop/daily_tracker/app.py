@@ -13,6 +13,22 @@ def now_istanbul() -> datetime:
     return datetime.now(_TZ_ISTANBUL)
 
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+
+# .env dosyasini yukle (python-dotenv gerektirmez; mevcut env degiskenlerini ezmez)
+def _load_env_file(_path):
+    try:
+        with open(_path, encoding='utf-8') as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if not _line or _line.startswith('#') or '=' not in _line:
+                    continue
+                _k, _, _v = _line.partition('=')
+                os.environ.setdefault(_k.strip(), _v.strip())
+    except OSError:
+        pass
+
+_load_env_file(os.path.join(BASE_DIR, '.env'))
+
 DATA_DIR    = os.environ.get('DATA_DIR', BASE_DIR)
 DB_PATH     = os.path.join(DATA_DIR, 'tracker.db')
 os.makedirs(DATA_DIR, exist_ok=True)
