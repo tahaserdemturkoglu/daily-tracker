@@ -30,7 +30,7 @@
   --g-purple:linear-gradient(135deg,#9a7bff,#7c5cff);
   --g-pink:linear-gradient(135deg,#e0556b,#e0396b);
   --g-orange:linear-gradient(135deg,#ff5a36,#ff8a3c);
-  --r:16px;--r2:12px;--side:196px;
+  --r:16px;--r2:12px;--side:224px;
   --shadow:0 4px 24px rgba(0,0,0,.45);
   --shadow2:0 2px 12px rgba(0,0,0,.3);
 }
@@ -2150,7 +2150,7 @@ function renderNewDashboard(){
   const groups=ndGroupMeals(meals);
   const todayType=d.training_day||(week7.length?week7[week7.length-1].training_type:'—');
 
-  root.innerHTML=`<div style="max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+  root.innerHTML=`<div style="max-width:1720px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
       <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px">
         ${ndHeroHtml(t,cal,prot,carb,fat,wml,steps)}
         ${ndWeekChartHtml(week7,t)}
