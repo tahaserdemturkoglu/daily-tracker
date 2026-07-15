@@ -3992,8 +3992,9 @@ function calDayCellHtml(d){
   const wash=isOff?'var(--bg2)':calHexA(c,.18);
   const suppTotal=d.supp_total||0, suppTaken=d.supp_taken||0;
   const suppFull=suppTotal>0&&suppTaken>=suppTotal;
-  const suppColor=suppFull?'#22c55e':'#ffd166';
-  const suppPill=(suppTotal>0&&suppTaken>0)?`<span style="display:inline-flex;align-items:center;gap:5px;align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:7px;background:${calHexA(suppColor,.12)};color:${suppColor};border:1px solid ${calHexA(suppColor,.35)}" title="Takviye: ${suppTaken}/${suppTotal} alındı">💊 ${suppFull?'alındı':suppTaken+'/'+suppTotal}</span>`:'';
+  const suppColor=suppFull?'#22c55e':suppTaken>0?'#ffd166':'#6b7890';
+  const suppLabel=suppFull?'alındı':suppTaken>0?suppTaken+'/'+suppTotal:'bekliyor';
+  const suppPill=(suppTotal>0&&d.date<=today())?`<span style="display:inline-flex;align-items:center;gap:5px;align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:7px;background:${calHexA(suppColor,.12)};color:${suppColor};border:1px solid ${calHexA(suppColor,.35)}" title="Takviye: ${suppTaken}/${suppTotal} alındı">💊 ${suppLabel}</span>`:'';
   const rec=d.whoop_recovery;
   const recColor=rec==null?'':rec>=67?'#2fd6b0':rec>=34?'#ffd166':'#e0556b';
   const recBadge=rec!=null?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:${recColor}" title="WHOOP Recovery: ${rec}%">🔋${rec}%</span>`:'';
