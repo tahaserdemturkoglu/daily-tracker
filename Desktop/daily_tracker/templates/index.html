@@ -2201,7 +2201,7 @@ function renderNewDashboard(){
   const groups=ndGroupMeals(meals);
   const todayType=d.training_day||(week7.length?week7[week7.length-1].training_type:'—');
 
-  root.innerHTML=`<div style="max-width:1720px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+  root.innerHTML=`<div style="width:100%;display:flex;flex-direction:column;gap:16px">
       <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px">
         ${ndHeroHtml(t,cal,prot,carb,fat,wml,steps)}
         ${ndWeekChartHtml(week7,t)}
