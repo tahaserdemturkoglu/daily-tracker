@@ -1674,6 +1674,9 @@ def api_calendar(year, month):
                     session_dates.add(s['date'])
     except Exception:
         pass
+    supp_total = conn.execute(
+        "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
+    ).fetchone()['c']
     for day in range(1, days_in_month + 1):
         d = f"{year:04d}-{month:02d}-{day:02d}"
         tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs')
@@ -1688,6 +1691,10 @@ def api_calendar(year, month):
         if cyc:
             target = {'type': cyc['type'], 'protein_g': cyc['protein_g'], 'carb_g': cyc['carb_g'], 'fat_g': cyc['fat_g'],
                       'kcal': 4 * cyc['protein_g'] + 4 * cyc['carb_g'] + 9 * cyc['fat_g']}
+        supp_taken = conn.execute(
+            "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')",
+            (d,)
+        ).fetchone()['c']
         result.append({
             'date': d, 'day': day,
             'training': td,
@@ -1698,6 +1705,8 @@ def api_calendar(year, month):
             'day_index': day_index,
             'target': target,
             'note': note_row['note'] if note_row else '',
+            'supp_taken': supp_taken,
+            'supp_total': supp_total,
         })
     conn.close()
     return jsonify(result)
