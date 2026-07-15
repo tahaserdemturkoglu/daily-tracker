@@ -12,23 +12,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#05080f;--bg2:#0b1220;--bg3:#101929;--bg4:#16223a;
-  --border:#1a2d4a;--border2:#243d60;
-  --text:#eef2ff;--muted:#5a7aa8;--muted2:#7a9ac8;
-  --red:#ff3b3b;--red2:#e60000;--red3:#ff6b6b;
-  --yellow:#ffb800;--yellow2:#ffd000;
-  --green:#00e676;--green2:#00c853;
-  --teal:#00e5cc;--teal2:#00b8a9;
-  --blue:#4d9fff;--blue2:#2979ff;
-  --purple:#b44dff;--purple2:#9c27b0;
-  --pink:#ff4d9e;--pink2:#e91e8c;
-  --indigo:#7c83ff;--orange:#ff7043;
-  --g-red:linear-gradient(135deg,#ff3b3b,#e60000);
-  --g-yellow:linear-gradient(135deg,#ffb800,#ff7043);
-  --g-green:linear-gradient(135deg,#00e676,#00b8a9);
-  --g-teal:linear-gradient(135deg,#00e5cc,#2979ff);
-  --g-purple:linear-gradient(135deg,#b44dff,#4d9fff);
-  --g-pink:linear-gradient(135deg,#ff4d9e,#b44dff);
+  --bg:#070b12;--bg2:#0d1420;--bg3:#141c2b;--bg4:#182034;
+  --border:#1a2332;--border2:#26324a;
+  --text:#e8edf5;--muted:#6b7890;--muted2:#8b98ad;
+  --red:#e0556b;--red2:#e0396b;--red3:#ff8577;
+  --yellow:#ffd166;--yellow2:#ffb347;
+  --green:#2fd6b0;--green2:#1fb894;
+  --teal:#2fd6b0;--teal2:#27a97c;
+  --blue:#38bdf8;--blue2:#2979ff;
+  --purple:#9a7bff;--purple2:#7c5cff;
+  --pink:#e0556b;--pink2:#e0396b;
+  --indigo:#9a7bff;--orange:#ff5a36;--orange2:#ff8a3c;
+  --g-red:linear-gradient(135deg,#e0556b,#e0396b);
+  --g-yellow:linear-gradient(135deg,#ffd166,#ffb347);
+  --g-green:linear-gradient(135deg,#2fd6b0,#1fb894);
+  --g-teal:linear-gradient(135deg,#2fd6b0,#27a97c);
+  --g-purple:linear-gradient(135deg,#9a7bff,#7c5cff);
+  --g-pink:linear-gradient(135deg,#e0556b,#e0396b);
+  --g-orange:linear-gradient(135deg,#ff5a36,#ff8a3c);
   --r:16px;--r2:12px;--side:196px;
   --shadow:0 4px 24px rgba(0,0,0,.45);
   --shadow2:0 2px 12px rgba(0,0,0,.3);
@@ -943,7 +944,7 @@ let CC_SAVE_TIMER=null, CC_RESET_TIMER=null, CC_GOALS_TIMER=null;
 
 function ccKcal(d){ return 4*d.p+4*d.k+9*d.y; }
 function ccLevel(k){
-  if(k>=250) return {name:'Yüksek', c:'#f0a952', bg:'rgba(240,169,82,0.14)', bd:'rgba(240,169,82,0.45)'};
+  if(k>=250) return {name:'Yüksek', c:'#ffd166', bg:'rgba(255,209,102,0.14)', bd:'rgba(255,209,102,0.45)'};
   if(k>=150) return {name:'Orta',  c:'#57c7e6', bg:'rgba(87,199,230,0.14)', bd:'rgba(87,199,230,0.45)'};
   return {name:'Düşük', c:'#8b93d6', bg:'rgba(139,147,214,0.14)', bd:'rgba(139,147,214,0.45)'};
 }
@@ -982,7 +983,7 @@ function ccWeeklyOf(days){
     kcalTot:kcalTot.toLocaleString('tr-TR'), kcalAvg:Math.round(kcalTot/7).toLocaleString('tr-TR'),
     sumPstr:sumP+'g',sumKstr:sumK+'g',sumYstr:sumY+'g',pAvg:Math.round(sumP/7),
     pPctStr:Math.round(pPct)+'%',kPctStr:Math.round(kPct)+'%',yPctStr:Math.round(yPct)+'%',
-    donutBg:'conic-gradient(#5bd1c4 0 '+pPct+'%, #f0a952 0 '+(pPct+kPct)+'%, #b48ee8 0 100%)'
+    donutBg:'conic-gradient(#2fd6b0 0 '+pPct+'%, #ffd166 0 '+(pPct+kPct)+'%, #b48ee8 0 100%)'
   };
 }
 
@@ -990,7 +991,7 @@ function ccRenderActivePanel(){
   const weekly=ccWeeklyOf(CC_PLAN);
   const avgNum=Math.round(CC_PLAN.reduce((a,d)=>a+ccKcal(d),0)/7);
   const gPos=Math.max(0,Math.min(100,100*(avgNum-1400)/1200));
-  const gBand=avgNum<1850?{n:'Kesim',c:'#57c7e6'}:(avgNum<=2050?{n:'Koruma',c:'#8b93d6'}:{n:'Bulk',c:'#f0a952'});
+  const gBand=avgNum<1850?{n:'Kesim',c:'#57c7e6'}:(avgNum<=2050?{n:'Koruma',c:'#8b93d6'}:{n:'Bulk',c:'#ffd166'});
   const todayIdx=(new Date().getDay()+6)%7;
   const todayD=CC_PLAN[CC_ACTIVE_DAY]||CC_PLAN[0]||{type:'',p:0,k:0,y:0};
   const todayLv=ccLevel(todayD.k);
@@ -1003,7 +1004,7 @@ function ccRenderActivePanel(){
     const pK=4*d.p,kK=4*d.k,yK=9*d.y,tot=(pK+kK+yK)||1;
     const isToday=i===todayIdx;
     const tag=isA?(isToday?'✓ AKTİF · BUGÜN':'✓ AKTİF'):(isToday?'BUGÜN':'SEÇ');
-    const tagColor=isA?'#7ad7f0':(isToday?'#f0a952':'#4a5b78');
+    const tagColor=isA?'#7ad7f0':(isToday?'#ffd166':'#4a5b78');
     const bg=isA?lv.bg:'rgba(255,255,255,0.02)';
     const bd=isA?lv.bd:'#1c2942';
     const shadow=isA?('0 0 0 1px '+lv.bd+' inset'):'none';
@@ -1015,8 +1016,8 @@ function ccRenderActivePanel(){
       <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:#e6edf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(d.type)}</div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#fff">${kcal.toLocaleString('tr-TR')}</div>
       <div style="height:4px;border-radius:3px;overflow:hidden;display:flex;background:#0c1424">
-        <span style="width:${(100*pK/tot).toFixed(1)}%;background:#5bd1c4"></span>
-        <span style="width:${(100*kK/tot).toFixed(1)}%;background:#f0a952"></span>
+        <span style="width:${(100*pK/tot).toFixed(1)}%;background:#2fd6b0"></span>
+        <span style="width:${(100*kK/tot).toFixed(1)}%;background:#ffd166"></span>
         <span style="width:${(100*yK/tot).toFixed(1)}%;background:#b48ee8"></span>
       </div>
       <div style="font-size:9px;font-weight:700;letter-spacing:.06em;color:${tagColor}">${tag}</div>
@@ -1026,7 +1027,7 @@ function ccRenderActivePanel(){
   const goalsDirty = CC_WATER!==CC_SAVED_WATER || CC_WEIGHT!==CC_SAVED_WEIGHT;
   const goalsLabel = CC_GOALS_FLASH?'✓ Kaydedildi':(goalsDirty?'Hedefleri Kaydet':'Hedefler kayıtlı');
   const goalsStyleStr = CC_GOALS_FLASH
-    ? `background:rgba(91,209,196,0.15);border:1px solid rgba(91,209,196,0.5);color:#5bd1c4;cursor:default`
+    ? `background:rgba(47,214,176,0.15);border:1px solid rgba(47,214,176,0.5);color:#2fd6b0;cursor:default`
     : goalsDirty
       ? `background:linear-gradient(90deg,${CC_AC},#6a7bf0);border:none;color:#04121e;cursor:pointer`
       : `background:rgba(255,255,255,0.04);border:1px solid #24324c;color:#4a5b78;cursor:default`;
@@ -1054,12 +1055,12 @@ function ccRenderActivePanel(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid #23314a">
-          <span style="width:8px;height:8px;border-radius:50%;background:#5bd1c4"></span>
+          <span style="width:8px;height:8px;border-radius:50%;background:#2fd6b0"></span>
           <span style="font-size:11px;color:#8194b0;letter-spacing:.04em">PROTEİN</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#e6edf7">${todayD.p}g</span>
         </div>
         <div style="display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid #23314a">
-          <span style="width:8px;height:8px;border-radius:50%;background:#f0a952"></span>
+          <span style="width:8px;height:8px;border-radius:50%;background:#ffd166"></span>
           <span style="font-size:11px;color:#8194b0;letter-spacing:.04em">KARB</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#e6edf7">${todayD.k}g</span>
         </div>
@@ -1080,13 +1081,13 @@ function ccRenderActivePanel(){
       <div style="display:flex;flex-direction:column;gap:9px;flex:1">
         <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#7b8ca8;margin-bottom:2px">HAFTALIK MAKRO DAĞILIMI</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="width:9px;height:9px;border-radius:2px;background:#5bd1c4"></span>
+          <span style="width:9px;height:9px;border-radius:2px;background:#2fd6b0"></span>
           <span style="font-size:12px;color:#9db0cc;flex:1">Protein</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e6edf7">${weekly.sumPstr}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6d7f9c;width:34px;text-align:right">${weekly.pPctStr}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="width:9px;height:9px;border-radius:2px;background:#f0a952"></span>
+          <span style="width:9px;height:9px;border-radius:2px;background:#ffd166"></span>
           <span style="font-size:12px;color:#9db0cc;flex:1">Karbonhidrat</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e6edf7">${weekly.sumKstr}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6d7f9c;width:34px;text-align:right">${weekly.kPctStr}</span>
@@ -1104,7 +1105,7 @@ function ccRenderActivePanel(){
         <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#7b8ca8">HEDEF BANDI</span>
         <span style="font-size:12px;font-weight:700;color:${gBand.c}">${gBand.n} · Ø ${weekly.kcalAvg} kcal</span>
       </div>
-      <div style="position:relative;height:8px;border-radius:5px;background:linear-gradient(90deg,rgba(87,199,230,0.55) 0 37.5%,rgba(139,147,214,0.55) 37.5% 54.2%,rgba(240,169,82,0.55) 54.2% 100%)">
+      <div style="position:relative;height:8px;border-radius:5px;background:linear-gradient(90deg,rgba(87,199,230,0.55) 0 37.5%,rgba(139,147,214,0.55) 37.5% 54.2%,rgba(255,209,102,0.55) 54.2% 100%)">
         <div style="position:absolute;top:-3px;left:${gPos.toFixed(1)}%;width:3px;height:14px;border-radius:2px;background:#fff;box-shadow:0 0 6px rgba(255,255,255,0.6)"></div>
       </div>
       <div style="display:flex;justify-content:space-between">
@@ -1146,7 +1147,7 @@ function ccRenderActivePanel(){
       <div style="font-size:13px;line-height:1.55;color:#c3d0e4">${escHtml(CC_AI_COMMENT)}</div>
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding-top:2px">
         <span style="font-size:11px;color:#8194b0">Bot: <a href="https://t.me/taha_serdem_daily_rapor_bot" target="_blank" style="color:#57c7e6">@taha_serdem_daily_rapor_bot</a></span>
-        <span style="font-size:11px;color:#5bd1c4">✓ Railway aktif</span>
+        <span style="font-size:11px;color:#2fd6b0">✓ Railway aktif</span>
       </div>
     </div>
   `;
@@ -1156,7 +1157,7 @@ function ccRenderDraftPanel(){
   const dirty=ccIsDirty();
   const weekly=ccWeeklyOf(CC_DRAFT);
   const statusText=dirty?'● Kaydedilmemiş değişiklik':'Aktif planla aynı';
-  const statusStyle=dirty?'font-size:11px;font-weight:700;color:#f0a952':'font-size:11px;color:#6d7f9c';
+  const statusStyle=dirty?'font-size:11px;font-weight:700;color:#ffd166':'font-size:11px;color:#6d7f9c';
 
   const presetDefs=[['ppl','PPLUL'],['guc','Bulk'],['kesim','Cut']];
   let presetHtml='';
@@ -1191,11 +1192,11 @@ function ccRenderDraftPanel(){
       <div style="display:flex;align-items:flex-end;gap:8px">
         <div style="display:flex;flex-direction:column;gap:3px">
           <span style="font-size:9px;color:#6d7f9c;letter-spacing:.06em">P</span>
-          <input type="text" inputmode="numeric" value="${d.p}" onchange="ccEditMacro('${d.id}','p',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #5bd1c4;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
+          <input type="text" inputmode="numeric" value="${d.p}" onchange="ccEditMacro('${d.id}','p',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #2fd6b0;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
         </div>
         <div style="display:flex;flex-direction:column;gap:3px">
           <span style="font-size:9px;color:#6d7f9c;letter-spacing:.06em">K</span>
-          <input type="text" inputmode="numeric" value="${d.k}" onchange="ccEditMacro('${d.id}','k',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #f0a952;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
+          <input type="text" inputmode="numeric" value="${d.k}" onchange="ccEditMacro('${d.id}','k',this.value)" style="width:58px;box-sizing:border-box;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;background:#0c1424;border:1px solid #24324c;border-left:2px solid #ffd166;border-radius:7px;color:#e6edf7;padding:7px 4px;outline:none">
         </div>
         <div style="display:flex;flex-direction:column;gap:3px">
           <span style="font-size:9px;color:#6d7f9c;letter-spacing:.06em">Y</span>
@@ -1220,7 +1221,7 @@ function ccRenderDraftPanel(){
     if(d.y<25) warns.push(CC_WEEK[i].f+': yağ çok düşük ('+d.y+'g)');
   });
   const warningHtml = warns.length
-    ? `<div style="padding:9px 12px;border-radius:10px;background:rgba(240,169,82,0.08);border:1px dashed rgba(240,169,82,0.4)"><span style="font-size:12px;color:#f0a952">⚠ ${warns.slice(0,2).join(' · ')}${warns.length>2?(' · +'+(warns.length-2)+' uyarı daha'):''}</span></div>`
+    ? `<div style="padding:9px 12px;border-radius:10px;background:rgba(255,209,102,0.08);border:1px dashed rgba(255,209,102,0.4)"><span style="font-size:12px;color:#ffd166">⚠ ${warns.slice(0,2).join(' · ')}${warns.length>2?(' · +'+(warns.length-2)+' uyarı daha'):''}</span></div>`
     : '';
 
   const clipSrc=CC_CLIP_FROM ? CC_DRAFT.find(x=>x.id===CC_CLIP_FROM) : null;
@@ -1231,11 +1232,11 @@ function ccRenderDraftPanel(){
   const actBase="padding:11px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:'Manrope',sans-serif;border:none";
   const resetLabel = CC_CONFIRM_RESET ? 'Emin misin?' : 'Geri Al';
   const resetStyle = CC_CONFIRM_RESET
-    ? `${actBase};background:rgba(240,169,82,0.14);border:1px solid rgba(240,169,82,0.6);color:#f0a952;cursor:pointer`
+    ? `${actBase};background:rgba(255,209,102,0.14);border:1px solid rgba(255,209,102,0.6);color:#ffd166;cursor:pointer`
     : `${actBase};background:rgba(255,255,255,0.03);border:1px solid #24324c;color:${dirty?'#9db0cc':'#4a5b78'};cursor:${dirty?'pointer':'default'}`;
   const saveLabel = CC_CONFIRM_SAVE ? 'Onayla: Aktif Planı Değiştir' : 'Kaydet';
   const saveStyle = CC_CONFIRM_SAVE
-    ? `${actBase};font-weight:700;background:#f0a952;color:#04121e;cursor:pointer;padding:11px 20px`
+    ? `${actBase};font-weight:700;background:#ffd166;color:#04121e;cursor:pointer;padding:11px 20px`
     : dirty
       ? `${actBase};font-weight:700;background:linear-gradient(90deg,${CC_AC},#6a7bf0);color:#04121e;cursor:pointer;padding:11px 20px`
       : `${actBase};font-weight:700;background:rgba(255,255,255,0.04);border:1px solid #24324c;color:#4a5b78;cursor:default;padding:11px 20px`;
@@ -3785,7 +3786,7 @@ function calDayCellHtml(d){
   const wash=isOff?'var(--bg2)':calHexA(c,.18);
   const suppTotal=d.supp_total||0, suppTaken=d.supp_taken||0;
   const suppFull=suppTotal>0&&suppTaken>=suppTotal;
-  const suppColor=suppFull?'#22c55e':'#f0a952';
+  const suppColor=suppFull?'#22c55e':'#ffd166';
   const suppPill=(suppTotal>0&&suppTaken>0)?`<span style="display:inline-flex;align-items:center;gap:5px;align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:7px;background:${calHexA(suppColor,.12)};color:${suppColor};border:1px solid ${calHexA(suppColor,.35)}" title="Takviye: ${suppTaken}/${suppTotal} alındı">💊 ${suppFull?'alındı':suppTaken+'/'+suppTotal}</span>`:'';
   return `<div onclick="calSelectDay('${d.date}')" style="min-height:140px;border-radius:14px;border:${isSel?'2px':'1px'} solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${wash};box-shadow:${isSel?'0 0 0 3px rgba(87,199,230,.18)':'none'};padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:12px;opacity:${isOff?0.75:1};transition:border-color .15s">
     <div style="display:flex;align-items:center;justify-content:space-between">
@@ -3799,8 +3800,8 @@ function calDayCellHtml(d){
       <span style="display:inline-block;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:5px 11px;border-radius:7px">${d.training}${d.is_override?' 🔁':''}</span>
       ${kcal?`<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted)">${kcal.toLocaleString('tr-TR')} kcal</span>
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;gap:9px">
-        <span style="color:#5bd1c4">P${d.target.protein_g}</span>
-        <span style="color:#f0a952">K${d.target.carb_g}</span>
+        <span style="color:#2fd6b0">P${d.target.protein_g}</span>
+        <span style="color:#ffd166">K${d.target.carb_g}</span>
         <span style="color:#b48ee8">Y${d.target.fat_g}</span>
       </span>`:''}
       ${suppPill}
@@ -7249,109 +7250,110 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
 <style id="PREMIUM_COLOR_REFRESH_V1">
 :root {
-  --bg:#07101f;
-  --bg2:#0d1930;
-  --bg3:#142642;
-  --border:#2a4671;
-  --text:#f8fbff;
-  --muted:#a3b7d6;
-  --purple:#8b5cf6;
+  --bg:#070b12;
+  --bg2:#0d1420;
+  --bg3:#141c2b;
+  --border:#26324a;
+  --text:#e8edf5;
+  --muted:#8b98ad;
+  --purple:#9a7bff;
   --blue:#38bdf8;
-  --teal:#14f1d9;
-  --green:#22e58a;
-  --yellow:#ffb020;
-  --pink:#f472b6;
-  --red:#fb7185;
-  --indigo:#818cf8;
-  --g-purple:linear-gradient(135deg,#8b5cf6 0%,#38bdf8 100%);
-  --g-teal:linear-gradient(135deg,#14f1d9 0%,#38bdf8 100%);
-  --g-green:linear-gradient(135deg,#22e58a 0%,#16a34a 100%);
-  --g-yellow:linear-gradient(135deg,#ffb020 0%,#fb7185 100%);
-  --g-pink:linear-gradient(135deg,#f472b6 0%,#8b5cf6 100%);
+  --teal:#2fd6b0;
+  --green:#2fd6b0;
+  --yellow:#ffd166;
+  --pink:#e0556b;
+  --red:#ff5a36;
+  --indigo:#9a7bff;
+  --g-purple:linear-gradient(135deg,#9a7bff 0%,#7c5cff 100%);
+  --g-teal:linear-gradient(135deg,#2fd6b0 0%,#27a97c 100%);
+  --g-green:linear-gradient(135deg,#2fd6b0 0%,#1fb894 100%);
+  --g-yellow:linear-gradient(135deg,#ffd166 0%,#ffb347 100%);
+  --g-pink:linear-gradient(135deg,#e0556b 0%,#e0396b 100%);
 }
 body {
   background:
-    linear-gradient(125deg,rgba(20,241,217,.10) 0%,transparent 30%),
-    linear-gradient(235deg,rgba(139,92,246,.13) 0%,transparent 34%),
-    linear-gradient(180deg,#07101f 0%,#050914 56%,#081120 100%) !important;
+    linear-gradient(125deg,rgba(255,90,54,.10) 0%,transparent 30%),
+    linear-gradient(235deg,rgba(47,214,176,.10) 0%,transparent 34%),
+    linear-gradient(180deg,#070b12 0%,#05080e 56%,#080b14 100%) !important;
 }
 .sidebar,.topbar {
-  background:linear-gradient(180deg,rgba(13,25,48,.92),rgba(7,13,25,.88))!important;
+  background:linear-gradient(180deg,rgba(13,20,32,.92),rgba(7,11,18,.88))!important;
   backdrop-filter:blur(18px);
-  border-color:rgba(96,165,250,.26)!important;
+  border-color:rgba(255,138,60,.22)!important;
 }
 .brand-name {
-  background:linear-gradient(135deg,#ffffff 0%,#38bdf8 44%,#a78bfa 100%)!important;
+  background:linear-gradient(135deg,#ffffff 0%,#ff8a3c 44%,#ff5a36 100%)!important;
   -webkit-background-clip:text!important;
   -webkit-text-fill-color:transparent!important;
 }
 .nav-btn.active {
-  background:linear-gradient(135deg,rgba(20,241,217,.24),rgba(139,92,246,.20))!important;
-  border-left-color:#14f1d9!important;
-  box-shadow:inset 0 0 0 1px rgba(56,189,248,.16),0 12px 32px rgba(20,241,217,.10);
+  background:linear-gradient(135deg,rgba(255,90,54,.22),rgba(255,138,60,.14))!important;
+  border-left-color:#ff5a36!important;
+  box-shadow:inset 0 0 0 1px rgba(255,138,60,.16),0 12px 32px rgba(255,90,54,.12);
 }
 .nav-btn:hover {
-  background:rgba(56,189,248,.10)!important;
+  background:rgba(255,90,54,.10)!important;
   color:#f8fafc!important;
 }
 .hero,.card,.chart-card,.stat-card,.macro-card,.quick-card,
 .macro-graph-panel,.pro-log-card,.tc-panel,.tc-form,.hero-ring-card,.hero-trend-panel {
-  background:linear-gradient(180deg,rgba(20,36,64,.90),rgba(8,17,32,.80))!important;
-  border-color:rgba(96,165,250,.30)!important;
-  box-shadow:0 22px 58px rgba(2,8,23,.38),inset 0 1px 0 rgba(255,255,255,.055)!important;
+  background:linear-gradient(180deg,rgba(19,26,38,.90),rgba(9,13,20,.82))!important;
+  border-color:rgba(255,138,60,.24)!important;
+  box-shadow:0 22px 58px rgba(2,4,8,.38),inset 0 1px 0 rgba(255,255,255,.05)!important;
   transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease;
 }
 .hero:hover,.card:hover,.chart-card:hover,.stat-card:hover,.macro-card:hover,.quick-card:hover,
 .macro-graph-panel:hover,.pro-log-card:hover,.tc-panel:hover,.tc-form:hover {
-  border-color:rgba(20,241,217,.38)!important;
-  box-shadow:0 26px 66px rgba(2,8,23,.46),0 0 0 1px rgba(20,241,217,.05),inset 0 1px 0 rgba(255,255,255,.065)!important;
+  border-color:rgba(255,90,54,.4)!important;
+  box-shadow:0 26px 66px rgba(2,4,8,.46),0 0 0 1px rgba(255,90,54,.06),inset 0 1px 0 rgba(255,255,255,.065)!important;
 }
 .hero.dashboard-integrated {
   background:
-    linear-gradient(120deg,rgba(20,241,217,.14),transparent 42%),
-    linear-gradient(245deg,rgba(139,92,246,.18),transparent 44%),
-    linear-gradient(135deg,rgba(8,17,32,.98),rgba(15,23,42,.94))!important;
-  border-color:rgba(56,189,248,.42)!important;
+    linear-gradient(120deg,rgba(255,90,54,.14),transparent 42%),
+    linear-gradient(245deg,rgba(47,214,176,.14),transparent 44%),
+    linear-gradient(135deg,rgba(9,13,20,.98),rgba(13,18,28,.94))!important;
+  border-color:rgba(255,138,60,.4)!important;
 }
 .btn,.tc-btn,.pro-log-action,.hero-ring-actions .btn {
-  box-shadow:0 10px 28px rgba(59,130,246,.22);
+  box-shadow:0 10px 28px rgba(255,90,54,.2);
 }
 .btn-blue,.tc-small,.pro-log-date button {
-  background:linear-gradient(135deg,#38bdf8,#6366f1)!important;
+  background:linear-gradient(135deg,#2fd6b0,#1fb894)!important;
+  color:#04121c!important;
 }
 .btn-green {
-  background:linear-gradient(135deg,#14f1d9,#22e58a)!important;
+  background:linear-gradient(135deg,#2fd6b0,#1fb894)!important;
 }
 .btn-purple {
-  background:linear-gradient(135deg,#8b5cf6,#3b82f6)!important;
+  background:linear-gradient(135deg,#9a7bff,#7c5cff)!important;
 }
 input,select,textarea {
-  background:#10213d!important;
-  border-color:rgba(125,169,221,.38)!important;
-  color:#f8fafc!important;
+  background:#090f18!important;
+  border-color:#26324a!important;
+  color:#e8edf5!important;
 }
 input:focus,select:focus,textarea:focus {
-  border-color:#38bdf8!important;
-  box-shadow:0 0 0 3px rgba(56,189,248,.12)!important;
+  border-color:#ff5a36!important;
+  box-shadow:0 0 0 3px rgba(255,90,54,.14)!important;
 }
-.macro-graph-card.protein .macro-graph-value,.mc-prot .macro-val {color:#14f1d9!important}
-.macro-graph-card.carb .macro-graph-value,.mc-carb .macro-val {color:#ffb020!important}
-.macro-graph-card.fat .macro-graph-value,.mc-fat .macro-val {color:#a78bfa!important}
-.macro-graph-card.water .macro-graph-value,.mc-water .macro-val {color:#60a5fa!important}
+.macro-graph-card.protein .macro-graph-value,.mc-prot .macro-val {color:#2fd6b0!important}
+.macro-graph-card.carb .macro-graph-value,.mc-carb .macro-val {color:#ffd166!important}
+.macro-graph-card.fat .macro-graph-value,.mc-fat .macro-val {color:#ff7a56!important}
+.macro-graph-card.water .macro-graph-value,.mc-water .macro-val {color:#38bdf8!important}
 .page-title,.card-name,.tc-title,.pro-log-title,.macro-graph-title {
   color:#f8fafc!important;
-  text-shadow:0 1px 18px rgba(56,189,248,.08);
+  text-shadow:0 1px 18px rgba(255,90,54,.08);
 }
 .page-sub,.card-sub,.tc-sub,.macro-graph-sub,.pro-muted {
-  color:#9fb3d4!important;
+  color:#8b98ad!important;
 }
 .macro-card .bar,.macro-progress,.progress-line {
   background:rgba(148,163,184,.16)!important;
 }
 .toast {
-  background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
-  color:#03101d!important;
-  box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
+  background:linear-gradient(135deg,rgba(255,90,54,.96),rgba(47,214,176,.9))!important;
+  color:#0a0f18!important;
+  box-shadow:0 18px 44px rgba(255,90,54,.24)!important;
 }
 </style>
 </body>
