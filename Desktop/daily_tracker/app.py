@@ -1693,17 +1693,69 @@ def api_calendar(year, month):
     supp_total = conn.execute(
         "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
     ).fetchone()['c']
+    month_start = f"{year:04d}-{month:02d}-01"
+    month_end = f"{year:04d}-{month:02d}-{days_in_month:02d}"
     whoop_by_date = {}
     try:
-        month_start = f"{year:04d}-{month:02d}-01"
-        month_end = f"{year:04d}-{month:02d}-{days_in_month:02d}"
         for r in conn.execute(
-            "SELECT date, recovery_score, strain FROM whoop_daily WHERE date>=? AND date<=?",
+            "SELECT date, recovery_score, strain, sleep_performance FROM whoop_daily WHERE date>=? AND date<=?",
             (month_start, month_end)
         ).fetchall():
-            whoop_by_date[r['date']] = {'recovery': r['recovery_score'], 'strain': r['strain']}
+            whoop_by_date[r['date']] = {'recovery': r['recovery_score'], 'strain': r['strain'], 'sleep_performance': r['sleep_performance']}
     except Exception:
         pass
+    meals_by_date = {}
+    try:
+        for r in conn.execute(
+            "SELECT date, SUM(calories) kcal, SUM(protein_g) protein FROM meal_entries WHERE date>=? AND date<=? GROUP BY date",
+            (month_start, month_end)
+        ).fetchall():
+            meals_by_date[r['date']] = {'kcal': r['kcal'] or 0, 'protein': r['protein'] or 0}
+    except Exception:
+        pass
+    water_by_date = {}
+    try:
+        for r in conn.execute(
+            "SELECT date, SUM(water_ml) w FROM nutrition_logs WHERE date>=? AND date<=? GROUP BY date",
+            (month_start, month_end)
+        ).fetchall():
+            water_by_date[r['date']] = r['w'] or 0
+    except Exception:
+        pass
+    sleep_by_date = {}
+    try:
+        for r in conn.execute(
+            "SELECT date, AVG(hours) h FROM sleep_logs WHERE date>=? AND date<=? GROUP BY date",
+            (month_start, month_end)
+        ).fetchall():
+            sleep_by_date[r['date']] = r['h']
+    except Exception:
+        pass
+    water_goal_row = conn.execute("SELECT value FROM user_settings WHERE key='water'").fetchone()
+    water_goal = int(water_goal_row['value']) if water_goal_row and water_goal_row['value'] else 3000
+    today_str = date.today().isoformat()
+
+    def pct(v, tg):
+        try:
+            return max(0, min(100, round((v or 0) / (tg or 1) * 100)))
+        except Exception:
+            return 0
+
+    def whoop_note_for(w):
+        if not w or (w.get('recovery') is None and w.get('strain') is None):
+            return None
+        rec, strain = w.get('recovery'), w.get('strain')
+        if rec is not None and rec >= 67:
+            text, color = f'Recovery güçlüydü (%{rec}) — vücut o gün hazırdı.', '#2fd6b0'
+        elif rec is not None and rec >= 34:
+            text, color = f'Recovery orta seviyedeydi (%{rec}) — dikkatli yüklenmek gerekiyordu.', '#ffd166'
+        elif rec is not None:
+            text, color = f'Recovery düşüktü (%{rec}) — o gün toparlanma öncelikli olmalıydı.', '#e0556b'
+        else:
+            text, color = f'Recovery verisi yok, strain {strain:.1f}.', '#8b98ad'
+        if rec is not None and rec < 40 and strain is not None and strain >= 13:
+            text += f' Buna rağmen strain {strain:.1f} — yüksek yüklenme, dinlenme ihmal edilmiş olabilir.'
+        return {'text': text, 'color': color}
     for day in range(1, days_in_month + 1):
         d = f"{year:04d}-{month:02d}-{day:02d}"
         tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs')
@@ -1723,6 +1775,27 @@ def api_calendar(year, month):
             (d,)
         ).fetchone()['c']
         w = whoop_by_date.get(d)
+        day_score = None
+        whoop_note = None
+        if d <= today_str:
+            meals = meals_by_date.get(d) or {'kcal': 0, 'protein': 0}
+            water_ml = water_by_date.get(d) or 0
+            train_part = (100 if d in session_dates else 35) if td != 'Off' else 80
+            parts = [
+                pct(meals['kcal'], target['kcal'] if target else None),
+                pct(meals['protein'], target['protein_g'] if target else None),
+                pct(water_ml, water_goal),
+                train_part,
+            ]
+            if w and (w.get('recovery') is not None or w.get('sleep_performance') is not None):
+                if w.get('recovery') is not None:
+                    parts.append(w['recovery'])
+                if w.get('sleep_performance') is not None:
+                    parts.append(w['sleep_performance'])
+            else:
+                parts.append(pct(sleep_by_date.get(d), 7.5))
+            day_score = round(sum(parts) / len(parts))
+            whoop_note = whoop_note_for(w)
         result.append({
             'date': d, 'day': day,
             'training': td,
@@ -1737,6 +1810,8 @@ def api_calendar(year, month):
             'supp_total': supp_total,
             'whoop_recovery': w['recovery'] if w else None,
             'whoop_strain': w['strain'] if w else None,
+            'day_score': day_score,
+            'whoop_note': whoop_note,
         })
     conn.close()
     return jsonify(result)
