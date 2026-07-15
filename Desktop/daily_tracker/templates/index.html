@@ -845,6 +845,17 @@ const POST = (u,d) => fetch(u,{method:'POST',headers:{'Content-Type':'applicatio
 const DEL  = u => fetch(u,{method:'DELETE'}).then(r=>r.json()).catch(()=>({}));
 const PUT  = (u,d) => fetch(u,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).catch(()=>({}));
 const today = () => { const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+/* Tıklama koruması — yanıt gelene kadar butonu kilitler, arka arkaya tıklamada kaydın tekrarlanmasını (2x su, 2x adım vs.) önler */
+function guardClick(ms=1500){
+  const el=window.event&&window.event.currentTarget;
+  if(!el||!el.dataset)return true;
+  if(el.dataset.guarding)return false;
+  el.dataset.guarding='1';
+  const prevOpacity=el.style.opacity,prevPE=el.style.pointerEvents;
+  el.style.opacity='.55';el.style.pointerEvents='none';
+  setTimeout(()=>{el.style.opacity=prevOpacity;el.style.pointerEvents=prevPE;delete el.dataset.guarding;},ms);
+  return true;
+}
 const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
 
 /* CLOCK */
@@ -1976,7 +1987,10 @@ function ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,calAlinan){
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px">
       <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Whoop Günlük</div>
-      ${whoopBadge}
+      <div style="display:flex;align-items:center;gap:6px">
+        ${whoopBadge}
+        ${connected?`<button onclick="ndSyncWhoop()" id="nd-whoop-sync-btn" title="WHOOP'tan şimdi yeniden çek" style="background:#161B28;border:1px solid ${ND.border2};color:${ND.muted};font-size:11px;padding:3px 7px;border-radius:999px;cursor:pointer">🔄</button>`:''}
+      </div>
     </div>
     ${whoopBody}
   </div>`;
@@ -2044,6 +2058,15 @@ function ndMealLogHtml(groups){
   </div>`;
 }
 
+async function ndSyncWhoop(){
+  if(!guardClick(4000))return;
+  const btn=$('nd-whoop-sync-btn');if(btn)btn.textContent='…';
+  try{
+    const r=await API('/whoop/sync?days=1');
+    toast(r&&r.ok?'WHOOP güncellendi':'WHOOP senkron olmadı — birazdan tekrar dene',!!(r&&r.ok));
+  }catch(e){toast('WHOOP senkron olmadı',false);}
+  loadDashboard();
+}
 async function ndMarkAllSupps(){
   const btn=$('nd-mark-all-btn');if(btn){btn.disabled=true;btn.textContent='...';}
   try{
@@ -2922,8 +2945,9 @@ async function saveMood(){
   await POST('/api/log/mood',p);
   toast('Ruh hali kaydedildi');loadLogPage();
 }
-async function saveBody(){const p={weight_kg:parseFloat($('bm-kg').value)||null,weight_kg_night:parseFloat($('bm-kg-night').value)||null,waist_cm:parseFloat($('bm-waist').value)||null,chest_cm:parseFloat($('bm-chest').value)||null,arm_cm:parseFloat($('bm-arm').value)||null};if(!Object.values(p).some(Boolean))return toast('Değer gir',false);await POST('/api/body/metrics',p);toast('Ölçüm kaydedildi');loadLogPage();}
+async function saveBody(){if(!guardClick())return;const p={weight_kg:parseFloat($('bm-kg').value)||null,weight_kg_night:parseFloat($('bm-kg-night').value)||null,waist_cm:parseFloat($('bm-waist').value)||null,chest_cm:parseFloat($('bm-chest').value)||null,arm_cm:parseFloat($('bm-arm').value)||null};if(!Object.values(p).some(Boolean))return toast('Değer gir',false);await POST('/api/body/metrics',p);toast('Ölçüm kaydedildi');loadLogPage();}
 async function saveSteps(mode='set'){
+  if(!guardClick())return;
   const v=parseInt($('steps-input').value)||0;
   if(!v)return toast('Adım sayısı gir',false);
   const r=await POST('/api/steps',{steps:v,mode});
@@ -2946,6 +2970,7 @@ async function deleteSteps(){
   });
 }
 async function quickSteps(v){
+  if(!guardClick())return;
   const mode=v===10000?'set':'add';
   const r=await POST('/api/steps',{steps:v,mode});
   if(r?.ok){
@@ -3030,7 +3055,7 @@ async function saveWork(){const h=parseFloat($('wo-h').value);if(!h)return toast
 async function saveCoaching(){const s=parseInt($('co-s').value);if(!s)return toast('Seans gir',false);await POST('/api/log/coaching',{sessions:s,clients:$('co-c').value.trim()});toast('Antrenörlük kaydedildi');}
 async function saveNote(){const n=$('note-txt').value.trim();if(!n)return toast('Not gir',false);await POST('/api/note',{note:n});toast('Not kaydedildi');}
 async function clearTodayConfirm(){confirm_('Bugünü temizle','Tüm öğün ve takviye kayıtları silinecek. Emin misin?',async()=>{const d=today();await DEL('/api/meals/today?date='+d);await DEL('/api/vitamins/today?date='+d);toast('✅ Bugünün tüm kayıtları silindi',true);loadDashboard();loadTodayMeals&&loadTodayMeals();loadVitamins&&loadVitamins();});}
-async function addWater(ml){const cur=await API('/api/today');const now=(cur.nutrition?.water_ml||0)+ml;await POST('/api/log/nutrition',{water_ml:now});sv('water-cur',(now/1000).toFixed(1)+'L bugün');toast('+'+ml+'ml su');loadDashboard();}
+async function addWater(ml){if(!guardClick())return;const cur=await API('/api/today');const now=(cur.nutrition?.water_ml||0)+ml;await POST('/api/log/nutrition',{water_ml:now});sv('water-cur',(now/1000).toFixed(1)+'L bugün');toast('+'+ml+'ml su');loadDashboard();}
 async function addWaterManual(){const l=parseFloat($('water-m').value);if(!l||l<=0)return toast('Litre gir',false);await addWater(Math.round(l*1000));$('water-m').value='';}
 async function setWaterTotal(ml){const total=Math.max(0,Math.round(Number(ml)||0));await POST('/api/log/nutrition',{date:today(),water_ml:total});sv('water-cur',(total/1000).toFixed(1)+'L bugün');if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();else loadDashboard();return total;}
 async function setWaterManualTotal(){const raw=String($('water-m').value||'').replace(',','.');const l=parseFloat(raw);if(!Number.isFinite(l)||l<0)return toast('Toplam litreyi gir',false);const total=await setWaterTotal(l*1000);$('water-m').value='';toast('Su toplamı '+(total/1000).toFixed(1)+'L olarak ayarlandı');}
@@ -3816,26 +3841,47 @@ async function calLoadDetail(){
 }
 function calDayScore(dayObj){
   const t=dayObj.target||{}, totals=(CAL_DETAIL&&CAL_DETAIL.totals)||{};
+  const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
   const pct=(v,tg)=>Math.max(0,Math.min(100,Math.round((Number(v)||0)/(Number(tg)||1)*100)));
   const waterTarget=(getT&&getT().water)||3000;
+  const trainPart=dayObj.training&&dayObj.training!=='Off'?(dayObj.session_done?100:35):80;
   const parts=[
     pct(totals.calories,t.kcal),
     pct(totals.protein_g,t.protein_g),
     pct(CAL_DETAIL&&CAL_DETAIL.water_ml,waterTarget),
-    pct(CAL_DETAIL&&CAL_DETAIL.sleep_hours,7.5),
-    dayObj.training&&dayObj.training!=='Off'?(dayObj.session_done?100:35):80,
+    trainPart,
   ];
+  if(w.found&&(w.recovery_score!=null||w.sleep_performance!=null)){
+    if(w.recovery_score!=null)parts.push(w.recovery_score);
+    if(w.sleep_performance!=null)parts.push(w.sleep_performance);
+  }else{
+    parts.push(pct(CAL_DETAIL&&CAL_DETAIL.sleep_hours,7.5));
+  }
   return Math.round(parts.reduce((a,b)=>a+b,0)/parts.length);
+}
+function calWhoopNote(){
+  const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
+  if(!w.found||(w.recovery_score==null&&w.strain==null))return null;
+  const rec=w.recovery_score,strain=w.strain;
+  let text,color;
+  if(rec!=null&&rec>=67){text='Recovery güçlüydü ('+rec+'%) — vücut o gün hazırdı.';color='#2fd6b0';}
+  else if(rec!=null&&rec>=34){text='Recovery orta seviyedeydi ('+rec+'%) — dikkatli yüklenmek gerekiyordu.';color='#ffd166';}
+  else if(rec!=null){text='Recovery düşüktü ('+rec+'%) — o gün toparlanma öncelikli olmalıydı.';color='#e0556b';}
+  else{text='Recovery verisi yok, strain '+strain.toFixed(1)+'.';color='#8b98ad';}
+  if(rec!=null&&rec<40&&strain!=null&&strain>=13)text+=' Buna rağmen strain '+strain.toFixed(1)+' — yüksek yüklenme, dinlenme ihmal edilmiş olabilir.';
+  return {text,color};
 }
 function calScoreHtml(dayObj){
   const sc=calDayScore(dayObj);
   const c=sc>=80?'#2fd6b0':sc>=50?'#ffd166':'#e0556b';
   const label=sc>=80?'Harika gün':sc>=50?'Fena değil':'Zayıf gün';
+  const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
+  const sub=w.found&&(w.recovery_score!=null||w.sleep_performance!=null)?'kalori · protein · su · recovery/uyku (WHOOP) · antrenman ortalaması':'kalori · protein · su · uyku · antrenman ortalaması';
   return `<div style="display:flex;align-items:center;gap:12px;background:${calHexA(c,.08)};border:1px solid ${calHexA(c,.32)};border-left:3px solid ${c};border-radius:10px;padding:10px 14px">
     <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:900;color:${c}">${sc}%</div>
     <div>
       <div style="font-size:12px;font-weight:700;color:${c}">${label}</div>
-      <div style="font-size:10px;color:var(--muted)">kalori · protein · su · uyku · antrenman ortalaması</div>
+      <div style="font-size:10px;color:var(--muted)">${sub}</div>
     </div>
   </div>`;
 }
@@ -4089,6 +4135,7 @@ function calDetailInnerHtml(dayObj){
     </div>
     <div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">TAKVİYE</div>
+      ${(()=>{const n=calWhoopNote();return n?`<div style="display:flex;gap:8px;background:${calHexA(n.color,.08)};border:1px solid ${calHexA(n.color,.3)};border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:${n.color}"><span>🐾</span><span>${n.text}</span></div>`:'';})()}
       <div style="display:flex;flex-direction:column;gap:6px">${calStackHtml()}</div>
     </div>
     <div>
