@@ -413,11 +413,14 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div class="card ct ct-green">
           <div class="card-head"><span class="card-icon">⚖️</span><div><div class="card-name">Vücut Ölçüleri</div><div class="card-sub" id="bm-cur">Kayıt yok</div></div></div>
           <div class="form-row">
-            <div class="fg"><label>Kilo (kg)</label><input type="number" id="bm-kg" step=".1" placeholder="90.5"></div>
-            <div class="fg"><label>Bel (cm)</label><input type="number" id="bm-waist" step=".5" placeholder="82"></div>
+            <div class="fg"><label>☀ Sabah Kilo (aç karna, kg)</label><input type="number" id="bm-kg" step=".1" placeholder="90.5"></div>
+            <div class="fg"><label>☾ Gece Kilo (opsiyonel, kg)</label><input type="number" id="bm-kg-night" step=".1" placeholder="91.0"></div>
           </div>
           <div class="form-row">
+            <div class="fg"><label>Bel (cm)</label><input type="number" id="bm-waist" step=".5" placeholder="82"></div>
             <div class="fg"><label>Göğüs (cm)</label><input type="number" id="bm-chest" step=".5" placeholder="100"></div>
+          </div>
+          <div class="form-row">
             <div class="fg"><label>Kol (cm)</label><input type="number" id="bm-arm" step=".5" placeholder="38"></div>
           </div>
           <button class="btn btn-green" onclick="saveBody()">Kaydet</button>
@@ -1754,9 +1757,21 @@ function ndWeightCardHtml(bm){
       <span><b style="color:${ND.text2}">${rows.length}</b> kayıt</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-      <button onclick="showPage('log');setTimeout(()=>showSub('sub-vucut'),100)" style="flex:1;background:#161B28;color:${ND.whoop};border:1px solid ${ndHexA(ND.whoop,.35)};font-family:inherit;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer">☀ Kilo gir</button>
+      <button onclick="ndQuickWeight('morning')" style="flex:1;background:#161B28;color:${ND.whoop};border:1px solid ${ndHexA(ND.whoop,.35)};font-family:inherit;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer">☀ Sabah kilosu gir</button>
+      <button onclick="ndQuickWeight('night')" style="flex:1;background:#161B28;color:${ND.ai};border:1px solid ${ndHexA(ND.ai,.35)};font-family:inherit;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer">☾ Gece (ops.)</button>
     </div>
   </div>`;
+}
+async function ndQuickWeight(period){
+  const label=period==='night'?'Gece kilon (kg):':'Sabah (aç karna) kilon (kg):';
+  const val=prompt(label);
+  if(val==null)return;
+  const kg=parseFloat(val.replace(',','.'));
+  if(!kg||kg<=0)return toast('Geçerli bir kilo gir',false);
+  const payload=period==='night'?{weight_kg_night:kg}:{weight_kg:kg};
+  await POST('/api/body/metrics',payload);
+  toast('Kilo kaydedildi');
+  loadDashboard();
 }
 
 function ndRenderWeightChart(bm,weightGoal){
@@ -1851,6 +1866,44 @@ function ndWhoopStat(label,val,color){
     <div style="font-size:16px;font-weight:700;margin-top:3px;color:${color}">${val}</div>
   </div>`;
 }
+function ndRelativeTime(isoStr){
+  if(!isoStr)return '—';
+  const then=new Date(isoStr).getTime();
+  if(isNaN(then))return '—';
+  const diffMin=Math.round((Date.now()-then)/60000);
+  if(diffMin<1)return'az önce';
+  if(diffMin<60)return diffMin+' dakika önce';
+  const diffH=Math.round(diffMin/60);
+  if(diffH<24)return diffH+' saat önce';
+  return Math.round(diffH/24)+' gün önce';
+}
+function ndFmtMs(ms){
+  if(!ms)return'0dk';
+  const totalMin=Math.round(ms/60000);
+  const h=Math.floor(totalMin/60),m=totalMin%60;
+  return h>0?(h+'sa '+m+'dk'):(m+'dk');
+}
+function ndSleepStagesHtml(w,color){
+  const rem=w.sleep_rem_ms||0,deep=w.sleep_deep_ms||0,light=w.sleep_light_ms||0,awake=w.sleep_awake_ms||0;
+  const total=rem+deep+light+awake;
+  if(!total)return'';
+  const pct=ms=>Math.max(0,(ms/total*100));
+  return `<div style="background:${ndHexA(color,.06)};border:1px solid ${ndHexA(color,.35)};border-radius:10px;padding:10px 12px;margin-top:8px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:${color}">
+      <span>Uyku evreleri</span>
+      <span>REM ${ndFmtMs(rem)} · Derin ${ndFmtMs(deep)}</span>
+    </div>
+    <div style="display:flex;gap:2px;margin-top:8px;height:10px;border-radius:5px;overflow:hidden">
+      <div style="width:${pct(rem)}%;background:${ND.whoop}"></div>
+      <div style="width:${pct(deep)}%;background:${ND.water}"></div>
+      <div style="width:${pct(light)}%;background:${ND.border2}"></div>
+      <div style="width:${pct(awake)}%;background:${ND.bg}"></div>
+    </div>
+    <div style="display:flex;gap:10px;font-size:9px;color:${ND.muted};margin-top:4px">
+      <span><span style="color:${ND.whoop}">■</span> REM</span><span><span style="color:${ND.water}">■</span> Derin</span><span><span style="color:${ND.muted2}">■</span> Hafif</span><span>■ Uyanık</span>
+    </div>
+  </div>`;
+}
 function ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,calAlinan){
   const tstr=today();
   const cells=week7.map(e=>{
@@ -1871,12 +1924,12 @@ function ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,calAlinan){
   const totalNonOff=week7.filter(e=>e.training_type&&e.training_type!=='Off').length;
   const streak=(ND_STATE&&ND_STATE.d.streak)||0;
   const connected=!!(whoopStatus&&whoopStatus.connected);
-  const freshToday=connected&&whoopStatus.last_sync_date===today();
+  const relTime=connected?ndRelativeTime(whoopStatus.last_synced_at):'';
+  const freshMin=connected&&whoopStatus.last_synced_at?Math.round((Date.now()-new Date(whoopStatus.last_synced_at).getTime())/60000):Infinity;
+  const syncColor=freshMin<=360?ND.whoop:ND.kcal;
   const whoopBadge=!connected
     ?`<span style="background:#161B28;border:1px solid ${ND.border2};color:${ND.muted};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">bağlı değil</span>`
-    :freshToday
-    ?`<span style="background:${ndHexA(ND.whoop,.12)};border:1px solid ${ndHexA(ND.whoop,.4)};color:${ND.whoop};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">✓ senkron</span>`
-    :`<span style="background:${ndHexA(ND.kcal,.12)};border:1px solid ${ndHexA(ND.kcal,.4)};color:${ND.kcal};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">son senkron: ${whoopStatus.last_sync_date||'—'}</span>`;
+    :`<span style="background:${ndHexA(syncColor,.12)};border:1px solid ${ndHexA(syncColor,.4)};color:${syncColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">✓ senkron ${relTime}</span>`;
   let whoopBody;
   if(!connected){
     whoopBody=`<div style="background:${ND.bg};border:1px dashed ${ND.border2};border-radius:10px;padding:14px;text-align:center;color:${ND.muted};font-size:12px">WHOOP hesabı henüz bağlanmadı. Bağlanınca uyku, recovery, HRV ve strain burada görünecek.</div>`;
@@ -1890,6 +1943,7 @@ function ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,calAlinan){
     const hrvTxt=w.hrv_ms!=null?Math.round(w.hrv_ms)+'ms'+(w.rhr_bpm!=null?' · '+Math.round(w.rhr_bpm)+' bpm':''):'—';
     const kcalTxt=w.kcal_burned!=null?Math.round(w.kcal_burned).toLocaleString('tr-TR')+' kcal':'—';
     const spo2Txt=w.spo2!=null?'%'+w.spo2.toFixed(1):null;
+    const respTxt=w.respiratory_rate!=null?w.respiratory_rate.toFixed(1)+'/dk':null;
     const balance=w.kcal_burned!=null?Math.round(calAlinan-w.kcal_burned):null;
     whoopBody=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
       ${ndWhoopStat('🌙 Uyku',sleepTxt,ND.whoop)}
@@ -1897,10 +1951,12 @@ function ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,calAlinan){
       ${ndWhoopStat('⚡ Strain',strainTxt,ND.whoop)}
       ${ndWhoopStat('🫀 HRV',hrvTxt,ND.whoop)}
     </div>
-    <div style="display:grid;grid-template-columns:${spo2Txt?'1fr 1fr':'1fr'};gap:8px;margin-top:8px">
+    <div style="display:grid;grid-template-columns:repeat(${1+(spo2Txt?1:0)+(respTxt?1:0)},1fr);gap:8px;margin-top:8px">
       ${ndWhoopStat('🔥 Yakılan',kcalTxt,ND.whoop)}
       ${spo2Txt?ndWhoopStat('🫁 SpO2',spo2Txt,ND.whoop):''}
+      ${respTxt?ndWhoopStat('💨 Solunum',respTxt,ND.whoop):''}
     </div>
+    ${ndSleepStagesHtml(w,ND.whoop)}
     ${balance!=null?`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 14px">
       <div style="font-size:12px;color:${ND.muted2}">⚖ Enerji dengesi: <b style="color:${ND.text}">${Math.round(calAlinan).toLocaleString('tr-TR')} alınan</b> − <b style="color:${ND.whoop}">${Math.round(w.kcal_burned).toLocaleString('tr-TR')} yakılan</b></div>
       <div style="font-size:13px;font-weight:700;color:${balance>0?ND.danger:ND.whoop}">${balance>0?'+':''}${balance.toLocaleString('tr-TR')} kcal</div>
@@ -2006,38 +2062,33 @@ async function ndMarkAllSupps(){
 function ndSuppSidebarHtml(stacks,vitamins){
   const vitByName={};(vitamins||[]).forEach(v=>{vitByName[v.name]=v;});
   let totalItems=0,totalTaken=0;
+  stacks.forEach(s=>(s.items||[]).forEach(()=>totalItems++));
   const groupColors=['#38BDF8','#FFB020','#FF9E4A','#A78BFA','#2DD4BF'];
   const groups=stacks.map((s,i)=>{
     const items=s.items||[];
-    let logged=0,taken=0;
     const rows=items.map(it=>{
       const v=vitByName[it.product_name];
-      totalItems++;
-      if(!v){
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px">
-          <span style="font-size:13px;font-weight:600;color:${ND.muted}">○ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted3}">Bekliyor</span>
-        </div>`;
-      }
-      logged++;
+      if(!v)return null;
       const st=vitStatusOf(v),meta=VIT_STATUS_META[st];
+      if(!['taken','eod_taken','half_dose'].includes(st))return null;
+      totalTaken++;
       const mc=(st==='taken')?ND.text2:meta.color;
-      if(['taken','eod_taken','half_dose'].includes(st)){taken++;totalTaken++;}
-      const strike=st==='missed'?'text-decoration:line-through':'';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${st==='taken'?ND.bg:ndHexA(mc,.08)};border:1px solid ${st==='taken'?ND.border:ndHexA(mc,.32)};border-radius:8px;padding:12px 16px">
-        <span style="font-size:13px;font-weight:600;color:${mc};${strike}">${meta.emoji} ${escHtml(it.product_name)}</span>
-        <span style="font-size:11px;color:${st==='taken'?ND.muted:mc}">${it.dose||1} ${it.unit||''}</span>
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px">
+        <span style="font-size:13px;font-weight:600;color:${mc}">${meta.emoji} ${escHtml(it.product_name)}</span>
+        <span style="font-size:11px;color:${ND.muted}">${it.dose||1} ${it.unit||''}</span>
       </div>`;
-    }).join('');
+    }).filter(Boolean);
+    if(!rows.length)return null;
     const c=groupColors[i%groupColors.length];
-    const badge=logged===0?`<span style="font-size:10px;color:${ND.muted}">bekliyor</span>`:`<span style="font-size:10px;color:${taken===items.length?ND.whoop:ND.kcal}">${taken}/${items.length}</span>`;
+    const badge=`<span style="font-size:10px;color:${rows.length===items.length?ND.whoop:ND.kcal}">${rows.length}/${items.length}</span>`;
     return `<div style="background:${ndHexA(c,.07)};border:1px solid ${ndHexA(c,.25)};border-radius:12px;padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${c}">● ${escHtml((s.name||'').toUpperCase())}</div>
         ${badge}
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px">${rows||`<div style="color:${ND.muted};font-size:12px">Ürün yok</div>`}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${rows.join('')}</div>
     </div>`;
-  }).join('');
+  }).filter(Boolean).join('');
   return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:15px;font-weight:700">Takviye Stack</div>
@@ -2046,8 +2097,8 @@ function ndSuppSidebarHtml(stacks,vitamins){
         <button onclick="ndMarkAllSupps()" id="nd-mark-all-btn" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:11px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü işaretle</button>
       </div>
     </div>
-    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Günlük protokol, uyku stack ve vitaminler.</div>
-    ${groups||`<div style="color:${ND.muted};font-size:13px">Aktif takviye stack yok</div>`}
+    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Bugün aldıkların — aldıkça burada birikir.</div>
+    ${groups||`<div style="color:${ND.muted};font-size:13px">Bugün henüz takviye alınmadı</div>`}
   </div>`;
 }
 
@@ -2871,7 +2922,7 @@ async function saveMood(){
   await POST('/api/log/mood',p);
   toast('Ruh hali kaydedildi');loadLogPage();
 }
-async function saveBody(){const p={weight_kg:parseFloat($('bm-kg').value)||null,waist_cm:parseFloat($('bm-waist').value)||null,chest_cm:parseFloat($('bm-chest').value)||null,arm_cm:parseFloat($('bm-arm').value)||null};if(!Object.values(p).some(Boolean))return toast('Değer gir',false);await POST('/api/body/metrics',p);toast('Ölçüm kaydedildi');loadLogPage();}
+async function saveBody(){const p={weight_kg:parseFloat($('bm-kg').value)||null,weight_kg_night:parseFloat($('bm-kg-night').value)||null,waist_cm:parseFloat($('bm-waist').value)||null,chest_cm:parseFloat($('bm-chest').value)||null,arm_cm:parseFloat($('bm-arm').value)||null};if(!Object.values(p).some(Boolean))return toast('Değer gir',false);await POST('/api/body/metrics',p);toast('Ölçüm kaydedildi');loadLogPage();}
 async function saveSteps(mode='set'){
   const v=parseInt($('steps-input').value)||0;
   if(!v)return toast('Adım sayısı gir',false);
@@ -3831,14 +3882,21 @@ function calWhoopHtml(){
   const recTxt=w.recovery_score!=null?w.recovery_score+'%':'—';
   const strainTxt=w.strain!=null?w.strain.toFixed(1):'—';
   const hrvTxt=w.hrv_ms!=null?Math.round(w.hrv_ms)+'ms':'—';
+  const rhrTxt=w.rhr_bpm!=null?Math.round(w.rhr_bpm)+'bpm':'—';
   const kcalTxt=w.kcal_burned!=null?Math.round(w.kcal_burned).toLocaleString('tr-TR'):'—';
+  const spo2Txt=w.spo2!=null?'%'+w.spo2.toFixed(1):'—';
+  const respTxt=w.respiratory_rate!=null?w.respiratory_rate.toFixed(1)+'/dk':'—';
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     ${stat('🌙 UYKU',sleepTxt)}
     ${stat('🔋 RECOVERY',recTxt)}
     ${stat('⚡ STRAIN',strainTxt)}
     ${stat('🫀 HRV',hrvTxt)}
+    ${stat('❤️ DİNLENİK NABIZ',rhrTxt)}
+    ${stat('🫁 SpO2',spo2Txt)}
+    ${stat('💨 SOLUNUM',respTxt)}
     ${stat('🔥 YAKILAN',kcalTxt+' kcal')}
-  </div>`;
+  </div>
+  ${ndSleepStagesHtml(w,'#2fd6b0')}`;
 }
 function calMealLogHtml(){
   const meals=(CAL_DETAIL&&CAL_DETAIL.meals)||[];

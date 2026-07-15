@@ -86,6 +86,18 @@ def init_whoop_tables():
         );
         """
     )
+    # Eski DB'lerde eksik olabilecek kolonlari sonradan ekle (uyku evreleri + solunum hizi)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(whoop_daily)").fetchall()}
+    new_cols = {
+        'respiratory_rate': 'REAL',
+        'sleep_light_ms': 'INTEGER',
+        'sleep_deep_ms': 'INTEGER',
+        'sleep_rem_ms': 'INTEGER',
+        'sleep_awake_ms': 'INTEGER',
+    }
+    for col, typ in new_cols.items():
+        if col not in existing:
+            conn.execute(f"ALTER TABLE whoop_daily ADD COLUMN {col} {typ}")
     conn.commit()
     conn.close()
 
@@ -261,15 +273,22 @@ def sync_whoop_data(days=3):
             continue
         d = bucket(end)
         sleep_by_id[s["id"]] = d
-        stage = (s.get("score") or {}).get("stage_summary") or {}
-        total_ms = sum(stage.get(k, 0) or 0 for k in (
-            "total_light_sleep_time_milli",
-            "total_slow_wave_sleep_time_milli",
-            "total_rem_sleep_time_milli"))
+        sc = s.get("score") or {}
+        stage = sc.get("stage_summary") or {}
+        light_ms = stage.get("total_light_sleep_time_milli") or 0
+        deep_ms = stage.get("total_slow_wave_sleep_time_milli") or 0
+        rem_ms = stage.get("total_rem_sleep_time_milli") or 0
+        awake_ms = stage.get("total_awake_time_milli") or 0
+        total_ms = light_ms + deep_ms + rem_ms
         rec = daily.setdefault(d, {})
         rec["sleep_hours"] = round(total_ms / 3600000, 2) if total_ms else None
-        rec["sleep_performance"] = (s.get("score") or {}).get("sleep_performance_percentage")
-        rec["sleep_efficiency"] = (s.get("score") or {}).get("sleep_efficiency_percentage")
+        rec["sleep_performance"] = sc.get("sleep_performance_percentage")
+        rec["sleep_efficiency"] = sc.get("sleep_efficiency_percentage")
+        rec["respiratory_rate"] = sc.get("respiratory_rate")
+        rec["sleep_light_ms"] = light_ms or None
+        rec["sleep_deep_ms"] = deep_ms or None
+        rec["sleep_rem_ms"] = rem_ms or None
+        rec["sleep_awake_ms"] = awake_ms or None
 
     for r in recoveries:
         score = r.get("score") or {}
@@ -302,8 +321,9 @@ def sync_whoop_data(days=3):
             """INSERT INTO whoop_daily
                (date, recovery_score, strain, hrv_ms, rhr_bpm, spo2, skin_temp_c,
                 sleep_hours, sleep_performance, sleep_efficiency, kcal_burned,
+                respiratory_rate, sleep_light_ms, sleep_deep_ms, sleep_rem_ms, sleep_awake_ms,
                 raw_json, synced_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(date) DO UPDATE SET
                  recovery_score=COALESCE(excluded.recovery_score, recovery_score),
                  strain=COALESCE(excluded.strain, strain),
@@ -315,11 +335,18 @@ def sync_whoop_data(days=3):
                  sleep_performance=COALESCE(excluded.sleep_performance, sleep_performance),
                  sleep_efficiency=COALESCE(excluded.sleep_efficiency, sleep_efficiency),
                  kcal_burned=COALESCE(excluded.kcal_burned, kcal_burned),
+                 respiratory_rate=COALESCE(excluded.respiratory_rate, respiratory_rate),
+                 sleep_light_ms=COALESCE(excluded.sleep_light_ms, sleep_light_ms),
+                 sleep_deep_ms=COALESCE(excluded.sleep_deep_ms, sleep_deep_ms),
+                 sleep_rem_ms=COALESCE(excluded.sleep_rem_ms, sleep_rem_ms),
+                 sleep_awake_ms=COALESCE(excluded.sleep_awake_ms, sleep_awake_ms),
                  synced_at=excluded.synced_at""",
             (d, rec.get("recovery_score"), rec.get("strain"), rec.get("hrv_ms"),
              rec.get("rhr_bpm"), rec.get("spo2"), rec.get("skin_temp_c"),
              rec.get("sleep_hours"), rec.get("sleep_performance"),
              rec.get("sleep_efficiency"), rec.get("kcal_burned"),
+             rec.get("respiratory_rate"), rec.get("sleep_light_ms"), rec.get("sleep_deep_ms"),
+             rec.get("sleep_rem_ms"), rec.get("sleep_awake_ms"),
              json.dumps(rec, ensure_ascii=False), now),
         )
     conn.commit()
