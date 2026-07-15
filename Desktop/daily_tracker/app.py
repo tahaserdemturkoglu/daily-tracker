@@ -1693,6 +1693,17 @@ def api_calendar(year, month):
     supp_total = conn.execute(
         "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
     ).fetchone()['c']
+    whoop_by_date = {}
+    try:
+        month_start = f"{year:04d}-{month:02d}-01"
+        month_end = f"{year:04d}-{month:02d}-{days_in_month:02d}"
+        for r in conn.execute(
+            "SELECT date, recovery_score, strain FROM whoop_daily WHERE date>=? AND date<=?",
+            (month_start, month_end)
+        ).fetchall():
+            whoop_by_date[r['date']] = {'recovery': r['recovery_score'], 'strain': r['strain']}
+    except Exception:
+        pass
     for day in range(1, days_in_month + 1):
         d = f"{year:04d}-{month:02d}-{day:02d}"
         tables = ('sleep_logs','exercise_logs','nutrition_logs','work_logs','coaching_logs','mood_logs')
@@ -1711,6 +1722,7 @@ def api_calendar(year, month):
             "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')",
             (d,)
         ).fetchone()['c']
+        w = whoop_by_date.get(d)
         result.append({
             'date': d, 'day': day,
             'training': td,
@@ -1723,6 +1735,8 @@ def api_calendar(year, month):
             'note': note_row['note'] if note_row else '',
             'supp_taken': supp_taken,
             'supp_total': supp_total,
+            'whoop_recovery': w['recovery'] if w else None,
+            'whoop_strain': w['strain'] if w else None,
         })
     conn.close()
     return jsonify(result)

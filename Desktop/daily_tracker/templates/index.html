@@ -3986,10 +3986,14 @@ function calDayCellHtml(d){
   const suppFull=suppTotal>0&&suppTaken>=suppTotal;
   const suppColor=suppFull?'#22c55e':'#ffd166';
   const suppPill=(suppTotal>0&&suppTaken>0)?`<span style="display:inline-flex;align-items:center;gap:5px;align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:7px;background:${calHexA(suppColor,.12)};color:${suppColor};border:1px solid ${calHexA(suppColor,.35)}" title="Takviye: ${suppTaken}/${suppTotal} alındı">💊 ${suppFull?'alındı':suppTaken+'/'+suppTotal}</span>`:'';
+  const rec=d.whoop_recovery;
+  const recColor=rec==null?'':rec>=67?'#2fd6b0':rec>=34?'#ffd166':'#e0556b';
+  const recBadge=rec!=null?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:${recColor}" title="WHOOP Recovery: ${rec}%">🔋${rec}%</span>`:'';
   return `<div onclick="calSelectDay('${d.date}')" style="min-height:140px;border-radius:14px;border:${isSel?'2px':'1px'} solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${wash};box-shadow:${isSel?'0 0 0 3px rgba(87,199,230,.18)':'none'};padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:12px;opacity:${isOff?0.75:1};transition:border-color .15s">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <span style="font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:${isToday?800:500};color:${isToday?c:'var(--text)'}">${String(d.day).padStart(2,'0')}</span>
       <span style="display:flex;align-items:center;gap:7px">
+        ${recBadge}
         ${d.session_done?`<span style="font-size:15px;font-weight:900;color:#22c55e" title="Antrenman yapıldı">✓</span>`:''}
         ${isToday?`<span style="width:9px;height:9px;border-radius:50%;background:${c}"></span>`:''}
       </span>
