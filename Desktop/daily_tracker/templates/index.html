@@ -1586,54 +1586,9 @@ async function loadDashboard(){
   sv('h-mood', (mo.energy??'—')+' / '+(mo.mood??'—'));
   const hsteps=d.steps?.steps||0; if($('h-steps')) sv('h-steps', hsteps?hsteps.toLocaleString('tr-TR'):'—');
 
-  /* trend charts — sadece kilo trendi */
-
-  /* kilo trendi — son 30 gün */
-  try {
-    const weightGoal = getT().weight_goal || 0;
-    const bmData = await API('/api/body/metrics?days=30');
-    const bmRows = Array.isArray(bmData) ? bmData : [];
-    const L30 = Array.from({length:30},(_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-29+i);return dt.toISOString().slice(0,10);});
-    const lb30 = L30.map(ds=>{const dt=new Date(ds+'T12:00:00');return dt.getDate()+' '+dt.toLocaleDateString('tr-TR',{month:'short'});});
-    const wData = L30.map(ds=>{const r=bmRows.find(x=>x.date===ds);return r&&r.weight_kg?+r.weight_kg:null;});
-    const lastW = [...wData].reverse().find(v=>v!=null);
-    sv('tv-weight-cur', lastW ? lastW+'kg' : '—');
-    sv('tv-weight-goal', weightGoal ? weightGoal+'kg' : 'Ayarla →');
-    if(lastW && weightGoal){
-      const diff = (lastW - weightGoal).toFixed(1);
-      const el = $('tv-weight-diff');
-      if(el){ el.textContent=(diff>0?'+':'')+diff+'kg'; el.style.color=diff<=0?'var(--green)':'var(--red3)'; }
-    }
-    const goalLine = weightGoal ? L30.map(()=>weightGoal) : null;
-    const datasets = [{
-      label:'Kilo',data:wData,borderColor:'#00e676',backgroundColor:'rgba(0,230,118,.12)',
-      borderWidth:2.5,tension:.35,pointRadius:3,pointBackgroundColor:'#00e676',
-      pointHoverRadius:5,fill:true,spanGaps:true
-    }];
-    if(goalLine) datasets.push({
-      label:'Hedef',data:goalLine,borderColor:'rgba(0,229,204,.6)',backgroundColor:'transparent',
-      borderWidth:1.5,borderDash:[6,4],pointRadius:0,tension:0
-    });
-    const el=$('ch-weight');
-    if(el){
-      if(el._chart){el._chart.destroy();}
-      el._chart=new Chart(el,{
-        type:'line',
-        data:{labels:lb30,datasets},
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.raw!=null?ctx.raw+'kg':'—')}}},
-          scales:{
-            x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#5a7aa8',font:{size:9},maxRotation:0,maxTicksLimit:8}},
-            y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#5a7aa8',font:{size:9},callback:v=>v+'kg'},
-               suggestedMin: wData.filter(Boolean).length ? Math.min(...wData.filter(Boolean),weightGoal||999)-2 : undefined,
-               suggestedMax: wData.filter(Boolean).length ? Math.max(...wData.filter(Boolean),weightGoal||0)+2 : undefined
-            }
-          }
-        }
-      });
-    }
-  } catch(e){ console.warn('Kilo chart:', e); }
+  /* kilo trendi grafiği artık yalnızca ndRenderWeightChart() tarafından çiziliyor (loadNewDashboard içinde) —
+     burada ikinci bir Chart.js instance'ı oluşturmak #ch-weight canvas'ı üzerinde yarış durumuna yol açıp
+     su ekleme gibi sık tetiklenen loadDashboard() çağrılarında grafiği eski/yanlış stille geri yazıyordu. */
 
   renderVitList('d-vit-list',d.vitamins||[],false);
   const meals=await API('/api/meals/'+today());
@@ -3764,6 +3719,7 @@ async function calLoadDetail(){
   CAL_DETAIL={
     totals, vitamins:(dayData&&dayData.vitamins)||[], note:(dayData&&dayData.note)||'', program:Array.isArray(progRows)?progRows:[],
     body:(dayData&&dayData.body)||{}, water_ml:(dayData&&dayData.nutrition&&dayData.nutrition.water_ml)||0, sleep_hours:(dayData&&dayData.sleep&&dayData.sleep.hours)||0,
+    steps:(dayData&&dayData.steps&&dayData.steps.steps)||0, meals:mealsArr,
   };
   calRenderDetail();
 }
@@ -3806,6 +3762,41 @@ function calWeightHtml(dayObj){
       <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:${wGece!=null?'#9a7bff':'var(--muted)'};margin-top:2px">${wGece!=null?wGece+'kg':'girilmedi'}</div>
     </div>
   </div>`;
+}
+function calStatsHtml(){
+  const water=(CAL_DETAIL&&CAL_DETAIL.water_ml)||0;
+  const steps=(CAL_DETAIL&&CAL_DETAIL.steps)||0;
+  const waterTarget=(getT&&getT().water)||3000;
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">💧 SU</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#38bdf8;margin-top:2px">${(water/1000).toFixed(1)}L<span style="font-size:10px;color:var(--muted);font-weight:500"> / ${(waterTarget/1000).toFixed(0)}L</span></div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 12px">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:.5px">👟 ADIM</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#9a7bff;margin-top:2px">${steps?steps.toLocaleString('tr-TR'):'—'}</div>
+    </div>
+  </div>`;
+}
+function calWhoopHtml(){
+  return `<div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:10px;padding:12px;text-align:center;color:var(--muted);font-size:11px">🔗 WHOOP henüz bağlanmadı. Bağlanınca uyku, recovery, HRV ve strain burada görünecek.</div>`;
+}
+function calMealLogHtml(){
+  const meals=(CAL_DETAIL&&CAL_DETAIL.meals)||[];
+  if(!meals.length) return `<div style="color:var(--muted);font-size:.78rem;padding:10px;text-align:center;border:1px dashed var(--border);border-radius:10px">Bu gün için öğün kaydı yok</div>`;
+  return meals.map(m=>{
+    const desc=(m.description||'').trim(), title=(m.title||m.slot||'—').trim();
+    const name=(desc&&desc!==title)?(desc.includes(title)?desc:(desc+' '+title)):title;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+      <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(name)}">${escHtml(name)}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;display:flex;gap:8px;flex-shrink:0">
+        <b style="color:var(--text)">${Math.round(m.calories||0)}kcal</b>
+        <span style="color:#2fd6b0">P${Math.round(m.protein_g||0)}</span>
+        <span style="color:#ffd166">K${Math.round(m.carbs_g||0)}</span>
+        <span style="color:#b48ee8">Y${Math.round(m.fat_g||0)}</span>
+      </span>
+    </div>`;
+  }).join('');
 }
 
 function calBuildCells(){
@@ -3964,10 +3955,21 @@ function calDetailInnerHtml(dayObj){
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">MAKRO <span style="color:var(--muted);opacity:.7">(gerçek / hedef)</span></div>
       ${calMakroHtml(dayObj)}
     </div>
-    ${calWeightHtml(dayObj)?`<div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">KİLO</div>
-      ${calWeightHtml(dayObj)}
-    </div>`:''}
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ÖĞÜN LOGU</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${calMealLogHtml()}</div>
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">GÜNLÜK ÖZET</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${calWeightHtml(dayObj)}
+        ${calStatsHtml()}
+      </div>
+    </div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">WHOOP GÜNLÜK</div>
+      ${calWhoopHtml()}
+    </div>
     <div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">TAKVİYE</div>
       <div style="display:flex;flex-direction:column;gap:6px">${calStackHtml()}</div>
