@@ -852,7 +852,7 @@ const fmtD = d => new Date(d+'T12:00:00').toLocaleDateString('tr-TR',{day:'numer
 })();
 
 /* THEME */
-function toggleTheme(){const h=document.documentElement,themes=['dark','light','amber'],cur=h.dataset.theme||'dark',n=themes[(themes.indexOf(cur)+1)%themes.length];h.dataset.theme=n;localStorage.setItem('theme',n);}
+function toggleTheme(){const h=document.documentElement,themes=['dark','classic','light','amber'],cur=h.dataset.theme||'dark',n=themes[(themes.indexOf(cur)+1)%themes.length];h.dataset.theme=n;localStorage.setItem('theme',n);}
 (()=>{const t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;})();
 
 /* SETTINGS */
@@ -7405,6 +7405,114 @@ input:focus,select:focus,textarea:focus {
   background:linear-gradient(135deg,rgba(255,90,54,.96),rgba(47,214,176,.9))!important;
   color:#0a0f18!important;
   box-shadow:0 18px 44px rgba(255,90,54,.24)!important;
+}
+</style>
+
+<style id="CLASSIC_THEME_V1">
+/* Turuncu reskin öncesi "premium" mavi/teal/mor tema — Tema Değiştir ile seçilebilir 2. seçenek */
+html[data-theme="classic"] {
+  --bg:#07101f;--bg2:#0d1930;--bg3:#142642;--bg4:#16223a;
+  --border:#2a4671;--border2:#243d60;
+  --text:#f8fbff;--muted:#a3b7d6;--muted2:#7a9ac8;
+  --red:#fb7185;--red2:#e60000;--red3:#ff6b6b;
+  --yellow:#ffb020;--yellow2:#ffd000;
+  --green:#22e58a;--green2:#00c853;
+  --teal:#14f1d9;--teal2:#00b8a9;
+  --blue:#38bdf8;--blue2:#2979ff;
+  --purple:#8b5cf6;--purple2:#9c27b0;
+  --pink:#f472b6;--pink2:#e91e8c;
+  --indigo:#818cf8;--orange:#ff7043;
+  --g-red:linear-gradient(135deg,#ff3b3b,#e60000);
+  --g-yellow:linear-gradient(135deg,#ffb020 0%,#fb7185 100%);
+  --g-green:linear-gradient(135deg,#22e58a 0%,#16a34a 100%);
+  --g-teal:linear-gradient(135deg,#14f1d9 0%,#38bdf8 100%);
+  --g-purple:linear-gradient(135deg,#8b5cf6 0%,#38bdf8 100%);
+  --g-pink:linear-gradient(135deg,#f472b6 0%,#8b5cf6 100%);
+}
+html[data-theme="classic"] body {
+  background:
+    linear-gradient(125deg,rgba(20,241,217,.10) 0%,transparent 30%),
+    linear-gradient(235deg,rgba(139,92,246,.13) 0%,transparent 34%),
+    linear-gradient(180deg,#07101f 0%,#050914 56%,#081120 100%) !important;
+}
+html[data-theme="classic"] .sidebar,html[data-theme="classic"] .topbar {
+  background:linear-gradient(180deg,rgba(13,25,48,.92),rgba(7,13,25,.88))!important;
+  backdrop-filter:blur(18px);
+  border-color:rgba(96,165,250,.26)!important;
+}
+html[data-theme="classic"] .brand-name {
+  background:linear-gradient(135deg,#ffffff 0%,#38bdf8 44%,#a78bfa 100%)!important;
+  -webkit-background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+}
+html[data-theme="classic"] .nav-btn.active {
+  background:linear-gradient(135deg,rgba(20,241,217,.24),rgba(139,92,246,.20))!important;
+  border-left-color:#14f1d9!important;
+  box-shadow:inset 0 0 0 1px rgba(56,189,248,.16),0 12px 32px rgba(20,241,217,.10);
+}
+html[data-theme="classic"] .nav-btn:hover {
+  background:rgba(56,189,248,.10)!important;
+  color:#f8fafc!important;
+}
+html[data-theme="classic"] .hero,html[data-theme="classic"] .card,html[data-theme="classic"] .chart-card,html[data-theme="classic"] .stat-card,html[data-theme="classic"] .macro-card,html[data-theme="classic"] .quick-card,
+html[data-theme="classic"] .macro-graph-panel,html[data-theme="classic"] .pro-log-card,html[data-theme="classic"] .tc-panel,html[data-theme="classic"] .tc-form,html[data-theme="classic"] .hero-ring-card,html[data-theme="classic"] .hero-trend-panel {
+  background:linear-gradient(180deg,rgba(20,36,64,.90),rgba(8,17,32,.80))!important;
+  border-color:rgba(96,165,250,.30)!important;
+  box-shadow:0 22px 58px rgba(2,8,23,.38),inset 0 1px 0 rgba(255,255,255,.055)!important;
+  transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+html[data-theme="classic"] .hero:hover,html[data-theme="classic"] .card:hover,html[data-theme="classic"] .chart-card:hover,html[data-theme="classic"] .stat-card:hover,html[data-theme="classic"] .macro-card:hover,html[data-theme="classic"] .quick-card:hover,
+html[data-theme="classic"] .macro-graph-panel:hover,html[data-theme="classic"] .pro-log-card:hover,html[data-theme="classic"] .tc-panel:hover,html[data-theme="classic"] .tc-form:hover {
+  border-color:rgba(20,241,217,.38)!important;
+  box-shadow:0 26px 66px rgba(2,8,23,.46),0 0 0 1px rgba(20,241,217,.05),inset 0 1px 0 rgba(255,255,255,.065)!important;
+}
+html[data-theme="classic"] .hero.dashboard-integrated {
+  background:
+    linear-gradient(120deg,rgba(20,241,217,.14),transparent 42%),
+    linear-gradient(245deg,rgba(139,92,246,.18),transparent 44%),
+    linear-gradient(135deg,rgba(8,17,32,.98),rgba(15,23,42,.94))!important;
+  border-color:rgba(56,189,248,.42)!important;
+}
+html[data-theme="classic"] .btn,html[data-theme="classic"] .tc-btn,html[data-theme="classic"] .pro-log-action,html[data-theme="classic"] .hero-ring-actions .btn {
+  box-shadow:0 10px 28px rgba(59,130,246,.22);
+}
+html[data-theme="classic"] .btn-blue,html[data-theme="classic"] .tc-small,html[data-theme="classic"] .pro-log-date button {
+  background:linear-gradient(135deg,#38bdf8,#6366f1)!important;
+  color:#fff!important;
+}
+html[data-theme="classic"] .btn-green {
+  background:linear-gradient(135deg,#14f1d9,#22e58a)!important;
+}
+html[data-theme="classic"] .btn-purple {
+  background:linear-gradient(135deg,#8b5cf6,#3b82f6)!important;
+}
+html[data-theme="classic"] input,html[data-theme="classic"] select,html[data-theme="classic"] textarea {
+  background:#10213d!important;
+  border-color:rgba(125,169,221,.38)!important;
+  color:#f8fafc!important;
+}
+html[data-theme="classic"] input:focus,html[data-theme="classic"] select:focus,html[data-theme="classic"] textarea:focus {
+  border-color:#38bdf8!important;
+  box-shadow:0 0 0 3px rgba(56,189,248,.12)!important;
+}
+html[data-theme="classic"] .macro-graph-card.protein .macro-graph-value,html[data-theme="classic"] .mc-prot .macro-val {color:#14f1d9!important}
+html[data-theme="classic"] .macro-graph-card.carb .macro-graph-value,html[data-theme="classic"] .mc-carb .macro-val {color:#ffb020!important}
+html[data-theme="classic"] .macro-graph-card.fat .macro-graph-value,html[data-theme="classic"] .mc-fat .macro-val {color:#a78bfa!important}
+html[data-theme="classic"] .macro-graph-card.water .macro-graph-value,html[data-theme="classic"] .mc-water .macro-val {color:#60a5fa!important}
+html[data-theme="classic"] .page-title,html[data-theme="classic"] .card-name,html[data-theme="classic"] .tc-title,html[data-theme="classic"] .pro-log-title,html[data-theme="classic"] .macro-graph-title {
+  color:#f8fafc!important;
+  text-shadow:0 1px 18px rgba(56,189,248,.08);
+}
+html[data-theme="classic"] .page-sub,html[data-theme="classic"] .card-sub,html[data-theme="classic"] .tc-sub,html[data-theme="classic"] .macro-graph-sub,html[data-theme="classic"] .pro-muted {
+  color:#9fb3d4!important;
+}
+html[data-theme="classic"] .macro-card .bar,html[data-theme="classic"] .macro-progress,html[data-theme="classic"] .progress-line {
+  background:rgba(148,163,184,.16)!important;
+}
+html[data-theme="classic"] .toast {
+  background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
+  color:#03101d!important;
+  box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
 }
 </style>
 </body>
