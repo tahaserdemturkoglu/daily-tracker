@@ -538,6 +538,120 @@ def generate_cycle_ai_comment():
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('cycle_ai_comment', ?)", (comment,))
     conn.commit(); conn.close()
 
+def generate_dashboard_ai_insights(date_str=None):
+    """Ana Dashboard'daki Koc Analizi paneli icin 5 tipli (kritik/aksiyon/hatirlatma/motivasyon/ai_plan)
+    kisa AI icgorusu uretir. Claude Haiku'ya gunun gercek verisini (kalori/makro vs Karb Cycle hedefi,
+    su, adim, varsa recovery yuzdesi, kilo trendi, yarinin Karb Cycle hedefi) JSON olarak gonderir."""
+    import urllib.request
+    date_str = date_str or operation_today()
+    if not ANTHROPIC_API_KEY:
+        return []
+    conn = get_db()
+    meals = conn.execute("SELECT * FROM meal_entries WHERE date=?", (date_str,)).fetchall()
+    nutrition = conn.execute("SELECT * FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
+    step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (date_str,)).fetchone()
+    mood_row = conn.execute("SELECT * FROM mood_logs WHERE date=?", (date_str,)).fetchone()
+    weight_rows = conn.execute(
+        "SELECT date, weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL ORDER BY date DESC LIMIT 8"
+    ).fetchall()
+    weight_goal_row = conn.execute("SELECT value FROM user_settings WHERE key='weight_goal'").fetchone()
+    override_row = conn.execute("SELECT value FROM user_settings WHERE key=?", (f'cycle_active_day_{date_str}',)).fetchone()
+    day_index = int(override_row['value']) if override_row and override_row['value'] not in (None, '') else date.fromisoformat(date_str).weekday()
+    today_cyc = conn.execute("SELECT * FROM cycle_days WHERE day_index=?", (day_index,)).fetchone()
+    tomorrow_cyc = conn.execute("SELECT * FROM cycle_days WHERE day_index=?", ((day_index + 1) % 7,)).fetchone()
+    conn.close()
+
+    total_cal = round(sum(m['calories'] or 0 for m in meals))
+    total_p = round(sum(m['protein_g'] or 0 for m in meals))
+    total_k = round(sum(m['carbs_g'] or 0 for m in meals))
+    total_y = round(sum(m['fat_g'] or 0 for m in meals))
+    water_ml = int(nutrition['water_ml'] if nutrition and nutrition['water_ml'] else 0)
+    steps = int(step_row['steps']) if step_row and step_row['steps'] else 0
+    try:
+        recovery = mood_row['recovery'] if mood_row else None
+    except Exception:
+        recovery = None
+
+    target = None
+    if today_cyc:
+        target = {'type': today_cyc['type'], 'protein_g': today_cyc['protein_g'], 'carb_g': today_cyc['carb_g'],
+                  'fat_g': today_cyc['fat_g'], 'kcal': 4 * today_cyc['protein_g'] + 4 * today_cyc['carb_g'] + 9 * today_cyc['fat_g']}
+    tomorrow = None
+    if tomorrow_cyc:
+        tomorrow = {'type': tomorrow_cyc['type'],
+                    'kcal': 4 * tomorrow_cyc['protein_g'] + 4 * tomorrow_cyc['carb_g'] + 9 * tomorrow_cyc['fat_g'],
+                    'carb_g': tomorrow_cyc['carb_g']}
+    weight_trend = [{'date': r['date'], 'weight_kg': r['weight_kg']} for r in reversed(weight_rows)]
+
+    payload = {
+        'tarih': date_str,
+        'gercek': {'kcal': total_cal, 'protein_g': total_p, 'carb_g': total_k, 'fat_g': total_y,
+                   'su_ml': water_ml, 'adim': steps},
+        'hedef': target,
+        'yarinin_hedefi': tomorrow,
+        'recovery_pct': recovery,
+        'kilo_trend_son_gunler': weight_trend,
+        'hedef_kilo': weight_goal_row['value'] if weight_goal_row else None,
+    }
+    system_prompt = (
+        'Sen kullanıcının kişisel antrenman ve beslenme koçusun. Sana bugünün gerçek verisini '
+        '(kalori/makro, hedef, su, adım, varsa recovery yüzdesi, son kilo trendi, yarının Karb Cycle '
+        'hedefi) JSON olarak vereceğim. En fazla 4, en az 2 kısa içgörü üret. Her içgörü şu 5 tipten '
+        'BİRİNE ait olmalı: "kritik" (veri hatası/tehlikeli aşım şüphesi — örn. tek bir öğün kaydı '
+        'toplam kalorinin çoğunu oluşturuyorsa muhtemel girdi hatasıdır), "aksiyon" (bugün yapılabilecek '
+        'somut bir şey, varsa recovery ile antrenman kesişimi), "hatirlatma" (saate göre su/öğün ritmi), '
+        '"motivasyon" (kilo trendi/ilerleme), "ai_plan" (yarının Karb Cycle hedefinin kısa özeti). '
+        'recovery_pct null ise recovery ile ilgili hiçbir şey uydurma. SADECE şu JSON formatında dön, '
+        'başka hiçbir şey yazma: {"insights":[{"type":"kritik|aksiyon|hatirlatma|motivasyon|ai_plan",'
+        '"text":"Türkçe, kısa, somut, 1-2 cümle"}]}'
+    )
+    body = {
+        'model': ANTHROPIC_MODEL,
+        'max_tokens': 500,
+        'system': system_prompt,
+        'messages': [{'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
+    }
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages',
+        data=json.dumps(body).encode('utf-8'),
+        headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        text = result['content'][0]['text'].strip()
+        if text.startswith('```'):
+            text = text.strip('`')
+            if text.startswith('json'):
+                text = text[4:]
+        insights = json.loads(text.strip()).get('insights', [])
+    except Exception as _e:
+        import logging; logging.getLogger('daily').warning(f"dashboard AI insights failed: {_e}")
+        return []
+    conn2 = get_db()
+    conn2.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
+                  (f'dashboard_ai_insights_{date_str}', json.dumps(insights, ensure_ascii=False)))
+    conn2.commit(); conn2.close()
+    return insights
+
+@app.route('/api/dashboard/ai-insights')
+def api_dashboard_ai_insights():
+    date_str = request.args.get('date') or operation_today()
+    force = request.args.get('force') == '1'
+    conn = get_db()
+    row = None if force else conn.execute(
+        "SELECT value FROM user_settings WHERE key=?", (f'dashboard_ai_insights_{date_str}',)
+    ).fetchone()
+    conn.close()
+    if row and row['value']:
+        try:
+            return jsonify({'insights': json.loads(row['value']), 'date': date_str})
+        except Exception:
+            pass
+    insights = generate_dashboard_ai_insights(date_str)
+    return jsonify({'insights': insights, 'date': date_str})
+
 @app.route('/api/cycle/ai-comment', methods=['GET'])
 def api_cycle_ai_comment():
     conn = get_db()
@@ -1346,15 +1460,31 @@ def api_macro_today():
 def api_macro_range():
     days = int(request.args.get('days', 7))
     days = max(1, min(days, 60))
+    detail = request.args.get('detail') == '1'
     start = operation_date() - timedelta(days=days-1)
     conn = get_db()
+    ensure_step_logs_table()
+    session_dates = set()
+    supp_total = None
+    if detail:
+        try:
+            sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+            if sess_row and sess_row['value']:
+                for s in json.loads(sess_row['value']):
+                    if s.get('date'):
+                        session_dates.add(s['date'])
+        except Exception:
+            pass
+        supp_total = conn.execute(
+            "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
+        ).fetchone()['c']
     result = []
     for i in range(days):
         ds = (start + timedelta(days=i)).isoformat()
         meals = meal_macro_totals(ds)
         row = conn.execute("SELECT SUM(water_ml) AS water_ml FROM nutrition_logs WHERE date=?", (ds,)).fetchone()
         water_ml = float((row['water_ml'] if row else 0) or 0)
-        result.append({
+        entry = {
             'date': ds,
             'calories': meals.get('calories', 0),
             'protein_g': meals.get('protein_g', 0),
@@ -1363,7 +1493,19 @@ def api_macro_range():
             'fiber_g': meals.get('fiber_g', 0),
             'water_ml': water_ml,
             'water_l': round(water_ml / 1000, 2),
-        })
+        }
+        if detail:
+            step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (ds,)).fetchone()
+            entry['steps'] = int(step_row['steps']) if step_row and step_row['steps'] else 0
+            entry['training_type'] = training_day(ds)
+            entry['training_done'] = ds in session_dates
+            taken = conn.execute(
+                "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')",
+                (ds,)
+            ).fetchone()['c']
+            entry['supp_taken'] = taken
+            entry['supp_total'] = supp_total or 0
+        result.append(entry)
     conn.close()
     return jsonify(result)
 

@@ -366,210 +366,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
   <!-- ═══ DASHBOARD ═══ -->
   <div class="page active" id="page-dashboard">
-    <!-- HERO -->
-    <div class="hero">
-      <div class="hero-left">
-        <div class="hero-cal" id="d-cal">0</div>
-        <div class="hero-cal-lbl">kcal alındı</div>
-        <div class="hero-remain" id="d-remain">— kcal kaldı</div>
-        <div class="hero-target" id="d-target-txt"></div>
-      </div>
-      <div class="hero-sparklines">
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%">
-          <div style="background:var(--bg3);border-radius:12px;padding:10px 14px;border:1px solid var(--border)">
-            <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Protein</div>
-            <div style="font-size:1.1rem;font-weight:900;color:var(--teal)" id="h-prot">—</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:12px;padding:10px 14px;border:1px solid var(--border)">
-            <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Su</div>
-            <div style="font-size:1.1rem;font-weight:900;color:var(--blue)" id="h-water">—</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:12px;padding:10px 14px;border:1px solid var(--border)">
-            <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Uyku</div>
-            <div style="font-size:1.1rem;font-weight:900;color:var(--purple)" id="h-sleep">—</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:12px;padding:10px 14px;border:1px solid var(--border)">
-            <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Adım</div>
-            <div style="font-size:1.1rem;font-weight:900;color:var(--yellow)" id="h-steps">—</div>
-          </div>
-        </div>
-      </div>
-      <div class="hero-ring">
-        <div class="ring-wrap">
-          <canvas id="ring-chart" style="max-height:none;width:160px;height:160px"></canvas>
-          <div class="ring-center">
-            <div class="ring-pct" id="d-pct">0%</div>
-            <div class="ring-sub">hedef</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- KİLO TRENDİ — full width -->
-    <div class="trend-card" style="margin-bottom:16px">
-      <div class="trend-head">
-        <div>
-          <div class="trend-title">⚖️ Kilo Trendi</div>
-          <div style="font-size:.7rem;color:var(--muted);margin-top:2px">Son 30 gün · kesikli çizgi = hedef</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:16px">
-          <div style="font-size:.72rem;color:var(--muted)">Şu an: <span id="tv-weight-cur" style="color:var(--green);font-weight:900">—</span></div>
-          <div style="font-size:.72rem;color:var(--muted)">Hedef: <span id="tv-weight-goal" style="color:var(--teal);font-weight:900">—</span></div>
-          <div style="font-size:.72rem;color:var(--muted)">Fark: <span id="tv-weight-diff" style="font-weight:900">—</span></div>
-        </div>
-      </div>
-      <div style="position:relative;height:200px"><canvas id="ch-weight"></canvas></div>
-    </div>
-    <!-- MACRO -->
-    <div class="macro-row">
-      <div class="mc ct ct-teal" id="mc-p" style="--w:0%">
-        <div class="mc-top"><span class="mc-icon">🥩</span><span class="mc-pct" id="mc-p-pct">0%</span></div>
-        <div class="mc-val" id="d-prot">0g</div>
-        <div class="mc-lbl">Protein</div>
-        <div class="mc-rem" id="d-prot-r" style="color:var(--teal)"></div>
-        <div class="mc-bar" style="background:var(--g-teal)"></div>
-      </div>
-      <div class="mc ct ct-yellow" id="mc-c" style="--w:0%">
-        <div class="mc-top"><span class="mc-icon">🍞</span><span class="mc-pct" id="mc-c-pct">0%</span></div>
-        <div class="mc-val" id="d-carb">0g</div>
-        <div class="mc-lbl">Karbonhidrat</div>
-        <div class="mc-rem" id="d-carb-r" style="color:var(--yellow)"></div>
-        <div class="mc-bar" style="background:var(--g-yellow)"></div>
-      </div>
-      <div class="mc ct ct-purple" id="mc-f" style="--w:0%">
-        <div class="mc-top"><span class="mc-icon">🫒</span><span class="mc-pct" id="mc-f-pct">0%</span></div>
-        <div class="mc-val" id="d-fat">0g</div>
-        <div class="mc-lbl">Yağ</div>
-        <div class="mc-rem" id="d-fat-r" style="color:var(--purple)"></div>
-        <div class="mc-bar" style="background:var(--g-purple)"></div>
-      </div>
-      <div class="mc ct ct-blue" id="mc-w" style="--w:0%">
-        <div class="mc-top"><span class="mc-icon">💧</span><span class="mc-pct" id="mc-w-pct">0%</span></div>
-        <div class="mc-val" id="d-water">0L</div>
-        <div class="mc-lbl">Su</div>
-        <div class="mc-rem" id="d-water-r" style="color:var(--blue)"></div>
-        <div class="mc-bar" style="background:linear-gradient(135deg,var(--blue),var(--teal))"></div>
-      </div>
-    </div>
-    <!-- STATS -->
-    <div class="stat-row">
-      <div class="stat"><div class="stat-icon">😴</div><div class="stat-val" id="d-sleep">—</div><div class="stat-lbl">Uyku (s)</div></div>
-      <div class="stat"><div class="stat-icon">🏋️</div><div class="stat-val" id="d-ex">—</div><div class="stat-lbl">Egzersiz</div></div>
-      <div class="stat"><div class="stat-icon">💼</div><div class="stat-val" id="d-work">—</div><div class="stat-lbl">İş (s)</div></div>
-      <div class="stat"><div class="stat-icon">🎯</div><div class="stat-val" id="d-coach">—</div><div class="stat-lbl">Antrenörlük</div></div>
-      <div class="stat"><div class="stat-icon">⚡</div><div class="stat-val" id="d-energy">—</div><div class="stat-lbl">Enerji</div></div>
-      <div class="stat"><div class="stat-icon">🧠</div><div class="stat-val" id="d-mood">—</div><div class="stat-lbl">Mood</div></div>
-    </div>
-    <!-- COMBO WIDGET: Öğünler + Antrenman + Kilo Trend -->
-    <div id="dash-combo-widget" style="background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(17,24,39,.78));border:1px solid rgba(59,130,246,.18);border-radius:14px;padding:10px 12px;margin-top:8px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Öğünler</div>
-            <span id="dcw-total-kcal" style="font-size:11px;color:#FF7B54;font-weight:700">— kcal</span>
-          </div>
-          <div id="dcw-meal-slots"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Antrenman</div>
-              <span id="dcw-today-type" style="font-size:10px;background:rgba(71,85,105,.3);color:#94a3b8;border-radius:5px;padding:2px 7px;font-weight:700">—</span>
-            </div>
-            <div id="dcw-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px">
-              <div style="background:rgba(255,255,255,.04);border-radius:7px;padding:5px;text-align:center">
-                <div id="dcw-week-count" style="font-size:13px;font-weight:700;color:#e2e8f0">—</div>
-                <div style="font-size:9px;color:#64748b">Bu hafta</div>
-              </div>
-              <div style="background:rgba(255,255,255,.04);border-radius:7px;padding:5px;text-align:center">
-                <div id="dcw-week-remain" style="font-size:13px;font-weight:700;color:#e2e8f0">—</div>
-                <div style="font-size:9px;color:#64748b">Kalan</div>
-              </div>
-              <div style="background:rgba(255,255,255,.04);border-radius:7px;padding:5px;text-align:center">
-                <div id="dcw-streak" style="font-size:13px;font-weight:700;color:#fbbf24">—</div>
-                <div style="font-size:9px;color:#64748b">Streak</div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Kilo Trend</div>
-              <span id="dcw-weight-delta" style="font-size:10px;font-weight:700;color:#94a3b8">—</span>
-            </div>
-            <div id="dcw-weight-bars" style="display:flex;align-items:flex-end;gap:3px;height:44px"></div>
-            <div style="display:flex;justify-content:space-between;font-size:9px;color:#475569;padding-top:4px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px">
-              <span id="dcw-weight-min">—</span><span id="dcw-weight-today">—</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- HEDEFLER SATIRI -->
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:6px" id="dash-goals-row">
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
-        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">KAL.HDF</div>
-        <div style="font-size:.82rem;font-weight:900;color:var(--yellow)" id="dash-goal-cal">—</div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
-        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">PROT.HDF</div>
-        <div style="font-size:.82rem;font-weight:900;color:var(--teal)" id="dash-goal-prot">—</div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
-        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">KARB.HDF</div>
-        <div style="font-size:.82rem;font-weight:900;color:var(--yellow)" id="dash-goal-carb">—</div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
-        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">YAĞ.HDF</div>
-        <div style="font-size:.82rem;font-weight:900;color:var(--purple)" id="dash-goal-fat">—</div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
-        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">SU.HDF</div>
-        <div style="font-size:.82rem;font-weight:900;color:var(--blue)" id="dash-goal-water">—</div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 6px;text-align:center">
-        <div style="font-size:.48rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">ADIM.HDF</div>
-        <div style="font-size:.82rem;font-weight:900;color:#a78bfa" id="dash-goal-steps">—</div>
-      </div>
-    </div>
-    <!-- ADIM + KİLO YAN YANA -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px">
-        <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">👟 Adım Takibi</div>
-        <div style="font-size:1.35rem;font-weight:900;color:#a78bfa" id="dash-step-val">—</div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:2px" id="dash-step-rem">— kaldı</div>
-        <div style="background:rgba(255,255,255,.06);border-radius:4px;margin-top:6px;height:4px">
-          <div id="dash-step-bar" style="background:#a78bfa;height:4px;border-radius:4px;width:0%;transition:width .4s"></div>
-        </div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px">
-        <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">⚖️ Kilo Takibi</div>
-        <div style="font-size:1.35rem;font-weight:900;color:var(--green)" id="dash-w-today">—</div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">7 gün ort: <span id="dash-w-7avg" style="color:#e2e8f0">—</span></div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:1px">30 gün trend: <span id="dash-w-trend" style="font-weight:700">—</span></div>
-      </div>
-    </div>
-    <!-- SUPPLEMENT DURUMU -->
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-top:8px">
-      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">💊 Supplement Durumu</div>
-      <div id="dash-supp-status" style="display:grid;grid-template-columns:1fr 1fr;gap:4px"></div>
-    </div>
-    <!-- AI RAPORU -->
-    <div id="dash-ai-report" style="background:var(--bg3);border:1px solid rgba(251,191,36,.2);border-radius:12px;padding:10px 12px;margin-top:8px;display:none">
-      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">🤖 Günlük AI Raporu</div>
-      <div id="dash-ai-items"></div>
-    </div>
-    <!-- BOTTOM -->
-    <div class="bottom-grid">
-      <div class="card ct ct-purple">
-        <div class="card-head"><span class="card-icon">💊</span><div><div class="card-name">Bugünkü Takviyeler</div></div></div>
-        <div class="vit-list" id="d-vit-list"><div class="list-empty">Kayıt yok</div></div>
-      </div>
-      <div class="card ct ct-teal">
-        <div class="card-head"><span class="card-icon">🍽️</span><div><div class="card-name">Bugünkü Öğünler</div></div></div>
-        <div class="meal-list" id="d-meal-list"><div class="list-empty">Kayıt yok</div></div>
-      </div>
-    </div>
+    <div id="dash-root"></div>
   </div>
 
   <!-- ═══ LOG ═══ -->
@@ -1842,6 +1639,541 @@ async function loadDashboard(){
   renderMealList('d-meal-list',meals,false);
   // Extra widgets
   loadDashboardExtra(d,t,cal,wml).catch(e=>console.warn('dashExtra:',e));
+  loadNewDashboard().catch(e=>console.warn('newDash:',e));
+}
+
+/* ═══════════════════════════════════════════════════
+   NEW DASHBOARD (ANA Dashboard yeniden tasarım)
+════════════════════════════════════════════════════ */
+const ND={
+  bg:'#0B0E14',card:'#10141E',card2:'#0D111C',border:'#1A2030',border2:'#232B3D',
+  text:'#E8ECF4',text2:'#C6CDDB',muted:'#6B7486',muted2:'#8A93A6',muted3:'#4B5468',
+  kcal:'#FFB020',p:'#FF8E9B',k:'#2ED3A3',y:'#E9C46A',danger:'#FF6B4A',whoop:'#2DD4BF',ai:'#A78BFA',water:'#38BDF8',ok:'#4ADE80'
+};
+function ndHexA(hex,a){const h=hex.replace('#','');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return `rgba(${r},${g},${b},${a})`;}
+let ND_STATE=null;
+
+function ndInjectStyle(){
+  if(document.getElementById('nd-style'))return;
+  const s=document.createElement('style');s.id='nd-style';
+  s.textContent='.nd-daybar:hover .nd-tooltip{opacity:1 !important}';
+  document.head.appendChild(s);
+}
+
+async function loadNewDashboard(){
+  try{
+    ndInjectStyle();
+    const t0=today();
+    const [d,macro,week7,bm,aiRes,stacks,meals]=await Promise.all([
+      API('/api/today'),API('/api/macro/today'),API('/api/macro/range?days=7&detail=1'),
+      API('/api/body/metrics?days=30'),API('/api/dashboard/ai-insights'),
+      API('/api/supplements/stacks'),API('/api/meals/'+t0)
+    ]);
+    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[]};
+    renderNewDashboard();
+  }catch(e){console.warn('loadNewDashboard:',e);}
+}
+
+function ndGoAddMeal(){
+  showPage('log');
+  setTimeout(()=>{$('meal-add-card')?.scrollIntoView({behavior:'smooth',block:'start'});},150);
+}
+
+function ndHeroHtml(t,cal,prot,carb,fat,wml,steps){
+  const pct=Math.round(cal/(t.cal||1)*100);
+  const over=cal>t.cal;
+  const badge=over
+    ?`<span style="background:${ndHexA(ND.danger,.12)};border:1px solid ${ndHexA(ND.danger,.45)};color:${ND.danger};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">⚠ +${Math.round(cal-t.cal).toLocaleString('tr-TR')} kcal fazla</span>`
+    :`<span style="background:${ndHexA(ND.ok,.1)};border:1px solid ${ndHexA(ND.ok,.35)};color:${ND.ok};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${Math.max(0,Math.round(t.cal-cal)).toLocaleString('tr-TR')} kcal kaldı</span>`;
+  const barPct=Math.min(100,pct);
+  const barBg=over?ND.danger:`linear-gradient(90deg,${ND.ok},${ND.kcal})`;
+  const mini=(label,val,mx,color)=>{
+    const p=Math.round(val/(mx||1)*100);
+    const warn=p>=100;
+    return `<div style="background:${warn?ndHexA(ND.danger,.06):ND.bg};border:1px solid ${warn?ndHexA(ND.danger,.45):ND.border};border-radius:10px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:${warn?ND.danger:ND.muted}"><span>${label}${warn?' ⚠':''}</span><span style="${warn?'font-weight:700':''}">${p}%</span></div>
+      <div style="font-size:17px;font-weight:600;margin:4px 0 8px;color:${warn?ND.danger:ND.text}">${Math.round(val)}<span style="font-size:12px;color:${ND.muted}">/${Math.round(mx)}g</span></div>
+      <div style="height:4px;background:${ND.border};border-radius:2px"><div style="height:100%;width:${Math.min(100,p)}%;background:${warn?ND.danger:color};border-radius:2px"></div></div>
+    </div>`;
+  };
+  const waterSegs=Math.max(1,Math.round((t.water||3000)/500));
+  const filled=Math.min(waterSegs,Math.round(wml/500));
+  const waterBoxes=Array.from({length:waterSegs},(_,i)=>`<div style="flex:1;height:14px;border-radius:4px;${i<filled?`background:${ND.water}`:`background:${ND.border};border:1px dashed #2A3348;box-sizing:border-box`}"></div>`).join('');
+  const stepPct=Math.min(100,Math.round(steps/(t.steps||10000)*100));
+  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Kalori</div>
+      ${badge}
+    </div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:6px">
+      <div style="font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;color:${over?ND.danger:ND.text}">${Math.round(cal).toLocaleString('tr-TR')}</div>
+      <div style="font-size:15px;color:${ND.muted}">/ ${Math.round(t.cal).toLocaleString('tr-TR')} kcal · <b style="color:${over?ND.danger:ND.text2}">${pct}%</b></div>
+    </div>
+    <div style="height:6px;background:${ND.border};border-radius:3px;margin-top:14px;overflow:hidden"><div style="height:100%;width:${barPct}%;background:${barBg};border-radius:3px"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px">
+      ${mini('Protein',prot,t.prot,ND.p)}
+      ${mini('Karb',carb,t.carb,ND.k)}
+      ${mini('Yağ',fat,t.fat,ND.y)}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+      <div style="background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:${ND.muted}"><span>💧 Su</span><span style="color:${ND.water};font-weight:700">${(wml/1000).toFixed(1)}<span style="color:${ND.muted};font-weight:400">/${((t.water||3000)/1000).toFixed(0)}L</span></span></div>
+        <div style="display:flex;gap:4px;margin-top:10px">${waterBoxes}</div>
+      </div>
+      <div style="background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:${ND.muted}"><span>👟 Adım</span><span>${stepPct}%</span></div>
+        <div style="font-size:17px;font-weight:600;margin-top:4px">${steps.toLocaleString('tr-TR')}<span style="font-size:12px;color:${ND.muted}">/${(t.steps||10000).toLocaleString('tr-TR')}</span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button onclick="ndGoAddMeal()" style="background:${ND.kcal};color:${ND.bg};border:none;font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer">+ Öğün Ekle</button>
+      <button onclick="addWater(500)" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer">+500ml Su</button>
+      <button onclick="showPage('training')" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer">Antrenman</button>
+    </div>
+  </div>`;
+}
+
+function ndWeekChartHtml(week7,t){
+  if(!week7.length)return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px"><div style="font-size:12px;color:${ND.muted}">Son 7 Gün · Kalori</div><div style="color:${ND.muted};font-size:13px;margin-top:12px">Veri yok</div></div>`;
+  const avg=Math.round(week7.reduce((s,e)=>s+e.calories,0)/week7.length);
+  const maxCal=Math.max(t.cal,...week7.map(e=>e.calories),1);
+  const tstr=today();
+  const okCount=week7.filter(e=>e.calories<=t.cal*1.05).length;
+  const bars=week7.map(e=>{
+    const isToday=e.date===tstr;
+    const h=Math.max(2,Math.round(e.calories/maxCal*100));
+    const over=e.calories>t.cal;
+    const barColor=isToday?(over?ND.danger:ND.ok):(over?ndHexA(ND.danger,.55):'#2A3348');
+    const dt=new Date(e.date+'T12:00:00');
+    const dowLbl=isToday?'Bgn':dt.toLocaleDateString('tr-TR',{weekday:'short'}).replace('.','').slice(0,3);
+    const lblColor=isToday?(over?ND.danger:ND.text):ND.muted;
+    const dateLbl=dt.getDate()+' '+dt.toLocaleDateString('tr-TR',{month:'short'}).toUpperCase().replace('.','');
+    const durum=over?`<span style="color:${ND.danger}">⚠ +${Math.round(e.calories-t.cal).toLocaleString('tr-TR')} aşım</span>`:`<span style="color:${ND.whoop}">✓ hedefte</span>`;
+    return `<div class="nd-daybar" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:6px;position:relative;cursor:pointer" onclick="ndOpenDayModal('${e.date}')">
+      <div style="background:${barColor};border-radius:5px 5px 2px 2px;height:${h}%"></div>
+      <div style="text-align:center;font-size:11px;color:${lblColor};font-weight:${isToday?700:400}">${dowLbl}${isToday&&over?' ⚠':''}</div>
+      <div class="nd-tooltip" style="position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);background:${ND.card};border:1px solid #2A3348;border-radius:10px;padding:10px 12px;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;z-index:5;transition:opacity .12s">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:${ND.muted2};margin-bottom:5px">${dateLbl}</div>
+        <div style="font-size:14px;font-weight:700;color:${ND.kcal}">${Math.round(e.calories).toLocaleString('tr-TR')} kcal ${durum}</div>
+        <div style="font-size:11px;margin-top:4px"><span style="color:${ND.p}">P ${Math.round(e.protein_g)}</span> · <span style="color:${ND.k}">K ${Math.round(e.carbs_g)}</span> · <span style="color:${ND.y}">Y ${Math.round(e.fat_g)}</span></div>
+        <div style="border-top:1px solid ${ND.border};margin-top:7px;padding-top:6px">
+          <div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;margin-top:3px"><span style="color:${ND.muted}">💧 Su</span><b style="color:${ND.muted2}">${(e.water_l||0).toFixed(1)} / ${((t.water||3000)/1000).toFixed(0)}L</b></div>
+          <div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;margin-top:3px"><span style="color:${ND.muted}">👟 Adım</span><b style="color:${ND.muted2}">${(e.steps||0).toLocaleString('tr-TR')}</b></div>
+          <div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;margin-top:3px"><span style="color:${ND.muted}">🏋 Antrenman</span><b style="color:${e.training_done?ND.whoop:ND.muted3}">${e.training_type||'—'}${e.training_done?' ✓':''}</b></div>
+          <div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;margin-top:3px"><span style="color:${ND.muted}">💊 Takviye</span><b style="color:${ND.whoop}">${e.supp_taken||0}/${e.supp_total||0}</b></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Son 7 Gün · Kalori</div>
+      <div style="font-size:12px;color:${ND.muted2}">ort. <b style="color:${ND.text}">${avg.toLocaleString('tr-TR')}</b></div>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:10px;flex:1;min-height:150px;margin-top:18px">${bars}</div>
+    <div style="border-top:1px dashed ${ND.border2};margin-top:12px;padding-top:10px;font-size:12px;color:${ND.muted}">Hedef: ${Math.round(t.cal).toLocaleString('tr-TR')} kcal/gün · ${okCount}/${week7.length} gün hedefte</div>
+  </div>`;
+}
+
+function ndWeightCardHtml(bm){
+  const rows=bm.filter(r=>r.weight_kg);
+  const minW=rows.length?Math.min(...rows.map(r=>r.weight_kg)):null;
+  const last7=rows.slice(-7);
+  const trend7=last7.length>=2?Math.round((last7[last7.length-1].weight_kg-last7[0].weight_kg)*10)/10:null;
+  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Kilo Trend</div>
+      <span style="font-size:12px;font-weight:600;color:${ND.whoop}">${trend7!=null?(trend7<=0?'▼':'▲')+' '+Math.abs(trend7)+'kg / 7g':''}</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-top:10px">
+      <div style="font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1" id="tv-weight-cur">—</div>
+      <div style="font-size:13px;color:${ND.muted}">kg</div>
+      <div style="font-size:12px;color:${ND.muted2};margin-left:auto">hedef <b id="tv-weight-goal" style="color:${ND.text}">—</b></div>
+    </div>
+    <div style="position:relative;margin-top:8px;flex:1;min-height:130px"><canvas id="ch-weight"></canvas></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:${ND.muted};margin-top:10px;border-top:1px solid ${ND.border};padding-top:10px">
+      <span>En düşük <b style="color:${ND.text2}">${minW!=null?minW.toFixed(1):'—'}</b></span>
+      <span>fark <b id="tv-weight-diff" style="color:${ND.muted2}">—</b></span>
+      <span><b style="color:${ND.text2}">${rows.length}</b> kayıt</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+      <button onclick="showPage('log');setTimeout(()=>showSub('sub-vucut'),100)" style="flex:1;background:#161B28;color:${ND.whoop};border:1px solid ${ndHexA(ND.whoop,.35)};font-family:inherit;font-size:12px;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer">☀ Kilo gir</button>
+    </div>
+  </div>`;
+}
+
+function ndRenderWeightChart(bm,weightGoal){
+  try{
+    const rows=Array.isArray(bm)?bm:[];
+    const L30=Array.from({length:30},(_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-29+i);return dt.toISOString().slice(0,10);});
+    const lb30=L30.map(ds=>{const dt=new Date(ds+'T12:00:00');return dt.getDate()+' '+dt.toLocaleDateString('tr-TR',{month:'short'});});
+    const wData=L30.map(ds=>{const r=rows.find(x=>x.date===ds);return r&&r.weight_kg?+r.weight_kg:null;});
+    const nightData=L30.map(ds=>{const r=rows.find(x=>x.date===ds);return r&&r.weight_kg_night?+r.weight_kg_night:null;});
+    const lastW=[...wData].reverse().find(v=>v!=null);
+    sv('tv-weight-cur',lastW!=null?lastW+'':'—');
+    sv('tv-weight-goal',weightGoal?weightGoal+'':'—');
+    if(lastW!=null&&weightGoal){
+      const diff=(lastW-weightGoal).toFixed(1);
+      const el=$('tv-weight-diff');
+      if(el){el.textContent=(diff>0?'+':'')+diff+'kg';el.style.color=diff<=0?ND.whoop:ND.danger;}
+    }
+    const goalLine=weightGoal?L30.map(()=>weightGoal):null;
+    const datasets=[{label:'Kilo',data:wData,borderColor:ND.whoop,backgroundColor:ndHexA(ND.whoop,.15),borderWidth:2.5,tension:.35,pointRadius:2,pointBackgroundColor:ND.whoop,pointHoverRadius:5,fill:true,spanGaps:true}];
+    if(goalLine)datasets.push({label:'Hedef',data:goalLine,borderColor:ndHexA(ND.text2,.4),backgroundColor:'transparent',borderWidth:1.5,borderDash:[6,4],pointRadius:0,tension:0});
+    const el=$('ch-weight');
+    if(el){
+      if(el._chart)el._chart.destroy();
+      el._chart=new Chart(el,{type:'line',data:{labels:lb30,datasets},options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{
+          label:ctx=>ctx.dataset.label+': '+(ctx.raw!=null?ctx.raw+'kg':'—'),
+          afterBody:ctx=>{const i=ctx[0].dataIndex;const nv=nightData[i];return '☾ Gece: '+(nv!=null?nv+'kg':'girilmedi');}
+        }}},
+        scales:{
+          x:{grid:{color:ndHexA(ND.border2,.5)},ticks:{color:ND.muted,font:{size:9},maxRotation:0,maxTicksLimit:6}},
+          y:{grid:{color:ndHexA(ND.border2,.5)},ticks:{color:ND.muted,font:{size:9},callback:v=>v+'kg'},
+             suggestedMin:wData.filter(Boolean).length?Math.min(...wData.filter(Boolean),weightGoal||999)-2:undefined,
+             suggestedMax:wData.filter(Boolean).length?Math.max(...wData.filter(Boolean),weightGoal||0)+2:undefined}
+        }
+      }});
+    }
+  }catch(e){console.warn('nd weight chart:',e);}
+}
+
+function ndNormSlot(s){
+  s=(s||'extra').toLowerCase().trim();
+  if(s==='breakfast'||s==='kahvaltı')return'kahvalti';
+  if(s==='lunch')return'ogle';
+  if(s==='dinner')return'aksam';
+  if(s==='preworkout')return'pre-workout';
+  if(s==='postworkout'||s==='posworkout')return'post-workout';
+  if(s==='night')return'gece';
+  return s;
+}
+function ndSlotLabel(s){
+  if(s==='kahvalti')return'Kahvaltı';
+  if(s==='meal1')return'Meal 1';if(s==='meal2')return'Meal 2';if(s==='meal3')return'Meal 3';if(s==='meal4')return'Meal 4';if(s==='meal5')return'Meal 5';
+  if(s==='pre_meal'||s==='pre'||s==='pre-workout')return'Pre Meal';
+  if(s==='post_meal'||s==='post'||s==='post-workout')return'Post Meal';
+  if(s==='ogle')return'Öğle';if(s==='aksam')return'Akşam';if(s==='gece')return'Gece';
+  if(s==='extra')return'Ekstra';
+  return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+}
+const ND_SLOT_COLOR={extra:'#2DD4BF',kahvalti:'#FFB020',meal1:'#38BDF8',meal2:'#A78BFA',meal3:'#FFB020',meal4:'#FF5C8A',meal5:'#38BDF8',ogle:'#38BDF8',aksam:'#A78BFA',gece:'#8B5CF6'};
+function ndSlotColor(slot,idx){return ND_SLOT_COLOR[slot]||['#2DD4BF','#38BDF8','#A78BFA','#FFB020','#FF5C8A'][idx%5];}
+function ndGroupMeals(meals){
+  const groups={};
+  meals.forEach(m=>{const k=ndNormSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
+  const order=[...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups).filter(s=>!G_SLOT_ORDER.includes(s))];
+  return order.map((slot,i)=>{
+    const rows=groups[slot];
+    const tot=rows.reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),k:a.k+(m.carbs_g||0),y:a.y+(m.fat_g||0)}),{cal:0,p:0,k:0,y:0});
+    return {slot,label:ndSlotLabel(slot),color:ndSlotColor(slot,i),rows,tot};
+  });
+}
+
+function ndMealsSummaryHtml(groups,cal,prot,carb,fat){
+  const rows=groups.map(g=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:8px 12px">
+      <span style="font-size:13px;font-weight:600"><span style="color:${g.color}">●</span> ${g.label}</span>
+      <span style="font-size:12px"><b style="color:${ND.kcal}">${Math.round(g.tot.cal)}</b> · <span style="color:${ND.p}">P ${Math.round(g.tot.p)}</span> · <span style="color:${ND.k}">K ${Math.round(g.tot.k)}</span> · <span style="color:${ND.y}">Y ${Math.round(g.tot.y)}</span></span>
+    </div>`).join('')||`<div style="color:${ND.muted};font-size:13px">Bugün henüz öğün kaydı yok</div>`;
+  return `<div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Öğünler</div>
+      <div style="font-size:13px;font-weight:700"><span style="color:${ND.kcal}">${Math.round(cal)} kcal</span> · <span style="color:${ND.p}">P ${Math.round(prot)}</span> · <span style="color:${ND.k}">K ${Math.round(carb)}</span> · <span style="color:${ND.y}">Y ${Math.round(fat)}</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">${rows}</div>
+  </div>`;
+}
+
+function ndTrainingWhoopHtml(week7,todayType,whoopConnected){
+  const tstr=today();
+  const cells=week7.map(e=>{
+    const isToday=e.date===tstr;
+    const type=e.training_type||'Off';
+    const c=TC[type]||'#444';
+    const dt=new Date(e.date+'T12:00:00');
+    const dlbl=dt.toLocaleDateString('tr-TR',{weekday:'short'}).slice(0,2).replace('.','');
+    const abbr=type.slice(0,3);
+    const bg=type==='Off'?ND.bg:ndHexA(c,.1);
+    const bd=isToday?`2px solid ${c}`:`1px solid ${type==='Off'?ND.border:ndHexA(c,.4)}`;
+    return `<div style="text-align:center;background:${bg};border:${bd};border-radius:8px;padding:${isToday?'7px':'8px'} 0">
+      <div style="font-size:11px;color:${type==='Off'?ND.muted3:c};font-weight:700">${dlbl}</div>
+      <div style="font-size:11px;color:${type==='Off'?ND.muted3:c};margin-top:2px">${abbr}${e.training_done?' ✓':''}</div>
+    </div>`;
+  }).join('');
+  const doneCount=week7.filter(e=>e.training_done).length;
+  const totalNonOff=week7.filter(e=>e.training_type&&e.training_type!=='Off').length;
+  const streak=(ND_STATE&&ND_STATE.d.streak)||0;
+  const whoopBadge=whoopConnected
+    ?`<span style="background:${ndHexA(ND.whoop,.12)};border:1px solid ${ndHexA(ND.whoop,.4)};color:${ND.whoop};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">senkron</span>`
+    :`<span style="background:#161B28;border:1px solid ${ND.border2};color:${ND.muted};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">bağlı değil</span>`;
+  const whoopBody=whoopConnected?'':`<div style="background:${ND.bg};border:1px dashed ${ND.border2};border-radius:10px;padding:14px;text-align:center;color:${ND.muted};font-size:12px">WHOOP hesabı henüz bağlanmadı. Bağlanınca uyku, recovery, HRV ve strain burada görünecek.</div>`;
+  const tc=TC[todayType]||'#444';
+  return `<div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Antrenman</div>
+      <span style="background:${ndHexA(tc,.12)};color:${tc};border:1px solid ${ndHexA(tc,.4)};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${todayType||'—'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${week7.length||7},1fr);gap:6px">${cells}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+      <div style="background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 0;text-align:center"><div style="font-size:20px;font-weight:700">${doneCount}</div><div style="font-size:11px;color:${ND.muted}">Son 7 gün</div></div>
+      <div style="background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 0;text-align:center"><div style="font-size:20px;font-weight:700">${totalNonOff}</div><div style="font-size:11px;color:${ND.muted}">Toplam gün</div></div>
+      <div style="background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:10px 0;text-align:center"><div style="font-size:20px;font-weight:700">${streak} 🔥</div><div style="font-size:11px;color:${ND.muted}">Streak</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Whoop Günlük</div>
+      ${whoopBadge}
+    </div>
+    ${whoopBody}
+  </div>`;
+}
+
+const ND_AI_META={
+  kritik:{icon:'🚨',color:ND.danger,bg:.06,bd:.35},
+  aksiyon:{icon:'🎯',color:ND.kcal,bg:.05,bd:.3},
+  hatirlatma:{icon:'💧',color:ND.water,bg:.05,bd:.3},
+  motivasyon:{icon:'📈',color:ND.whoop,bg:.05,bd:.3},
+  ai_plan:{icon:'🤖',color:ND.ai,bg:.06,bd:.35},
+};
+function ndAiCoachHtml(insights){
+  const rows=(insights&&insights.length)?insights.map(it=>{
+    const m=ND_AI_META[it.type]||ND_AI_META.aksiyon;
+    return `<div style="display:flex;gap:10px;background:${ndHexA(m.color,m.bg)};border:1px solid ${ndHexA(m.color,m.bd)};border-radius:10px;padding:10px 14px">
+      <span style="font-size:14px;flex-shrink:0">${m.icon}</span>
+      <div style="font-size:13px;line-height:1.5;color:${ND.text2}">${escHtml(it.text)}</div>
+    </div>`;
+  }).join(''):`<div style="color:${ND.muted};font-size:13px">Bugün için henüz yeterli veri yok.</div>`;
+  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Koç Analizi</div>
+      <span style="font-size:11px;color:${ND.muted}">tüm verilere göre</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">${rows}</div>
+    <div style="display:flex;gap:8px;margin-top:auto;padding-top:14px">
+      <button onclick="showPage('log')" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:12px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer">Log aç</button>
+      <button onclick="$('dash-root')?.scrollIntoView({behavior:'smooth'})" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:12px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer">Özete git</button>
+    </div>
+  </div>`;
+}
+
+function ndMealLogHtml(groups){
+  if(!groups.length)return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
+    <div style="font-size:15px;font-weight:700">Öğün Logu</div>
+    <div style="color:${ND.muted};font-size:13px;margin-top:12px">Bugün henüz öğün kaydı yok. <a href="javascript:void(0)" onclick="ndGoAddMeal()" style="color:${ND.water}">+ Öğün ekle</a></div>
+  </div>`;
+  const cards=groups.map(g=>{
+    const items=g.rows.map(m=>{
+      const desc=(m.description||'').trim().replace(/\b(\d+)\.0+\b/g,'$1');
+      const title=(m.title||m.slot||'—').trim();
+      const name=(desc&&desc!==title)?(desc.includes(title)?desc:(desc+' '+title)):title;
+      const chip=(lbl,v,color)=>(v!=null&&v!=='')?`<span style="background:${ndHexA(color,.12)};border:1px solid ${ndHexA(color,.32)};color:${color};font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px">${lbl}:${+(Math.round(v*10)/10)}</span>`:'';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid #1E2637">
+        <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${escHtml(name)}">${escHtml(name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <b style="font-size:13px;color:${ND.kcal}">${Math.round(m.calories||0)} kcal</b>
+          ${chip('P',m.protein_g,ND.p)}${chip('K',m.carbs_g,ND.k)}${chip('Y',m.fat_g,ND.y)}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="background:${ND.card2};border:1px solid ${ndHexA(g.color,.3)};border-radius:12px;overflow:hidden;box-shadow:0 0 24px ${ndHexA(g.color,.06)}">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,${ndHexA(g.color,.16)},${ndHexA(g.color,.04)})">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.06em;color:${g.color}">● ${g.label.toUpperCase()}</div>
+        <div style="font-size:13px;font-weight:700"><span style="color:${ND.kcal}">${Math.round(g.tot.cal)} kcal</span> · <span style="color:${ND.p}">P ${Math.round(g.tot.p)}</span> · <span style="color:${ND.k}">K ${Math.round(g.tot.k)}</span> · <span style="color:${ND.y}">Y ${Math.round(g.tot.y)}</span></div>
+      </div>
+      ${items}
+    </div>`;
+  }).join('');
+  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
+    <div style="font-size:15px;font-weight:700">Öğün Logu</div>
+    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Telegram ve web kayıtları burada saat gibi okunur.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">${cards}</div>
+  </div>`;
+}
+
+async function ndMarkAllSupps(){
+  const btn=$('nd-mark-all-btn');if(btn){btn.disabled=true;btn.textContent='...';}
+  try{
+    const suppData=await API('/api/supplements/today');
+    const loggedNames=new Set((suppData?.logs||[]).map(l=>l.stack_name_snapshot));
+    const stacks=(ND_STATE&&ND_STATE.stacks)||[];
+    for(const s of stacks){
+      if(!loggedNames.has(s.name)) await POST('/api/supplements/log',{stack_name:s.name});
+    }
+    toast('Takviyeler işaretlendi',true);
+    loadDashboard();
+  }catch(e){toast('Hata oluştu',false);}
+  if(btn){btn.disabled=false;btn.textContent='✓ Tümünü işaretle';}
+}
+
+function ndSuppSidebarHtml(stacks,vitamins){
+  const vitByName={};(vitamins||[]).forEach(v=>{vitByName[v.name]=v;});
+  let totalItems=0,totalTaken=0;
+  const groupColors=['#38BDF8','#FFB020','#FF9E4A','#A78BFA','#2DD4BF'];
+  const groups=stacks.map((s,i)=>{
+    const items=s.items||[];
+    let logged=0,taken=0;
+    const rows=items.map(it=>{
+      const v=vitByName[it.product_name];
+      totalItems++;
+      if(!v){
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px">
+          <span style="font-size:13px;font-weight:600;color:${ND.muted}">○ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted3}">Bekliyor</span>
+        </div>`;
+      }
+      logged++;
+      const st=vitStatusOf(v),meta=VIT_STATUS_META[st];
+      const mc=(st==='taken')?ND.text2:meta.color;
+      if(['taken','eod_taken','half_dose'].includes(st)){taken++;totalTaken++;}
+      const strike=st==='missed'?'text-decoration:line-through':'';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${st==='taken'?ND.bg:ndHexA(mc,.08)};border:1px solid ${st==='taken'?ND.border:ndHexA(mc,.32)};border-radius:8px;padding:12px 16px">
+        <span style="font-size:13px;font-weight:600;color:${mc};${strike}">${meta.emoji} ${escHtml(it.product_name)}</span>
+        <span style="font-size:11px;color:${st==='taken'?ND.muted:mc}">${it.dose||1} ${it.unit||''}</span>
+      </div>`;
+    }).join('');
+    const c=groupColors[i%groupColors.length];
+    const badge=logged===0?`<span style="font-size:10px;color:${ND.muted}">bekliyor</span>`:`<span style="font-size:10px;color:${taken===items.length?ND.whoop:ND.kcal}">${taken}/${items.length}</span>`;
+    return `<div style="background:${ndHexA(c,.07)};border:1px solid ${ndHexA(c,.25)};border-radius:12px;padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${c}">● ${escHtml((s.name||'').toUpperCase())}</div>
+        ${badge}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">${rows||`<div style="color:${ND.muted};font-size:12px">Ürün yok</div>`}</div>
+    </div>`;
+  }).join('');
+  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:15px;font-weight:700">Takviye Stack</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="background:${ndHexA(ND.whoop,.1)};border:1px solid ${ndHexA(ND.whoop,.35)};color:${ND.whoop};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${totalTaken}/${totalItems} alındı</span>
+        <button onclick="ndMarkAllSupps()" id="nd-mark-all-btn" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:11px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü işaretle</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Günlük protokol, uyku stack ve vitaminler.</div>
+    ${groups||`<div style="color:${ND.muted};font-size:13px">Aktif takviye stack yok</div>`}
+  </div>`;
+}
+
+async function ndOpenDayModal(dateStr){
+  try{
+    const [day,meals]=await Promise.all([API('/api/day/'+dateStr),API('/api/meals/'+dateStr)]);
+    const tot=(meals||[]).reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),k:a.k+(m.carbs_g||0),y:a.y+(m.fat_g||0)}),{cal:0,p:0,k:0,y:0});
+    const t=getT(day.training);
+    const over=tot.cal>t.cal;
+    const dt=new Date(dateStr+'T12:00:00');
+    const dateLbl=dt.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+    const durum=over?`⚠ +${Math.round(tot.cal-t.cal).toLocaleString('tr-TR')} aşım`:'✓ hedefte';
+    const wSabah=day.body?.weight_kg;
+    const wGece=day.body?.weight_kg_night;
+    const su=((day.nutrition?.water_ml||0)/1000).toFixed(1)+'L';
+    const adim=(day.steps?.steps||0).toLocaleString('tr-TR');
+    const suppTaken=(day.vitamins||[]).filter(v=>['taken','eod_taken','half_dose'].includes(vitStatusOf(v))).length;
+    const suppTotal=(day.vitamins||[]).length;
+    const mealsHtml=(meals||[]).map(m=>{
+      const name=(m.description||m.title||m.slot||'—');
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:10px;padding:12px 16px">
+        <div style="font-size:13px;font-weight:600;color:#fff">${escHtml(name)}</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px">
+          <b style="font-size:13px;color:${ND.kcal}">${Math.round(m.calories||0)} kcal</b>
+          <span style="color:${ND.p}">P ${Math.round(m.protein_g||0)}</span><span style="color:${ND.k}">K ${Math.round(m.carbs_g||0)}</span><span style="color:${ND.y}">Y ${Math.round(m.fat_g||0)}</span>
+        </div>
+      </div>`;
+    }).join('')||`<div style="color:${ND.muted};font-size:13px">Kayıt yok</div>`;
+    const html=`<div id="nd-day-modal-overlay" onclick="if(event.target===this)ndCloseDayModal()" style="position:fixed;inset:0;background:rgba(4,6,10,.85);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 24px">
+      <div style="width:880px;max-width:100%;background:${ND.bg};border:1px solid ${ND.border2};border-radius:20px;padding:28px 32px;color:${ND.text};box-shadow:0 24px 80px rgba(0,0,0,.6)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+          <div>
+            <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Geçmiş Gün Raporu</div>
+            <div style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin-top:4px;text-transform:capitalize">${dateLbl}</div>
+          </div>
+          <button onclick="ndCloseDayModal()" style="background:${ND.kcal};color:${ND.bg};border:none;font-family:inherit;font-size:13px;font-weight:700;padding:10px 18px;border-radius:8px;cursor:pointer">✕ Kapat</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:20px">
+            <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Kalori</div>
+            <div style="display:flex;align-items:baseline;gap:10px;margin-top:6px">
+              <div style="font-size:44px;font-weight:700;letter-spacing:-.03em;line-height:1;color:${over?ND.danger:ND.text}">${Math.round(tot.cal).toLocaleString('tr-TR')}</div>
+              <div style="font-size:13px;color:${over?ND.danger:ND.whoop};font-weight:700">${durum}</div>
+            </div>
+            <div style="font-size:12px;color:${ND.muted};margin-top:6px">hedef ${Math.round(t.cal).toLocaleString('tr-TR')} kcal</div>
+          </div>
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:20px">
+            <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Makrolar</div>
+            <div style="display:flex;gap:18px;margin-top:12px">
+              <div><div style="font-size:24px;font-weight:700;color:${ND.p}">${Math.round(tot.p)}g</div><div style="font-size:11px;color:${ND.muted}">Protein</div></div>
+              <div><div style="font-size:24px;font-weight:700;color:${ND.k}">${Math.round(tot.k)}g</div><div style="font-size:11px;color:${ND.muted}">Karb</div></div>
+              <div><div style="font-size:24px;font-weight:700;color:${ND.y}">${Math.round(tot.y)}g</div><div style="font-size:11px;color:${ND.muted}">Yağ</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:14px">
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:16px">
+            <div style="font-size:11px;color:${ND.muted}">⚖ Kilo</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px">☀ <span style="color:${ND.whoop}">${wSabah?wSabah+'kg':'—'}</span></div>
+            <div style="font-size:13px;font-weight:600;margin-top:2px">☾ <span style="color:${wGece?ND.text:ND.muted3}">${wGece?wGece+'kg':'girilmedi'}</span></div>
+          </div>
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:16px">
+            <div style="font-size:11px;color:${ND.muted}">💧 Su</div>
+            <div style="font-size:18px;font-weight:700;margin-top:4px;color:${ND.water}">${su}</div>
+          </div>
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:16px">
+            <div style="font-size:11px;color:${ND.muted}">👟 Adım</div>
+            <div style="font-size:18px;font-weight:700;margin-top:4px;color:${ND.ai}">${adim}</div>
+          </div>
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:16px">
+            <div style="font-size:11px;color:${ND.muted}">🏋 Antrenman</div>
+            <div style="font-size:18px;font-weight:700;margin-top:4px;color:${ND.whoop}">${escHtml(day.training||'—')}</div>
+          </div>
+          <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:16px">
+            <div style="font-size:11px;color:${ND.muted}">💊 Takviye</div>
+            <div style="font-size:18px;font-weight:700;margin-top:4px;color:${ND.whoop}">${suppTaken}/${suppTotal}</div>
+          </div>
+        </div>
+        <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:14px;padding:20px">
+          <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase;margin-bottom:12px">Öğün Logu</div>
+          <div style="display:flex;flex-direction:column;gap:8px">${mealsHtml}</div>
+        </div>
+      </div>
+    </div>`;
+    ndCloseDayModal();
+    const holder=document.createElement('div');holder.id='nd-day-modal-holder';holder.innerHTML=html;
+    document.body.appendChild(holder);
+  }catch(e){console.warn('day modal:',e);toast('Gün detayı yüklenemedi',false);}
+}
+function ndCloseDayModal(){$('nd-day-modal-holder')?.remove();}
+
+function renderNewDashboard(){
+  const root=$('dash-root');if(!root||!ND_STATE)return;
+  const {d,macro,week7,bm,ai,stacks,meals}=ND_STATE;
+  const t=getT(d.training_day);
+  const tot=macro.totals||{};
+  const cal=tot.calories||0,prot=tot.protein_g||0,carb=tot.carbs_g||0,fat=tot.fat_g||0;
+  const wml=d.nutrition?.water_ml||0;
+  const steps=d.steps?.steps||0;
+  const groups=ndGroupMeals(meals);
+  const todayType=d.training_day||(week7.length?week7[week7.length-1].training_type:'—');
+
+  root.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px">
+        ${ndHeroHtml(t,cal,prot,carb,fat,wml,steps)}
+        ${ndWeekChartHtml(week7,t)}
+        ${ndWeightCardHtml(bm)}
+      </div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+        <div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;display:grid;grid-template-columns:1fr 1.3fr;gap:24px">
+          ${ndMealsSummaryHtml(groups,cal,prot,carb,fat)}
+          ${ndTrainingWhoopHtml(week7,todayType,false)}
+        </div>
+        ${ndAiCoachHtml(ai)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start">
+        ${ndMealLogHtml(groups)}
+        ${ndSuppSidebarHtml(stacks,d.vitamins||[])}
+      </div>
+    </div>`;
+  const weightGoal=t.weight_goal||0;
+  ndRenderWeightChart(bm,weightGoal);
 }
 
 async function loadDashboardExtra(d,t,cal,wml){
