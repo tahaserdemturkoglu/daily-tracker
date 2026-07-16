@@ -799,16 +799,32 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <div class="pg-title">Ayarlar</div>
     <div class="pg-sub">Sistem ayarları</div>
 
-    <!-- AI Sistem -->
-    <div class="card ct ct-teal" style="max-width:560px;margin-top:14px">
-      <div class="card-head"><span class="card-icon">🤖</span><div><div class="card-name">AI Koç — Claude Haiku</div></div></div>
-      <div style="font-size:.84rem;line-height:1.8;color:var(--muted)">
-        Telegram botu ve site Railway'de 7/24 çalışıyor.<br>
-        Doğal dil → veritabanı kaydı.<br>
-        <strong style="color:var(--text)">Bot:</strong> @taha_serdem_daily_rapor_bot<br>
-        <strong style="color:var(--text)">Site:</strong> <a href="https://web-production-87c2c.up.railway.app" target="_blank" style="color:var(--teal)">web-production-87c2c.up.railway.app</a><br>
-        <strong style="color:var(--text)">Durum:</strong> <span style="color:var(--green)">✓ Aktif (Railway)</span>
+    <div style="display:flex;flex-direction:column;gap:16px;max-width:560px;margin-top:14px">
+
+      <!-- AI Sistem -->
+      <div class="card ct ct-teal">
+        <div class="card-head"><span class="card-icon">🤖</span><div><div class="card-name">Bot &amp; Coach — Claude Haiku</div></div></div>
+        <div style="font-size:.84rem;line-height:1.8;color:var(--muted)">
+          Telegram botu ve site Railway'de 7/24 çalışıyor. Doğal dil → veritabanı kaydı.<br>
+          <strong style="color:var(--text)">Coach:</strong> her gün sonunda gerçek verinden gözlem üretir, kalıcı profil notlarıyla seni zamanla tanır — <a href="#" onclick="showPage('aicoach');return false" style="color:var(--teal)">Coach sayfasına git</a><br>
+          <strong style="color:var(--text)">Bot:</strong> @taha_serdem_daily_rapor_bot<br>
+          <strong style="color:var(--text)">Site:</strong> <a href="https://web-production-87c2c.up.railway.app" target="_blank" style="color:var(--teal)">web-production-87c2c.up.railway.app</a><br>
+          <strong style="color:var(--text)">Durum:</strong> <span style="color:var(--green)">✓ Aktif (Railway)</span>
+        </div>
       </div>
+
+      <!-- WHOOP -->
+      <div class="card ct ct-teal">
+        <div class="card-head"><span class="card-icon">🔋</span><div><div class="card-name">WHOOP Entegrasyonu</div></div></div>
+        <div id="settings-whoop-body" style="font-size:.84rem;line-height:1.8;color:var(--muted)">Yükleniyor…</div>
+      </div>
+
+      <!-- Tema -->
+      <div class="card ct ct-teal">
+        <div class="card-head"><span class="card-icon">🎨</span><div><div class="card-name">Tema</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px" id="settings-theme-picker"></div>
+      </div>
+
     </div>
   </div>
 
@@ -1425,6 +1441,47 @@ function saveWaterGoal(){
 }
 async function loadSettings(){
   try{const s=await fetch('/api/settings').then(r=>r.json());if(Object.keys(s).length){const merged={...DEF,...s};localStorage.setItem('targets',JSON.stringify(merged));}}catch(e){}
+  settingsRenderThemePicker();
+  settingsLoadWhoop();
+}
+function settingsRenderThemePicker(){
+  const el=$('settings-theme-picker'); if(!el) return;
+  const cur=document.documentElement.dataset.theme||'dark';
+  const themes=[{k:'dark',label:'Koyu',sw:'#0B0E14'},{k:'classic',label:'Klasik',sw:'#101a2e'},{k:'light',label:'Açık',sw:'#f4f6fb'},{k:'amber',label:'Amber',sw:'#1a1206'}];
+  el.innerHTML=themes.map(t=>`<button onclick="setTheme('${t.k}')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:10px;border:2px solid ${cur===t.k?'var(--teal)':'var(--border)'};background:var(--bg2);cursor:pointer">
+    <span style="width:28px;height:28px;border-radius:50%;background:${t.sw};border:1px solid rgba(255,255,255,.15)"></span>
+    <span style="font-size:10.5px;font-weight:700;color:${cur===t.k?'var(--teal)':'var(--muted)'}">${t.label}</span>
+  </button>`).join('');
+}
+function setTheme(name){
+  document.documentElement.dataset.theme=name;
+  localStorage.setItem('theme',name);
+  settingsRenderThemePicker();
+}
+async function settingsLoadWhoop(){
+  const el=$('settings-whoop-body'); if(!el) return;
+  try{
+    const s=await API('/whoop/status');
+    if(s&&s.connected){
+      el.innerHTML=`<strong style="color:var(--text)">Durum:</strong> <span style="color:var(--green)">✓ Bağlı</span><br>
+        <strong style="color:var(--text)">Son senkron:</strong> ${s.last_synced_at?ndRelativeTime(s.last_synced_at):'—'}
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="settingsSyncWhoop()">🔄 Şimdi Senkronize Et</button>
+          <a href="/whoop/connect" class="btn btn-sm btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center">Yeniden Bağlan</a>
+        </div>`;
+    }else{
+      el.innerHTML=`<strong style="color:var(--text)">Durum:</strong> <span style="color:#e0556b">✕ Bağlı değil</span>
+        <div style="margin-top:8px"><a href="/whoop/connect" class="btn btn-sm" style="text-decoration:none;display:inline-flex;align-items:center">WHOOP'a Bağlan</a></div>`;
+    }
+  }catch(e){el.innerHTML='WHOOP durumu alınamadı.';}
+}
+async function settingsSyncWhoop(){
+  toast('Senkronize ediliyor…',true);
+  try{
+    const r=await API('/whoop/sync?days=3');
+    toast(r&&r.ok?'WHOOP senkronize edildi':'Senkron başarısız',!!(r&&r.ok));
+  }catch(e){toast('Senkron başarısız',false);}
+  settingsLoadWhoop();
 }
 
 /* TOAST */
