@@ -2953,6 +2953,7 @@ const VIT_STATUS_META={
   eod_skipped:{label:'Gün Aşırı Atlandı',  emoji:'⚠️', color:'#fbbf24', bg:'rgba(251,191,36,.15)', border:'rgba(251,191,36,.3)'},
   eod_taken:  {label:'Gün Aşırı Alındı',   emoji:'✅', color:'#4ade80', bg:'rgba(74,222,128,.15)', border:'rgba(74,222,128,.3)'},
   half_dose:  {label:'Yarım Doz',          emoji:'½',  color:'#a78bfa', bg:'rgba(139,92,246,.15)', border:'rgba(139,92,246,.3)'},
+  on_break:   {label:'Ara Verildi',          emoji:'⏸',  color:'#8b93a7', bg:'rgba(139,147,167,.12)', border:'rgba(139,147,167,.3)'},
 };
 function vitStatusOf(v){
   if(v.status && VIT_STATUS_META[v.status])return v.status;

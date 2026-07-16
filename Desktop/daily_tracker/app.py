@@ -3560,8 +3560,16 @@ def ai_apply_actions(actions):
                             "INSERT INTO supplement_breaks (target_type, target_name, active, since_date, note) VALUES (?,?,1,?,?)",
                             (ttype, tname, a.get('since_date') or operation_today(), a.get('note') or '')
                         )
-                        conn.commit()
-                    conn.close()
+                    # Loga da gorunur bir kayit birak - sadece durum tablosunda sessizce kalmasin.
+                    # Isim gercek bir urun/stack adiyla BIREBIR ayni degil (basina ikon+aciklama
+                    # eklendi), boylece hicbir 'taken mi' eslesme mantigini bozmaz.
+                    since = a.get('since_date') or action_date
+                    log_note = (f"{since} tarihinden itibaren ara veriliyor" if since != action_date else 'ara veriliyor')
+                    conn.execute(
+                        "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+                        (action_date, f'⏸ {tname} — Ara Verildi', '', '', log_note, 'on_break')
+                    )
+                    conn.commit(); conn.close()
                     saved.append('ara veriliyor')
             elif typ == 'supplement_break_end':
                 ttype = (a.get('target_type') or '').strip()
@@ -3571,6 +3579,10 @@ def ai_apply_actions(actions):
                     conn.execute(
                         "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type=? AND target_name=? AND active=1",
                         (operation_today(), ttype, tname)
+                    )
+                    conn.execute(
+                        "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+                        (action_date, f'▶ {tname} — Tekrar Başlandı', '', '', 'ara bitti, devam ediliyor', 'on_break')
                     )
                     conn.commit(); conn.close()
                     saved.append('ara bitti')
@@ -5830,7 +5842,7 @@ def api_supplements_today():
     conn.close()
     return jsonify({'date': today, 'logs': logs, 'zinc': {'take_today': zinc_today, 'last_date': last_zinc}})
 
-_VIT_STATUS_KEYS = {'taken', 'missed', 'eod_skipped', 'eod_taken', 'half_dose'}
+_VIT_STATUS_KEYS = {'taken', 'missed', 'eod_skipped', 'eod_taken', 'half_dose', 'on_break'}
 
 def vit_status_of(status, notes):
     """templates/index.html:3029 vitStatusOf()'un sunucu tarafi birebir eşleniği -
