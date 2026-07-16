@@ -3215,6 +3215,9 @@ def _besin_db_for_prompt():
             "BESIN DB (etiket degerleri - bunlari kullan, genel bilgine gore tahmin yapma):",
             "Onemli: kullanici alias yazarsa o urunu kullan ve kayit ismini resmi DB ismini kullan.",
             "Servis birimi varsa (ornek: 1 fis, 1 tablet) o birimi baz al; miktar soylenmezse 1 birim kabul et.",
+            "MARKASIZ/JENERIK ISIM KURALI (cok onemli): kullanici markasiz/genel bir isim yazarsa (ornek: sadece \"ketcap\", \"kolajen\", \"proteinli yogurt\") ve bu isim veya alias'i BESIN DB'deki bir kayitla eslesiyorsa, o kaydi BIREBIR kullan: description'a DB'deki resmi ismi yaz, kcal/protein/carbs/fat degerlerini DB'deki degerlerden hesapla, tahmin etme.",
+            "MARKALI/FARKLI URUN KURALI (cok onemli): kullanici BESIN DB'dekinden ACIKCA FARKLI, spesifik bir marka belirtirse (ornek: DB'de \"Keto Ketcap\" kayitliyken kullanici \"Heinz ketcap\" derse), DB'deki kaydi KULLANMA ve degerlerini o urune uygulama. Bunun yerine o gercek/spesifik marka icin kendi bilgindeki gercek etiket/beslenme degerlerini kullanarak hesapla. Kullanicinin kendi DB kaydina otomatik eslestirme yapma; farkli marka farkli urundur.",
+            "Belirsizse (marka soylenmedi, DB'de tek aday var) markasiz DB kaydini varsay.",
         ]
         for r in rows:
             if not r['name']: continue
