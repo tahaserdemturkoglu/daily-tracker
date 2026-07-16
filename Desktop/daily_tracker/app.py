@@ -241,6 +241,16 @@ def init_db():
             rule_data TEXT DEFAULT '',
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS supplement_breaks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_type TEXT NOT NULL,
+            target_name TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            since_date TEXT,
+            note TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            ended_at TEXT
+        );
         CREATE TABLE IF NOT EXISTS daily_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL UNIQUE, note TEXT,
@@ -3536,6 +3546,34 @@ def ai_apply_actions(actions):
                              (action_date, vname, vamount, vunit, vnotes))
                 conn.commit(); conn.close()
                 saved.append('supplement')
+            elif typ == 'supplement_break_start':
+                ttype = (a.get('target_type') or '').strip()
+                tname = (a.get('target_name') or '').strip()
+                if ttype and tname:
+                    conn = get_db()
+                    existing = conn.execute(
+                        "SELECT id FROM supplement_breaks WHERE target_type=? AND target_name=? AND active=1",
+                        (ttype, tname)
+                    ).fetchone()
+                    if not existing:
+                        conn.execute(
+                            "INSERT INTO supplement_breaks (target_type, target_name, active, since_date, note) VALUES (?,?,1,?,?)",
+                            (ttype, tname, a.get('since_date') or operation_today(), a.get('note') or '')
+                        )
+                        conn.commit()
+                    conn.close()
+                    saved.append('ara veriliyor')
+            elif typ == 'supplement_break_end':
+                ttype = (a.get('target_type') or '').strip()
+                tname = (a.get('target_name') or '').strip()
+                if ttype and tname:
+                    conn = get_db()
+                    conn.execute(
+                        "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type=? AND target_name=? AND active=1",
+                        (operation_today(), ttype, tname)
+                    )
+                    conn.commit(); conn.close()
+                    saved.append('ara bitti')
             elif typ in ('body_weight', 'weight', 'kilo'):
                 ensure_body_metrics_table()
                 kg = float(a.get('weight_kg') or a.get('kg') or a.get('value') or 0)
@@ -4647,6 +4685,46 @@ def tg_supplement_actions_from_text(raw_text):
                 actions.append({'type': '_bot_note', 'text': '⚠️ Çinko alınmadı — not edildi'})
     return actions
 
+_SLOT_STACK_NAME = {
+    'ac-karna': 'Aç Karna', 'sabah': 'Sabah/Kahvaltı', 'kahvalti': 'Sabah/Kahvaltı',
+    'gece': 'Gece', 'pre-workout': 'Pre-workout', 'post-workout': 'Post-workout',
+}
+_BREAK_START_WORDS = ['ara verdim', 'ara veriyorum', 'ara basladim', 'ara devam', 'durdurdum', 'biraktim', 'kullanmiyorum artik', 'kestim']
+_BREAK_END_WORDS = ['ara bitti', 'ara bitirdim', 'tekrar basladim', 'geri basladim', 'devam ediyorum artik', 'ara vermiyorum artik']
+
+def tg_supplement_break_target(raw_text, norm):
+    """Mesajdaki stack veya urun referansini bulur - once stack (post-workout/gece/...) denenir
+    (kullanicinin 'post workout ara verdim' gibi stack-seviyeli konustugu asil senaryo), yoksa
+    tekil urun (catalog keys) denenir (ornek: 'cinko'ya ara verdim')."""
+    slot = tg_supplement_stack_slot(raw_text) if 'tg_supplement_stack_slot' in globals() else ''
+    if slot and slot in _SLOT_STACK_NAME:
+        return ('stack', _SLOT_STACK_NAME[slot])
+    catalog = tg_supplement_catalog() if 'tg_supplement_catalog' in globals() else []
+    for item in catalog:
+        if any(k in norm for k in item['keys']):
+            return ('product', item['name'])
+    return None
+
+def tg_supplement_break_actions_from_text(raw_text):
+    """'post workout ara verdim' / 'gece stack ara devam ediyor' gibi mesajlari algilayip
+    kalici (gunluk degil) bir 'ara veriliyor' durumu baslatir/dogrular; 'tekrar basladim' gibi
+    mesajlar durumu sonlandirir. Sonuc supplement_breaks tablosuna yazilir, boylece Ozet/Dashboard
+    o urun/stacki her gun 'eksik' olarak degil 'ara veriliyor' olarak gostersin."""
+    text = raw_text or ''
+    norm = tg_ascii_text(text) if 'tg_ascii_text' in globals() else text.lower()
+    is_end = any(w in norm for w in _BREAK_END_WORDS)
+    is_start = (not is_end) and any(w in norm for w in _BREAK_START_WORDS)
+    if not is_start and not is_end:
+        return []
+    target = tg_supplement_break_target(text, norm)
+    if not target:
+        return []
+    target_type, target_name = target
+    today = tg_effective_log_date(text, 'vitamin') if 'tg_effective_log_date' in globals() else operation_today()
+    if is_end:
+        return [{'type': 'supplement_break_end', 'target_type': target_type, 'target_name': target_name}]
+    return [{'type': 'supplement_break_start', 'target_type': target_type, 'target_name': target_name, 'since_date': today, 'note': text[:200]}]
+
 def tg_merge_deterministic_actions(actions, extra_actions):
     merged = list(actions or [])
     keys = set()
@@ -4940,6 +5018,7 @@ async def cmd_chat_ai(u, c):
     basic_actions = tg_basic_actions_from_text(raw) if 'tg_basic_actions_from_text' in globals() else []
     full_day_actions = tg_full_day_actions_from_text(raw) if 'tg_full_day_actions_from_text' in globals() else []
     supplement_actions = tg_supplement_actions_from_text(raw) if 'tg_supplement_actions_from_text' in globals() else []
+    supplement_break_actions = tg_supplement_break_actions_from_text(raw) if 'tg_supplement_break_actions_from_text' in globals() else []
     direct_mood_actions = tg_direct_mood_actions_from_text(raw, chat_id) if 'tg_direct_mood_actions_from_text' in globals() else []
     context_note_actions = tg_context_note_actions_from_text(raw) if 'tg_context_note_actions_from_text' in globals() else []
     # Deterministic supplement parser her zaman AI vitamin action'larinin uzerine yazar
@@ -4989,6 +5068,8 @@ async def cmd_chat_ai(u, c):
     if direct_mood_actions:
         actions = [a for a in actions if not (isinstance(a, dict) and a.get('type') == 'mood')]
         actions = direct_mood_actions + actions
+    if supplement_break_actions:
+        actions = actions + supplement_break_actions
     saved = ai_apply_actions(actions)
     if (not result.get('actions')) and basic_actions and 'Bağlantı sorunu' in (result.get('reply') or ''):
         result['reply'] = 'AI bağlantısı anlık takıldı ama temel verileri boşa düşürmedim. Kilo/su/adım ve net makro gördüğüm kayıtları sisteme işledim; detaylı koç yorumunu tekrar sorabilirsin.'
@@ -5769,6 +5850,17 @@ def vit_status_of(status, notes):
         return 'half_dose'
     return 'taken'
 
+@app.route('/api/supplements/breaks', methods=['GET'])
+def api_supplements_breaks():
+    """Su an aktif olan 'ara veriliyor' durumlarini doner (stack veya urun bazli).
+    Dashboard/Ozet gibi ayri render yollarinin hepsi bunu kullanabilsin diye tek yer."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, target_type, target_name, since_date, note FROM supplement_breaks WHERE active=1 ORDER BY created_at DESC"
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
 @app.route('/api/supplements/range', methods=['GET'])
 def api_supplements_range():
     """Tarih araligi icin, her gun icin her aktif stack'in taken/total + item-bazli durumunu doner.
@@ -5790,10 +5882,14 @@ def api_supplements_range():
 
     vlogs = conn.execute(
         "SELECT date, name, status, notes FROM vitamin_logs WHERE date>=? AND date<=?", (start, end)).fetchall()
+    breaks = conn.execute(
+        "SELECT target_type, target_name, since_date FROM supplement_breaks WHERE active=1").fetchall()
     conn.close()
     by_date_name = {}
     for r in vlogs:
         by_date_name[(r['date'], r['name'])] = vit_status_of(r['status'], r['notes'])
+    broken_stacks = {r['target_name']: (r['since_date'] or '0000-00-00') for r in breaks if r['target_type'] == 'stack'}
+    broken_products = {r['target_name']: (r['since_date'] or '0000-00-00') for r in breaks if r['target_type'] == 'product'}
 
     d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
     days = []
@@ -5802,19 +5898,31 @@ def api_supplements_range():
         ds = d.isoformat()
         day_stacks = []
         for s in stacks:
+            stack_break_since = broken_stacks.get(s['name'])
             items_out = []
             taken_n = 0
+            total_n = 0
             for it in s['items']:
-                st = by_date_name.get((ds, it['product_name']))
-                if st in ('taken', 'eod_taken', 'half_dose'):
-                    taken_n += 1
-                    ui_status = st
-                elif st in ('missed', 'eod_skipped'):
-                    ui_status = st
+                since = broken_products.get(it['product_name']) or (stack_break_since if stack_break_since else None)
+                on_break = since is not None and ds >= since
+                if on_break:
+                    ui_status = 'on_break'
                 else:
-                    ui_status = 'pending'
+                    st = by_date_name.get((ds, it['product_name']))
+                    total_n += 1
+                    if st in ('taken', 'eod_taken', 'half_dose'):
+                        taken_n += 1
+                        ui_status = st
+                    elif st in ('missed', 'eod_skipped'):
+                        ui_status = st
+                    else:
+                        ui_status = 'pending'
                 items_out.append({'name': it['product_name'], 'dose': it['dose'], 'unit': it['unit'], 'status': ui_status})
-            day_stacks.append({'stack_id': s['id'], 'name': s['name'], 'taken': taken_n, 'total': len(s['items']), 'items': items_out})
+            day_stacks.append({
+                'stack_id': s['id'], 'name': s['name'], 'taken': taken_n, 'total': total_n,
+                'on_break': stack_break_since is not None and ds >= stack_break_since,
+                'items': items_out,
+            })
         days.append({'date': ds, 'stacks': day_stacks})
         d += timedelta(days=1)
 

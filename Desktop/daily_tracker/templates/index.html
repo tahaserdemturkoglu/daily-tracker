@@ -1648,13 +1648,14 @@ async function loadNewDashboard(){
   try{
     ndInjectStyle();
     const t0=today();
-    const [d,macro,week7,bm,aiRes,stacks,meals,whoopStatus,whoopDaily]=await Promise.all([
+    const [d,macro,week7,bm,aiRes,stacks,meals,whoopStatus,whoopDaily,breaks]=await Promise.all([
       API('/api/today'),API('/api/macro/today'),API('/api/macro/range?days=7&detail=1'),
       API('/api/body/metrics?days=30'),API('/api/dashboard/ai-insights'),
       API('/api/supplements/stacks'),API('/api/meals/'+t0),
-      API('/whoop/status').catch(()=>({connected:false})),API('/whoop/daily/'+t0).catch(()=>({found:false}))
+      API('/whoop/status').catch(()=>({connected:false})),API('/whoop/daily/'+t0).catch(()=>({found:false})),
+      API('/api/supplements/breaks').catch(()=>[])
     ]);
-    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false}};
+    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false},breaks:Array.isArray(breaks)?breaks:[]};
     renderNewDashboard();
   }catch(e){console.warn('loadNewDashboard:',e);}
 }
@@ -2116,38 +2117,43 @@ async function ndMarkStack(name){
     loadDashboard();
   }catch(e){toast('Hata oluştu',false);}
 }
-let ND_SUPP_EXPANDED={}, ND_LAST_STACKS=[], ND_LAST_VITAMINS=[];
+let ND_SUPP_EXPANDED={}, ND_LAST_STACKS=[], ND_LAST_VITAMINS=[], ND_LAST_BREAKS=[];
 function ndToggleStack(name){
   ND_SUPP_EXPANDED[name]=!ND_SUPP_EXPANDED[name];
   const el=$('nd-supp-sidebar');
-  if(el) el.outerHTML=ndSuppSidebarHtml(ND_LAST_STACKS,ND_LAST_VITAMINS);
+  if(el) el.outerHTML=ndSuppSidebarHtml(ND_LAST_STACKS,ND_LAST_VITAMINS,ND_LAST_BREAKS);
 }
-function ndSuppSidebarHtml(stacks,vitamins){
-  ND_LAST_STACKS=stacks||[]; ND_LAST_VITAMINS=vitamins||[];
+function ndSuppSidebarHtml(stacks,vitamins,breaks){
+  ND_LAST_STACKS=stacks||[]; ND_LAST_VITAMINS=vitamins||[]; ND_LAST_BREAKS=breaks||[];
   const vitByName={};(vitamins||[]).forEach(v=>{vitByName[v.name]=v;});
+  const brokenStacks=new Set((breaks||[]).filter(b=>b.target_type==='stack').map(b=>b.target_name));
+  const brokenProducts=new Set((breaks||[]).filter(b=>b.target_type==='product').map(b=>b.target_name));
   let totalItems=0,totalTaken=0;
   const groups=stacks.map((s)=>{
     const items=s.items||[];
-    let taken=0;
+    const stackOnBreak=brokenStacks.has(s.name);
+    let taken=0,countable=0;
     const itemRows=items.map(it=>{
-      totalItems++;
+      const onBreak=stackOnBreak||brokenProducts.has(it.product_name);
+      if(onBreak) return {name:it.product_name, taken:false, onBreak:true, meta:{label:'⏸ Ara Veriliyor',color:ND.muted}};
+      countable++; totalItems++;
       const v=vitByName[it.product_name];
       const st=v?vitStatusOf(v):null;
       const isTaken=!!(st&&['taken','eod_taken','half_dose'].includes(st));
       if(isTaken){taken++;totalTaken++;}
-      return {name:it.product_name, taken:isTaken, meta:st?(VIT_STATUS_META[st]||VIT_STATUS_META.taken):null};
+      return {name:it.product_name, taken:isTaken, onBreak:false, meta:st?(VIT_STATUS_META[st]||VIT_STATUS_META.taken):null};
     });
-    const full=items.length>0&&taken===items.length;
-    const pct=items.length?Math.round(taken/items.length*100):0;
+    const full=countable>0&&taken===countable;
+    const pct=countable?Math.round(taken/countable*100):0;
     const expanded=!!ND_SUPP_EXPANDED[s.name];
     const barColor=full?'#2fd6b0':taken>0?'#ffd166':'#3a4358';
     const nameEsc=escHtml(s.name).replace(/'/g,"\\'");
     const itemsHtml=expanded?`<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid ${ND.border2}">
       ${itemRows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px">
-        <span style="color:${r.taken?ND.text:ND.muted}">${r.taken?'✓':'○'} ${escHtml(r.name)}</span>
+        <span style="color:${r.taken?ND.text:ND.muted}">${r.onBreak?'⏸':(r.taken?'✓':'○')} ${escHtml(r.name)}</span>
         ${r.meta?`<span style="color:${r.meta.color};font-size:10px;font-weight:700">${r.meta.label}</span>`:''}
       </div>`).join('')}
-      ${!full?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="align-self:flex-start;margin-top:4px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:''}
+      ${(!full&&!stackOnBreak)?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="align-self:flex-start;margin-top:4px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:''}
     </div>`:'';
     return `<div onclick="ndToggleStack('${nameEsc}')" style="background:#12161F;border:1px solid ${ND.border2};border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -2156,8 +2162,9 @@ function ndSuppSidebarHtml(stacks,vitamins){
           <span style="font-size:13px;font-weight:700;color:${ND.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          ${stackOnBreak?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${ND.muted}">⏸ Ara Veriliyor</span>`:`
           <div style="width:64px;height:5px;border-radius:3px;background:#1e2430;overflow:hidden"><div style="width:${pct}%;height:100%;background:${barColor}"></div></div>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${barColor}">${taken}/${items.length}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${barColor}">${taken}/${countable}</span>`}
         </div>
       </div>
       ${itemsHtml}
@@ -2266,7 +2273,7 @@ function ndCloseDayModal(){$('nd-day-modal-holder')?.remove();}
 
 function renderNewDashboard(){
   const root=$('dash-root');if(!root||!ND_STATE)return;
-  const {d,macro,week7,bm,ai,stacks,meals,whoopStatus,whoopDaily}=ND_STATE;
+  const {d,macro,week7,bm,ai,stacks,meals,whoopStatus,whoopDaily,breaks}=ND_STATE;
   const t=getT(d.training_day);
   const tot=macro.totals||{};
   const cal=tot.calories||0,prot=tot.protein_g||0,carb=tot.carbs_g||0,fat=tot.fat_g||0;
@@ -2290,7 +2297,7 @@ function renderNewDashboard(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start">
         ${ndMealLogHtml(groups)}
-        ${ndSuppSidebarHtml(stacks,d.vitamins||[])}
+        ${ndSuppSidebarHtml(stacks,d.vitamins||[],breaks||[])}
       </div>
     </div>`;
   const weightGoal=Number(t.weight_goal)||0;
@@ -3537,6 +3544,7 @@ const OZP_STATUS_META={
   taken:{label:'✓ Alındı',color:OZP_C.grn}, eod_taken:{label:'✅ Gün Aşırı Alındı',color:OZP_C.grn},
   half_dose:{label:'½ Yarım Doz',color:OZP_C.pur}, eod_skipped:{label:'⚠️ Gün Aşırı Atlandı',color:'var(--yellow)'},
   missed:{label:'✕ Eksik',color:OZP_C.red}, pending:{label:'· Bekliyor',color:'var(--muted2)'},
+  on_break:{label:'⏸ Ara Veriliyor',color:'var(--muted2)'},
 };
 
 async function loadOzet(){
@@ -3739,8 +3747,9 @@ async function ozpRenderDaily(dateStr){
         <div onclick="ozpToggleStack(${st.stack_id})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg3)">
           <div style="font-size:13px;font-weight:800;color:var(--text)">${open?'▾':'▸'} ${escHtml(st.name)}</div>
           <div style="display:flex;align-items:center;gap:10px">
+            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);font-weight:700">⏸ Ara Veriliyor</span>`:`
             <div style="width:60px">${ozpBar(p,barColor)}</div>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>`}
           </div>
         </div>
         ${open?`<div style="border-top:1px solid var(--border)">
@@ -3978,6 +3987,7 @@ async function ozpRenderWeekly(){
   const stackRows=stackNames.map(name=>{
     const cells=suppDays.map(d=>{
       const s=d.stacks.find(x=>x.name===name);
+      if(s&&s.on_break) return {txt:'⏸',fg:'var(--muted2)',bg:'var(--bg3)',border:'var(--border)'};
       const t=s?s.taken:0, tot=s?s.total:0;
       const r=tot>0?t/tot:0;
       const c=r>=1?OZP_C.grn:r>=0.6?OZP_C.org:OZP_C.red;
