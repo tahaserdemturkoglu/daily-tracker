@@ -819,11 +819,15 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
       <!-- Hedefler -->
       <div class="card ct ct-teal">
-        <div class="card-head"><span class="card-icon">🎯</span><div><div class="card-name">Adım Hedefi</div></div></div>
-        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Su hedefi Dashboard'da, kilo hedefi Karb Cycle'da — adım hedefi burada.</div>
-        <div class="form-row" style="gap:8px;align-items:flex-end">
+        <div class="card-head"><span class="card-icon">🎯</span><div><div class="card-name">Hedefler</div></div></div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Kilo hedefi Karb Cycle sayfasında — adım ve su hedefi burada.</div>
+        <div class="form-row" style="gap:8px;align-items:flex-end;margin-bottom:8px">
           <div class="fg"><label>Günlük Adım Hedefi</label><input type="number" id="settings-steps-goal-input" step="500" placeholder="10000"></div>
           <button class="btn btn-blue btn-sm" onclick="saveStepGoal()">Kaydet</button>
+        </div>
+        <div class="form-row" style="gap:8px;align-items:flex-end">
+          <div class="fg"><label>Günlük Su Hedefi (ml)</label><input type="number" id="settings-water-goal-input" step="100" placeholder="3000"></div>
+          <button class="btn btn-blue btn-sm" onclick="saveWaterGoalFromSettings()">Kaydet</button>
         </div>
       </div>
 
@@ -1447,6 +1451,8 @@ async function loadSettings(){
   settingsLoadWhoop();
   const stepsInput=$('settings-steps-goal-input');
   if(stepsInput) stepsInput.value=getT().steps||10000;
+  const waterInput=$('settings-water-goal-input');
+  if(waterInput) waterInput.value=getT().water||3000;
 }
 function saveStepGoal(){
   const steps=parseInt($('settings-steps-goal-input').value)||0;
@@ -1456,6 +1462,15 @@ function saveStepGoal(){
   fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
   toast('Adım hedefi güncellendi');
   loadDashboard();
+}
+function saveWaterGoalFromSettings(){
+  const ml=parseInt($('settings-water-goal-input').value)||0;
+  if(!ml)return toast('Hedef gir',false);
+  const t={...getT(),water:ml};
+  localStorage.setItem('targets',JSON.stringify(t));
+  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
+  toast('Su hedefi güncellendi');
+  loadDashboard();loadLogPage();
 }
 function settingsRenderThemePicker(){
   const el=$('settings-theme-picker'); if(!el) return;
@@ -2102,13 +2117,21 @@ function ndAiCoachHtml(insights){
   </div>`;
 }
 
+let ND_MEAL_EXPANDED={}, ND_LAST_MEAL_GROUPS=[];
+function ndToggleMealGroup(slot){
+  ND_MEAL_EXPANDED[slot]=!ND_MEAL_EXPANDED[slot];
+  const el=$('nd-meal-log');
+  if(el) el.outerHTML=ndMealLogHtml(ND_LAST_MEAL_GROUPS);
+}
 function ndMealLogHtml(groups){
-  if(!groups.length)return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
+  ND_LAST_MEAL_GROUPS=groups||[];
+  if(!groups.length)return `<div id="nd-meal-log" style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
     <div style="font-size:15px;font-weight:700">Öğün Logu</div>
     <div style="color:${ND.muted};font-size:13px;margin-top:12px">Bugün henüz öğün kaydı yok. <a href="javascript:void(0)" onclick="ndGoAddMeal()" style="color:${ND.water}">+ Öğün ekle</a></div>
   </div>`;
   const cards=groups.map(g=>{
-    const items=g.rows.map(m=>{
+    const expanded=!!ND_MEAL_EXPANDED[g.slot];
+    const items=expanded?g.rows.map(m=>{
       const desc=(m.description||'').trim().replace(/\b(\d+)\.0+\b/g,'$1');
       const title=(m.title||m.slot||'—').trim();
       const name=(desc&&desc!==title)?(desc.includes(title)?desc:(desc+' '+title)):title;
@@ -2120,18 +2143,22 @@ function ndMealLogHtml(groups){
           ${chip('P',m.protein_g,ND.p)}${chip('K',m.carbs_g,ND.k)}${chip('Y',m.fat_g,ND.y)}
         </div>
       </div>`;
-    }).join('');
+    }).join(''):'';
+    const slotEsc=escHtml(g.slot).replace(/'/g,"\\'");
     return `<div style="background:${ND.card2};border:1px solid ${ndHexA(g.color,.3)};border-radius:12px;overflow:hidden;box-shadow:0 0 24px ${ndHexA(g.color,.06)}">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,${ndHexA(g.color,.16)},${ndHexA(g.color,.04)})">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.06em;color:${g.color}">● ${g.label.toUpperCase()}</div>
+      <div onclick="ndToggleMealGroup('${slotEsc}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,${ndHexA(g.color,.16)},${ndHexA(g.color,.04)});cursor:pointer">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.06em;color:${g.color}">
+          <span style="font-size:10px;display:inline-block;transition:transform .15s;transform:rotate(${expanded?90:0}deg)">▸</span>
+          ● ${g.label.toUpperCase()} <span style="opacity:.7;font-weight:500">(${g.rows.length})</span>
+        </div>
         <div style="font-size:13px;font-weight:700"><span style="color:${ND.kcal}">${Math.round(g.tot.cal)} kcal</span> · <span style="color:${ND.p}">P ${Math.round(g.tot.p)}</span> · <span style="color:${ND.k}">K ${Math.round(g.tot.k)}</span> · <span style="color:${ND.y}">Y ${Math.round(g.tot.y)}</span></div>
       </div>
       ${items}
     </div>`;
   }).join('');
-  return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
+  return `<div id="nd-meal-log" style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
     <div style="font-size:15px;font-weight:700">Öğün Logu</div>
-    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Telegram ve web kayıtları burada saat gibi okunur.</div>
+    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Bir öğüne tıkla, kalemleri gör.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">${cards}</div>
   </div>`;
 }
