@@ -674,6 +674,139 @@ def api_dashboard_ai_insights():
     insights = generate_dashboard_ai_insights(date_str)
     return jsonify({'insights': insights, 'date': date_str})
 
+def generate_daily_profile_note(date_str):
+    """Belirli bir gun icin AI Koc'un 'kullaniciyi taniyan' gunluk gozlem notunu uretir.
+    Plan degistirmez, sadece gozlemler; onceki notlari baglam olarak gorur ki zamanla
+    tekrar eden kaliplari (hafta sonu su dususu vb.) fark edebilsin."""
+    import urllib.request
+    if not ANTHROPIC_API_KEY:
+        return None
+    conn = get_db()
+    meals = conn.execute("SELECT * FROM meal_entries WHERE date=?", (date_str,)).fetchall()
+    nutrition = conn.execute("SELECT SUM(water_ml) w FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
+    step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (date_str,)).fetchone()
+    body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (date_str,)).fetchone()
+    weight_trend = conn.execute(
+        "SELECT date, weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL AND date<=? ORDER BY date DESC LIMIT 14",
+        (date_str,)
+    ).fetchall()
+    whoop = conn.execute(
+        "SELECT recovery_score, strain, sleep_hours, sleep_performance, hrv_ms, rhr_bpm FROM whoop_daily WHERE date=?",
+        (date_str,)
+    ).fetchone()
+    supp_taken = conn.execute(
+        "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')", (date_str,)
+    ).fetchone()['c']
+    supp_total = conn.execute(
+        "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
+    ).fetchone()['c']
+    td = training_day(date_str)
+    sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    session_done = False
+    if sess_row and sess_row['value']:
+        try:
+            session_done = any(s.get('date') == date_str for s in json.loads(sess_row['value']))
+        except Exception:
+            pass
+    prev_notes = conn.execute(
+        "SELECT date, note FROM ai_profile_notes WHERE date<? ORDER BY date DESC LIMIT 5", (date_str,)
+    ).fetchall()
+    conn.close()
+
+    if not meals and not whoop and not body_row and not session_done and not (nutrition and nutrition['w']):
+        return None  # bu gun icin hicbir veri yok, uydurma yapma
+
+    payload = {
+        'tarih': date_str,
+        'antrenman': {'tip': td, 'yapildi': session_done},
+        'beslenme': {
+            'kcal': round(sum(m['calories'] or 0 for m in meals)),
+            'protein_g': round(sum(m['protein_g'] or 0 for m in meals)),
+            'su_ml': int(nutrition['w'] or 0) if nutrition else 0,
+        },
+        'adim': int(step_row['steps']) if step_row and step_row['steps'] else None,
+        'kilo': {'sabah': body_row['weight_kg'] if body_row else None, 'gece': body_row['weight_kg_night'] if body_row else None},
+        'kilo_trend_son_gunler': [{'date': r['date'], 'kg': r['weight_kg']} for r in reversed(weight_trend)],
+        'whoop': dict(whoop) if whoop else None,
+        'takviye': {'alinan': supp_taken, 'toplam': supp_total},
+        'onceki_notlar': [{'tarih': r['date'], 'not': r['note']} for r in reversed(prev_notes)],
+    }
+    system_prompt = (
+        'Sen kullanıcıyı zamanla tanıyan kişisel bir gözlemci AI koçsun. Görevin PLAN DEĞİŞTİRMEK '
+        'DEĞİL — sadece bugünün verisini ve son birkaç günün notlarını okuyup kullanıcı hakkında '
+        'sessizce öğrenmek. 2-4 cümlelik Türkçe, samimi ama kısa bir günlük gözlem notu yaz. '
+        'Eğer önceki notlarla karşılaştırınca tekrar eden bir kalıp fark edersen (ör. hafta sonları su '
+        'düşük kalıyor, belirli bir antrenmandan sonraki gün recovery düşük oluyor, geç saatte yeme '
+        'eğilimi var) bunu açıkça belirt — bu en değerli kısım, kalıp yoksa uydurma. Tavsiye/emir verme, '
+        'plan değiştirme önerisi yapma, sadece gözlemle. Veri eksikse o alan hakkında hiçbir şey uydurma. '
+        'Sadece gözlem metnini dön, başka hiçbir şey yazma.'
+    )
+    body = {
+        'model': ANTHROPIC_MODEL,
+        'max_tokens': 300,
+        'system': system_prompt,
+        'messages': [{'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
+    }
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages',
+        data=json.dumps(body).encode('utf-8'),
+        headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        note = result['content'][0]['text'].strip()
+    except Exception as _e:
+        import logging; logging.getLogger('daily').warning(f"ai profile note failed: {_e}")
+        return None
+    conn2 = get_db()
+    conn2.execute(
+        "INSERT INTO ai_profile_notes (date, note) VALUES (?,?) "
+        "ON CONFLICT(date) DO UPDATE SET note=excluded.note, generated_at=CURRENT_TIMESTAMP",
+        (date_str, note)
+    )
+    conn2.commit(); conn2.close()
+    return note
+
+def ensure_yesterday_ai_note():
+    """Gun sonunda (lazy, bir sonraki istekte) dunun AI Koc notu eksikse uretir.
+    Cron yok; kullanici uygulamayi actikca kendi kendini tamamlar."""
+    try:
+        yday = (operation_date() - timedelta(days=1)).isoformat()
+        conn = get_db()
+        row = conn.execute("SELECT 1 FROM ai_profile_notes WHERE date=?", (yday,)).fetchone()
+        conn.close()
+        if not row:
+            generate_daily_profile_note(yday)
+    except Exception as _e:
+        import logging; logging.getLogger('daily').warning(f"ensure_yesterday_ai_note failed: {_e}")
+
+@app.route('/api/ai-coach/notes', methods=['GET'])
+def api_ai_coach_notes():
+    ensure_yesterday_ai_note()
+    days = int(request.args.get('days', 30))
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT date, note, generated_at FROM ai_profile_notes ORDER BY date DESC LIMIT ?", (days,)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/ai-coach/notes/<date_str>', methods=['GET'])
+def api_ai_coach_note_for_date(date_str):
+    conn = get_db()
+    row = conn.execute("SELECT date, note, generated_at FROM ai_profile_notes WHERE date=?", (date_str,)).fetchone()
+    conn.close()
+    return jsonify(dict(row) if row else None)
+
+@app.route('/api/ai-coach/notes/<date_str>/generate', methods=['POST'])
+def api_ai_coach_generate(date_str):
+    note = generate_daily_profile_note(date_str)
+    if note is None:
+        return jsonify({'ok': False, 'error': 'Bu gün için yeterli veri yok veya AI anahtarı tanımlı değil'}), 400
+    return jsonify({'ok': True, 'date': date_str, 'note': note})
+
 @app.route('/api/cycle/ai-comment', methods=['GET'])
 def api_cycle_ai_comment():
     conn = get_db()
