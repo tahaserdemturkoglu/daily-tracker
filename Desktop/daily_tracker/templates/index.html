@@ -3833,7 +3833,7 @@ const CAL_WEEKDAY_CYCLE=['Push','Pull','Leg','Upper','Lower','Off','Off'];
 const CAL_SPLIT_DAYINDEX={Push:0,Pull:1,Leg:2,Upper:3,Lower:4,Off:5};
 
 let CAL_Y=new Date().getFullYear(), CAL_M=new Date().getMonth()+1;
-let CAL_DAYS=[], CAL_WEEK=null, CAL_SEL=null, CAL_DETAIL=null;
+let CAL_DAYS=[], CAL_WEEK=null, CAL_SEL=null, CAL_DETAIL=null, CAL_PANEL_OPEN=true;
 
 async function loadCalendar(){
   if(!CAL_SEL) CAL_SEL=today();
@@ -3860,9 +3860,13 @@ function calGoToday(){
   calRenderMonth();
 }
 function calSelectDay(dateStr){
-  CAL_SEL=dateStr; CAL_DETAIL=null;
+  CAL_SEL=dateStr; CAL_DETAIL=null; CAL_PANEL_OPEN=true;
   renderCalendarPage();
   calLoadDetail();
+}
+function calClosePanel(){
+  CAL_PANEL_OPEN=false;
+  renderCalendarPage();
 }
 function calNaturalSplit(dateStr){
   const dow=(new Date(dateStr+'T12:00:00').getDay()+6)%7;
@@ -4300,13 +4304,16 @@ function calWeekStripHtml(){
   </div>`;
 }
 
+function calCloseBtnHtml(){
+  return `<button onclick="calClosePanel()" title="Paneli kapat" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>`;
+}
 function calDetailInnerHtml(dayObj){
-  if(!dayObj) return `<div style="color:var(--muted)">Gün seçilmedi</div>`;
+  if(!dayObj) return calCloseBtnHtml()+`<div style="color:var(--muted)">Gün seçilmedi</div>`;
   const d=new Date(dayObj.date+'T12:00:00');
   const dateLabel=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
   const c=CAL_COLORS[dayObj.training]||'#444';
   const selSplitLabel=(dayObj.training==='Off'&&dayObj.target&&dayObj.target.type)?dayObj.target.type:dayObj.training;
-  return `
+  return calCloseBtnHtml()+`
     <div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted)">SEÇİLİ GÜN</div>
       <div style="font-weight:800;font-size:1.3rem;margin-top:4px">${dateLabel}</div>
@@ -4395,13 +4402,14 @@ function renderCalendarPage(){
       ${CAL_SPLITS.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${CAL_COLORS[s]}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s}</span></div>`).join('')}
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
+  <div style="display:grid;grid-template-columns:${CAL_PANEL_OPEN?'1fr 380px':'1fr'};gap:24px;align-items:start">
     <div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <button onclick="calMove(-1)" style="width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:16px">‹</button>
         <div style="font-weight:800;font-size:1.4rem;min-width:190px;text-align:center;text-transform:capitalize">${monthLabel}</div>
         <button onclick="calMove(1)" style="width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:16px">›</button>
         <button onclick="calGoToday()" style="height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer">bugün</button>
+        ${!CAL_PANEL_OPEN?`<button onclick="calSelectDay(CAL_SEL||today())" style="height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;margin-left:auto">Paneli Aç</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px">
         ${CAL_DOW.map(d=>`<div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted)">${d}</div>`).join('')}
@@ -4410,9 +4418,9 @@ function renderCalendarPage(){
         ${cells.map(calDayCellHtml).join('')}
       </div>
     </div>
-    <div id="cal-detail-wrap" style="border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.02);padding:22px;display:flex;flex-direction:column;gap:18px">
+    ${CAL_PANEL_OPEN?`<div id="cal-detail-wrap" style="position:relative;border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.02);padding:22px;display:flex;flex-direction:column;gap:18px">
       ${calDetailInnerHtml(selObj)}
-    </div>
+    </div>`:''}
   </div>`;
 }
 
