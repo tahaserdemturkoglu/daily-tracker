@@ -2131,10 +2131,10 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
   let totalItems=0,totalTaken=0;
   const groups=stacks.map((s)=>{
     const items=s.items||[];
-    const stackOnBreak=brokenStacks.has(s.name);
+    const explicitStackBreak=brokenStacks.has(s.name);
     let taken=0,countable=0;
     const itemRows=items.map(it=>{
-      const onBreak=stackOnBreak||brokenProducts.has(it.product_name);
+      const onBreak=explicitStackBreak||brokenProducts.has(it.product_name);
       if(onBreak) return {name:it.product_name, taken:false, onBreak:true, meta:{label:'⏸ Ara Veriliyor',color:ND.muted}};
       countable++; totalItems++;
       const v=vitByName[it.product_name];
@@ -2143,6 +2143,10 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
       if(isTaken){taken++;totalTaken++;}
       return {name:it.product_name, taken:isTaken, onBreak:false, meta:st?(VIT_STATUS_META[st]||VIT_STATUS_META.taken):null};
     });
+    // Stack rozeti hem gercek stack-seviyeli aralara hem de "stack'teki tek urun ayri ayri
+    // paused edildi ama sonucta hepsi kapandi" durumuna gore tetiklenir (ornek: tek urunlu
+    // Post-workout'ta urun-bazli break de ayni "Ara Veriliyor" gorselini vermeli).
+    const stackOnBreak=items.length>0&&countable===0;
     const full=countable>0&&taken===countable;
     const pct=countable?Math.round(taken/countable*100):0;
     const expanded=!!ND_SUPP_EXPANDED[s.name];

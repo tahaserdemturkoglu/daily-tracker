@@ -4705,16 +4705,19 @@ _BREAK_START_WORDS = ['ara verdim', 'ara veriyorum', 'ara basladim', 'ara devam'
 _BREAK_END_WORDS = ['ara bitti', 'ara bitirdim', 'tekrar basladim', 'geri basladim', 'devam ediyorum artik', 'ara vermiyorum artik']
 
 def tg_supplement_break_target(raw_text, norm):
-    """Mesajdaki stack veya urun referansini bulur - once stack (post-workout/gece/...) denenir
-    (kullanicinin 'post workout ara verdim' gibi stack-seviyeli konustugu asil senaryo), yoksa
-    tekil urun (catalog keys) denenir (ornek: 'cinko'ya ara verdim')."""
-    slot = tg_supplement_stack_slot(raw_text) if 'tg_supplement_stack_slot' in globals() else ''
-    if slot and slot in _SLOT_STACK_NAME:
-        return ('stack', _SLOT_STACK_NAME[slot])
+    """Mesajdaki stack veya urun referansini bulur - ONCE tekil urun (catalog keys) denenir
+    (ornek: 'sabah stackteki cinkoya ara verdim' -> sadece Cinko, TUM sabah stack'i degil),
+    urun adi gecmiyorsa stack (post-workout/gece/...) denenir (ornek: 'post workout ara verdim'
+    -> tum Post-workout stack'i). Sira onemli: bir mesaj hem stack hem urun kelimesi icerebilir
+    ('gece stackte theanine e ara verdim') - boyle durumda kullanicinin niyeti neredeyse hep
+    sadece o urun, tum stack degil."""
     catalog = tg_supplement_catalog() if 'tg_supplement_catalog' in globals() else []
     for item in catalog:
         if any(k in norm for k in item['keys']):
             return ('product', item['name'])
+    slot = tg_supplement_stack_slot(raw_text) if 'tg_supplement_stack_slot' in globals() else ''
+    if slot and slot in _SLOT_STACK_NAME:
+        return ('stack', _SLOT_STACK_NAME[slot])
     return None
 
 def tg_supplement_break_actions_from_text(raw_text):
@@ -5932,7 +5935,10 @@ def api_supplements_range():
                 items_out.append({'name': it['product_name'], 'dose': it['dose'], 'unit': it['unit'], 'status': ui_status})
             day_stacks.append({
                 'stack_id': s['id'], 'name': s['name'], 'taken': taken_n, 'total': total_n,
-                'on_break': stack_break_since is not None and ds >= stack_break_since,
+                # Stack rozeti hem gercek stack-seviyeli aralara hem de "stack'teki TEK urun
+                # ayri ayri paused edildi ama sonucta hepsi kapandi" durumuna gore tetiklenir
+                # (ornek: tek urunlu Post-workout'ta urun bazli break de ayni gorseli vermeli).
+                'on_break': len(s['items']) > 0 and total_n == 0,
                 'items': items_out,
             })
         days.append({'date': ds, 'stacks': day_stacks})
