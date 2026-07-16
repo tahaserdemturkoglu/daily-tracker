@@ -301,6 +301,12 @@ def init_db():
             report_json TEXT NOT NULL,
             generated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS ai_profile_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL UNIQUE,
+            note TEXT NOT NULL,
+            generated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS meal_stacks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -1693,6 +1699,9 @@ def api_calendar(year, month):
     supp_total = conn.execute(
         "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
     ).fetchone()['c']
+    exercise_count_by_type = {r['training_day']: r['c'] for r in conn.execute(
+        "SELECT training_day, COUNT(*) c FROM training_exercises GROUP BY training_day"
+    ).fetchall()}
     month_start = f"{year:04d}-{month:02d}-01"
     month_end = f"{year:04d}-{month:02d}-{days_in_month:02d}"
     whoop_by_date = {}
@@ -1775,10 +1784,10 @@ def api_calendar(year, month):
             (d,)
         ).fetchone()['c']
         w = whoop_by_date.get(d)
+        meals = meals_by_date.get(d) or {'kcal': 0, 'protein': 0}
         day_score = None
         whoop_note = None
         if d <= today_str:
-            meals = meals_by_date.get(d) or {'kcal': 0, 'protein': 0}
             water_ml = water_by_date.get(d) or 0
             train_part = (100 if d in session_dates else 35) if td != 'Off' else 80
             parts = [
@@ -1812,6 +1821,8 @@ def api_calendar(year, month):
             'whoop_strain': w['strain'] if w else None,
             'day_score': day_score,
             'whoop_note': whoop_note,
+            'kcal_actual': round(meals['kcal']) if d <= today_str else None,
+            'exercises': exercise_count_by_type.get(td, 0),
         })
     conn.close()
     return jsonify(result)
