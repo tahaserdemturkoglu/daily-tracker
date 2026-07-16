@@ -345,7 +345,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
     <button class="nav-btn" onclick="showPage('calendar')"><span class="nav-icon">📅</span>Takvim</button>
     <button class="nav-btn" onclick="showPage('report')"><span class="nav-icon">📊</span>Rapor</button>
     <button class="nav-btn" onclick="showPage('cycle')"><span class="nav-icon">🔄</span>Karb Cycle</button>
-    <button class="nav-btn" onclick="showPage('aicoach')"><span class="nav-icon">🤖</span>AI Koç</button>
+    <button class="nav-btn" onclick="showPage('aicoach')"><span class="nav-icon">🤖</span>Coach</button>
   <button class="nav-btn" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>Ayarlar</button>
   </nav>
   <div style="display:none">
@@ -821,7 +821,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
   <!-- ═══ AI KOÇ ═══ -->
   <div class="page" id="page-aicoach">
-    <div class="pg-title">🤖 AI Koç</div>
+    <div class="pg-title">🧭 Coach</div>
     <div class="pg-sub">Her gün sonunda gerçek verinden gözlem üretir — plan değiştirmez, zamanla seni tanır</div>
     <div id="aic-root"></div>
   </div>
@@ -3873,17 +3873,29 @@ async function calGenerateAiNote(dateStr){
 /* ═══════════════════════════════════════════════════
    AI KOÇ SAYFASI
 ════════════════════════════════════════════════════ */
-let AIC_NOTES=[];
+let AIC_NOTES=[], AIC_FACTS=[];
 async function loadAiCoachPage(){
   const root=$('aic-root'); if(!root) return;
   root.innerHTML=`<div style="color:var(--muted);padding:20px;text-align:center">Yükleniyor…</div>`;
-  AIC_NOTES=await API('/api/ai-coach/notes?days=60')||[];
+  const [notes,facts]=await Promise.all([
+    API('/api/ai-coach/notes?days=60'),
+    API('/api/profile/facts'),
+  ]);
+  AIC_NOTES=notes||[]; AIC_FACTS=facts||[];
   aicRenderPage();
 }
 function aicRenderPage(){
   const root=$('aic-root'); if(!root) return;
   const todayStr=today();
   root.innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:10px">KALICI PROFİL NOTLARI <span style="opacity:.7">— seninle ilgili sürekli geçerli bilgiler, her AI notunda dikkate alınır</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="aic-facts-list">${aicFactsHtml()}</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="aic-fact-input" placeholder="ör. sırt/omuzda sivilce sorunu var, süt ürünü ile ilişkili olabilir" style="flex:1;background:var(--bg,var(--bg1));border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:12px">
+        <button class="btn btn-sm" onclick="aicAddFact()">Ekle</button>
+      </div>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:18px">
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.5px">MANUEL OLUŞTUR</span>
       <input type="date" id="aic-date-input" value="${todayStr}" max="${todayStr}" style="background:var(--bg1,var(--bg));border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px">
@@ -3892,17 +3904,53 @@ function aicRenderPage(){
     </div>
     <div style="display:flex;flex-direction:column;gap:12px" id="aic-list">${aicListHtml()}</div>`;
 }
+function aicFactsHtml(){
+  if(!AIC_FACTS.length) return `<div style="color:var(--muted);font-size:11.5px">Henüz kalıcı not yok — aşağıdan ekleyebilirsin, AI da tekrar eden bir kalıp fark ederse otomatik ekler.</div>`;
+  return AIC_FACTS.map(f=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg,var(--bg1));border:1px solid var(--border);border-radius:8px;padding:7px 10px">
+    <span style="font-size:12px;color:var(--text)">${f.source==='ai_detected'?'🤖 ':'✍️ '}${escHtml(f.text)}</span>
+    <button onclick="aicDeleteFact(${f.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px" title="Sil">✕</button>
+  </div>`).join('');
+}
+async function aicAddFact(){
+  const el=$('aic-fact-input'); const text=(el?.value||'').trim();
+  if(!text) return;
+  await POST('/api/profile/facts',{text});
+  el.value='';
+  toast('Kalıcı not eklendi',true);
+  AIC_FACTS=await API('/api/profile/facts')||[];
+  aicRenderPage();
+}
+async function aicDeleteFact(id){
+  await DEL('/api/profile/facts/'+id);
+  AIC_FACTS=AIC_FACTS.filter(f=>f.id!==id);
+  aicRenderPage();
+}
+function aicMetricChip(label,val,color){
+  return `<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:${color||'var(--muted)'};background:${color?calHexA(color,.13):'var(--bg,var(--bg1))'};border-radius:5px;padding:3px 7px;white-space:nowrap">${label} ${val}</span>`;
+}
 function aicListHtml(){
-  if(!AIC_NOTES.length) return `<div style="color:var(--muted);text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:12px">Henüz hiç AI Koç notu yok. Bir gün tamamlandığında otomatik oluşur, ya da yukarıdan elle tetikleyebilirsin.</div>`;
+  if(!AIC_NOTES.length) return `<div style="color:var(--muted);text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:12px">Henüz hiç Coach notu yok. Bir gün tamamlandığında otomatik oluşur, ya da yukarıdan elle tetikleyebilirsin.</div>`;
   return AIC_NOTES.map(n=>{
     const d=new Date(n.date+'T12:00:00');
     const label=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
-    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+    const s=n.summary||{};
+    const nut=s.nutrition||{}, w=s.whoop, wt=s.weight||{};
+    const chips=[
+      nut.kcal?aicMetricChip('🍽',nut.kcal.toLocaleString('tr-TR')+' kcal'):'',
+      nut.water_ml?aicMetricChip('💧',(nut.water_ml/1000).toFixed(1)+'L','#38bdf8'):'',
+      s.steps?aicMetricChip('👟',s.steps.toLocaleString('tr-TR')):'',
+      wt.morning?aicMetricChip('☀',wt.morning+'kg'):'',
+      (s.weight_delta!=null)?aicMetricChip(s.weight_delta>=0?'↑':'↓',Math.abs(s.weight_delta)+'kg',s.weight_delta>0?'#e0556b':'#2fd6b0'):'',
+      s.training?aicMetricChip(s.training.type,s.training.done?'✓':'—',s.training.done?'#2fd6b0':'#6b7890'):'',
+      w&&w.recovery_score!=null?aicMetricChip('🔋','%'+w.recovery_score,w.recovery_score>=67?'#2fd6b0':w.recovery_score>=34?'#ffd166':'#e0556b'):'',
+    ].filter(Boolean).join('');
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
         <span style="font-weight:700;font-size:13px">${label}</span>
         <button class="btn btn-sm btn-ghost" onclick="aicGenerate('${n.date}')">Yeniden oluştur</button>
       </div>
-      <div style="font-size:12.5px;line-height:1.6;color:var(--text);white-space:pre-line">🤖 ${escHtml(n.note)}</div>
+      ${chips?`<div style="display:flex;gap:5px;flex-wrap:wrap">${chips}</div>`:''}
+      <div style="font-size:12.5px;line-height:1.6;color:var(--text);white-space:pre-line;border-top:1px solid var(--border);padding-top:9px">🤖 ${escHtml(n.note)}</div>
     </div>`;
   }).join('');
 }
@@ -3912,15 +3960,12 @@ async function aicGenerate(dateStr){
   try{
     const r=await POST('/api/ai-coach/notes/'+dateStr+'/generate',{});
     if(r&&r.ok){
-      toast('AI Koç notu oluşturuldu',true);
-      AIC_NOTES=AIC_NOTES.filter(n=>n.date!==dateStr);
-      AIC_NOTES.unshift({date:dateStr,note:r.note});
-      AIC_NOTES.sort((a,b)=>b.date.localeCompare(a.date));
-      aicRenderPage();
+      toast('Coach notu oluşturuldu',true);
+      await loadAiCoachPage();
     }else{
       toast((r&&r.error)||'Bu gün için yeterli veri yok',false);
     }
-  }catch(e){toast('AI Koç notu oluşturulamadı',false);}
+  }catch(e){toast('Coach notu oluşturulamadı',false);}
 }
 function calDayScore(dayObj){
   const t=dayObj.target||{}, totals=(CAL_DETAIL&&CAL_DETAIL.totals)||{};

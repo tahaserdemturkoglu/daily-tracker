@@ -307,6 +307,13 @@ def init_db():
             note TEXT NOT NULL,
             generated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS user_profile_facts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL,
+            source TEXT DEFAULT 'manual',
+            active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS meal_stacks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -674,22 +681,13 @@ def api_dashboard_ai_insights():
     insights = generate_dashboard_ai_insights(date_str)
     return jsonify({'insights': insights, 'date': date_str})
 
-def generate_daily_profile_note(date_str):
-    """Belirli bir gun icin AI Koc'un 'kullaniciyi taniyan' gunluk gozlem notunu uretir.
-    Plan degistirmez, sadece gozlemler; onceki notlari baglam olarak gorur ki zamanla
-    tekrar eden kaliplari (hafta sonu su dususu vb.) fark edebilsin."""
-    import urllib.request
-    if not ANTHROPIC_API_KEY:
-        return None
-    conn = get_db()
+def gather_day_snapshot(conn, date_str):
+    """Bir gunun tum gercek verisini tek bir dict'te toplar (AI Koc payload'i ve Coach
+    sayfasi gosterimi AYNI bu fonksiyonu kullanir, ikisi hep birbirini tutsun diye)."""
     meals = conn.execute("SELECT * FROM meal_entries WHERE date=?", (date_str,)).fetchall()
     nutrition = conn.execute("SELECT SUM(water_ml) w FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
     step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (date_str,)).fetchone()
     body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (date_str,)).fetchone()
-    weight_trend = conn.execute(
-        "SELECT date, weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL AND date<=? ORDER BY date DESC LIMIT 14",
-        (date_str,)
-    ).fetchall()
     whoop = conn.execute(
         "SELECT recovery_score, strain, sleep_hours, sleep_performance, hrv_ms, rhr_bpm FROM whoop_daily WHERE date=?",
         (date_str,)
@@ -708,42 +706,94 @@ def generate_daily_profile_note(date_str):
             session_done = any(s.get('date') == date_str for s in json.loads(sess_row['value']))
         except Exception:
             pass
+    kcal = round(sum(m['calories'] or 0 for m in meals))
+    return {
+        'date': date_str,
+        'training': {'type': td, 'done': session_done},
+        'nutrition': {
+            'kcal': kcal,
+            'protein_g': round(sum(m['protein_g'] or 0 for m in meals)),
+            'water_ml': int(nutrition['w'] or 0) if nutrition else 0,
+        },
+        'steps': int(step_row['steps']) if step_row and step_row['steps'] else None,
+        'weight': {'morning': body_row['weight_kg'] if body_row else None, 'night': body_row['weight_kg_night'] if body_row else None},
+        'whoop': dict(whoop) if whoop else None,
+        'supplements': {'taken': supp_taken, 'total': supp_total},
+        'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w'])),
+    }
+
+def generate_daily_profile_note(date_str):
+    """Belirli bir gun icin AI Koc'un 'kullaniciyi taniyan' gunluk gozlem notunu uretir.
+    Plan degistirmez, sadece gozlemler; onceki notlari ve kalici profil notlarini baglam
+    olarak gorur ki zamanla tekrar eden kaliplari (hafta sonu su dususu vb.) fark edebilsin.
+    Yeterince tekrar eden bir kalip fark ederse yeni bir kalici profil notu da onerebilir."""
+    import urllib.request
+    if not ANTHROPIC_API_KEY:
+        return None
+    conn = get_db()
+    snap = gather_day_snapshot(conn, date_str)
+    if not snap['has_data']:
+        conn.close()
+        return None  # bu gun icin hicbir veri yok, uydurma yapma
+    yday_str = (date.fromisoformat(date_str) - timedelta(days=1)).isoformat()
+    yday_snap = gather_day_snapshot(conn, yday_str)
+    weight_trend = conn.execute(
+        "SELECT date, weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL AND date<=? ORDER BY date DESC LIMIT 14",
+        (date_str,)
+    ).fetchall()
     prev_notes = conn.execute(
         "SELECT date, note FROM ai_profile_notes WHERE date<? ORDER BY date DESC LIMIT 5", (date_str,)
     ).fetchall()
+    profile_facts = conn.execute(
+        "SELECT text FROM user_profile_facts WHERE active=1 ORDER BY created_at"
+    ).fetchall()
     conn.close()
 
-    if not meals and not whoop and not body_row and not session_done and not (nutrition and nutrition['w']):
-        return None  # bu gun icin hicbir veri yok, uydurma yapma
+    weight_delta = None
+    if snap['weight']['morning'] is not None and yday_snap['weight']['morning'] is not None:
+        weight_delta = round(snap['weight']['morning'] - yday_snap['weight']['morning'], 2)
 
     payload = {
         'tarih': date_str,
-        'antrenman': {'tip': td, 'yapildi': session_done},
-        'beslenme': {
-            'kcal': round(sum(m['calories'] or 0 for m in meals)),
-            'protein_g': round(sum(m['protein_g'] or 0 for m in meals)),
-            'su_ml': int(nutrition['w'] or 0) if nutrition else 0,
+        'bugun': {
+            'antrenman': snap['training'], 'beslenme': snap['nutrition'], 'adim': snap['steps'],
+            'kilo': snap['weight'], 'whoop': snap['whoop'], 'takviye': snap['supplements'],
         },
-        'adim': int(step_row['steps']) if step_row and step_row['steps'] else None,
-        'kilo': {'sabah': body_row['weight_kg'] if body_row else None, 'gece': body_row['weight_kg_night'] if body_row else None},
+        'dun': {
+            'tarih': yday_str, 'antrenman': yday_snap['training'], 'beslenme': yday_snap['nutrition'],
+            'kilo': yday_snap['weight'],
+        } if yday_snap['has_data'] else None,
+        'sabah_kilo_farki_dunden_bugune_kg': weight_delta,
         'kilo_trend_son_gunler': [{'date': r['date'], 'kg': r['weight_kg']} for r in reversed(weight_trend)],
-        'whoop': dict(whoop) if whoop else None,
-        'takviye': {'alinan': supp_taken, 'toplam': supp_total},
         'onceki_notlar': [{'tarih': r['date'], 'not': r['note']} for r in reversed(prev_notes)],
+        'bilinen_kalici_notlar': [r['text'] for r in profile_facts],
     }
     system_prompt = (
         'Sen kullanıcıyı zamanla tanıyan kişisel bir gözlemci AI koçsun. Görevin PLAN DEĞİŞTİRMEK '
-        'DEĞİL — sadece bugünün verisini ve son birkaç günün notlarını okuyup kullanıcı hakkında '
-        'sessizce öğrenmek. 2-4 cümlelik Türkçe, samimi ama kısa bir günlük gözlem notu yaz. '
-        'Eğer önceki notlarla karşılaştırınca tekrar eden bir kalıp fark edersen (ör. hafta sonları su '
-        'düşük kalıyor, belirli bir antrenmandan sonraki gün recovery düşük oluyor, geç saatte yeme '
-        'eğilimi var) bunu açıkça belirt — bu en değerli kısım, kalıp yoksa uydurma. Tavsiye/emir verme, '
-        'plan değiştirme önerisi yapma, sadece gözlemle. Veri eksikse o alan hakkında hiçbir şey uydurma. '
-        'Sadece gözlem metnini dön, başka hiçbir şey yazma.'
+        'DEĞİL — sadece bugünün ve dünün gerçek verisini, önceki notları ve bilinen kalıcı profil '
+        'notlarını okuyup kullanıcı hakkında sessizce öğrenmek.\n\n'
+        'Şunlara özellikle dikkat et:\n'
+        '- "sabah_kilo_farki_dunden_bugune_kg" varsa, bunu DÜNÜN yemek/idman/su verisiyle ilişkilendirerek '
+        'yorumla (ör. yüksek karbonhidrat/tuz sonrası su tutması, düşük su sonrası kilo düşüşü, antrenman '
+        'sonrası glikojen+su etkisi gibi basit, gerçekçi bir açıklama — kesin bilim gibi sunma, olası bir '
+        'bağlantı olarak sun).\n'
+        '- Önceki notlarla karşılaştırınca tekrar eden bir kalıp fark edersen (hafta sonu su düşüklüğü, '
+        'belirli antrenmandan sonra recovery düşmesi, geç saatte yeme eğilimi vb.) açıkça belirt.\n'
+        '- "bilinen_kalici_notlar" listesindeki bilgileri (ör. cilt/sivilce sorunu gibi) bugünün verisiyle '
+        'alakalıysa (ör. yağlı/süt ürünü ağırlıklı beslenme günü) nazikçe bağlantı kur, alakasızsa hiç değinme.\n\n'
+        '2-4 cümlelik Türkçe, samimi ama kısa bir günlük gözlem yaz. Tavsiye/emir verme, plan değiştirme '
+        'önerisi yapma, sadece gözlemle. Veri eksikse o alan hakkında hiçbir şey uydurma.\n\n'
+        'Ayrıca: son 5 nottan bağımsız olarak, eğer bu SADECE tek günlük bir olay değil de gerçekten kalıcı, '
+        'tekrar eden (en az 3 kez gördüğün) ve "bilinen_kalici_notlar" listesinde henüz OLMAYAN yeni bir '
+        'kullanıcı özelliği/kalıbı fark ettiysen (ör. "her Pazartesi su tüketimi çok düşük oluyor"), bunu '
+        'kısa bir cümleyle "yeni_kalici_not" alanına yaz. Emin değilsen veya zaten biliniyorsa null bırak — '
+        'bu alanı nadiren kullan, sadece gerçekten kalıcı bir kalıp olduğuna eminsen.\n\n'
+        'SADECE şu JSON formatında dön, başka hiçbir şey yazma: '
+        '{"note": "...", "yeni_kalici_not": "..." veya null}'
     )
     body = {
         'model': ANTHROPIC_MODEL,
-        'max_tokens': 300,
+        'max_tokens': 400,
         'system': system_prompt,
         'messages': [{'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
     }
@@ -756,9 +806,18 @@ def generate_daily_profile_note(date_str):
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read().decode('utf-8'))
-        note = result['content'][0]['text'].strip()
+        text = result['content'][0]['text'].strip()
+        if text.startswith('```'):
+            text = text.strip('`')
+            if text.startswith('json'):
+                text = text[4:]
+        parsed = json.loads(text.strip())
+        note = (parsed.get('note') or '').strip()
+        new_fact = (parsed.get('yeni_kalici_not') or '').strip() or None
     except Exception as _e:
         import logging; logging.getLogger('daily').warning(f"ai profile note failed: {_e}")
+        return None
+    if not note:
         return None
     conn2 = get_db()
     conn2.execute(
@@ -766,6 +825,11 @@ def generate_daily_profile_note(date_str):
         "ON CONFLICT(date) DO UPDATE SET note=excluded.note, generated_at=CURRENT_TIMESTAMP",
         (date_str, note)
     )
+    if new_fact:
+        existing = [r['text'].lower() for r in conn2.execute("SELECT text FROM user_profile_facts WHERE active=1").fetchall()]
+        is_dupe = any(new_fact.lower() in e or e in new_fact.lower() for e in existing)
+        if not is_dupe:
+            conn2.execute("INSERT INTO user_profile_facts (text, source) VALUES (?, 'ai_detected')", (new_fact,))
     conn2.commit(); conn2.close()
     return note
 
@@ -790,8 +854,22 @@ def api_ai_coach_notes():
     rows = conn.execute(
         "SELECT date, note, generated_at FROM ai_profile_notes ORDER BY date DESC LIMIT ?", (days,)
     ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        snap = gather_day_snapshot(conn, d['date'])
+        prev = conn.execute(
+            "SELECT weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL AND date<? ORDER BY date DESC LIMIT 1",
+            (d['date'],)
+        ).fetchone()
+        weight_delta = None
+        if snap['weight']['morning'] is not None and prev and prev['weight_kg'] is not None:
+            weight_delta = round(snap['weight']['morning'] - prev['weight_kg'], 2)
+        d['summary'] = snap
+        d['summary']['weight_delta'] = weight_delta
+        result.append(d)
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    return jsonify(result)
 
 @app.route('/api/ai-coach/notes/<date_str>', methods=['GET'])
 def api_ai_coach_note_for_date(date_str):
@@ -806,6 +884,31 @@ def api_ai_coach_generate(date_str):
     if note is None:
         return jsonify({'ok': False, 'error': 'Bu gün için yeterli veri yok veya AI anahtarı tanımlı değil'}), 400
     return jsonify({'ok': True, 'date': date_str, 'note': note})
+
+@app.route('/api/profile/facts', methods=['GET'])
+def api_profile_facts_get():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM user_profile_facts WHERE active=1 ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/profile/facts', methods=['POST'])
+def api_profile_facts_add():
+    data = request.get_json(force=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'ok': False, 'error': 'text gerekli'}), 400
+    conn = get_db()
+    conn.execute("INSERT INTO user_profile_facts (text, source) VALUES (?, 'manual')", (text,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/profile/facts/<int:fid>', methods=['DELETE'])
+def api_profile_facts_delete(fid):
+    conn = get_db()
+    conn.execute("UPDATE user_profile_facts SET active=0 WHERE id=?", (fid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 @app.route('/api/cycle/ai-comment', methods=['GET'])
 def api_cycle_ai_comment():
