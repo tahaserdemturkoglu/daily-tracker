@@ -817,6 +817,16 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px" id="settings-theme-picker"></div>
       </div>
 
+      <!-- Hedefler -->
+      <div class="card ct ct-teal">
+        <div class="card-head"><span class="card-icon">🎯</span><div><div class="card-name">Adım Hedefi</div></div></div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Su hedefi Dashboard'da, kilo hedefi Karb Cycle'da — adım hedefi burada.</div>
+        <div class="form-row" style="gap:8px;align-items:flex-end">
+          <div class="fg"><label>Günlük Adım Hedefi</label><input type="number" id="settings-steps-goal-input" step="500" placeholder="10000"></div>
+          <button class="btn btn-blue btn-sm" onclick="saveStepGoal()">Kaydet</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1435,6 +1445,17 @@ async function loadSettings(){
   try{const s=await fetch('/api/settings').then(r=>r.json());if(Object.keys(s).length){const merged={...DEF,...s};localStorage.setItem('targets',JSON.stringify(merged));}}catch(e){}
   settingsRenderThemePicker();
   settingsLoadWhoop();
+  const stepsInput=$('settings-steps-goal-input');
+  if(stepsInput) stepsInput.value=getT().steps||10000;
+}
+function saveStepGoal(){
+  const steps=parseInt($('settings-steps-goal-input').value)||0;
+  if(!steps)return toast('Hedef gir',false);
+  const t={...getT(),steps};
+  localStorage.setItem('targets',JSON.stringify(t));
+  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
+  toast('Adım hedefi güncellendi');
+  loadDashboard();
 }
 function settingsRenderThemePicker(){
   const el=$('settings-theme-picker'); if(!el) return;
@@ -7715,6 +7736,225 @@ html[data-theme="classic"] .toast {
   background:linear-gradient(135deg,rgba(20,241,217,.96),rgba(59,130,246,.96))!important;
   color:#03101d!important;
   box-shadow:0 18px 44px rgba(20,241,217,.22)!important;
+}
+</style>
+
+<style id="LIGHT_THEME_V1">
+/* Açık tema — PREMIUM_COLOR_REFRESH_V1'in :root + !important kuralları tema
+   fark etmeksizin kazandığı için data-theme=light hiçbir zaman uygulanmıyordu.
+   CLASSIC_THEME_V1 ile aynı desen: daha spesifik + daha sonraki selector'lerle kazan. */
+html[data-theme="light"] {
+  --bg:#eef2fb;--bg2:#ffffff;--bg3:#e6ecfa;--bg4:#dbe4f7;
+  --border:#c7d4ec;--border2:#aebde0;
+  --text:#101a33;--muted:#556085;--muted2:#3d4a75;
+  --red:#dc2626;--red2:#b91c1c;--red3:#ef4444;
+  --yellow:#d97706;--yellow2:#b45309;
+  --green:#15803d;--green2:#0f9d58;
+  --teal:#0d9488;--teal2:#0b7c72;
+  --blue:#2563eb;--blue2:#1d4ed8;
+  --purple:#7c3aed;--purple2:#6d28d9;
+  --pink:#db2777;--pink2:#be185d;
+  --indigo:#4f46e5;--orange:#ea580c;
+  --g-red:linear-gradient(135deg,#ef4444,#b91c1c);
+  --g-yellow:linear-gradient(135deg,#f59e0b 0%,#dc2626 100%);
+  --g-green:linear-gradient(135deg,#22c55e 0%,#15803d 100%);
+  --g-teal:linear-gradient(135deg,#14b8a6 0%,#2563eb 100%);
+  --g-purple:linear-gradient(135deg,#8b5cf6 0%,#2563eb 100%);
+  --g-pink:linear-gradient(135deg,#ec4899 0%,#8b5cf6 100%);
+}
+html[data-theme="light"] body {
+  background:
+    linear-gradient(125deg,rgba(37,99,235,.06) 0%,transparent 30%),
+    linear-gradient(235deg,rgba(13,148,136,.06) 0%,transparent 34%),
+    linear-gradient(180deg,#f4f7fd 0%,#eef2fb 56%,#e9eefa 100%) !important;
+}
+html[data-theme="light"] .sidebar,html[data-theme="light"] .topbar {
+  background:rgba(255,255,255,.92)!important;
+  backdrop-filter:blur(18px);
+  border-color:rgba(37,99,235,.16)!important;
+}
+html[data-theme="light"] .brand-name {
+  background:linear-gradient(135deg,#dc2626 0%,#ea580c 44%,#b91c1c 100%)!important;
+  -webkit-background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+}
+html[data-theme="light"] .nav-btn.active {
+  background:linear-gradient(135deg,rgba(220,38,38,.14),rgba(234,88,12,.08))!important;
+  border-left-color:#dc2626!important;
+  box-shadow:inset 0 0 0 1px rgba(220,38,38,.10),0 6px 18px rgba(220,38,38,.08);
+}
+html[data-theme="light"] .nav-btn:hover {
+  background:rgba(37,99,235,.06)!important;
+  color:#101a33!important;
+}
+html[data-theme="light"] .hero,html[data-theme="light"] .card,html[data-theme="light"] .chart-card,html[data-theme="light"] .stat-card,html[data-theme="light"] .macro-card,html[data-theme="light"] .quick-card,
+html[data-theme="light"] .macro-graph-panel,html[data-theme="light"] .pro-log-card,html[data-theme="light"] .tc-panel,html[data-theme="light"] .tc-form,html[data-theme="light"] .hero-ring-card,html[data-theme="light"] .hero-trend-panel {
+  background:#ffffff!important;
+  border-color:#d8e0f0!important;
+  box-shadow:0 8px 28px rgba(30,41,80,.08),inset 0 1px 0 rgba(255,255,255,.6)!important;
+  transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+html[data-theme="light"] .hero:hover,html[data-theme="light"] .card:hover,html[data-theme="light"] .chart-card:hover,html[data-theme="light"] .stat-card:hover,html[data-theme="light"] .macro-card:hover,html[data-theme="light"] .quick-card:hover,
+html[data-theme="light"] .macro-graph-panel:hover,html[data-theme="light"] .pro-log-card:hover,html[data-theme="light"] .tc-panel:hover,html[data-theme="light"] .tc-form:hover {
+  border-color:rgba(37,99,235,.3)!important;
+  box-shadow:0 12px 34px rgba(30,41,80,.12),0 0 0 1px rgba(37,99,235,.05)!important;
+}
+html[data-theme="light"] .hero.dashboard-integrated {
+  background:
+    linear-gradient(120deg,rgba(37,99,235,.06),transparent 42%),
+    linear-gradient(245deg,rgba(220,38,38,.06),transparent 44%),
+    #ffffff!important;
+  border-color:rgba(37,99,235,.22)!important;
+}
+html[data-theme="light"] .btn,html[data-theme="light"] .tc-btn,html[data-theme="light"] .pro-log-action,html[data-theme="light"] .hero-ring-actions .btn {
+  box-shadow:0 6px 16px rgba(37,99,235,.14);
+}
+html[data-theme="light"] .btn-blue,html[data-theme="light"] .tc-small,html[data-theme="light"] .pro-log-date button {
+  background:linear-gradient(135deg,#2563eb,#4f46e5)!important;
+  color:#fff!important;
+}
+html[data-theme="light"] .btn-green {
+  background:linear-gradient(135deg,#22c55e,#15803d)!important;
+}
+html[data-theme="light"] .btn-purple {
+  background:linear-gradient(135deg,#8b5cf6,#4f46e5)!important;
+}
+html[data-theme="light"] input,html[data-theme="light"] select,html[data-theme="light"] textarea {
+  background:#ffffff!important;
+  border-color:#c7d4ec!important;
+  color:#101a33!important;
+}
+html[data-theme="light"] input:focus,html[data-theme="light"] select:focus,html[data-theme="light"] textarea:focus {
+  border-color:#2563eb!important;
+  box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;
+}
+html[data-theme="light"] .macro-graph-card.protein .macro-graph-value,html[data-theme="light"] .mc-prot .macro-val {color:#0d9488!important}
+html[data-theme="light"] .macro-graph-card.carb .macro-graph-value,html[data-theme="light"] .mc-carb .macro-val {color:#d97706!important}
+html[data-theme="light"] .macro-graph-card.fat .macro-graph-value,html[data-theme="light"] .mc-fat .macro-val {color:#7c3aed!important}
+html[data-theme="light"] .macro-graph-card.water .macro-graph-value,html[data-theme="light"] .mc-water .macro-val {color:#2563eb!important}
+html[data-theme="light"] .page-title,html[data-theme="light"] .card-name,html[data-theme="light"] .tc-title,html[data-theme="light"] .pro-log-title,html[data-theme="light"] .macro-graph-title {
+  color:#101a33!important;
+  text-shadow:none;
+}
+html[data-theme="light"] .page-sub,html[data-theme="light"] .card-sub,html[data-theme="light"] .tc-sub,html[data-theme="light"] .macro-graph-sub,html[data-theme="light"] .pro-muted {
+  color:#5b6b96!important;
+}
+html[data-theme="light"] .macro-card .bar,html[data-theme="light"] .macro-progress,html[data-theme="light"] .progress-line {
+  background:rgba(37,99,235,.10)!important;
+}
+html[data-theme="light"] .toast {
+  background:linear-gradient(135deg,rgba(37,99,235,.96),rgba(13,148,136,.96))!important;
+  color:#ffffff!important;
+  box-shadow:0 14px 34px rgba(37,99,235,.22)!important;
+}
+</style>
+
+<style id="AMBER_THEME_V1">
+/* Amber tema — ayni kok neden (PREMIUM_COLOR_REFRESH_V1'in tema-fark etmeksizin
+   kazanan :root + !important kurallari) amber'i de bozuyordu, ayni desenle duzeltildi. */
+html[data-theme="amber"] {
+  --bg:#05080e;--bg2:#0c1320;--bg3:#111c2e;--bg4:#17253d;
+  --border:#1c2e46;--border2:#263d5c;
+  --text:#f5f0e6;--muted:#8090a8;--muted2:#a0b0c5;
+  --red:#f59e0b;--red2:#d97706;--red3:#fbbf24;
+  --yellow:#fcd34d;--yellow2:#fde68a;
+  --green:#10b981;--green2:#059669;
+  --teal:#06b6d4;--teal2:#0891b2;
+  --blue:#3b82f6;--blue2:#2563eb;
+  --purple:#8b5cf6;--purple2:#7c3aed;
+  --pink:#ec4899;--pink2:#db2777;
+  --indigo:#6366f1;--orange:#f97316;
+  --g-red:linear-gradient(135deg,#f59e0b,#d97706);
+  --g-yellow:linear-gradient(135deg,#fcd34d 0%,#f97316 100%);
+  --g-green:linear-gradient(135deg,#10b981 0%,#06b6d4 100%);
+  --g-teal:linear-gradient(135deg,#06b6d4 0%,#3b82f6 100%);
+  --g-purple:linear-gradient(135deg,#8b5cf6 0%,#3b82f6 100%);
+  --g-pink:linear-gradient(135deg,#ec4899 0%,#8b5cf6 100%);
+}
+html[data-theme="amber"] body {
+  background:
+    linear-gradient(125deg,rgba(245,158,11,.10) 0%,transparent 30%),
+    linear-gradient(235deg,rgba(6,182,212,.08) 0%,transparent 34%),
+    linear-gradient(180deg,#05080e 0%,#040609 56%,#060a10 100%) !important;
+}
+html[data-theme="amber"] .sidebar,html[data-theme="amber"] .topbar {
+  background:linear-gradient(180deg,rgba(12,19,32,.92),rgba(5,8,14,.88))!important;
+  backdrop-filter:blur(18px);
+  border-color:rgba(245,158,11,.22)!important;
+}
+html[data-theme="amber"] .brand-name {
+  background:linear-gradient(135deg,#ffffff 0%,#fcd34d 44%,#f59e0b 100%)!important;
+  -webkit-background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+}
+html[data-theme="amber"] .nav-btn.active {
+  background:linear-gradient(135deg,rgba(245,158,11,.22),rgba(252,211,77,.12))!important;
+  border-left-color:#f59e0b!important;
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.16),0 12px 32px rgba(245,158,11,.10);
+}
+html[data-theme="amber"] .nav-btn:hover {
+  background:rgba(245,158,11,.10)!important;
+  color:#f8fafc!important;
+}
+html[data-theme="amber"] .hero,html[data-theme="amber"] .card,html[data-theme="amber"] .chart-card,html[data-theme="amber"] .stat-card,html[data-theme="amber"] .macro-card,html[data-theme="amber"] .quick-card,
+html[data-theme="amber"] .macro-graph-panel,html[data-theme="amber"] .pro-log-card,html[data-theme="amber"] .tc-panel,html[data-theme="amber"] .tc-form,html[data-theme="amber"] .hero-ring-card,html[data-theme="amber"] .hero-trend-panel {
+  background:linear-gradient(180deg,rgba(17,28,46,.90),rgba(8,12,20,.82))!important;
+  border-color:rgba(245,158,11,.22)!important;
+  box-shadow:0 22px 58px rgba(2,4,8,.38),inset 0 1px 0 rgba(255,255,255,.05)!important;
+  transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+html[data-theme="amber"] .hero:hover,html[data-theme="amber"] .card:hover,html[data-theme="amber"] .chart-card:hover,html[data-theme="amber"] .stat-card:hover,html[data-theme="amber"] .macro-card:hover,html[data-theme="amber"] .quick-card:hover,
+html[data-theme="amber"] .macro-graph-panel:hover,html[data-theme="amber"] .pro-log-card:hover,html[data-theme="amber"] .tc-panel:hover,html[data-theme="amber"] .tc-form:hover {
+  border-color:rgba(245,158,11,.4)!important;
+  box-shadow:0 26px 66px rgba(2,4,8,.46),0 0 0 1px rgba(245,158,11,.06),inset 0 1px 0 rgba(255,255,255,.065)!important;
+}
+html[data-theme="amber"] .hero.dashboard-integrated {
+  background:
+    linear-gradient(120deg,rgba(245,158,11,.14),transparent 42%),
+    linear-gradient(245deg,rgba(6,182,212,.10),transparent 44%),
+    linear-gradient(135deg,rgba(8,12,20,.98),rgba(15,20,32,.94))!important;
+  border-color:rgba(245,158,11,.42)!important;
+}
+html[data-theme="amber"] .btn,html[data-theme="amber"] .tc-btn,html[data-theme="amber"] .pro-log-action,html[data-theme="amber"] .hero-ring-actions .btn {
+  box-shadow:0 10px 28px rgba(245,158,11,.22);
+}
+html[data-theme="amber"] .btn-blue,html[data-theme="amber"] .tc-small,html[data-theme="amber"] .pro-log-date button {
+  background:linear-gradient(135deg,#f59e0b,#d97706)!important;
+  color:#05080e!important;
+}
+html[data-theme="amber"] .btn-green {
+  background:linear-gradient(135deg,#10b981,#06b6d4)!important;
+}
+html[data-theme="amber"] .btn-purple {
+  background:linear-gradient(135deg,#8b5cf6,#3b82f6)!important;
+}
+html[data-theme="amber"] input,html[data-theme="amber"] select,html[data-theme="amber"] textarea {
+  background:#111c2e!important;
+  border-color:rgba(245,158,11,.3)!important;
+  color:#f5f0e6!important;
+}
+html[data-theme="amber"] input:focus,html[data-theme="amber"] select:focus,html[data-theme="amber"] textarea:focus {
+  border-color:#f59e0b!important;
+  box-shadow:0 0 0 3px rgba(245,158,11,.14)!important;
+}
+html[data-theme="amber"] .macro-graph-card.protein .macro-graph-value,html[data-theme="amber"] .mc-prot .macro-val {color:#06b6d4!important}
+html[data-theme="amber"] .macro-graph-card.carb .macro-graph-value,html[data-theme="amber"] .mc-carb .macro-val {color:#fcd34d!important}
+html[data-theme="amber"] .macro-graph-card.fat .macro-graph-value,html[data-theme="amber"] .mc-fat .macro-val {color:#8b5cf6!important}
+html[data-theme="amber"] .macro-graph-card.water .macro-graph-value,html[data-theme="amber"] .mc-water .macro-val {color:#3b82f6!important}
+html[data-theme="amber"] .page-title,html[data-theme="amber"] .card-name,html[data-theme="amber"] .tc-title,html[data-theme="amber"] .pro-log-title,html[data-theme="amber"] .macro-graph-title {
+  color:#f5f0e6!important;
+  text-shadow:0 1px 18px rgba(245,158,11,.08);
+}
+html[data-theme="amber"] .page-sub,html[data-theme="amber"] .card-sub,html[data-theme="amber"] .tc-sub,html[data-theme="amber"] .macro-graph-sub,html[data-theme="amber"] .pro-muted {
+  color:#a0b0c5!important;
+}
+html[data-theme="amber"] .macro-card .bar,html[data-theme="amber"] .macro-progress,html[data-theme="amber"] .progress-line {
+  background:rgba(245,158,11,.14)!important;
+}
+html[data-theme="amber"] .toast {
+  background:linear-gradient(135deg,rgba(245,158,11,.96),rgba(217,119,6,.96))!important;
+  color:#05080e!important;
+  box-shadow:0 18px 44px rgba(245,158,11,.22)!important;
 }
 </style>
 </body>
