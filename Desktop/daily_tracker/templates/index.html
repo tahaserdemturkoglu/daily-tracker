@@ -752,6 +752,17 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         </div>
       </div>
 
+      <!-- Takviye Molaları -->
+      <div class="card ct ct-teal">
+        <div class="card-head"><span class="card-icon">⏸</span><div><div class="card-name">Takviye Molaları</div></div></div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Bir stack'i veya tek bir ürünü duraklat — "eksik" olarak değil "ara veriliyor" olarak gösterilir, uyum yüzdesini etkilemez. Telegram'a "X'e ara verdim" / "X'i tekrar başladım" yazarak da yönetebilirsin.</div>
+        <div id="settings-breaks-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">Yükleniyor…</div>
+        <div class="form-row" style="gap:8px;align-items:flex-end">
+          <div class="fg" style="flex:1"><label>Duraklat</label><select id="settings-break-target"><option value="">Yükleniyor…</option></select></div>
+          <button class="btn btn-blue btn-sm" onclick="settingsStartBreak()">⏸ Ara Ver</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1370,10 +1381,44 @@ async function loadSettings(){
   try{const s=await fetch('/api/settings').then(r=>r.json());if(Object.keys(s).length){const merged={...DEF,...s};localStorage.setItem('targets',JSON.stringify(merged));}}catch(e){}
   settingsRenderThemePicker();
   settingsLoadWhoop();
+  settingsLoadBreaks();
   const stepsInput=$('settings-steps-goal-input');
   if(stepsInput) stepsInput.value=getT().steps||10000;
   const waterInput=$('settings-water-goal-input');
   if(waterInput) waterInput.value=getT().water||3000;
+}
+async function settingsLoadBreaks(){
+  const listEl=$('settings-breaks-list'), selEl=$('settings-break-target');
+  if(!listEl||!selEl) return;
+  const [breaks,stacks]=await Promise.all([API('/api/supplements/breaks'),API('/api/supplements/stacks')]);
+  const activeBreaks=Array.isArray(breaks)?breaks:[];
+  listEl.innerHTML=activeBreaks.length?activeBreaks.map(b=>{
+    const label=(b.target_type==='stack'?'📦 ':'💊 ')+escHtml(b.target_name);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 10px">
+      <div style="min-width:0"><div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div><div style="font-size:.66rem;color:var(--muted)">${escHtml(b.since_date||'')} tarihinden itibaren</div></div>
+      <button class="btn btn-sm btn-ghost" style="flex-shrink:0" onclick="settingsEndBreak('${b.target_type}','${escHtml(b.target_name).replace(/'/g,"\\'")}')">▶ Tekrar Başla</button>
+    </div>`;
+  }).join(''):'<div style="font-size:.78rem;color:var(--muted)">Aktif mola yok.</div>';
+  const stackList=Array.isArray(stacks)?stacks:[];
+  selEl.innerHTML=stackList.map(s=>{
+    const stackOpt=`<option value="stack::${escHtml(s.name)}">📦 ${escHtml(s.name)} (tüm stack)</option>`;
+    const itemOpts=(s.items||[]).map(it=>`<option value="product::${escHtml(it.product_name)}">　💊 ${escHtml(it.product_name)}</option>`).join('');
+    return stackOpt+itemOpts;
+  }).join('');
+}
+async function settingsStartBreak(){
+  const sel=$('settings-break-target');
+  const val=sel&&sel.value;
+  if(!val) return toast('Bir stack veya ürün seç',false);
+  const [ttype,tname]=val.split('::');
+  const r=await POST('/api/supplements/breaks',{target_type:ttype,target_name:tname});
+  if(r&&r.ok){toast('Ara verildi',true);settingsLoadBreaks();}
+  else toast('Hata oluştu',false);
+}
+async function settingsEndBreak(ttype,tname){
+  const r=await POST('/api/supplements/breaks/end',{target_type:ttype,target_name:tname});
+  if(r&&r.ok){toast('Tekrar başlandı',true);settingsLoadBreaks();}
+  else toast('Hata oluştu',false);
 }
 function saveStepGoal(){
   const steps=parseInt($('settings-steps-goal-input').value)||0;

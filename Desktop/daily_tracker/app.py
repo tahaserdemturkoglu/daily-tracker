@@ -3444,6 +3444,62 @@ def tg_normalize_mood_payload(a):
     notes = a.get('notes') or ''
     return {'energy': energy, 'mood': mood, 'stress': stress, 'notes': notes}
 
+def start_supplement_break(target_type, target_name, since_date=None, note=''):
+    """Bir stack'i veya tek bir urunu 'ara veriliyor' durumuna alir - hem Telegram
+    dispatcher'i (ai_apply_actions) hem /api/supplements/breaks REST route'u bunu kullanir,
+    tek yerden yonetilsin diye. Zaten aktif bir break varsa tekrar eklemez (idempotent),
+    ama her cagirista goruntulenebilir bir vitamin_logs kaydi birakir."""
+    today = operation_today()
+    since_date = since_date or today
+    conn = get_db()
+    existing = conn.execute(
+        "SELECT id FROM supplement_breaks WHERE target_type=? AND target_name=? AND active=1",
+        (target_type, target_name)
+    ).fetchone()
+    if not existing:
+        conn.execute(
+            "INSERT INTO supplement_breaks (target_type, target_name, active, since_date, note) VALUES (?,?,1,?,?)",
+            (target_type, target_name, since_date, note or '')
+        )
+    log_note = (f"{since_date} tarihinden itibaren ara veriliyor" if since_date != today else 'ara veriliyor')
+    conn.execute(
+        "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+        (today, f'⏸ {target_name} — Ara Verildi', '', '', log_note, 'on_break')
+    )
+    conn.commit(); conn.close()
+
+def end_supplement_break(target_type, target_name):
+    """start_supplement_break'in tersi - karsi granulariteyi de kapatir (bkz. yorum icinde),
+    yoksa 'post workout ara verdim' (stack) sonra 'creatine tekrar basladim' (urun) gibi bir
+    cift sessizce hicbir seyi bitirmez."""
+    today = operation_today()
+    conn = get_db()
+    conn.execute(
+        "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type=? AND target_name=? AND active=1",
+        (today, target_type, target_name)
+    )
+    if target_type == 'product':
+        slot = tg_stack_slot_for_product(target_name) if 'tg_stack_slot_for_product' in globals() else None
+        stack_name = _SLOT_STACK_NAME.get(slot) if slot else None
+        if stack_name:
+            conn.execute(
+                "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type='stack' AND target_name=? AND active=1",
+                (today, stack_name)
+            )
+    elif target_type == 'stack':
+        slot = next((k for k, v in _SLOT_STACK_NAME.items() if v == target_name), None)
+        if slot and 'tg_stack_preset' in globals():
+            for pname in tg_stack_preset(slot):
+                conn.execute(
+                    "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type='product' AND target_name=? AND active=1",
+                    (today, pname)
+                )
+    conn.execute(
+        "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+        (today, f'▶ {target_name} — Tekrar Başlandı', '', '', 'ara bitti, devam ediliyor', 'on_break')
+    )
+    conn.commit(); conn.close()
+
 def ai_apply_actions(actions):
     saved = []
     today = operation_today()
@@ -3550,61 +3606,13 @@ def ai_apply_actions(actions):
                 ttype = (a.get('target_type') or '').strip()
                 tname = (a.get('target_name') or '').strip()
                 if ttype and tname:
-                    conn = get_db()
-                    existing = conn.execute(
-                        "SELECT id FROM supplement_breaks WHERE target_type=? AND target_name=? AND active=1",
-                        (ttype, tname)
-                    ).fetchone()
-                    if not existing:
-                        conn.execute(
-                            "INSERT INTO supplement_breaks (target_type, target_name, active, since_date, note) VALUES (?,?,1,?,?)",
-                            (ttype, tname, a.get('since_date') or operation_today(), a.get('note') or '')
-                        )
-                    # Loga da gorunur bir kayit birak - sadece durum tablosunda sessizce kalmasin.
-                    # Isim gercek bir urun/stack adiyla BIREBIR ayni degil (basina ikon+aciklama
-                    # eklendi), boylece hicbir 'taken mi' eslesme mantigini bozmaz.
-                    since = a.get('since_date') or action_date
-                    log_note = (f"{since} tarihinden itibaren ara veriliyor" if since != action_date else 'ara veriliyor')
-                    conn.execute(
-                        "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
-                        (action_date, f'⏸ {tname} — Ara Verildi', '', '', log_note, 'on_break')
-                    )
-                    conn.commit(); conn.close()
+                    start_supplement_break(ttype, tname, a.get('since_date'), a.get('note') or '')
                     saved.append('ara veriliyor')
             elif typ == 'supplement_break_end':
                 ttype = (a.get('target_type') or '').strip()
                 tname = (a.get('target_name') or '').strip()
                 if ttype and tname:
-                    conn = get_db()
-                    conn.execute(
-                        "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type=? AND target_name=? AND active=1",
-                        (operation_today(), ttype, tname)
-                    )
-                    # 'post workout ara verdim' stack-seviyeli kaydedilmis olabilir ama kullanici
-                    # 'creatine tekrar basladim' gibi urun adiyla bitirmeye calisiyor olabilir
-                    # (ya da tam tersi) - bu yuzden karsi granulariteyi de kontrol edip kapatiyoruz,
-                    # yoksa break sessizce aktif kalir ve kullanici bitirdigini sanir.
-                    if ttype == 'product' and 'tg_stack_slot_for_product' in globals():
-                        slot = tg_stack_slot_for_product(tname)
-                        stack_name = _SLOT_STACK_NAME.get(slot) if slot else None
-                        if stack_name:
-                            conn.execute(
-                                "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type='stack' AND target_name=? AND active=1",
-                                (operation_today(), stack_name)
-                            )
-                    elif ttype == 'stack':
-                        slot = next((k for k, v in _SLOT_STACK_NAME.items() if v == tname), None)
-                        if slot and 'tg_stack_preset' in globals():
-                            for pname in tg_stack_preset(slot):
-                                conn.execute(
-                                    "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type='product' AND target_name=? AND active=1",
-                                    (operation_today(), pname)
-                                )
-                    conn.execute(
-                        "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
-                        (action_date, f'▶ {tname} — Tekrar Başlandı', '', '', 'ara bitti, devam ediliyor', 'on_break')
-                    )
-                    conn.commit(); conn.close()
+                    end_supplement_break(ttype, tname)
                     saved.append('ara bitti')
             elif typ in ('body_weight', 'weight', 'kilo'):
                 ensure_body_metrics_table()
@@ -5903,6 +5911,30 @@ def api_supplements_breaks():
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+@app.route('/api/supplements/breaks', methods=['POST'])
+def api_supplements_break_start():
+    """Ayarlar sayfasindan manuel 'ara ver' - Telegram'daki tg_supplement_break_actions_from_text
+    ile ayni start_supplement_break() fonksiyonunu kullanir, davranis birebir ayni."""
+    data = request.get_json(force=True) or {}
+    ttype = (data.get('target_type') or '').strip()
+    tname = (data.get('target_name') or '').strip()
+    if ttype not in ('stack', 'product') or not tname:
+        return jsonify({'ok': False, 'error': "target_type ('stack' veya 'product') ve target_name gerekli"}), 400
+    start_supplement_break(ttype, tname, data.get('since_date'), data.get('note') or 'Ayarlar sayfasından manuel')
+    return jsonify({'ok': True})
+
+@app.route('/api/supplements/breaks/end', methods=['POST'])
+def api_supplements_break_end():
+    """Ayarlar sayfasindan manuel 'tekrar basla' - karsi granulariteyi de kapatan
+    end_supplement_break() ile ayni, Telegram'daki 'tekrar basladim' ile birebir tutarli."""
+    data = request.get_json(force=True) or {}
+    ttype = (data.get('target_type') or '').strip()
+    tname = (data.get('target_name') or '').strip()
+    if ttype not in ('stack', 'product') or not tname:
+        return jsonify({'ok': False, 'error': "target_type ('stack' veya 'product') ve target_name gerekli"}), 400
+    end_supplement_break(ttype, tname)
+    return jsonify({'ok': True})
 
 @app.route('/api/supplements/range', methods=['GET'])
 def api_supplements_range():
