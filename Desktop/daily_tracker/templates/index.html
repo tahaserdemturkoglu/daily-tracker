@@ -1501,7 +1501,7 @@ function mkSparkline(id,labels,data,color){
 /* ═══════════════════════════════════════════════════
    DASHBOARD
 ════════════════════════════════════════════════════ */
-const TC={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Legs:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444',Off1:'#475569',Off2:'#334155'};
+const TC={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Legs:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444',Off1:'#475569',Off2:'#334155','Off 1':'#475569','Off 2':'#334155'};
 const CYCLE=['Push','Pull','Leg','Upper','Lower','Off','Off'];
 const CYCLE_START='2026-06-01';
 function training_day_local(dateStr){
@@ -1576,7 +1576,7 @@ async function loadDashboard(){
   sv('d-energy',mo.energy??'—'); sv('d-mood',mo.mood??'—');
 
   const pill=$('top-pill');
-  if(pill){const _ct=_cycleDbType||d.training_day||'—';const _tcMap={...TC,Off1:'#475569',Off2:'#334155',Push:'#cc0000',Pull:'#0066cc',Legs:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e'};pill.textContent=_ct;pill.style.background=_tcMap[_ct]||'#444';}
+  if(pill){const _ct=_cycleDbType||d.training_day||'—';const _tcMap={...TC,Push:'#cc0000',Pull:'#0066cc',Legs:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e'};pill.textContent=_ct;pill.style.background=_tcMap[_ct]||'#444';}
   sv('sb-streak','🔥 '+(d.streak||0)+' gün seri');
 
   mkRing('ring-chart',[Math.min(cal,t.cal),Math.max(0,t.cal-cal)],['#ffb800','#16223a']);
@@ -3997,8 +3997,8 @@ function calDayCellHtml(d){
   const isToday=d.date===today();
   const isSel=d.date===CAL_SEL;
   const isFuture=d.date>today();
-  const c=CAL_COLORS[d.training]||'#444';
   const isOff=d.training==='Off';
+  const c=isOff?(TC[d.target&&d.target.type]||CAL_COLORS.Off):(CAL_COLORS[d.training]||'#444');
   const wash=isOff?'var(--bg2)':calHexA(c,.13);
   const sc=d.day_score;
   const scColor=sc==null?'':sc>=80?'#2fd6b0':sc>=50?'#ffd166':'#e0556b';
@@ -4030,6 +4030,7 @@ function calDayCellHtml(d){
   const rec=d.whoop_recovery;
   const recColor=rec==null?'#6b7890':rec>=67?'#2fd6b0':rec>=34?'#ffd166':'#e0556b';
   const macroLine=d.target?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:var(--muted)">P${d.target.protein_g} K${d.target.carb_g} Y${d.target.fat_g}</span>`:'';
+  const splitLabel=(isOff&&d.target&&d.target.type)?d.target.type:d.training;
   const chips=[
     (suppTotal>0&&!isFuture)?calChip(suppFull?'✓ stack':'stack '+suppTaken+'/'+suppTotal, suppFull?'#2fd6b0':suppTaken>0?'#ffd166':'#6b7890'):'',
     !isFuture?calChip(rec!=null?'rec %'+rec:'rec —',recColor):'',
@@ -4045,7 +4046,7 @@ function calDayCellHtml(d){
           <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:${isToday?800:600};color:${isToday?c:'var(--text)'}">${String(d.day).padStart(2,'0')}</span>
           ${isToday?`<span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.5px;color:#05080F;background:${c};border-radius:5px;padding:2px 6px">BUGÜN</span>`:d.session_done?`<span style="font-size:12px;font-weight:900;color:#2fd6b0" title="Antrenman yapıldı">✓</span>`:isFuture?`<span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--muted)">planlı</span>`:''}
         </div>
-        <span style="display:inline-block;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:3px 8px;border-radius:6px">${d.training}${d.is_override?' 🔁':''}</span>
+        <span style="display:inline-block;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:3px 8px;border-radius:6px">${splitLabel}${d.is_override?' 🔁':''}</span>
         ${d.exercises?`<span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--muted)">${d.exercises} hareket</span>`:''}
       </div>
       ${ring}
@@ -4145,12 +4146,13 @@ function calDetailInnerHtml(dayObj){
   const d=new Date(dayObj.date+'T12:00:00');
   const dateLabel=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
   const c=CAL_COLORS[dayObj.training]||'#444';
+  const selSplitLabel=(dayObj.training==='Off'&&dayObj.target&&dayObj.target.type)?dayObj.target.type:dayObj.training;
   return `
     <div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted)">SEÇİLİ GÜN</div>
       <div style="font-weight:800;font-size:1.3rem;margin-top:4px">${dateLabel}</div>
       <div style="margin-top:8px">
-        <span style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#fff;background:${c};padding:5px 14px;border-radius:8px">${dayObj.training.toUpperCase()}${dayObj.session_done?' ✓':''}</span>
+        <span style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#fff;background:${c};padding:5px 14px;border-radius:8px">${selSplitLabel.toUpperCase()}${dayObj.session_done?' ✓':''}</span>
       </div>
       ${CAL_DESC[dayObj.training]?`<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5">${CAL_DESC[dayObj.training]}</div>`:''}
       <div style="margin-top:12px">${calScoreHtml(dayObj)}</div>
@@ -4216,7 +4218,7 @@ function renderCalendarPage(){
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">bugün</span>
       <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:var(--bg2);border:1px solid var(--border);padding:4px 10px;border-radius:8px">${fmtD(today())}</span>
-      ${todayObj?`<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:#fff;background:${CAL_COLORS[todayObj.training]};padding:5px 12px;border-radius:7px">${todayObj.training.toUpperCase()}</span>`:''}
+      ${todayObj?`<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:#fff;background:${CAL_COLORS[todayObj.training]};padding:5px 12px;border-radius:7px">${((todayObj.training==='Off'&&todayObj.target&&todayObj.target.type)?todayObj.target.type:todayObj.training).toUpperCase()}</span>`:''}
     </div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       ${CAL_SPLITS.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${CAL_COLORS[s]}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s}</span></div>`).join('')}
