@@ -3967,26 +3967,6 @@ async function aicGenerate(dateStr){
     }
   }catch(e){toast('Coach notu oluşturulamadı',false);}
 }
-function calDayScore(dayObj){
-  const t=dayObj.target||{}, totals=(CAL_DETAIL&&CAL_DETAIL.totals)||{};
-  const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
-  const pct=(v,tg)=>Math.max(0,Math.min(100,Math.round((Number(v)||0)/(Number(tg)||1)*100)));
-  const waterTarget=(getT&&getT().water)||3000;
-  const trainPart=dayObj.training&&dayObj.training!=='Off'?(dayObj.session_done?100:35):80;
-  const parts=[
-    pct(totals.calories,t.kcal),
-    pct(totals.protein_g,t.protein_g),
-    pct(CAL_DETAIL&&CAL_DETAIL.water_ml,waterTarget),
-    trainPart,
-  ];
-  if(w.found&&(w.recovery_score!=null||w.sleep_performance!=null)){
-    if(w.recovery_score!=null)parts.push(w.recovery_score);
-    if(w.sleep_performance!=null)parts.push(w.sleep_performance);
-  }else{
-    parts.push(pct(CAL_DETAIL&&CAL_DETAIL.sleep_hours,7.5));
-  }
-  return Math.round(parts.reduce((a,b)=>a+b,0)/parts.length);
-}
 function calWhoopNote(){
   const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
   if(!w.found||(w.recovery_score==null&&w.strain==null))return null;
@@ -4000,7 +3980,14 @@ function calWhoopNote(){
   return {text,color};
 }
 function calScoreHtml(dayObj){
-  const sc=calDayScore(dayObj);
+  const sc=dayObj.day_score;
+  if(sc==null){
+    const future=dayObj.date>today();
+    return `<div style="display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:900;color:var(--muted)">—</div>
+      <div style="font-size:11px;color:var(--muted)">${future?'Gün henüz gelmedi — puan yok':'Bu gün için veri yok'}</div>
+    </div>`;
+  }
   const c=sc>=80?'#2fd6b0':sc>=50?'#ffd166':'#e0556b';
   const label=sc>=80?'Harika gün':sc>=50?'Fena değil':'Zayıf gün';
   const w=(CAL_DETAIL&&CAL_DETAIL.whoop)||{found:false};
