@@ -3580,6 +3580,26 @@ def ai_apply_actions(actions):
                         "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type=? AND target_name=? AND active=1",
                         (operation_today(), ttype, tname)
                     )
+                    # 'post workout ara verdim' stack-seviyeli kaydedilmis olabilir ama kullanici
+                    # 'creatine tekrar basladim' gibi urun adiyla bitirmeye calisiyor olabilir
+                    # (ya da tam tersi) - bu yuzden karsi granulariteyi de kontrol edip kapatiyoruz,
+                    # yoksa break sessizce aktif kalir ve kullanici bitirdigini sanir.
+                    if ttype == 'product' and 'tg_stack_slot_for_product' in globals():
+                        slot = tg_stack_slot_for_product(tname)
+                        stack_name = _SLOT_STACK_NAME.get(slot) if slot else None
+                        if stack_name:
+                            conn.execute(
+                                "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type='stack' AND target_name=? AND active=1",
+                                (operation_today(), stack_name)
+                            )
+                    elif ttype == 'stack':
+                        slot = next((k for k, v in _SLOT_STACK_NAME.items() if v == tname), None)
+                        if slot and 'tg_stack_preset' in globals():
+                            for pname in tg_stack_preset(slot):
+                                conn.execute(
+                                    "UPDATE supplement_breaks SET active=0, ended_at=? WHERE target_type='product' AND target_name=? AND active=1",
+                                    (operation_today(), pname)
+                                )
                     conn.execute(
                         "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
                         (action_date, f'▶ {tname} — Tekrar Başlandı', '', '', 'ara bitti, devam ediliyor', 'on_break')
@@ -4703,6 +4723,14 @@ _SLOT_STACK_NAME = {
 }
 _BREAK_START_WORDS = ['ara verdim', 'ara veriyorum', 'ara basladim', 'ara devam', 'durdurdum', 'biraktim', 'kullanmiyorum artik', 'kestim']
 _BREAK_END_WORDS = ['ara bitti', 'ara bitirdim', 'tekrar basladim', 'geri basladim', 'devam ediyorum artik', 'ara vermiyorum artik']
+
+def tg_stack_slot_for_product(product_name):
+    """Verilen urunun hangi stack slotuna ait oldugunu bulur (break-end'de karsi-granularite
+    kontrolu icin - bkz. ai_apply_actions supplement_break_end)."""
+    for slot in ('ac-karna', 'sabah', 'gece', 'pre-workout', 'post-workout'):
+        if product_name in tg_stack_preset(slot):
+            return slot
+    return None
 
 def tg_supplement_break_target(raw_text, norm):
     """Mesajdaki stack veya urun referansini bulur - ONCE tekil urun (catalog keys) denenir
