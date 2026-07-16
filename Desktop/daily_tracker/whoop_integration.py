@@ -242,6 +242,51 @@ def whoop_daily(date):
     return jsonify(d)
 
 
+_WHOOP_SUMMARY_METRICS = [
+    "recovery_score", "strain", "hrv_ms", "rhr_bpm", "sleep_hours",
+    "sleep_performance", "kcal_burned", "spo2", "respiratory_rate",
+]
+
+
+@whoop_bp.route("/whoop/summary")
+def whoop_summary():
+    """Özet sayfasi haftalik/aylik WHOOP ortalamalari icin: days=N gunun ortalamasi +
+    onceki esit uzunluktaki periyotla delta. Veri seyrek olabilir (henuz az gun senkron
+    edildi) - null-safe, hic veri yoksa avg alanlari null doner, widget cokmez."""
+    days = int(request.args.get("days", 7))
+    end_str = request.args.get("end")
+    end_date = datetime.strptime(end_str, "%Y-%m-%d").date() if end_str else datetime.now(TR_TZ).date()
+    start_date = end_date - timedelta(days=days - 1)
+    prev_end = start_date - timedelta(days=1)
+    prev_start = prev_end - timedelta(days=days - 1)
+
+    def _avg(s, e):
+        conn = _db()
+        cols = ", ".join(f"AVG({m}) {m}" for m in _WHOOP_SUMMARY_METRICS)
+        row = conn.execute(
+            f"SELECT COUNT(*) c, {cols} FROM whoop_daily WHERE date >= ? AND date <= ?",
+            (s.isoformat(), e.isoformat()),
+        ).fetchone()
+        conn.close()
+        d = dict(row)
+        count = d.pop("c")
+        return count, {k: (round(v, 1) if v is not None else None) for k, v in d.items()}
+
+    count, avg = _avg(start_date, end_date)
+    prev_count, prev_avg = _avg(prev_start, prev_end)
+
+    delta = {}
+    for m in _WHOOP_SUMMARY_METRICS:
+        a, b = avg.get(m), prev_avg.get(m)
+        delta[m] = round(a - b, 1) if (a is not None and b is not None) else None
+
+    return jsonify({
+        "days": days, "start": start_date.isoformat(), "end": end_date.isoformat(),
+        "count": count, "avg": avg,
+        "prev_count": prev_count, "prev_avg": prev_avg, "delta": delta,
+    })
+
+
 # ------------------------------------------------------------------ sync ---
 def sync_whoop_data(days=3):
     """Son N günün recovery/sleep/cycle verisini çekip whoop_daily'ye yazar.

@@ -690,93 +690,14 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 
   <!-- ═══ ÖZET ═══ -->
   <div class="page" id="page-ozet">
-    <div class="pg-title">Özet</div>
-    <div class="pg-sub">Haftalık ve aylık performans analizi</div>
-    <!-- MAKRO PANELİ (donut + bars) -->
-    <div id="ozet-makro-card" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(15,23,42,.94),rgba(17,24,39,.78));border:1px solid rgba(59,130,246,.2);border-radius:20px;padding:16px 18px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px">
-        <div>
-          <div style="font-size:.9rem;font-weight:900;color:var(--text)">Bugünün Makro Paneli</div>
-          <div style="font-size:.65rem;color:var(--muted);margin-top:3px">Ana gösterge paneli yalnızca bugünü gösterir</div>
-        </div>
-        <div id="ozm-overall-pill" style="font-size:.78rem;font-weight:800;background:#22c55e;color:#fff;border-radius:999px;padding:5px 13px;flex-shrink:0;box-shadow:0 2px 8px rgba(34,197,94,.4);white-space:nowrap">0%</div>
-      </div>
-      <div style="display:flex;gap:18px;align-items:center">
-        <div style="position:relative;width:100px;height:100px;flex-shrink:0">
-          <svg viewBox="0 0 80 80" style="width:100%;height:100%;transform:rotate(-90deg)">
-            <circle fill="none" stroke="rgba(255,255,255,.08)" stroke-width="10" cx="40" cy="40" r="32"/>
-            <circle id="ozm-donut-ring" fill="none" stroke="#FF7B54" stroke-width="10" stroke-linecap="round" cx="40" cy="40" r="32" stroke-dasharray="0 201" style="transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1)"/>
-          </svg>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1">
-            <div id="ozm-kcal" style="font-size:1.35rem;font-weight:1000;color:var(--text)">0</div>
-            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;text-align:center">KCAL<br>BUGÜN</div>
-          </div>
-        </div>
-        <div id="ozm-bars" style="flex:1;display:flex;flex-direction:column;gap:10px"></div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+      <div>
+        <div class="pg-title" style="margin-bottom:0">Özet</div>
+        <div class="pg-sub">Haftalık ve aylık performans analizi</div>
       </div>
     </div>
-    <div class="sub-tabs" style="margin-bottom:18px">
-      <button class="sub-tab active" onclick="ozSub('daily')">📅 Günlük</button>
-      <button class="sub-tab" onclick="ozSub('weekly')">📊 Haftalık</button>
-      <button class="sub-tab" onclick="ozSub('monthly')">📆 Aylık</button>
-    </div>
-    <!-- GÜNLÜK -->
-    <div id="oz-daily" class="oz-sub oz-active">
-      <div id="oz-daily-content"><div style="color:var(--muted);padding:20px">Yükleniyor...</div></div>
-    </div>
-    <!-- HAFTALIK -->
-    <div id="oz-weekly" class="oz-sub" style="display:none">
-      <!-- Mission Board -->
-      <div class="mission-board" id="oz-mission-board" style="margin-bottom:18px">
-        <div class="mission-board-head">
-          <div>
-            <div class="mission-board-title">Haftalık Mission Board</div>
-            <div class="mission-board-sub">4 gün önce, bugün ve 2 gün sonrası · gün kartları ilerleme haritası gibi çalışır.</div>
-          </div>
-          <div class="mission-type" id="ms-today-type">—</div>
-        </div>
-        <div class="mission-week-progress"><div class="mission-week-fill" id="ms-week-fill"></div></div>
-        <div class="mission-days" id="ms-days"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div class="card ct ct-yellow" id="oz-week-stats"></div>
-        <div class="card ct ct-teal" id="oz-week-macro"></div>
-      </div>
-      <div class="trend-card" style="margin-bottom:12px">
-        <div class="trend-head"><div class="trend-title">Uyku (7 gün)</div></div>
-        <canvas id="oz-sleep-chart" height="100"></canvas>
-      </div>
-      <div class="trend-card" style="margin-bottom:12px">
-        <div class="trend-head"><div class="trend-title">Ruh Hali (7 gün)</div></div>
-        <canvas id="oz-mood-chart" height="100"></canvas>
-      </div>
-      <div class="trend-card">
-        <div class="trend-head"><div class="trend-title">Kalori (7 gün)</div></div>
-        <canvas id="oz-cal-chart" height="100"></canvas>
-      </div>
-      <!-- GÜN SEÇİMİ → TAM LOG GÖRÜNÜMÜ -->
-      <div style="margin-top:16px">
-        <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;font-weight:800;letter-spacing:.5px;margin-bottom:8px">📅 Gün Seç — Tam Log Görünümü</div>
-        <div id="oz-day-selector" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
-        <div id="oz-day-log" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;min-height:40px;display:none"></div>
-      </div>
-    </div>
-    <!-- AYLIK -->
-    <div id="oz-monthly" class="oz-sub" style="display:none">
-      <div class="card ct ct-purple" id="oz-month-stats" style="margin-bottom:12px"></div>
-      <div class="trend-card" style="margin-bottom:12px">
-        <div class="trend-head"><div class="trend-title">Kilo Trendi (30 gün)</div></div>
-        <canvas id="oz-weight-chart" height="100"></canvas>
-      </div>
-      <div class="trend-card" style="margin-bottom:12px">
-        <div class="trend-head"><div class="trend-title">Uyku (30 gün)</div></div>
-        <canvas id="oz-sleep30-chart" height="100"></canvas>
-      </div>
-      <div class="trend-card">
-        <div class="trend-head"><div class="trend-title">Kalori (30 gün)</div></div>
-        <canvas id="oz-cal30-chart" height="100"></canvas>
-      </div>
-    </div>
+    <div style="display:inline-flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:18px" id="ozp-tabs"></div>
+    <div id="ozp-content"><div style="color:var(--muted);padding:20px">Yükleniyor...</div></div>
   </div>
 
   <!-- ═══ TAKVİM ═══ -->
@@ -3608,276 +3529,657 @@ async function addSet(){
 }
 
 /* ═══════════════════════════════════════════════════
-   ÖZET PAGE
+   ÖZET PAGE (v2 — gerçek day_score/WHOOP/supplement-stack verisi)
 ════════════════════════════════════════════════════ */
-let _ozCharts={};
-function destroyOzChart(id){if(_ozCharts[id]){_ozCharts[id].destroy();delete _ozCharts[id];}}
-function mkOzChart(id,type,labels,datasets,opts={}){
-  destroyOzChart(id);
-  const ctx=$(id);if(!ctx)return;
-  _ozCharts[id]=new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,plugins:{legend:{display:datasets.length>1}},scales:{y:{grid:{color:'rgba(255,255,255,.05)'}},...(opts.scales||{})}}});
-}
+let OZ_TAB='daily', OZ_DATE=null, OZ_MONTH_YM=null, OZ_MONTH_CACHE={}, OZP_STACK_OPEN={};
+const OZP_C={org:'var(--orange)',grn:'var(--green)',blu:'var(--blue)',pur:'var(--purple)',pnk:'var(--pink)',mnt:'var(--teal)',red:'var(--red)'};
+const OZP_STATUS_META={
+  taken:{label:'✓ Alındı',color:OZP_C.grn}, eod_taken:{label:'✅ Gün Aşırı Alındı',color:OZP_C.grn},
+  half_dose:{label:'½ Yarım Doz',color:OZP_C.pur}, eod_skipped:{label:'⚠️ Gün Aşırı Atlandı',color:'var(--yellow)'},
+  missed:{label:'✕ Eksik',color:OZP_C.red}, pending:{label:'· Bekliyor',color:'var(--muted2)'},
+};
 
-function ozSub(which){
-  ['daily','weekly','monthly'].forEach(n=>{
-    $('oz-'+n).style.display=n===which?'':'none';
+async function loadOzet(){
+  if(!OZ_DATE) OZ_DATE=today();
+  ozpRenderTabs();
+  ozpRenderContent();
+}
+function ozpRenderTabs(){
+  const el=$('ozp-tabs'); if(!el)return;
+  const tabs=[['daily','Günlük'],['weekly','Haftalık'],['monthly','Aylık']];
+  el.innerHTML=tabs.map(([k,label])=>`<button onclick="ozpSwitchTab('${k}')" style="border:none;cursor:pointer;border-radius:9px;padding:8px 22px;font-size:13px;font-weight:700;font-family:inherit;background:${OZ_TAB===k?OZP_C.pnk:'transparent'};color:${OZ_TAB===k?'#fff':'var(--muted)'}">${label}</button>`).join('');
+}
+function ozpSwitchTab(tab){OZ_TAB=tab;ozpRenderTabs();ozpRenderContent();}
+function ozpRenderContent(){
+  const el=$('ozp-content'); if(!el)return;
+  el.innerHTML='<div style="color:var(--muted);padding:20px">Yükleniyor...</div>';
+  if(OZ_TAB==='daily') ozpRenderDaily(OZ_DATE);
+  else if(OZ_TAB==='weekly') ozpRenderWeekly();
+  else ozpRenderMonthly();
+}
+async function ozpCalendarMonth(y,m){
+  const key=y+'-'+m;
+  if(!OZ_MONTH_CACHE[key]) OZ_MONTH_CACHE[key]=API(`/api/calendar/${y}/${m}`).then(d=>Array.isArray(d)?d:[]);
+  return OZ_MONTH_CACHE[key];
+}
+async function ozpDay(dateStr){
+  const [y,m]=dateStr.split('-').map(Number);
+  const days=await ozpCalendarMonth(y,m);
+  return days.find(d=>d.date===dateStr)||null;
+}
+function ozpShift(dateStr,n){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function ozpDateRange(endStr,days){const out=[];for(let i=days-1;i>=0;i--)out.push(ozpShift(endStr,-i));return out;}
+function pct2(v,t){return t>0?Math.round(v/t*100):0;}
+function ozpBar(pct,color){const p=Math.max(0,Math.min(100,pct||0));return `<div style="height:5px;border-radius:3px;background:var(--bg4);overflow:hidden"><div style="height:100%;border-radius:3px;background:${color};width:${p}%"></div></div>`;}
+function ozpPanel(title,color,inner,extraRight){
+  return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:12px;letter-spacing:2px;font-weight:800;color:${color}">${title}</div>
+      ${extraRight||''}
+    </div>
+    ${inner}
+  </div>`;
+}
+function ozpAiBullets(items){
+  if(!items||!items.length) return `<div style="color:var(--muted);font-size:13px">Henüz not yok.</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:8px">${items.map(it=>
+    `<div style="display:flex;gap:10px;align-items:flex-start;background:var(--bg3);border:1px solid var(--border);border-left:2px solid ${it.color};border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.5">
+      <span style="flex:none">${it.icon}</span><span style="color:var(--text)">${escHtml(it.text)}</span>
+    </div>`).join('')}</div>`;
+}
+async function ozpAiNotesAsBullets(days,cap){
+  const rows=await API('/api/ai-coach/notes?days='+days);
+  const list=(Array.isArray(rows)?rows:[]).filter(r=>r&&r.note).slice(0,cap);
+  return list.map(r=>{
+    const dLbl=new Date(r.date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+    return {icon:'🧠',color:OZP_C.pur,text:dLbl+': '+r.note};
   });
-  document.querySelectorAll('#page-ozet .sub-tab').forEach((t,i)=>{
-    t.classList.toggle('active',['daily','weekly','monthly'][i]===which);
-  });
-  if(which==='daily')renderOzDaily();
-  else if(which==='weekly'){renderOzWeekly(); if(typeof window.refreshMissionControl==='function') window.refreshMissionControl();}
-  else renderOzMonthly();
 }
+function ozpToggleStack(sid){OZP_STACK_OPEN[sid]=!OZP_STACK_OPEN[sid];ozpRenderDaily(OZ_DATE);}
 
-async function loadOzet(){ozSub('daily'); refreshOzetMakroCard();}
-
-async function refreshOzetMakroCard(){
-  try{
-    const todayStr=today();
-    const tdStr=typeof training_day_local==='function'?training_day_local(todayStr):'Off';
-    const t=typeof getT==='function'?getT(tdStr):{cal:1800,prot:160,carb:200,fat:50};
-    const [macro,todayData]=await Promise.all([
-      fetch('/api/macro/today').then(r=>r.json()).catch(()=>({})),
-      fetch('/api/day/'+todayStr).then(r=>r.json()).catch(()=>({}))
-    ]);
-    const tot=(macro&&macro.totals)||{};
-    const cal=Math.round(tot.calories||0),prot=Math.round(tot.protein_g||0),carb=Math.round(tot.carbs_g||0),fat=+(Math.round((tot.fat_g||0)*10)/10);
-    const water_ml=(todayData.nutrition&&todayData.nutrition.water_ml)||0;
-    const tCal=+(t.cal||1800),tWater=+(t.water||5000)/1000;
-    // Donut
-    const circ=201.06, pctCal=Math.min(100,tCal>0?cal/tCal*100:0);
-    const ring=document.getElementById('ozm-donut-ring');
-    if(ring) ring.setAttribute('stroke-dasharray',`${(pctCal/100*circ).toFixed(1)} ${circ}`);
-    const knum=document.getElementById('ozm-kcal'); if(knum) knum.textContent=cal.toLocaleString('tr-TR');
-    // Bars
-    const bars=[
-      {icon:'💪',color:'#4ADE80',val:prot,target:+(t.prot||160),disp:prot+'g',tdisp:(t.prot||160)+'g'},
-      {icon:'🌽',color:'#FBBF24',val:carb,target:+(t.carb||200),disp:carb+'g',tdisp:(t.carb||200)+'g'},
-      {icon:'🥑',color:'#A78BFA',val:fat,target:+(t.fat||50),disp:fat+'g',tdisp:(t.fat||50)+'g'},
-      {icon:'💧',color:'#22D3EE',val:+(water_ml/1000).toFixed(2),target:tWater,disp:(water_ml/1000).toFixed(1)+'L',tdisp:tWater+'L'}
-    ];
-    const barsEl=document.getElementById('ozm-bars');
-    if(barsEl) barsEl.innerHTML=bars.map(b=>{
-      const p=Math.min(100,b.target>0?Math.round(b.val/b.target*100):0);
-      return`<div style="display:flex;align-items:center;gap:10px"><div style="font-size:1.1rem;width:22px;text-align:center">${b.icon}</div><div style="flex:1"><div style="height:6px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden"><div style="height:100%;width:${p}%;background:${b.color};border-radius:999px;transition:width .7s cubic-bezier(.4,0,.2,1)"></div></div></div><div style="font-size:.7rem;color:var(--muted);white-space:nowrap;min-width:72px;text-align:right">${b.disp}/${b.tdisp}</div></div>`;
-    }).join('');
-    // Pill
-    const allPcts=[pctCal,...bars.map(b=>Math.min(100,b.target>0?b.val/b.target*100:0))];
-    const overall=Math.round(allPcts.reduce((a,v)=>a+v,0)/allPcts.length);
-    const pill=document.getElementById('ozm-overall-pill');
-    if(pill){pill.textContent=overall+'%';pill.style.background=overall>=80?'#22c55e':overall>=50?'#f59e0b':'#f87171';}
-  }catch(e){}
-}
-
-let _ozDailyDate=null;
-async function renderOzDaily(dateStr){
+async function ozpRenderDaily(dateStr){
   if(!dateStr)dateStr=today();
-  _ozDailyDate=dateStr;
-  const el=$('oz-daily-content');if(!el)return;
-  el.innerHTML='<div class="odl-loading">Yükleniyor...</div>';
-  const fmt=n=>Number(n||0).toLocaleString('tr-TR');
-  const fmtSleep=h=>{if(!h)return'—';const hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+'s'+(mm?mm+'dk':'');};
-  const [d,meals,t]=await Promise.all([
+  OZ_DATE=dateStr; OZ_TAB='daily';
+  const el=$('ozp-content'); if(!el)return;
+  el.innerHTML='<div style="color:var(--muted);padding:20px">Yükleniyor...</div>';
+  const isFuture=dateStr>today();
+  const isToday=dateStr===today();
+  const prevD=ozpShift(dateStr,-1), nextD=ozpShift(dateStr,1);
+  const dayLabel=new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'});
+
+  const [cd, td, mealsRaw, suppRange, whoop, aiNote]=await Promise.all([
+    ozpDay(dateStr),
     API('/api/today?date='+dateStr),
     API('/api/meals/'+dateStr),
-    API('/api/settings')
+    API(`/api/supplements/range?start=${dateStr}&end=${dateStr}`),
+    fetch('/whoop/daily/'+dateStr).then(r=>r.json()).catch(()=>({found:false})),
+    API('/api/ai-coach/notes/'+dateStr),
   ]);
-  const sl=d.sleep||{},ex=d.exercise||{},nu=d.nutrition||{},mo=d.mood||{},vits=d.vitamins||[];
-  const steps=(d.steps||{}).steps||0;
-  const water_ml=nu.water_ml||0;
-  const ml=meals||[];
+  if(OZ_DATE!==dateStr||OZ_TAB!=='daily')return;
+  const trainingType=(cd&&cd.training)||td.training_day||'Off';
+  const isOff=trainingType==='Off';
+  const exRaw=await API('/api/training/exercises/'+trainingType);
+  if(OZ_DATE!==dateStr||OZ_TAB!=='daily')return;
+  const exercises=Array.isArray(exRaw)?exRaw:[];
+
+  const splitLabel=(isOff&&cd&&cd.target&&cd.target.type)?cd.target.type:trainingType;
+  const phaseColor=cd?dayTypeColor(cd):(CAL_COLORS[trainingType]||'#444');
+  const sc=cd?cd.day_score:null;
+  const scColor=scoreCellColor(sc)||OZP_C.mnt;
+
+  const ml=Array.isArray(mealsRaw)?mealsRaw:[];
   const totals=ml.reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),c:a.c+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{cal:0,p:0,c:0,f:0});
-  const tCal=+(t.target_calories||1800),tProt=+(t.target_protein||160),tWater=+(t.target_water_ml||5000),tSteps=10000;
-  const pct=(v,target)=>Math.min(100,Math.round(v/Math.max(target,1)*100));
-  const pCal=pct(totals.cal,tCal),pProt=pct(totals.p,tProt),pWater=pct(water_ml,tWater),pSteps=pct(steps,tSteps);
-  const score=Math.round((pCal+pProt+pWater+pSteps)/4);
-  const scoreColor=score>=80?'#22c55e':score>=50?'#f59e0b':'#f87171';
-  const isToday=dateStr===today();
-  const prevDate=new Date(dateStr+'T12:00:00'); prevDate.setDate(prevDate.getDate()-1);
-  const nextDate=new Date(dateStr+'T12:00:00'); nextDate.setDate(nextDate.getDate()+1);
-  const prev=prevDate.toISOString().slice(0,10),next=nextDate.toISOString().slice(0,10);
-  const dayLabel=new Date(dateStr+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'});
-  // Stat card
-  const stat=(icon,label,val,target,p,color,unit)=>`<div class="odl-stat"><div class="odl-stat-top"><div class="odl-stat-icon" style="background:${color}22;color:${color}">${icon}</div><div class="odl-stat-pct" style="color:${p>=80?'#22c55e':p>=50?'#f59e0b':'#94a3b8'}">${p}%</div></div><div class="odl-stat-val" style="color:${val>0?color:'var(--muted)'}">${val}${unit}</div><div class="odl-stat-tgt">/ ${target}${unit}</div><div class="odl-bar-track"><div class="odl-bar-fill" style="width:${p}%;background:${color}"></div></div></div>`;
-  // Slot labels
+  const target=(cd&&cd.target)||{kcal:1800,protein_g:160,carb_g:200,fat_g:50};
+  const water_ml=(td.nutrition&&td.nutrition.water_ml)||0;
+  const steps=(td.steps&&td.steps.steps)||0;
+  const gt=typeof getT==='function'?getT(trainingType):{water:3500,steps:10000};
+  const waterGoal=+(gt.water||3500), stepGoal=+(gt.steps||10000);
+
+  const pct=(v,t)=>t>0?Math.round(v/t*100):0;
+  const macros=[
+    {icon:'🔥',label:'KALORİ',val:Math.round(totals.cal).toLocaleString('tr-TR'),target:Math.round(target.kcal||0).toLocaleString('tr-TR')+' kcal',pct:pct(totals.cal,target.kcal),color:OZP_C.org},
+    {icon:'🍗',label:'PROTEİN',val:Math.round(totals.p)+'g',target:Math.round(target.protein_g||0)+'g',pct:pct(totals.p,target.protein_g),color:OZP_C.grn},
+    {icon:'🍞',label:'KARB',val:Math.round(totals.c)+'g',target:Math.round(target.carb_g||0)+'g',pct:pct(totals.c,target.carb_g),color:OZP_C.blu},
+    {icon:'🥑',label:'YAĞ',val:Math.round(totals.f)+'g',target:Math.round(target.fat_g||0)+'g',pct:pct(totals.f,target.fat_g),color:OZP_C.org},
+    {icon:'💧',label:'SU',val:(water_ml/1000).toFixed(1)+'L',target:(waterGoal/1000).toFixed(1)+'L',pct:pct(water_ml,waterGoal),color:OZP_C.blu},
+    {icon:'👟',label:'ADIM',val:steps.toLocaleString('tr-TR'),target:stepGoal.toLocaleString('tr-TR'),pct:pct(steps,stepGoal),color:OZP_C.pur},
+  ];
+  const macroCardsHtml=macros.map(m=>{
+    const c=m.pct>115?OZP_C.red:m.color;
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:11px;letter-spacing:1.5px;color:var(--muted);font-weight:700">${m.icon} ${m.label}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${c}">${m.pct}%</div>
+      </div>
+      <div style="margin-top:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:22px;font-weight:700;color:${c}">${m.val}</span><span style="font-size:12px;color:var(--muted2)"> / ${m.target}</span></div>
+      <div style="margin-top:10px">${ozpBar(m.pct,c)}</div>
+    </div>`;
+  }).join('');
+
+  const badges=[];
+  if(isFuture){
+    badges.push({text:'📅 Planlandı — henüz veri yok',color:'var(--muted2)'});
+  }else{
+    const kp=pct(totals.cal,target.kcal);
+    if(target.kcal){
+      if(kp>110) badges.push({text:'✗ Kalori aşımı +'+Math.round(totals.cal-target.kcal)+'kcal',color:OZP_C.red});
+      else if(kp>=85) badges.push({text:'✓ Kalori hedefte',color:OZP_C.grn});
+    }
+    if(!isOff) badges.push(cd&&cd.session_done?{text:'✓ Antrenman yapıldı',color:OZP_C.grn}:{text:'— Antrenman yok',color:'var(--muted2)'});
+    if(td.streak>=2) badges.push({text:'🔥 '+td.streak+' gün seri',color:OZP_C.org});
+  }
+
+  let whoopHtml;
+  if(whoop && whoop.found){
+    const wCells=[
+      ['😴','Uyku',(whoop.sleep_hours!=null?whoop.sleep_hours.toFixed(1)+'sa':'—')+(whoop.sleep_performance!=null?' · %'+Math.round(whoop.sleep_performance):''),OZP_C.blu],
+      ['💚','Recovery',whoop.recovery_score!=null?'%'+Math.round(whoop.recovery_score):'—',OZP_C.grn],
+      ['⚡','Strain',whoop.strain!=null?whoop.strain.toFixed(1):'—',OZP_C.org],
+      ['💓','HRV',(whoop.hrv_ms!=null?Math.round(whoop.hrv_ms)+'ms':'—')+(whoop.rhr_bpm!=null?' · '+Math.round(whoop.rhr_bpm)+'bpm':''),OZP_C.mnt],
+      ['🔥','Yakılan',whoop.kcal_burned!=null?Math.round(whoop.kcal_burned)+' kcal':'—',OZP_C.org],
+      ['🩸','SpO2',whoop.spo2!=null?'%'+whoop.spo2.toFixed(1):'—',OZP_C.pnk],
+      ['🌬','Solunum',whoop.respiratory_rate!=null?whoop.respiratory_rate.toFixed(1)+'/dk':'—',OZP_C.blu],
+      ['🛌','Yatış','—',OZP_C.pur],
+    ];
+    const totalMs=(whoop.sleep_light_ms||0)+(whoop.sleep_deep_ms||0)+(whoop.sleep_rem_ms||0)+(whoop.sleep_awake_ms||0);
+    const stagePct=ms=>totalMs>0?Math.round(ms/totalMs*100):0;
+    const fmtMs=ms=>ms?Math.floor(ms/3600000)+'sa '+Math.round((ms%3600000)/60000)+'dk':'—';
+    const balance=whoop.kcal_burned!=null?Math.round(totals.cal-whoop.kcal_burned):null;
+    whoopHtml=ozpPanel('WHOOP GÜNLÜK',OZP_C.mnt,`
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${wCells.map(([icon,label,val,color])=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.5px">${icon} ${label}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-top:4px;color:${color}">${val}</div>
+        </div>`).join('')}
+      </div>
+      ${totalMs>0?`<div style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:11px 13px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:7px"><span>Uyku evreleri</span><span style="font-family:'JetBrains Mono',monospace">REM ${fmtMs(whoop.sleep_rem_ms)} · Derin ${fmtMs(whoop.sleep_deep_ms)}</span></div>
+        <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;gap:2px">
+          <div style="width:${stagePct(whoop.sleep_rem_ms)}%;background:${OZP_C.mnt}"></div><div style="width:${stagePct(whoop.sleep_deep_ms)}%;background:${OZP_C.blu}"></div><div style="width:${stagePct(whoop.sleep_light_ms)}%;background:var(--border2)"></div><div style="width:${stagePct(whoop.sleep_awake_ms)}%;background:var(--muted2)"></div>
+        </div>
+      </div>`:''}
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);padding:0 2px;flex-wrap:wrap;gap:6px">
+        <span>⚖ Enerji dengesi: <b style="color:var(--text)">${Math.round(totals.cal)} alınan</b>${whoop.kcal_burned!=null?' − <b style="color:var(--text)">'+Math.round(whoop.kcal_burned)+' yakılan</b>':' · yakılan verisi yok'}</span>
+        ${balance!=null?`<span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${balance>1400?OZP_C.red:OZP_C.grn}">${balance>=0?'+':''}${balance} kcal</span>`:''}
+      </div>
+    `);
+  }else{
+    whoopHtml=ozpPanel('WHOOP GÜNLÜK',OZP_C.mnt,`<div style="color:var(--muted);font-size:13px">Bu gün için WHOOP verisi yok.</div>`);
+  }
+
   const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍽️ Meal 1',meal2:'🍽️ Meal 2',meal3:'🍽️ Meal 3',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🍛 Öğle',öğle:'🍛 Öğle',aksam:'🌆 Akşam',akşam:'🌆 Akşam',gece:'🌙 Gece','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
   const groups={};
-  ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase().replace(/ö/g,'ö').replace(/ü/g,'ü');(groups[k]=groups[k]||[]).push(m);});
-  const slotOrder=G_SLOT_ORDER;
-  const sortedSlots=[...new Set([...slotOrder.filter(s=>groups[s]),...Object.keys(groups)])];
-  // Supplement groups
-  const suppGroups={};
-  vits.forEach(v=>{const n=(v.notes||'').toLowerCase();const k=n.includes('gece')?'Gece Stack':n.includes('ac karna')||n.includes('aç karna')?'Aç Karna Stack':n.includes('post')?'Post-Workout':n.includes('pre')?'Pre-Workout':n.includes('sabah')||n.includes('kahvalti')?'Sabah Stack':'Diğer';(suppGroups[k]=suppGroups[k]||[]).push(v);});
+  ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase();(groups[k]=groups[k]||[]).push(m);});
+  const sortedSlots=[...new Set([...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups)])];
+  const mealHtml=ozpPanel('🍽 ÖĞÜN ZAMAN ÇİZELGESİ',OZP_C.org,
+    sortedSlots.length?sortedSlots.map(slot=>{
+      const items=groups[slot]||[];
+      const stot=items.reduce((a,m)=>a+(m.calories||0),0);
+      return `<div style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:800;color:var(--text)">${slotLabel[slot]||('🍴 '+slot)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${OZP_C.org};font-weight:600">${Math.round(stot)} kcal</div>
+        </div>
+        ${items.map(m=>`<div style="display:flex;justify-content:space-between;padding:6px 2px 0;font-size:12px">
+          <span style="color:var(--text)">${escHtml(m.title||m.description||'')} ${m.title&&m.description&&m.description!==m.title?`<span style="color:var(--muted2);font-size:11px">${escHtml(m.description)}</span>`:''}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${Math.round(m.calories||0)} kcal · <span style="color:${OZP_C.grn}">P${Math.round(m.protein_g||0)}</span> <span style="color:${OZP_C.blu}">K${Math.round(m.carbs_g||0)}</span> <span style="color:${OZP_C.org}">Y${Math.round(m.fat_g||0)}</span></span>
+        </div>`).join('')}
+      </div>`;
+    }).join(''):`<div style="color:var(--muted);font-size:13px;margin-top:8px">Öğün kaydı yok.</div>`,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${Math.round(totals.cal)} kcal · P${Math.round(totals.p)} · K${Math.round(totals.c)} · Y${Math.round(totals.f)}</div>`
+  );
 
-  el.innerHTML=`
-  <div class="odl-wrap">
-    <!-- HEADER -->
-    <div class="odl-header">
-      <button class="odl-nav-btn" onclick="renderOzDaily('${prev}')">‹</button>
-      <div class="odl-header-center">
-        <div class="odl-date-label">${dayLabel}</div>
-        <div class="odl-day-type" style="color:${d.training_color||'#64748b'}">${d.training_day||'Off'} · ${d.streak||0} gün seri 🔥</div>
-        ${isToday?'<span class="odl-today-badge">Bugün</span>':''}
-      </div>
-      <button class="odl-nav-btn" onclick="renderOzDaily('${next}')" ${isToday?'disabled':''}>›</button>
-    </div>
-    <!-- SCORE RING -->
-    <div class="odl-score-wrap">
-      <div class="odl-score-ring" style="--score-color:${scoreColor};--score-pct:${score}">
-        <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="7"/><circle cx="40" cy="40" r="34" fill="none" stroke="${scoreColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${2*Math.PI*34}" stroke-dashoffset="${2*Math.PI*34*(1-score/100)}" transform="rotate(-90 40 40)" style="filter:drop-shadow(0 0 6px ${scoreColor}66)"/></svg>
-        <div class="odl-score-inner"><div class="odl-score-num" style="color:${scoreColor}">${score}%</div><div class="odl-score-lbl">günlük skor</div></div>
-      </div>
-    </div>
-    <!-- QUICK STATS -->
-    <div class="odl-stats-grid">
-      ${stat('🔥','Kalori',fmt(Math.round(totals.cal)),fmt(tCal),pCal,'#f59e0b',' kcal')}
-      ${stat('💪','Protein',Math.round(totals.p),tProt,pProt,'#22c55e','g')}
-      ${stat('💧','Su',(water_ml/1000).toFixed(1),(tWater/1000).toFixed(0),pWater,'#06b6d4','L')}
-      ${stat('🦶','Adım',fmt(steps),fmt(tSteps),pSteps,'#a855f7','')}
-    </div>
-    <!-- MEAL TIMELINE -->
-    <div class="odl-section">
-      <div class="odl-section-title">🍽️ Öğün Zaman Çizelgesi</div>
-      ${sortedSlots.length?sortedSlots.map(slot=>{
-        const items=groups[slot]||[];
-        const stot=items.reduce((a,m)=>({c:a.c+(m.calories||0),p:a.p+(m.protein_g||0),k:a.k+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{c:0,p:0,k:0,f:0});
-        return`<div class="odl-timeline-group">
-          <div class="odl-tg-head">
-            <div class="odl-tg-label">${slotLabel[slot]||('🍴 '+slot)}</div>
-            <div class="odl-tg-total"><span style="color:#f59e0b">${fmt(Math.round(stot.c))} kcal</span> <span style="color:#94a3b8">·</span> <span style="color:#22c55e">P${Math.round(stot.p)}g</span></div>
+  const stacks=(suppRange&&suppRange.days&&suppRange.days[0]&&suppRange.days[0].stacks)||[];
+  const suppHtml=ozpPanel('💊 TAKVİYE PROTOKOLÜ',OZP_C.pnk,
+    stacks.length?stacks.map(st=>{
+      const open=!!OZP_STACK_OPEN[st.stack_id];
+      const p=st.total>0?Math.round(st.taken/st.total*100):0;
+      const barColor=p===100?OZP_C.grn:p>=60?OZP_C.mnt:OZP_C.org;
+      return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden">
+        <div onclick="ozpToggleStack(${st.stack_id})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg3)">
+          <div style="font-size:13px;font-weight:800;color:var(--text)">${open?'▾':'▸'} ${escHtml(st.name)}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:60px">${ozpBar(p,barColor)}</div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>
           </div>
-          ${items.map(m=>`<div class="odl-meal-row"><div class="odl-meal-name">${m.title||m.description||m.slot}</div><div class="odl-meal-desc">${m.description&&m.description!==m.title?m.description:''}</div><div class="odl-meal-macros"><span style="color:#f59e0b">${Math.round(m.calories||0)} kcal</span><span style="color:#22c55e">P${Math.round(m.protein_g||0)}g</span><span style="color:#3b82f6">K${Math.round(m.carbs_g||0)}g</span><span style="color:#f97316">Y${Math.round(m.fat_g||0)}g</span></div></div>`).join('')}
-        </div>`;
-      }).join(''):'<div class="odl-empty">Öğün kaydı yok</div>'}
-    </div>
-    <!-- SUPPLEMENT TIMELINE -->
-    ${Object.keys(suppGroups).length?`<div class="odl-section">
-      <div class="odl-section-title">💊 Takviye Zaman Çizelgesi</div>
-      ${Object.entries(suppGroups).map(([grp,items])=>`<div class="odl-timeline-group">
-        <div class="odl-tg-head"><div class="odl-tg-label">💊 ${grp}</div><div class="odl-tg-total" style="color:#22c55e">${items.length} ürün</div></div>
-        ${items.map(v=>`<div class="odl-meal-row"><div class="odl-meal-name">${v.name}</div><div class="odl-meal-desc">${fmtAmt(v.amount)} ${v.unit}${v.notes?' · '+v.notes:''}</div><span class="odl-check">✓</span></div>`).join('')}
+        </div>
+        ${open?`<div style="border-top:1px solid var(--border)">
+          ${st.items.map(it=>{
+            const meta=OZP_STATUS_META[it.status]||OZP_STATUS_META.pending;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text)">${escHtml(it.name)} <span style="color:var(--muted2);font-size:11px;font-family:'JetBrains Mono',monospace">${it.dose}${it.unit||''}</span></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${meta.color}">${meta.label}</span>
+            </div>`;
+          }).join('')}
+        </div>`:''}
+      </div>`;
+    }).join(''):`<div style="color:var(--muted);font-size:13px">Aktif stack yok.</div>`
+  );
+
+  const progHtml=ozpPanel('🏋 ANTRENMAN',phaseColor,
+    exercises.length?exercises.map(ex=>`<div style="display:flex;justify-content:space-between;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--border)">
+      <span style="font-weight:600;color:var(--text)">${escHtml(ex.exercise)}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${OZP_C.blu}">${escHtml(ex.sets||'')}${ex.reps?'×'+escHtml(ex.reps):''}</span>
+    </div>`).join(''):`<div style="color:var(--muted);font-size:13px">${isOff?'Dinlenme günü.':'Program tanımlı değil.'}</div>`,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:#fff;background:${phaseColor};border-radius:999px;padding:3px 12px;letter-spacing:1px">${escHtml(splitLabel)}</div>`
+  );
+
+  const sl=td.sleep||{}, ex0=td.exercise||{}, mo=td.mood||{};
+  const fmtSleep=h=>{if(!h)return'—';const hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+'sa'+(mm?mm+'dk':'');};
+  const activity=[
+    {icon:'😴',label:'UYKU',val:sl.hours?fmtSleep(sl.hours):'—',color:OZP_C.blu},
+    {icon:'🏋',label:'ANTRENMAN',val:cd&&cd.session_done?(splitLabel+' ✓'):(isOff?'Off':'—'),color:phaseColor},
+    {icon:'⚡',label:'ENERJİ',val:mo.energy?mo.energy+'/10':'—',color:OZP_C.org},
+    {icon:'🧠',label:'MOOD',val:mo.mood?mo.mood+'/10':'—',color:OZP_C.pnk},
+  ];
+  const actHtml=ozpPanel('📋 GÜNLÜK AKTİVİTE',OZP_C.blu,
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${activity.map(a=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:.5px">${a.icon} ${a.label}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${a.color}">${a.val}</span>
       </div>`).join('')}
-    </div>`:''}
-    <!-- ACTIVITY -->
-    <div class="odl-section">
-      <div class="odl-section-title">📊 Günlük Aktivite</div>
-      <div class="odl-activity-grid">
-        <div class="odl-act-card"><div class="odl-act-icon">😴</div><div class="odl-act-label">Uyku</div><div class="odl-act-val">${sl.hours?fmtSleep(sl.hours):'—'}</div>${sl.quality?`<div class="odl-act-sub">Kalite ${sl.quality}/10</div>`:''}</div>
-        <div class="odl-act-card"><div class="odl-act-icon">🏋️</div><div class="odl-act-label">Antrenman</div><div class="odl-act-val">${ex.type||'—'}</div>${ex.duration?`<div class="odl-act-sub">${ex.duration}dk · ${ex.intensity||'?'}/10</div>`:''}</div>
-        <div class="odl-act-card"><div class="odl-act-icon">⚡</div><div class="odl-act-label">Enerji</div><div class="odl-act-val" style="color:${mo.energy>=7?'#22c55e':mo.energy>=5?'#f59e0b':'#f87171'}">${mo.energy||'—'}${mo.energy?'/10':''}</div></div>
-        <div class="odl-act-card"><div class="odl-act-icon">🧠</div><div class="odl-act-label">Mood</div><div class="odl-act-val" style="color:${mo.mood>=7?'#22c55e':mo.mood>=5?'#f59e0b':'#f87171'}">${mo.mood||'—'}${mo.mood?'/10':''}</div></div>
+    </div>`
+  );
+
+  const aiItems=(aiNote&&aiNote.note)?[{icon:'🤖',color:OZP_C.pur,text:aiNote.note}]:[];
+  const aiHtml=ozpPanel('🧠 AI KOÇ ANALİZİ',OZP_C.pur,ozpAiBullets(aiItems));
+
+  const ring=sc!=null?`<div style="position:relative;width:96px;height:96px;flex:none">
+      <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(${scColor} 0 ${sc}%, var(--bg4) ${sc}% 100%)"></div>
+      <div style="position:absolute;inset:8px;border-radius:50%;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:${scColor}">${sc}%</div>
+        <div style="font-size:9px;letter-spacing:1.5px;color:var(--muted2)">GÜNLÜK SKOR</div>
       </div>
-    </div>
-    <!-- AI INSIGHTS -->
-    <div class="odl-section">
-      <div class="odl-ai-card" id="odl-ai-card">
-        <div class="odl-ai-head"><span class="odl-ai-icon">🤖</span><span class="odl-ai-title">AI Koç Notu</span><button class="odl-ai-refresh" onclick="loadAiInsight('${dateStr}')">↻</button></div>
-        <div class="odl-ai-text" id="odl-ai-text">Analiz yükleniyor...</div>
+    </div>`:`<div style="width:96px;height:96px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex:none">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">veri yok</span>
+    </div>`;
+
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px 24px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px">
+      <button onclick="ozpRenderDaily('${prevD}')" style="width:38px;height:38px;border-radius:11px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:16px">‹</button>
+      <div style="display:flex;align-items:center;gap:28px;justify-content:center;flex-wrap:wrap">
+        ${ring}
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:17px;font-weight:800;color:var(--text)">${dayLabel}</div>
+            ${isToday?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;color:${OZP_C.mnt};border:1px solid ${OZP_C.mnt};border-radius:999px;padding:2px 8px">BUGÜN</span>`:''}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${escHtml(splitLabel)}${cd&&cd.note?' · '+escHtml(cd.note):''}</div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            ${badges.map(b=>`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${b.color};background:color-mix(in srgb,${b.color} 12%,transparent);border:1px solid color-mix(in srgb,${b.color} 30%,transparent);padding:3px 10px;border-radius:999px">${b.text}</span>`).join('')}
+          </div>
+        </div>
       </div>
+      <button onclick="ozpRenderDaily('${nextD}')" style="width:38px;height:38px;border-radius:11px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:16px">›</button>
     </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${macroCardsHtml}</div>
+    <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:16px">${whoopHtml}${mealHtml}</div>
+      <div style="display:flex;flex-direction:column;gap:16px">${suppHtml}${progHtml}${actHtml}</div>
+    </div>
+    ${aiHtml}
   </div>`;
-  // Load AI insight async
-  loadAiInsight(dateStr);
 }
 
-async function loadAiInsight(dateStr){
-  const el=document.getElementById('odl-ai-text');
-  if(!el)return;
-  el.textContent='Analiz yükleniyor...';
-  try{
-    const r=await fetch('/api/ai-insights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:dateStr})}).then(r=>r.json());
-    el.textContent=r.insight||'Analiz alınamadı.';
-  }catch(e){el.textContent='Bağlantı hatası.';}
-}
+async function ozpRenderWeekly(){
+  OZ_TAB='weekly';
+  const el=$('ozp-content'); if(!el)return;
+  const endStr=today();
+  const dates=ozpDateRange(endStr,7);
+  const prevDates=ozpDateRange(ozpShift(dates[0],-1),7);
 
-async function renderOzWeekly(){
-  const data=await API('/api/summary?days=7');
-  if(!Array.isArray(data)||!data.length)return;
-  const labels=data.map(d=>new Date(d.date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric'}));
-  const vals=(key,fallback=null)=>data.map(d=>d[key]!=null?d[key]:fallback);
-  // Stats card
-  const slRows=data.filter(d=>d.sleep_hours!=null);
-  const moRows=data.filter(d=>d.energy!=null);
-  const avgSl=slRows.length?Math.round(slRows.reduce((s,d)=>s+d.sleep_hours,0)/slRows.length*10)/10:'-';
-  const avgEn=moRows.length?Math.round(moRows.reduce((s,d)=>s+d.energy,0)/moRows.length*10)/10:'-';
-  const totalCal=data.reduce((s,d)=>s+(d.calories||0),0);
-  const trainDays=data.filter(d=>d.training_day!=='Off'&&d.has_data).length;
-  $('oz-week-stats').innerHTML=`<div class="card-head"><span class="card-icon">📊</span><div><div class="card-name">7 Gün Özeti</div></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
-      <div><div style="color:var(--muted);font-size:.62rem">ORT. UYKU</div><div style="font-size:1.3rem;font-weight:900;color:var(--blue)">${avgSl}<small style="font-size:.6em">s</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">ORT. ENERJİ</div><div style="font-size:1.3rem;font-weight:900;color:var(--green)">${avgEn}<small style="font-size:.6em">/10</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">TOPLAM KALORİ</div><div style="font-size:1.3rem;font-weight:900;color:var(--yellow)">${totalCal}<small style="font-size:.6em">kcal</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">ANTRENMAN</div><div style="font-size:1.3rem;font-weight:900;color:var(--red)">${trainDays}<small style="font-size:.6em">/7</small></div></div>
-    </div>`;
-  // Macro card
-  const avgP=data.filter(d=>d.protein_g).reduce((s,d)=>s+d.protein_g,0)/7;
-  const avgC=data.filter(d=>d.carbs_g).reduce((s,d)=>s+d.carbs_g,0)/7;
-  const avgF=data.filter(d=>d.fat_g).reduce((s,d)=>s+d.fat_g,0)/7;
-  $('oz-week-macro').innerHTML=`<div class="card-head"><span class="card-icon">🥩</span><div><div class="card-name">Haftalık Makro Ort.</div></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
-      <div><div style="color:var(--muted);font-size:.62rem">PROTEIN</div><div style="font-size:1.3rem;font-weight:900;color:var(--green)">${Math.round(avgP)}<small style="font-size:.6em">g</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">KARB</div><div style="font-size:1.3rem;font-weight:900;color:var(--yellow)">${Math.round(avgC)}<small style="font-size:.6em">g</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">YAĞ</div><div style="font-size:1.3rem;font-weight:900;color:var(--orange)">${Math.round(avgF)}<small style="font-size:.6em">g</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">SU ORT.</div><div style="font-size:1.3rem;font-weight:900;color:var(--teal)">${Math.round(data.reduce((s,d)=>s+(d.water_ml||0),0)/7/100)/10}<small style="font-size:.6em">L</small></div></div>
-    </div>`;
-  // Charts
-  setTimeout(()=>{
-    mkOzChart('oz-sleep-chart','bar',labels,[{label:'Uyku (s)',data:vals('sleep_hours'),backgroundColor:'rgba(77,159,255,.6)',borderColor:'#4d9fff',borderWidth:1.5}]);
-    mkOzChart('oz-mood-chart','line',labels,[
-      {label:'Enerji',data:vals('energy'),borderColor:'#00e676',tension:.4,pointRadius:3,fill:false},
-      {label:'Mood',data:vals('mood'),borderColor:'#b44dff',tension:.4,pointRadius:3,fill:false},
-      {label:'Stres',data:vals('stress'),borderColor:'#ff3b3b',tension:.4,pointRadius:3,fill:false},
-    ]);
-    mkOzChart('oz-cal-chart','bar',labels,[{label:'Kalori',data:vals('calories',0),backgroundColor:'rgba(255,184,0,.5)',borderColor:'#ffb800',borderWidth:1.5}]);
-  },100);
-  // Gün seçim butonları
-  const daySelEl=$('oz-day-selector');
-  if(daySelEl){
-    daySelEl.innerHTML=data.map(d=>{
-      const lbl=new Date(d.date+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'short',day:'numeric'});
-      const isT=d.date===today();
-      return `<button class="btn btn-sm" onclick="ozShowDayLog('${d.date}')" style="font-size:.72rem;padding:5px 10px;background:${isT?'var(--accent)':'rgba(255,255,255,.07)'};color:${isT?'#fff':'var(--text)'}">
-        ${isT?'📍 ':''}${lbl}${d.has_data?` <span style="color:#4ade80;font-size:.65rem">●</span>`:''}
-      </button>`;
-    }).join('');
+  const [summaryRaw,macroRangeRaw,whoopSum,suppRange,aiNotes,curDays,prevDays,todayInfo]=await Promise.all([
+    API('/api/summary?days=7'),
+    API('/api/macro/range?days=7&detail=1'),
+    fetch('/whoop/summary?days=7').then(r=>r.json()).catch(()=>null),
+    API(`/api/supplements/range?start=${dates[0]}&end=${dates[6]}`),
+    ozpAiNotesAsBullets(7,4),
+    Promise.all(dates.map(ozpDay)),
+    Promise.all(prevDates.map(ozpDay)),
+    API('/api/today'),
+  ]);
+  if(OZ_TAB!=='weekly')return;
+  const summary=Array.isArray(summaryRaw)?summaryRaw:[];
+  const mr=Array.isArray(macroRangeRaw)?macroRangeRaw:[];
+  const dayShort=ds=>new Date(ds+'T12:00:00').toLocaleDateString('tr-TR',{weekday:'short'});
+
+  const scores=curDays.filter(d=>d&&d.day_score!=null).map(d=>d.day_score);
+  const avgScore=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+  const prevScores=prevDays.filter(d=>d&&d.day_score!=null).map(d=>d.day_score);
+  const avgPrevScore=prevScores.length?Math.round(prevScores.reduce((a,b)=>a+b,0)/prevScores.length):null;
+  const scoreDelta=(avgScore!=null&&avgPrevScore!=null)?avgScore-avgPrevScore:null;
+
+  const avgCal=mr.length?Math.round(mr.reduce((a,d)=>a+(d.calories||0),0)/mr.length):0;
+  const avgProt=mr.length?Math.round(mr.reduce((a,d)=>a+(d.protein_g||0),0)/mr.length):0;
+  const avgCarb=mr.length?Math.round(mr.reduce((a,d)=>a+(d.carbs_g||0),0)/mr.length):0;
+  const avgFat=mr.length?Math.round(mr.reduce((a,d)=>a+(d.fat_g||0),0)/mr.length):0;
+  const avgWater=mr.length?(mr.reduce((a,d)=>a+(d.water_l||0),0)/mr.length):0;
+  const avgSteps=mr.length?Math.round(mr.reduce((a,d)=>a+(d.steps||0),0)/mr.length):0;
+
+  const targets=curDays.filter(Boolean).map(d=>d.target).filter(Boolean);
+  const avgTargetKcal=targets.length?Math.round(targets.reduce((a,t)=>a+(t.kcal||0),0)/targets.length):1800;
+  const avgTargetProt=targets.length?Math.round(targets.reduce((a,t)=>a+(t.protein_g||0),0)/targets.length):160;
+  const avgTargetCarb=targets.length?Math.round(targets.reduce((a,t)=>a+(t.carb_g||0),0)/targets.length):200;
+  const avgTargetFat=targets.length?Math.round(targets.reduce((a,t)=>a+(t.fat_g||0),0)/targets.length):50;
+  const gt=typeof getT==='function'?getT():{water:3500,steps:10000};
+  const waterGoalL=+(gt.water||3500)/1000, stepGoal=+(gt.steps||10000);
+
+  const onTargetDays=mr.filter(d=>{
+    const t=curDays.find(c=>c&&c.date===d.date);
+    if(!t||!t.target||!t.target.kcal)return false;
+    const r=d.calories/t.target.kcal;
+    return r>=0.85&&r<=1.15;
+  }).length;
+  const streak=todayInfo.streak||0;
+
+  const statHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">
+    ${[
+      {label:'HAFTALIK SKOR',val:avgScore!=null?avgScore:'—',sub:avgPrevScore!=null?('geçen hafta '+avgPrevScore+(scoreDelta!=null?' ('+(scoreDelta>=0?'+':'')+scoreDelta+')':'')):'veri yok',color:OZP_C.mnt},
+      {label:'ORT. KALORİ',val:avgCal.toLocaleString('tr-TR'),sub:'hedef '+avgTargetKcal.toLocaleString('tr-TR')+' kcal/gün',color:OZP_C.org},
+      {label:'ORT. PROTEİN',val:avgProt+'g',sub:'hedef '+avgTargetProt+'g/gün',color:OZP_C.grn},
+      {label:'HEDEFTE GÜN',val:onTargetDays+'/7',sub:'kalori aralığında',color:OZP_C.blu},
+      {label:'STREAK',val:streak+' 🔥',sub:'kayıt serisi',color:OZP_C.org},
+    ].map(s=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px 18px">
+      <div style="font-size:11px;letter-spacing:1.5px;color:var(--muted);font-weight:700">${s.label}</div>
+      <div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:${s.color}">${s.val}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:2px">${escHtml(String(s.sub))}</div>
+    </div>`).join('')}
+  </div>`;
+
+  const maxK=Math.max(avgTargetKcal*1.3,...mr.map(d=>d.calories||0),1);
+  const kcalChart=`<div style="position:relative;height:180px">
+    <div style="position:absolute;left:0;right:0;bottom:${Math.max(0,Math.min(100,Math.round(avgTargetKcal/maxK*100)))}%;border-top:1px dashed color-mix(in srgb,${OZP_C.mnt} 55%,transparent)"><span style="position:absolute;right:0;top:-16px;font-family:'JetBrains Mono',monospace;font-size:9px;color:${OZP_C.mnt}">hedef</span></div>
+    <div style="display:flex;align-items:flex-end;gap:10px;height:100%">
+      ${mr.map(d=>{
+        const h=Math.round((d.calories||0)/maxK*100);
+        const over=d.calories>avgTargetKcal*1.1;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${over?OZP_C.red:OZP_C.mnt}">${Math.round(d.calories||0).toLocaleString('tr-TR')}</div>
+          <div style="width:100%;border-radius:6px 6px 3px 3px;background:${over?'color-mix(in srgb,'+OZP_C.red+' 65%,var(--bg4))':OZP_C.mnt};height:${h}%"></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:8px">
+    ${mr.map(d=>`<div style="flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:${d.date===today()?'var(--text)':'var(--muted2)'}">${dayShort(d.date)}</div>`).join('')}
+  </div>`;
+  const kcalChartHtml=ozpPanel('SON 7 GÜN · KALORİ',OZP_C.org,kcalChart,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">hedef <b style="color:var(--text)">${avgTargetKcal.toLocaleString('tr-TR')}</b> · ort <b style="color:${OZP_C.org}">${avgCal.toLocaleString('tr-TR')}</b></div>`);
+
+  const wRows=summary.filter(d=>d.weight_kg!=null);
+  let weightHtml;
+  if(wRows.length>=2){
+    const ws=wRows.map(d=>d.weight_kg);
+    const minW=Math.min(...ws),maxW=Math.max(...ws);
+    const span=Math.max(maxW-minW,0.3);
+    const pts=summary.map((d,i)=>{
+      if(d.weight_kg==null)return null;
+      const x=Math.round(i/((summary.length-1)||1)*250+5);
+      const y=Math.round(10+(maxW-d.weight_kg)/span*60);
+      return x+','+y;
+    }).filter(Boolean).join(' ');
+    const last=wRows[wRows.length-1].weight_kg, first=wRows[0].weight_kg;
+    const delta=Math.round((last-first)*100)/100;
+    weightHtml=ozpPanel('KİLO TREND',OZP_C.mnt,`
+      <div style="font-family:'JetBrains Mono',monospace;margin-bottom:4px"><span style="font-size:28px;font-weight:700;color:var(--text)">${last.toFixed(2)}</span><span style="font-size:12px;color:var(--muted2)"> kg</span></div>
+      <svg viewBox="0 0 260 90" style="width:100%;height:110px;margin-top:6px">
+        <polyline points="${pts}" fill="none" stroke="${OZP_C.mnt}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>
+    `,`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${delta<=0?OZP_C.grn:OZP_C.red}">${delta<=0?'▼':'▲'} ${Math.abs(delta)} kg / 7g</div>`);
+  }else{
+    weightHtml=ozpPanel('KİLO TREND',OZP_C.mnt,`<div style="color:var(--muted);font-size:13px">Yeterli kilo kaydı yok.</div>`);
   }
+
+  let whoopWeekHtml;
+  if(whoopSum&&whoopSum.count>0){
+    const a=whoopSum.avg, d=whoopSum.delta;
+    const rows=[
+      ['😴','Uyku ort.',a.sleep_hours!=null?a.sleep_hours.toFixed(1)+'sa':'—',d.sleep_hours,OZP_C.blu],
+      ['💚','Recovery ort.',a.recovery_score!=null?'%'+Math.round(a.recovery_score):'—',d.recovery_score,OZP_C.grn],
+      ['⚡','Strain ort.',a.strain!=null?a.strain.toFixed(1):'—',d.strain,OZP_C.org],
+      ['💓','HRV ort.',a.hrv_ms!=null?Math.round(a.hrv_ms)+'ms':'—',d.hrv_ms,OZP_C.mnt],
+      ['🔥','Yakılan ort.',a.kcal_burned!=null?Math.round(a.kcal_burned)+' kcal':'—',d.kcal_burned,OZP_C.org],
+      ['🩸','SpO2 ort.',a.spo2!=null?'%'+a.spo2.toFixed(1):'—',d.spo2,OZP_C.pnk],
+    ];
+    whoopWeekHtml=ozpPanel('WHOOP · HAFTALIK ORTALAMA',OZP_C.mnt,`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        ${rows.map(([icon,label,val,delta,color])=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--muted)">${icon} ${label}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-top:4px;color:${color}">${val}</div>
+          <div style="font-size:9px;color:${delta==null?'var(--muted2)':delta>=0?OZP_C.grn:OZP_C.red};font-family:'JetBrains Mono',monospace;margin-top:2px">${delta==null?'— veri yok':(delta>=0?'▲ +':'▼ ')+delta}</div>
+        </div>`).join('')}
+      </div>
+    `);
+  }else{
+    whoopWeekHtml=ozpPanel('WHOOP · HAFTALIK ORTALAMA',OZP_C.mnt,`<div style="color:var(--muted);font-size:13px">Bu hafta için WHOOP verisi yok.</div>`);
+  }
+
+  const macroAvgRows=[
+    {icon:'🍗',label:'Protein',val:avgProt+'g',target:avgTargetProt+'g',pct:pct2(avgProt,avgTargetProt),color:OZP_C.grn},
+    {icon:'🍞',label:'Karb',val:avgCarb+'g',target:avgTargetCarb+'g',pct:pct2(avgCarb,avgTargetCarb),color:OZP_C.blu},
+    {icon:'🥑',label:'Yağ',val:avgFat+'g',target:avgTargetFat+'g',pct:pct2(avgFat,avgTargetFat),color:OZP_C.org},
+    {icon:'💧',label:'Su',val:avgWater.toFixed(1)+'L',target:waterGoalL.toFixed(1)+'L',pct:pct2(avgWater,waterGoalL),color:OZP_C.blu},
+    {icon:'👟',label:'Adım',val:avgSteps.toLocaleString('tr-TR'),target:stepGoal.toLocaleString('tr-TR'),pct:pct2(avgSteps,stepGoal),color:OZP_C.pur},
+  ];
+  const macroAvgHtml=ozpPanel('MAKRO ORTALAMALARI · 7 GÜN',OZP_C.grn,`
+    <div style="display:flex;flex-direction:column;gap:11px">
+      ${macroAvgRows.map(m=>`<div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+          <span style="color:var(--muted);font-weight:600">${m.icon} ${m.label}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px"><b style="color:${m.color}">${m.val}</b><span style="color:var(--muted2)"> / ${m.target} · %${m.pct}</span></span>
+        </div>
+        ${ozpBar(m.pct,m.color)}
+      </div>`).join('')}
+    </div>
+  `);
+
+  const suppDays=(suppRange&&suppRange.days)||[];
+  const stackNames=[...new Set(suppDays.flatMap(d=>d.stacks.map(s=>s.name)))];
+  const stackRows=stackNames.map(name=>{
+    const cells=suppDays.map(d=>{
+      const s=d.stacks.find(x=>x.name===name);
+      const t=s?s.taken:0, tot=s?s.total:0;
+      const r=tot>0?t/tot:0;
+      const c=r>=1?OZP_C.grn:r>=0.6?OZP_C.org:OZP_C.red;
+      return {txt:t+'/'+tot,fg:c,bg:`color-mix(in srgb,${c} ${r>=1?16:12}%,var(--bg3))`,border:`color-mix(in srgb,${c} 30%,transparent)`};
+    });
+    const sumT=suppDays.reduce((a,d)=>{const s=d.stacks.find(x=>x.name===name);return a+(s?s.taken:0);},0);
+    const sumTot=suppDays.reduce((a,d)=>{const s=d.stacks.find(x=>x.name===name);return a+(s?s.total:0);},0);
+    const pctW=sumTot>0?Math.round(sumT/sumTot*100):0;
+    return {name,cells,pct:pctW,pctColor:pctW>=90?OZP_C.grn:pctW>=70?OZP_C.mnt:OZP_C.org};
+  });
+  const overallSuppPct=(()=>{let t=0,tot=0;suppDays.forEach(d=>d.stacks.forEach(s=>{t+=s.taken;tot+=s.total;}));return tot>0?Math.round(t/tot*100):0;})();
+  const suppGridHtml=ozpPanel('💊 TAKVİYE UYUMU · 7 GÜN',OZP_C.pnk,
+    stackRows.length?`<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:150px repeat(${suppDays.length},1fr) 56px;gap:6px;align-items:center;min-width:480px">
+      <div></div>
+      ${suppDays.map(d=>`<div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:${d.date===today()?'var(--text)':'var(--muted2)'}">${dayShort(d.date)}</div>`).join('')}
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted2);letter-spacing:1px">HAFTA</div>
+      ${stackRows.map(r=>`<div style="font-size:12px;color:var(--muted);font-weight:600">${escHtml(r.name)}</div>
+        ${r.cells.map(c=>`<div style="height:30px;border-radius:7px;background:${c.bg};border:1px solid ${c.border};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:${c.fg}">${c.txt}</div>`).join('')}
+        <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${r.pctColor}">%${r.pct}</div>
+      `).join('')}
+    </div></div>
+    <div style="display:flex;gap:16px;margin-top:12px;font-size:10px;color:var(--muted2);flex-wrap:wrap">
+      <span><span style="color:${OZP_C.grn}">■</span> tam alındı</span><span><span style="color:${OZP_C.org}">■</span> kısmi</span><span><span style="color:${OZP_C.red}">■</span> çoğu atlandı</span>
+    </div>`:`<div style="color:var(--muted);font-size:13px">Aktif stack yok.</div>`,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${OZP_C.mnt};border:1px solid color-mix(in srgb,${OZP_C.mnt} 35%,transparent);border-radius:999px;padding:3px 10px">haftalık %${overallSuppPct}</div>`
+  );
+
+  const cellMark=r=>r>=0.9?{bg:`color-mix(in srgb,${OZP_C.grn} 16%,var(--bg3))`,border:`color-mix(in srgb,${OZP_C.grn} 35%,transparent)`,fg:OZP_C.grn,mark:'✓'}:
+    r>0?{bg:`color-mix(in srgb,${OZP_C.org} 14%,var(--bg3))`,border:`color-mix(in srgb,${OZP_C.org} 30%,transparent)`,fg:OZP_C.org,mark:'~'}:
+    {bg:'var(--bg3)',border:'var(--border)',fg:'var(--muted2)',mark:'✗'};
+  const rowFor=(icon,label,ratioFn)=>({icon,label,cells:mr.map(d=>cellMark(ratioFn(d)))});
+  const complianceRows=[
+    rowFor('🔥','Kalori',d=>{const t=curDays.find(c=>c&&c.date===d.date);return (t&&t.target&&t.target.kcal)?Math.min(d.calories/t.target.kcal,1):0;}),
+    rowFor('🍗','Protein',d=>{const t=curDays.find(c=>c&&c.date===d.date);return (t&&t.target&&t.target.protein_g)?Math.min(d.protein_g/t.target.protein_g,1):0;}),
+    rowFor('💧','Su',d=>waterGoalL>0?Math.min((d.water_l||0)/waterGoalL,1):0),
+    rowFor('💊','Takviye',d=>{const sd=suppDays.find(x=>x.date===d.date);if(!sd)return 0;const t=sd.stacks.reduce((a,s)=>a+s.taken,0),tot=sd.stacks.reduce((a,s)=>a+s.total,0);return tot>0?t/tot:0;}),
+    rowFor('🏋','Antrenman',d=>{const t=curDays.find(c=>c&&c.date===d.date);const isOffD=t&&t.training==='Off';return isOffD?1:(d.training_done?1:0);}),
+  ];
+  const matrixHtml=ozpPanel('HAFTALIK UYUM MATRİSİ',OZP_C.blu,`<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:110px repeat(${mr.length},1fr);gap:6px;align-items:center;min-width:420px">
+      <div></div>
+      ${mr.map(d=>`<div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:${d.date===today()?'var(--text)':'var(--muted2)'}">${dayShort(d.date)}</div>`).join('')}
+      ${complianceRows.map(row=>`<div style="font-size:12px;color:var(--muted);font-weight:600">${row.icon} ${row.label}</div>
+        ${row.cells.map(c=>`<div style="height:26px;border-radius:7px;background:${c.bg};border:1px solid ${c.border};display:flex;align-items:center;justify-content:center;font-size:10px;color:${c.fg}">${c.mark}</div>`).join('')}
+      `).join('')}
+    </div></div>
+  `);
+
+  const aiWeekHtml=ozpPanel('🧠 AI KOÇ · HAFTALIK RAPOR',OZP_C.pur,ozpAiBullets(aiNotes));
+
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    ${statHtml}
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start">${kcalChartHtml}${weightHtml}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">${whoopWeekHtml}${macroAvgHtml}</div>
+    ${suppGridHtml}
+    ${matrixHtml}
+    ${aiWeekHtml}
+  </div>`;
 }
 
-async function ozShowDayLog(dateStr){
-  // Günlük sekmesine geç ve tam renderOzDaily view'ı kullan
-  ozSub('daily');
-  await renderOzDaily(dateStr);
-  // Sayfayı özet bölümünün üstüne kaydır
-  const ozEl=document.getElementById('oz-daily-content');
-  if(ozEl) ozEl.scrollIntoView({behavior:'smooth',block:'start'});
-}
+async function ozpRenderMonthly(y,m){
+  OZ_TAB='monthly';
+  const el=$('ozp-content'); if(!el)return;
+  const now=new Date();
+  if(!y){ if(OZ_MONTH_YM){y=OZ_MONTH_YM.y;m=OZ_MONTH_YM.m;} else {y=now.getFullYear();m=now.getMonth()+1;} }
+  OZ_MONTH_YM={y,m};
+  const pad=n=>String(n).padStart(2,'0');
+  const daysInMonth=new Date(y,m,0).getDate();
+  const monthStart=`${y}-${pad(m)}-01`, monthEnd=`${y}-${pad(m)}-${pad(daysInMonth)}`;
+  const monthNames=['OCAK','ŞUBAT','MART','NİSAN','MAYIS','HAZİRAN','TEMMUZ','AĞUSTOS','EYLÜL','EKİM','KASIM','ARALIK'];
 
-async function renderOzMonthly(){
-  const data=await API('/api/summary?days=30');
-  if(!Array.isArray(data)||!data.length)return;
-  const labels=data.map(d=>new Date(d.date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'}));
-  const vals=(key,fallback=null)=>data.map(d=>d[key]!=null?d[key]:fallback);
-  // Monthly stats
-  const totalTrain=data.filter(d=>d.training_day!=='Off'&&d.has_data).length;
-  const avgSl=data.filter(d=>d.sleep_hours).map(d=>d.sleep_hours);
-  const avgSlV=avgSl.length?Math.round(avgSl.reduce((a,v)=>a+v,0)/avgSl.length*10)/10:'-';
-  const wRows=data.filter(d=>d.weight_kg);
-  const firstW=wRows.length?wRows[0].weight_kg:null;
-  const lastW=wRows.length?wRows[wRows.length-1].weight_kg:null;
-  const wChange=firstW&&lastW?Math.round((lastW-firstW)*10)/10:null;
-  $('oz-month-stats').innerHTML=`<div class="card-head"><span class="card-icon">📆</span><div><div class="card-name">30 Gün Özeti</div></div></div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:.82rem">
-      <div><div style="color:var(--muted);font-size:.62rem">ANTRENMAN</div><div style="font-size:1.6rem;font-weight:900;color:var(--red)">${totalTrain}<small style="font-size:.45em">/30</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">ORT. UYKU</div><div style="font-size:1.6rem;font-weight:900;color:var(--blue)">${avgSlV}<small style="font-size:.45em">s</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">KİLO DEĞ.</div><div style="font-size:1.6rem;font-weight:900;color:${wChange<0?'var(--green)':wChange>0?'var(--red)':'var(--muted)'}">${wChange!=null?(wChange>0?'+':'')+wChange:'—'}<small style="font-size:.45em">kg</small></div></div>
-      <div><div style="color:var(--muted);font-size:.62rem">TOPLAM CAL</div><div style="font-size:1.3rem;font-weight:900;color:var(--yellow)">${Math.round(data.reduce((s,d)=>s+(d.calories||0),0)/1000)}K<small style="font-size:.45em">kcal</small></div></div>
+  const [days,summaryRaw,whoopSum,suppRange,aiNotes]=await Promise.all([
+    ozpCalendarMonth(y,m),
+    API('/api/summary?days=30'),
+    fetch('/whoop/summary?days=30').then(r=>r.json()).catch(()=>null),
+    API(`/api/supplements/range?start=${monthStart}&end=${monthEnd}`),
+    ozpAiNotesAsBullets(30,5),
+  ]);
+  if(OZ_TAB!=='monthly')return;
+  const summary=Array.isArray(summaryRaw)?summaryRaw:[];
+
+  const scored=days.filter(d=>d.day_score!=null);
+  const avgScore=scored.length?Math.round(scored.reduce((a,d)=>a+d.day_score,0)/scored.length):null;
+  const wRows=summary.filter(d=>d.weight_kg!=null);
+  const firstW=wRows.length?wRows[0].weight_kg:null, lastW=wRows.length?wRows[wRows.length-1].weight_kg:null;
+  const wChange=(firstW!=null&&lastW!=null)?Math.round((lastW-firstW)*100)/100:null;
+  const onTargetDays=days.filter(d=>d.day_score!=null&&d.target&&d.target.kcal&&d.kcal_actual!=null&&Math.abs(d.kcal_actual-d.target.kcal)<=d.target.kcal*0.15).length;
+  const trainDone=days.filter(d=>d.session_done).length;
+  const calDays=summary.filter(d=>d.calories);
+  const avgCalMonth=calDays.length?Math.round(calDays.reduce((a,d)=>a+(d.calories||0),0)/calDays.length):0;
+
+  const statHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">
+    ${[
+      {label:'AYLIK SKOR',val:avgScore!=null?avgScore:'—',sub:scored.length+' gün ortalaması',color:OZP_C.mnt},
+      {label:'ORT. KALORİ',val:avgCalMonth.toLocaleString('tr-TR'),sub:'30 gün ortalaması',color:OZP_C.org},
+      {label:'KİLO DEĞİŞİMİ',val:wChange!=null?((wChange>0?'+':'')+wChange+' kg'):'—',sub:(firstW!=null&&lastW!=null)?(firstW.toFixed(1)+' → '+lastW.toFixed(1)):'yeterli veri yok',color:OZP_C.mnt},
+      {label:'HEDEFTE GÜN',val:onTargetDays+'/'+scored.length,sub:'kalori aralığında',color:OZP_C.blu},
+      {label:'ANTRENMAN',val:String(trainDone),sub:'bu ay tamamlanan',color:OZP_C.pur},
+    ].map(s=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px 18px">
+      <div style="font-size:11px;letter-spacing:1.5px;color:var(--muted);font-weight:700">${s.label}</div>
+      <div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:${s.color}">${s.val}</div>
+      <div style="font-size:11px;color:var(--muted2);margin-top:2px">${escHtml(String(s.sub))}</div>
+    </div>`).join('')}
+  </div>`;
+
+  const dayNames=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  const firstDow=(new Date(y,m-1,1).getDay()+6)%7;
+  const heatCells=[...Array(firstDow).fill(null),...days].map(d=>{
+    if(!d) return `<div></div>`;
+    const isOffD=d.training==='Off';
+    const label=isOffD&&d.target&&d.target.type?d.target.type:null;
+    const sc=d.day_score;
+    const bg=sc==null?'var(--bg3)':`color-mix(in srgb,${scoreCellColor(sc)} ${sc>=80?70:sc>=50?40:20}%,var(--bg3))`;
+    const border=d.date===today()?'var(--text)':(sc==null?'var(--border)':'transparent');
+    return `<div title="${d.date}${label?' · '+label:''}" style="aspect-ratio:1.35;border-radius:8px;background:${bg};border:1px solid ${border};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer" onclick="ozpSwitchTab('daily');ozpRenderDaily('${d.date}')">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2)">${d.day}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:${sc==null?'var(--muted2)':scoreCellColor(sc)}">${sc==null?'':(isOffD?'off':sc)}</span>
     </div>`;
-  setTimeout(()=>{
-    mkOzChart('oz-weight-chart','line',labels,[{label:'Kilo (kg)',data:vals('weight_kg'),borderColor:'#ff7043',tension:.4,pointRadius:2,fill:true,backgroundColor:'rgba(255,112,67,.1)'}]);
-    mkOzChart('oz-sleep30-chart','bar',labels,[{label:'Uyku (s)',data:vals('sleep_hours',0),backgroundColor:'rgba(77,159,255,.5)',borderColor:'#4d9fff',borderWidth:1}]);
-    mkOzChart('oz-cal30-chart','bar',labels,[{label:'Kalori',data:vals('calories',0),backgroundColor:'rgba(255,184,0,.4)',borderColor:'#ffb800',borderWidth:1}]);
-  },100);
+  }).join('');
+  const heatmapHtml=ozpPanel(`${monthNames[m-1]} ${y} · SKOR HARİTASI`,OZP_C.mnt,`
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">
+      ${dayNames.map(dn=>`<div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2)">${dn}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">${heatCells}</div>
+    ${whoopSum&&whoopSum.count>0?`<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:11px;letter-spacing:2px;font-weight:800;color:${OZP_C.mnt};margin-bottom:10px">WHOOP · AYLIK ORTALAMA</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        ${[['😴','Uyku',whoopSum.avg.sleep_hours!=null?whoopSum.avg.sleep_hours.toFixed(1)+'sa':'—',OZP_C.blu],
+           ['💚','Recovery',whoopSum.avg.recovery_score!=null?'%'+Math.round(whoopSum.avg.recovery_score):'—',OZP_C.grn],
+           ['💓','HRV',whoopSum.avg.hrv_ms!=null?Math.round(whoopSum.avg.hrv_ms)+'ms':'—',OZP_C.mnt],
+           ['🔥','Yakılan',whoopSum.avg.kcal_burned!=null?Math.round(whoopSum.avg.kcal_burned)+' kcal':'—',OZP_C.org]]
+          .map(([icon,label,val,color])=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:10px 12px">
+            <div style="font-size:10px;color:var(--muted)">${icon} ${label}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:4px;color:${color}">${val}</div>
+          </div>`).join('')}
+      </div>
+    </div>`:''}
+  `,`<div style="display:flex;gap:6px">
+      <button onclick="ozpRenderMonthly(${m===1?y-1:y},${m===1?12:m-1})" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px">‹</button>
+      <button onclick="ozpRenderMonthly(${m===12?y+1:y},${m===12?1:m+1})" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px">›</button>
+    </div>`);
+
+  let weightMonthHtml;
+  if(wRows.length>=2){
+    const ws=wRows.map(d=>d.weight_kg);
+    const minW=Math.min(...ws),maxW=Math.max(...ws);
+    const span=Math.max(maxW-minW,0.5);
+    const mwY=w=>Math.round(8+(maxW-w)/span*92);
+    const mwXY=summary.map((d,i)=>d.weight_kg==null?null:[Math.round(i/((summary.length-1)||1)*244+32),mwY(d.weight_kg)]).filter(Boolean);
+    const pts=mwXY.map(p=>p.join(',')).join(' ');
+    const area=pts+` ${mwXY[mwXY.length-1][0]},104 32,104`;
+    const gt2=typeof getT==='function'?getT():{weight_goal:0};
+    const wGoal=+(gt2.weight_goal||0);
+    weightMonthHtml=ozpPanel('KİLO · 30 GÜN',OZP_C.mnt,`
+      <div style="font-family:'JetBrains Mono',monospace;margin-bottom:6px"><span style="font-size:26px;font-weight:700;color:var(--text)">${lastW.toFixed(2)}</span><span style="font-size:12px;color:var(--muted2)"> kg</span></div>
+      <svg viewBox="0 0 280 112" style="width:100%;height:130px">
+        <polygon points="${area}" fill="${OZP_C.mnt}" opacity="0.10"></polygon>
+        <polyline points="${pts}" fill="none" stroke="${OZP_C.mnt}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px">
+        ${[['Başlangıç',firstW.toFixed(2)+' kg','var(--muted)'],['Güncel',lastW.toFixed(2)+' kg',OZP_C.mnt],
+           ['Hedef',wGoal?wGoal.toFixed(2)+' kg':'—','var(--text)'],
+           ['Kalan',wGoal?Math.abs(lastW-wGoal).toFixed(2)+' kg':'—',OZP_C.org]]
+          .map(([label,val,color])=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;color:var(--muted)">${label}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${color}">${val}</span>
+          </div>`).join('')}
+      </div>
+    `,`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${wChange<=0?OZP_C.grn:OZP_C.red}">${wChange<=0?'▼':'▲'} ${Math.abs(wChange)} kg</div>`);
+  }else{
+    weightMonthHtml=ozpPanel('KİLO · 30 GÜN',OZP_C.mnt,`<div style="color:var(--muted);font-size:13px">Yeterli kilo kaydı yok.</div>`);
+  }
+
+  const bestDay=scored.length?scored.reduce((a,b)=>b.day_score>a.day_score?b:a):null;
+  const worstDay=scored.length?scored.reduce((a,b)=>b.day_score<a.day_score?b:a):null;
+  let bestStreak=0,cur=0;
+  days.forEach(d=>{if(d.date>today())return;if(d.day_score!=null&&d.day_score>=60){cur++;bestStreak=Math.max(bestStreak,cur);}else{cur=0;}});
+  let suppPctMonth=0;{let t=0,tot=0;((suppRange&&suppRange.days)||[]).forEach(d=>d.stacks.forEach(s=>{t+=s.taken;tot+=s.total;}));suppPctMonth=tot>0?Math.round(t/tot*100):0;}
+  const avgSleepMonth=whoopSum&&whoopSum.avg&&whoopSum.avg.sleep_hours!=null?whoopSum.avg.sleep_hours.toFixed(1)+' sa':'—';
+  const dShort=ds=>new Date(ds+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+  const highlights=[
+    {icon:'🏆',label:'En iyi gün',val:bestDay?dShort(bestDay.date)+' · '+bestDay.day_score:'—',color:OZP_C.mnt},
+    {icon:'🔻',label:'En zayıf gün',val:worstDay?dShort(worstDay.date)+' · '+worstDay.day_score:'—',color:OZP_C.red},
+    {icon:'🔥',label:'En uzun streak',val:bestStreak+' gün',color:OZP_C.org},
+    {icon:'💊',label:'Takviye uyumu',val:'%'+suppPctMonth,color:OZP_C.pnk},
+    {icon:'😴',label:'Ort. uyku (WHOOP)',val:avgSleepMonth,color:OZP_C.blu},
+  ];
+  const highlightsHtml=ozpPanel('ÖNE ÇIKANLAR',OZP_C.org,
+    highlights.map(h=>`<div style="display:flex;justify-content:space-between;padding:8px 2px;font-size:13px;border-bottom:1px solid var(--border)">
+      <span style="color:var(--muted)">${h.icon} ${h.label}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${h.color}">${h.val}</span>
+    </div>`).join('')
+  );
+
+  const aiMonthHtml=ozpPanel('🧠 AI KOÇ · AYLIK RAPOR',OZP_C.pur,ozpAiBullets(aiNotes));
+
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    ${statHtml}
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start">${heatmapHtml}
+      <div style="display:flex;flex-direction:column;gap:16px">${weightMonthHtml}${highlightsHtml}</div>
+    </div>
+    ${aiMonthHtml}
+  </div>`;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -4217,16 +4519,23 @@ function calCoachLine(d,sc){
   if(sc>=50) return {text:'Fena değil, birkaç eksik var.',color:'#ffd166'};
   return {text:'Zayıf gün — toparlanmaya bak.',color:'#e0556b'};
 }
+function scoreCellColor(sc){
+  return sc==null?'':sc>=80?'#2fd6b0':sc>=50?'#ffd166':'#e0556b';
+}
+function dayTypeColor(d){
+  const isOff=d.training==='Off';
+  return isOff?(TC[d.target&&d.target.type]||CAL_COLORS.Off):(CAL_COLORS[d.training]||'#444');
+}
 function calDayCellHtml(d){
   if(!d) return `<div style="min-height:184px"></div>`;
   const isToday=d.date===today();
   const isSel=d.date===CAL_SEL;
   const isFuture=d.date>today();
   const isOff=d.training==='Off';
-  const c=isOff?(TC[d.target&&d.target.type]||CAL_COLORS.Off):(CAL_COLORS[d.training]||'#444');
+  const c=dayTypeColor(d);
   const wash=isOff?'var(--bg2)':calHexA(c,.13);
   const sc=d.day_score;
-  const scColor=sc==null?'':sc>=80?'#2fd6b0':sc>=50?'#ffd166':'#e0556b';
+  const scColor=scoreCellColor(sc);
   const ringColor=isToday?c:scColor;
   const ring=sc!=null?`<div title="Gün puanı: %${sc}" style="width:38px;height:38px;border-radius:50%;background:conic-gradient(${ringColor} 0% ${sc}%, var(--border) ${sc}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
       <div style="width:29px;height:29px;border-radius:50%;background:${wash};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:800;color:${ringColor}">${sc}</div>

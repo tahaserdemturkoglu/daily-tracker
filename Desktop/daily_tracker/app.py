@@ -6070,7 +6070,7 @@ def api_supplement_stacks():
 
 @app.route('/api/supplements/today', methods=['GET'])
 def api_supplements_today():
-    today = operation_today()
+    today = request.args.get('date', operation_today())
     conn = get_db()
     logs = [dict(r) for r in conn.execute(
         "SELECT * FROM supplement_logs WHERE date=? ORDER BY ts", (today,)).fetchall()]
@@ -6093,6 +6093,77 @@ def api_supplements_today():
         zinc_today = diff >= 2  # every other day
     conn.close()
     return jsonify({'date': today, 'logs': logs, 'zinc': {'take_today': zinc_today, 'last_date': last_zinc}})
+
+_VIT_STATUS_KEYS = {'taken', 'missed', 'eod_skipped', 'eod_taken', 'half_dose'}
+
+def vit_status_of(status, notes):
+    """templates/index.html:3029 vitStatusOf()'un sunucu tarafi birebir eşleniği -
+    Telegram/web loglarindaki eski status'suz kayitlarin ayni sekilde yorumlanmasi icin."""
+    if status and status in _VIT_STATUS_KEYS:
+        return status
+    raw = (notes or '').lower()
+    is_gun = bool(re.search(r'gün aşırı|gun asiri', raw))
+    is_alindi = bool(re.search(r'al[ıi]nd[ıi]', raw))
+    if re.search(r'eksik al[ıi]nd[ıi]|alinmadi|alınmadı', raw):
+        return 'missed'
+    if is_gun and is_alindi:
+        return 'eod_taken'
+    if is_gun:
+        return 'eod_skipped'
+    if re.search(r'yar[ıi]m', raw):
+        return 'half_dose'
+    return 'taken'
+
+@app.route('/api/supplements/range', methods=['GET'])
+def api_supplements_range():
+    """Tarih araligi icin, her gun icin her aktif stack'in taken/total + item-bazli durumunu doner.
+    Kaynak vitamin_logs (name==supplement_stack_items.product_name birebir eslesme) - hem web UI'nin
+    hem Telegram botunun gercekte yazdigi tablo bu, supplement_logs/supplement_log_items degil
+    (o tablolar sadece web UI'nin 'stack alindi' butonuyla doluyor, Telegram onlari hic yazmiyor)."""
+    start = request.args.get('start')
+    end = request.args.get('end', start)
+    if not start:
+        return jsonify({'error': 'start is required'}), 400
+    conn = get_db()
+    stacks = [dict(r) for r in conn.execute(
+        "SELECT * FROM supplement_stacks WHERE active=1 ORDER BY order_num, name").fetchall()]
+    for s in stacks:
+        items = conn.execute(
+            "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num",
+            (s['id'],)).fetchall()
+        s['items'] = [dict(i) for i in items]
+
+    vlogs = conn.execute(
+        "SELECT date, name, status, notes FROM vitamin_logs WHERE date>=? AND date<=?", (start, end)).fetchall()
+    conn.close()
+    by_date_name = {}
+    for r in vlogs:
+        by_date_name[(r['date'], r['name'])] = vit_status_of(r['status'], r['notes'])
+
+    d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
+    days = []
+    d = d0
+    while d <= d1:
+        ds = d.isoformat()
+        day_stacks = []
+        for s in stacks:
+            items_out = []
+            taken_n = 0
+            for it in s['items']:
+                st = by_date_name.get((ds, it['product_name']))
+                if st in ('taken', 'eod_taken', 'half_dose'):
+                    taken_n += 1
+                    ui_status = st
+                elif st in ('missed', 'eod_skipped'):
+                    ui_status = st
+                else:
+                    ui_status = 'pending'
+                items_out.append({'name': it['product_name'], 'dose': it['dose'], 'unit': it['unit'], 'status': ui_status})
+            day_stacks.append({'stack_id': s['id'], 'name': s['name'], 'taken': taken_n, 'total': len(s['items']), 'items': items_out})
+        days.append({'date': ds, 'stacks': day_stacks})
+        d += timedelta(days=1)
+
+    return jsonify({'start': start, 'end': end, 'days': days})
 
 @app.route('/api/supplements/log', methods=['POST'])
 def api_supplements_log():
