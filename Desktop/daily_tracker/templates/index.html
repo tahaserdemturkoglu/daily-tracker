@@ -3983,7 +3983,7 @@ function calHexA(hex,a){
   return `rgba(${r},${g},${b},${a})`;
 }
 function calChip(text,hex){
-  return `<span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;color:${hex};background:${calHexA(hex,.13)};border-radius:5px;padding:2.5px 6px;white-space:nowrap">${text}</span>`;
+  return `<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:${hex};background:${calHexA(hex,.13)};border-radius:5px;padding:3px 7px;white-space:nowrap">${text}</span>`;
 }
 function calCoachLine(d,sc){
   if(d.whoop_note&&d.whoop_note.text) return {text:d.whoop_note.text,color:d.whoop_note.color};
@@ -3993,7 +3993,7 @@ function calCoachLine(d,sc){
   return {text:'Zayıf gün — toparlanmaya bak.',color:'#e0556b'};
 }
 function calDayCellHtml(d){
-  if(!d) return `<div style="min-height:170px"></div>`;
+  if(!d) return `<div style="min-height:184px"></div>`;
   const isToday=d.date===today();
   const isSel=d.date===CAL_SEL;
   const isFuture=d.date>today();
@@ -4003,25 +4003,27 @@ function calDayCellHtml(d){
   const sc=d.day_score;
   const scColor=sc==null?'':sc>=80?'#2fd6b0':sc>=50?'#ffd166':'#e0556b';
   const ringColor=isToday?c:scColor;
-  const ring=sc!=null?`<div title="Gün puanı: %${sc}" style="width:34px;height:34px;border-radius:50%;background:conic-gradient(${ringColor} 0% ${sc}%, var(--border) ${sc}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      <div style="width:26px;height:26px;border-radius:50%;background:${wash};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:${ringColor}">${sc}</div>
-    </div>`:`<div style="width:34px;height:34px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">—</span></div>`;
+  const ring=sc!=null?`<div title="Gün puanı: %${sc}" style="width:38px;height:38px;border-radius:50%;background:conic-gradient(${ringColor} 0% ${sc}%, var(--border) ${sc}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <div style="width:29px;height:29px;border-radius:50%;background:${wash};display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:800;color:${ringColor}">${sc}</div>
+    </div>`:`<div style="width:38px;height:38px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">—</span></div>`;
 
   const kcalTgt=d.target?d.target.kcal:null;
   const kcalAct=d.kcal_actual;
-  let kcalRow='';
+  let kcalRow='',kcalBar='';
   if(kcalTgt){
     if(isFuture){
-      kcalRow=`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)">${kcalTgt.toLocaleString('tr-TR')} kcal hedef</span>`;
+      kcalRow=`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${kcalTgt.toLocaleString('tr-TR')} kcal hedef</span>`;
     }else{
       const ratio=Math.round((kcalAct||0)/kcalTgt*100);
       const good=isToday||ratio>=90;
       const pctTxt=good?'%'+Math.min(ratio,999):'%'+Math.max(0,100-ratio)+' ↓';
       const pctColor=good?'#2fd6b0':'#e0556b';
       kcalRow=`<span style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text)">${(kcalAct||0).toLocaleString('tr-TR')}<span style="font-size:9px;font-weight:400;color:var(--muted)"> / ${kcalTgt.toLocaleString('tr-TR')} kcal</span></span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:${pctColor}">${pctTxt}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:14.5px;font-weight:700;color:var(--text)">${(kcalAct||0).toLocaleString('tr-TR')}<span style="font-size:10px;font-weight:400;color:var(--muted)"> / ${kcalTgt.toLocaleString('tr-TR')} kcal</span></span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:${pctColor}">${pctTxt}</span>
       </span>`;
+      const barPct=Math.max(0,Math.min(100,ratio));
+      kcalBar=`<div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden"><div style="width:${barPct}%;height:100%;border-radius:2px;background:${c}"></div></div>`;
     }
   }
 
@@ -4029,7 +4031,7 @@ function calDayCellHtml(d){
   const suppFull=suppTotal>0&&suppTaken>=suppTotal;
   const rec=d.whoop_recovery;
   const recColor=rec==null?'#6b7890':rec>=67?'#2fd6b0':rec>=34?'#ffd166':'#e0556b';
-  const macroLine=d.target?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:var(--muted)">P${d.target.protein_g} K${d.target.carb_g} Y${d.target.fat_g}</span>`:'';
+  const macroLine=d.target?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:var(--muted)">P${d.target.protein_g} K${d.target.carb_g} Y${d.target.fat_g}</span>`:'';
   const splitLabel=(isOff&&d.target&&d.target.type)?d.target.type:d.training;
   const chips=[
     (suppTotal>0&&!isFuture)?calChip(suppFull?'✓ stack':'stack '+suppTaken+'/'+suppTotal, suppFull?'#2fd6b0':suppTaken>0?'#ffd166':'#6b7890'):'',
@@ -4037,22 +4039,23 @@ function calDayCellHtml(d){
   ].join('');
 
   const coach=calCoachLine(d,sc);
-  const coachHtml=coach?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${coach.color};border-top:1px solid var(--border);padding-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(coach.text)}">koç: "${escHtml(coach.text)}"</div>`:'';
+  const coachHtml=coach?`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${coach.color};border-top:1px solid var(--border);padding-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(coach.text)}">koç: "${escHtml(coach.text)}"</div>`:'';
 
-  return `<div onclick="calSelectDay('${d.date}')" style="min-width:0;min-height:170px;border-radius:14px;border:${isSel?'2px':'1px'} solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${wash};box-shadow:${isSel?'0 0 0 3px rgba(87,199,230,.18)':'none'};padding:12px 13px;cursor:pointer;display:flex;flex-direction:column;gap:7px;opacity:${isOff?0.8:1};transition:border-color .15s;overflow:hidden">
+  return `<div onclick="calSelectDay('${d.date}')" style="min-width:0;min-height:184px;border-radius:14px;border:${isSel?'2px':'1px'} solid ${isSel?'#57c7e6':(isToday?c:'var(--border)')};background:${wash};box-shadow:${isSel?'0 0 0 3px rgba(87,199,230,.18)':'none'};padding:13px 14px;cursor:pointer;display:flex;flex-direction:column;gap:8px;opacity:${isOff?0.8:1};transition:border-color .15s;overflow:hidden">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:${isToday?800:600};color:${isToday?c:'var(--text)'}">${String(d.day).padStart(2,'0')}</span>
-          ${isToday?`<span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.5px;color:#05080F;background:${c};border-radius:5px;padding:2px 6px">BUGÜN</span>`:d.session_done?`<span style="font-size:12px;font-weight:900;color:#2fd6b0" title="Antrenman yapıldı">✓</span>`:isFuture?`<span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--muted)">planlı</span>`:''}
+          <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:${isToday?800:600};color:${isToday?c:'var(--text)'}">${String(d.day).padStart(2,'0')}</span>
+          ${isToday?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.5px;color:#05080F;background:${c};border-radius:5px;padding:2px 6px">BUGÜN</span>`:d.session_done?`<span style="font-size:13px;font-weight:900;color:#2fd6b0" title="Antrenman yapıldı">✓</span>`:isFuture?`<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted)">planlı</span>`:''}
         </div>
-        <span style="display:inline-block;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:3px 8px;border-radius:6px">${splitLabel}${d.is_override?' 🔁':''}</span>
-        ${d.exercises?`<span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--muted)">${d.exercises} hareket</span>`:''}
+        <span style="display:inline-block;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:800;letter-spacing:.3px;color:${isOff?'var(--muted)':'#fff'};background:${isOff?'transparent':c};border:1px solid ${isOff?'var(--border)':c};padding:3px 9px;border-radius:6px">${splitLabel}${d.is_override?' 🔁':''}</span>
+        ${d.exercises?`<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted)">${d.exercises} hareket</span>`:''}
       </div>
       ${ring}
     </div>
     ${kcalRow}
-    <div style="margin-top:auto;display:flex;flex-direction:column;gap:5px">
+    ${kcalBar}
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px">
       ${macroLine}
       ${chips?`<div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`:''}
     </div>
@@ -4235,7 +4238,7 @@ function renderCalendarPage(){
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px">
         ${CAL_DOW.map(d=>`<div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted)">${d}</div>`).join('')}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(170px,1fr);gap:9px;min-height:calc(100vh - 310px)">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(184px,1fr);gap:9px;min-height:calc(100vh - 310px)">
         ${cells.map(calDayCellHtml).join('')}
       </div>
     </div>
