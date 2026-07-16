@@ -3160,30 +3160,20 @@ GENEL HESAP KURALLARI:
 - Ekstra yag belirtilmedikce eklenmez.
 - GymBeam Olive Oil Spray yalniz kullanici fis/basis sayisi soylerse eklenir.
 
-SABIT URUNLER:
-- Carrefour BIO Organik Yumurta: 1 adet = 80 kcal, 7.5P, 0.3K, 4.7Y. (Open Food Facts dogrulandi)
-- Sivi Yumurta Beyazi: 100g = 58 kcal, 10.3P, 1.2K, 0.8Y.
-- Cig Derisiz Tavuk Gogsu: 100g = 115 kcal, 23P, 0K, 1.5Y. (kullanici onayli deger)
-- Marine tavuk sis: altta kalan yag/sos tuketilmiyor; 300g cig = 390 kcal, 68P, 3K, 10Y.
-- Yasmin Pirinc: 100g cig = 360 kcal, 7P, 79K, 0.6Y.
-- Patates: 100g cig = 77 kcal, 2P, 17K, 0.1Y.
-- Carrefour Tost Ekmegi: 100g = 252 kcal, 9.5P, 45K, 2.1Y. 69g = 174 kcal, 6.6P, 31.1K, 1.4Y.
-- Cilek: 100g = 32 kcal, 0.7P, 7.7K, 0.3Y.
-- Salatalik: 100g = 15 kcal, 0.7P, 3.6K, 0.1Y.
-- Sekersiz Badem Sutu: 100ml = 14 kcal, 0.5P, 0K, 1.1Y.
-- GymBeam Olive Oil Spray: 1 fis = 1.5g yag = ~13.5 kcal, 0P, 0K, 1.5Y. (her fis hafifce basilir)
-- Keto Ketcap: 100g = 41 kcal, 2P, 6.2K, 0.5Y; 20-30g kullanim ihmal edilebilir.
+SABIT URUNLER: artik ayri bir liste yok - tum bu urunler asagida (bu promptun devaminda) BESIN DB'den dinamik olarak geliyor, orasi tek referans. Iki ayri kaynak eskiden birbirinden sapabiliyordu (ornek: Carrefour yumurta, Sekersiz Badem Sutu, Patates degerleri farkli yazilmisti) - artik BESIN DB tek dogru kaynak.
 
 STANDART PANCAKE V2:
 - 4 yumurta, 200g sivi yumurta beyazi, 25g yulaf, 50g kuru kayisi, 200g cilek, 50ml sekersiz badem sutu, 6g kakao, 2 fis GymBeam.
 
-SUPPLEMENT SISTEMI:
-- Ac karna stack: NAC 600mg + Garden of Life Once Daily Men's Probiotic.
-- Sabah/kahvalti stack: Kolajen, D3+K2 4000 IU, Omega-3 3 kapsul, Magtein, Goz vitamini, B Complex, C Vitamini 1000mg, Theanine, gerektiginde Cinko.
-- Gece stack: Magnesium Glycinate, Glycine, Melatonin, gerektiginde Theanine, KSM-66 Ashwagandha.
-- Cinko 50mg yuksek doz; gun asiri takip edilir, her gun sart gibi yazma.
-- Kullanici 'stack alindi' derse ilgili stackteki urunleri tek tek vitamin kaydi olarak isle.
-- Kullanici 'haric/eksik/yok' derse o supplementi stackten dus.
+SUPPLEMENT SISTEMI (5 gercek stack, guncel):
+- Ac Karna: NOW NAC 600mg (1 kapsul), Garden of Life Dr. Formulated Probiotics Once Daily Men's (1 kapsul), Weider Ashwagandha Professional (2 kapsul).
+- Sabah/Kahvalti: Optimum Nutrition Collagen Peptides Unflavoured (1 olcek), Thorne Vitamin D+K2 (4 damla), Life Extension Mega EPA/DHA Omega-3 (3 kapsul), NOW Magtein Magnesium L-Threonate (1 kapsul), Life Extension MacuGuard with Saffron - goz vitamini (1 kapsul), Life Extension BioActive Complete B-Complex (1 kapsul), California Gold Nutrition Gold C 1000mg (1 tablet), NOW L-Theanine Double Strength (1 kapsul), NOW Zinc Picolinate 50mg - gun asiri (1 kapsul), NOW Extra Strength Astaxanthin 10mg (1 kapsul).
+- Gece: NOW Magnesium Glycinate (3 kapsul), NOW Melatonin 1mg (3 tablet), NOW Glycine 1000mg (3 kapsul), NOW L-Theanine Double Strength (1 kapsul). Ashwagandha Gece'de DEGIL, Ac Karna'da.
+- Pre-workout: Doctor's Best L-Citrulline Powder (8g), KFD Premium Beta-Alanine (2g), Optimum Nutrition Electrolyte Powder Lemon (8g), Swedish Supplements Taurine (2g).
+- Post-workout: California Gold Nutrition SPORT Creatine Monohydrate (5g).
+- Zinc 50mg yuksek doz; gun asiri takip edilir, her gun sart gibi yazma.
+- Kullanici 'stack alindi' derse ilgili stackteki urunleri tek tek vitamin kaydi olarak isle, tam urun ismini kullan (yukaridaki isimler DB'deki gercek kayitli isimlerdir).
+- Kullanici 'haric/eksik/yok' derse o supplementi stackten dus; 'X kapsul/g' gibi miktar override'i soylerse o urune ozel dozu kullan.
 
 AKNE VE CILT:
 - Whey, yogurt, protein puding ve yuksek seker akne acisindan takip edilir.
@@ -3379,74 +3369,6 @@ def ai_coach_call(user_text):
         log.exception("OpenAI cevap hatasi")
         return {'reply': 'AI cevabını işlerken sorun çıktı. Tekrar dener misin?', 'actions': []}
 
-
-def tg_template_name_from_text(raw_text):
-    text = (raw_text or '').strip()
-    if not text:
-        return ''
-    m = re.search(r'ad[ıi]\s+(.+?)\s+olsun', text, flags=re.I)
-    if m:
-        name = m.group(1).strip(" .,!?:;")
-        return name[:60]
-    m = re.search(r'ismi\s+(.+?)\s+olsun', text, flags=re.I)
-    if m:
-        name = m.group(1).strip(" .,!?:;")
-        return name[:60]
-    return ''
-
-def tg_meal_category_from_text(raw_text, slot=''):
-    text = (raw_text or '').lower()
-    if any(w in text for w in ['sabah', 'kahvalt', 'breakfast']):
-        return 'kahvaltı'
-    if any(w in text for w in ['pre', 'antrenman öncesi', 'idman öncesi']):
-        return 'pre-antrenman'
-    if any(w in text for w in ['post', 'antrenman sonrası', 'idman sonrası']):
-        return 'post-antrenman'
-    if any(w in text for w in ['öğle', 'ogle', 'lunch']):
-        return 'öğle'
-    if any(w in text for w in ['akşam', 'aksam', 'dinner']):
-        return 'akşam'
-    return slot or 'extra'
-
-def tg_should_save_template(raw_text):
-    text = (raw_text or '').lower()
-    return any(w in text for w in ['fiks', 'fix', 'sabit', 'şablon', 'sablon', 'favori', 'hep kullan', 'kaydet'])
-
-def tg_save_meal_template_from_actions(raw_text, actions):
-    if not tg_should_save_template(raw_text):
-        return ''
-    meal = None
-    for a in actions or []:
-        if (a.get('type') or '').strip() == 'meal':
-            meal = a
-            break
-    if not meal:
-        return ''
-    title = tg_template_name_from_text(raw_text) or meal.get('title') or meal.get('slot') or 'Sabit Öğün'
-    if 'kahvalt' in tg_meal_category_from_text(raw_text, meal.get('slot') or '') and 'kahvalt' not in title.lower():
-        title = title.strip() + ' Kahvaltısı'
-    category = tg_meal_category_from_text(raw_text, meal.get('slot') or '')
-    desc = meal.get('description') or title
-    conn = get_db()
-    existing = conn.execute("SELECT id FROM quick_templates WHERE kind='meal' AND lower(title)=lower(?)", (title,)).fetchone()
-    payload = (
-        category, title, desc,
-        meal.get('calories'), meal.get('protein_g'), meal.get('carbs_g'), meal.get('fat_g'), meal.get('fiber_g')
-    )
-    if existing:
-        conn.execute("""
-            UPDATE quick_templates
-            SET category=?, title=?, description=?, calories=?, protein_g=?, carbs_g=?, fat_g=?, fiber_g=?
-            WHERE id=?
-        """, payload + (existing['id'],))
-    else:
-        conn.execute("""
-            INSERT INTO quick_templates
-                (kind, category, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, amount, unit, notes)
-            VALUES ('meal',?,?,?,?,?,?,?,?,?,?,?)
-        """, payload + ('', '', 'telegram-ai sabit öğün'))
-    conn.commit(); conn.close()
-    return title
 
 
 def tg_score_1_to_10(value):
@@ -3752,197 +3674,10 @@ def tg_water_actions_from_text(raw_text):
     is_total = any(w in norm for w in ['toplam', 'olsun', 'olarak', 'yap', 'duzelt', 'düzelt', 'set'])
     return [{'type': 'water_set' if is_total else 'water', 'date': date, 'water_ml': ml}]
 
-def tg_basic_actions_from_text(raw_text):
-    """Extract critical records even when the AI provider is temporarily unavailable."""
-    text = raw_text or ''
-    low = text.lower()
-    trans = str.maketrans({
-        'ı': 'i', 'İ': 'i', 'ğ': 'g', 'Ğ': 'g', 'ü': 'u', 'Ü': 'u',
-        'ş': 's', 'Ş': 's', 'ö': 'o', 'Ö': 'o', 'ç': 'c', 'Ç': 'c',
-        'Ä±': 'i', 'Ä°': 'i', 'ÄŸ': 'g', 'Äž': 'g', 'Ã¼': 'u', 'Ãœ': 'u',
-        'ÅŸ': 's', 'Åž': 's', 'Ã¶': 'o', 'Ã–': 'o', 'Ã§': 'c', 'Ã‡': 'c'
-    })
-    norm = low.translate(trans)
-    today = operation_today()
-    actions = []
-
-    kg_match = re.search(r'(?:kilo|weight|kg)\s*[:\-]?\s*(\d{2,3}(?:[\.,]\d+)?)', norm)
-    if kg_match:
-        actions.append({'type': 'weight', 'date': today, 'weight_kg': float(kg_match.group(1).replace(',', '.')), 'notes': 'telegram-basic'})
-
-    if 'su' in norm or 'water' in norm:
-        wm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:l|lt|litre)', norm)
-        if wm:
-            actions.append({'type': 'water', 'date': today, 'water_ml': int(round(float(wm.group(1).replace(',', '.')) * 1000))})
-        else:
-            wm = re.search(r'(\d{3,5})\s*ml', norm)
-            if wm:
-                actions.append({'type': 'water', 'date': today, 'water_ml': int(wm.group(1))})
-
-    if 'adim' in norm or 'step' in norm:
-        step_nums = [int(x) for x in re.findall(r'\b\d{3,6}\b', norm)]
-        if step_nums:
-            actions.append({'type': 'steps', 'date': today, 'steps': max(step_nums), 'notes': 'telegram-basic'})
-
-    if any(w in norm for w in ['kahvalti', 'ogle', 'aksam', 'pre', 'post', 'ogun']):
-        cal = re.search(r'(?:kalori|kcal|calories)\s*[:~â ]+\s*(\d{2,5})', norm)
-        pro = re.search(r'(?:protein|p)\s*[:~â ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
-        carb = re.search(r'(?:karbonhidrat|karb|carb|k)\s*[:~â ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
-        fat = re.search(r'(?:yag|yağ|fat|y)\s*[:~≈ ]+\s*(\d+(?:[\.,]\d+)?)\s*g?', norm)
-        if cal or pro or carb or fat:
-            slot = 'extra'
-            if 'kahvalti' in norm:
-                slot = 'kahvaltı'
-            elif 'ogle' in norm:
-                slot = 'öğle'
-            elif 'aksam' in norm:
-                slot = 'akşam'
-            elif 'pre' in norm:
-                slot = 'pre-workout'
-            elif 'post' in norm:
-                slot = 'post-workout'
-            actions.append({
-                'type': 'meal', 'date': today, 'slot': slot,
-                'description': text[:900],
-                'calories': int(cal.group(1)) if cal else None,
-                'protein_g': float(pro.group(1).replace(',', '.')) if pro else None,
-                'carbs_g': float(carb.group(1).replace(',', '.')) if carb else None,
-                'fat_g': float(fat.group(1).replace(',', '.')) if fat else None,
-            })
-    return actions
 
 
 
 
-# TG_FULL_DAY_REVIEW_V1
-def tg_full_day_actions_from_text(raw_text):
-    """Build meal/step/water/weight actions from a full-day Turkish food dump."""
-    text = raw_text or ''
-    low = text.lower()
-    trans = str.maketrans({
-        'ı': 'i', 'İ': 'i', 'ğ': 'g', 'Ğ': 'g', 'ü': 'u', 'Ü': 'u',
-        'ş': 's', 'Ş': 's', 'ö': 'o', 'Ö': 'o', 'ç': 'c', 'Ç': 'c',
-        'Ä±': 'i', 'Ä°': 'i', 'ÄŸ': 'g', 'Äž': 'g', 'Ã¼': 'u', 'Ãœ': 'u',
-        'ÅŸ': 's', 'Åž': 's', 'Ã¶': 'o', 'Ã–': 'o', 'Ã§': 'c', 'Ã‡': 'c'
-    })
-    norm = low.translate(trans)
-    if not any(x in norm for x in ['kahvalti', 'ogle', 'aksam']):
-        return []
-    today = operation_today()
-    actions = []
-
-    def section(name, start_words, stop_words):
-        start = min([norm.find(w) for w in start_words if norm.find(w) >= 0] or [-1])
-        if start < 0:
-            return ''
-        end_candidates = [norm.find(w, start + 1) for w in stop_words if norm.find(w, start + 1) >= 0]
-        end = min(end_candidates) if end_candidates else len(norm)
-        return text[start:end]
-
-    sections = [
-        ('kahvaltı', section('kahvaltı', ['kahvalti'], ['ogle', 'aksam', 'gun totali'])),
-        ('öğle', section('öğle', ['ogle'], ['aksam', 'gun totali'])),
-        ('akşam', section('akşam', ['aksam'], ['gun totali'])),
-    ]
-
-    def add(a, b):
-        return {
-            'cal': a['cal'] + b.get('cal', 0),
-            'p': a['p'] + b.get('p', 0),
-            'c': a['c'] + b.get('c', 0),
-            'f': a['f'] + b.get('f', 0),
-        }
-
-    def estimate_line(line):
-        ln = line.lower().translate(trans)
-        out = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-        # Explicit line format: "... 288 kcal 25.2 g 1.6 g 19.2 g"
-        m = re.search(r'(\d+(?:[\.,]\d+)?)\s*kcal.*?(\d+(?:[\.,]\d+)?)\s*g.*?(\d+(?:[\.,]\d+)?)\s*g.*?(\d+(?:[\.,]\d+)?)\s*g', ln)
-        if m:
-            return {
-                'cal': float(m.group(1).replace(',', '.')),
-                'p': float(m.group(2).replace(',', '.')),
-                'c': float(m.group(3).replace(',', '.')),
-                'f': float(m.group(4).replace(',', '.')),
-            }
-        gm = re.search(r'(\d{2,4})\s*g?', ln)
-        grams = float(gm.group(1)) if gm else 0.0
-        if grams:
-            if 'tavuk' in ln:
-                out = {'cal': grams * 1.65, 'p': grams * 0.31, 'c': 0.0, 'f': grams * 0.036}
-            elif 'yulaf' in ln:
-                out = {'cal': grams * 3.89, 'p': grams * 0.169, 'c': grams * 0.663, 'f': grams * 0.069}
-            elif 'cilek' in ln:
-                out = {'cal': grams * 0.32, 'p': grams * 0.007, 'c': grams * 0.077, 'f': grams * 0.003}
-            elif 'mercimek' in ln:
-                out = {'cal': 115.0, 'p': 9.0, 'c': 20.0, 'f': 0.5}
-        if 'yarim kase mercimek' in ln or 'yarım kase mercimek' in line.lower():
-            out = add(out, {'cal': 115.0, 'p': 9.0, 'c': 20.0, 'f': 0.5})
-        if 'gymbeam' in ln and any(w in ln for w in ['fis', 'basis', 'basış', 'spray']):
-            fm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:fis|basis|basış|spray)', ln)
-            if fm:
-                sprays = float(fm.group(1).replace(',', '.'))
-                out = add(out, {'cal': sprays * 15.0, 'p': 0.0, 'c': 0.0, 'f': sprays * 1.65})
-        return out
-
-    total = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-    for slot, body in sections:
-        if not body.strip():
-            continue
-        subtotal = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-        for line in body.splitlines():
-            subtotal = add(subtotal, estimate_line(line))
-        if subtotal['cal'] or subtotal['p'] or subtotal['c'] or subtotal['f']:
-            total = add(total, subtotal)
-            actions.append({
-                'type': 'meal', 'date': today, 'slot': slot,
-                'description': body.strip()[:900],
-                'calories': int(round(subtotal['cal'])),
-                'protein_g': round(subtotal['p'], 1),
-                'carbs_g': round(subtotal['c'], 1),
-                'fat_g': round(subtotal['f'], 1),
-            })
-
-    kg = re.search(r'(?:kilo|kg)\s*[:\-]?\s*(\d{2,3}(?:[\.,]\d+)?)', norm)
-    if kg:
-        actions.append({'type': 'weight', 'date': today, 'weight_kg': float(kg.group(1).replace(',', '.')), 'notes': 'telegram full day'})
-    water = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:l|lt|litre)\s*su', norm)
-    if water:
-        actions.append({'type': 'water', 'date': today, 'water_ml': int(round(float(water.group(1).replace(',', '.')) * 1000))})
-    steps = re.search(r'(\d{4,6})\s*adim', norm)
-    if steps:
-        actions.append({'type': 'steps', 'date': today, 'steps': int(steps.group(1)), 'notes': 'telegram full day'})
-    if total['cal']:
-        actions.append({'type': 'note', 'date': today, 'note': f"Telegram tam gun ozeti: ~{int(round(total['cal']))} kcal | P {round(total['p'],1)}g | K {round(total['c'],1)}g | Y {round(total['f'],1)}g"})
-    return actions
-
-def tg_full_day_reply(actions):
-    meals = [a for a in actions if a.get('type') == 'meal']
-    if len(meals) < 2:
-        return ''
-    cal = sum(float(a.get('calories') or 0) for a in meals)
-    p = sum(float(a.get('protein_g') or 0) for a in meals)
-    c = sum(float(a.get('carbs_g') or 0) for a in meals)
-    f = sum(float(a.get('fat_g') or 0) for a in meals)
-    lines = [
-        'Taha, bu tam gun kaydini rapor gibi isledim.',
-        '',
-        f'Gun toplami yaklasik: {int(round(cal))} kcal | Protein {round(p,1)}g | Karb {round(c,1)}g | Yag {round(f,1)}g',
-        '',
-    ]
-    for m in meals:
-        lines.append(f"- {m.get('slot')}: {m.get('calories')} kcal | P {m.get('protein_g')}g | K {m.get('carbs_g')}g | Y {m.get('fat_g')}g")
-    water = next((a for a in actions if a.get('type') == 'water'), None)
-    steps = next((a for a in actions if a.get('type') in ('steps', 'step')), None)
-    weight = next((a for a in actions if a.get('type') in ('weight', 'body_weight', 'kilo')), None)
-    extra = []
-    if water: extra.append(f"Su {round((water.get('water_ml') or 0)/1000,2)}L")
-    if steps: extra.append(f"Adim {steps.get('steps')}")
-    if weight: extra.append(f"Kilo {weight.get('weight_kg')}kg")
-    if extra:
-        lines += ['', 'Ek takip: ' + ' | '.join(extra)]
-    lines += ['', 'Yorum: protein tarafi guclu. Tavuk miktari yuksek oldugu icin kas koruma iyi; yag spreyi ve yumurta yaglarini takipte tutacagiz. Bir sonraki revizede hedefe gore karbonhidrati antrenman gunlerine daha stratejik dagitabiliriz.']
-    return '\n'.join(lines)
 
 
 
@@ -4170,75 +3905,6 @@ def tg_ascii_text(raw_text):
     ]:
         text = text.replace(a, b)
     return text
-
-def tg_full_day_actions_from_text(raw_text):
-    text = raw_text or ''
-    norm = tg_ascii_text(text)
-    if not any(x in norm for x in ['kahvalti', 'kahvalt?', 'kahvalt', 'ogle', '??le', '?gle', 'aksam', 'ak?am']):
-        return []
-    today = operation_today()
-    actions = []
-
-    def sec(start_words, stop_words):
-        starts = [norm.find(w) for w in start_words if norm.find(w) >= 0]
-        if not starts:
-            return ''
-        start = min(starts)
-        ends = [norm.find(w, start + 1) for w in stop_words if norm.find(w, start + 1) >= 0]
-        end = min(ends) if ends else len(norm)
-        return text[start:end]
-
-    sections = [
-        ('kahvalti', sec(['kahvalti', 'kahvalt?', 'kahvalt'], ['ogle', '??le', '?gle', 'aksam', 'ak?am', 'gun totali'])),
-        ('ogle', sec(['ogle', '??le', '?gle'], ['aksam', 'ak?am', 'gun totali'])),
-        ('aksam', sec(['aksam', 'ak?am'], ['gun totali'])),
-    ]
-
-    def add(a, b):
-        return {'cal': a['cal'] + b['cal'], 'p': a['p'] + b['p'], 'c': a['c'] + b['c'], 'f': a['f'] + b['f']}
-
-    def est(line):
-        ln = tg_ascii_text(line)
-        out = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-        m = re.search(r'(\d+(?:[\.,]\d+)?)\s*kcal.*?(\d+(?:[\.,]\d+)?)\s*g.*?(\d+(?:[\.,]\d+)?)\s*g.*?(\d+(?:[\.,]\d+)?)\s*g', ln)
-        if m:
-            return {'cal': float(m.group(1).replace(',', '.')), 'p': float(m.group(2).replace(',', '.')), 'c': float(m.group(3).replace(',', '.')), 'f': float(m.group(4).replace(',', '.'))}
-        gm = re.search(r'(\d{2,4})\s*g?', ln)
-        grams = float(gm.group(1)) if gm else 0.0
-        if grams:
-            if 'tavuk' in ln:
-                out = {'cal': grams * 1.65, 'p': grams * 0.31, 'c': 0.0, 'f': grams * 0.036}
-            elif 'yulaf' in ln:
-                out = {'cal': grams * 3.89, 'p': grams * 0.169, 'c': grams * 0.663, 'f': grams * 0.069}
-            elif 'cilek' in ln or '?ilek' in ln:
-                out = {'cal': grams * 0.32, 'p': grams * 0.007, 'c': grams * 0.077, 'f': grams * 0.003}
-        if 'yarim kase mercimek' in ln or 'yar?m kase mercimek' in ln:
-            out = add(out, {'cal': 115.0, 'p': 9.0, 'c': 20.0, 'f': 0.5})
-        return out
-
-    total = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-    for slot, body in sections:
-        if not body.strip():
-            continue
-        sub = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-        for line in body.splitlines():
-            sub = add(sub, est(line))
-        if any(sub.values()):
-            total = add(total, sub)
-            actions.append({'type': 'meal', 'date': today, 'slot': slot, 'description': body.strip()[:900], 'calories': int(round(sub['cal'])), 'protein_g': round(sub['p'], 1), 'carbs_g': round(sub['c'], 1), 'fat_g': round(sub['f'], 1)})
-
-    kg = re.search(r'(?:kilo|kg)\s*[:\-]?\s*(\d{2,3}(?:[\.,]\d+)?)', norm)
-    if kg:
-        actions.append({'type': 'weight', 'date': today, 'weight_kg': float(kg.group(1).replace(',', '.')), 'notes': 'telegram full day'})
-    water = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:l|lt|litre)\s*su', norm)
-    if water:
-        actions.append({'type': 'water', 'date': today, 'water_ml': int(round(float(water.group(1).replace(',', '.')) * 1000))})
-    steps = re.search(r'(\d{4,6})\s*(?:adim|ad\?m)', norm)
-    if steps:
-        actions.append({'type': 'steps', 'date': today, 'steps': int(steps.group(1)), 'notes': 'telegram full day'})
-    if total['cal']:
-        actions.append({'type': 'note', 'date': today, 'note': f"Telegram tam gun ozeti: ~{int(round(total['cal']))} kcal | P {round(total['p'],1)}g | K {round(total['c'],1)}g | Y {round(total['f'],1)}g"})
-    return actions
 
 def tg_basic_actions_from_text(raw_text):
     actions = []
@@ -4630,6 +4296,36 @@ def tg_line_slot(line, current_slot='extra'):
         return 'post-workout'
     return current_slot or 'extra'
 
+def tg_food_registry_match(norm_text):
+    """Besin DB'de norm_text icinde gecen bir urun adi/alias var mi kontrol eder -
+    markasiz/jenerik gecen kayitli urunlerin gercek etiket verisini kullanmak icin
+    (AI yolundaki MARKASIZ/JENERIK kuralinin deterministik/regex tarafi karsiligi).
+    NOT: farkli/markali bir urunun gercek verisini internetten bulmak bu fonksiyonun
+    kapsaminda degil - o sadece AI (_claude_call) tarafinda mumkun, cunku gercek
+    dunya bilgisi gerektiriyor. Burada amac sadece KAYITLI urunler dogru taninsin."""
+    try:
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100 FROM food_registry"
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return None
+    best = None
+    for r in rows:
+        candidates = [r['name']] + [a.strip() for a in (r['aliases'] or '').split(',') if a.strip()]
+        for cand in candidates:
+            if not cand:
+                continue
+            cand_norm = tg_ascii_text(cand) if 'tg_ascii_text' in globals() else cand.lower()
+            if cand_norm and len(cand_norm) >= 3 and cand_norm in norm_text:
+                if best is None or len(cand_norm) > len(best[0]):
+                    best = (cand_norm, r)
+    if not best:
+        return None
+    r = best[1]
+    return {'cal': r['calories_per_100'] or 0, 'p': r['protein_per_100'] or 0, 'c': r['carbs_per_100'] or 0, 'f': r['fat_per_100'] or 0}
+
 def tg_food_estimate(line):
     n = tg_ascii_text(line) if 'tg_ascii_text' in globals() else (line or '').lower()
     raw_line = line or ''
@@ -4659,8 +4355,13 @@ def tg_food_estimate(line):
     if qm:
         qty = float(qm.group(2))
 
+    db_match = None
     if grams:
-        if 'marine' in n and 'tavuk' in n:
+        db_match = tg_food_registry_match(n)
+        if db_match:
+            factor = grams / 100.0
+            add(db_match['cal'] * factor, db_match['p'] * factor, db_match['c'] * factor, db_match['f'] * factor)
+        elif 'marine' in n and 'tavuk' in n:
             factor = grams / 300.0
             add(390 * factor, 68 * factor, 3 * factor, 10 * factor)
         elif 'tavuk' in n:
@@ -4698,12 +4399,12 @@ def tg_food_estimate(line):
         add(115, 9, 20, 0.5)
     if 'bol salata' in n or ('salata' in n and out['cal'] == 0):
         add(45, 2, 8, 0.5)
-    if 'keto ketcap' in n or 'keto ketchup' in n:
+    if not db_match and ('keto ketcap' in n or 'keto ketchup' in n):
         km = re.search(r'(\d{1,3})\s*(?:g|gr|gram)', n)
         if km and float(km.group(1)) > 30:
             kgrams = float(km.group(1))
             add(kgrams * 0.41, kgrams * 0.02, kgrams * 0.062, kgrams * 0.005)
-    if 'gymbeam' in n and any(w in n for w in ['fis', 'basis', 'basıs', 'spray']):
+    if not db_match and 'gymbeam' in n and any(w in n for w in ['fis', 'basis', 'basıs', 'spray']):
         fm = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:fis|basis|basıs|spray)', n)
         if fm:
             sprays = float(fm.group(1).replace(',', '.'))
@@ -4768,52 +4469,6 @@ def tg_full_day_actions_from_text(raw_text):
         actions.append({'type': 'steps', 'date': today, 'steps': int(steps.group(1)), 'notes': 'telegram full day'})
     if total['cal']:
         actions.append({'type': 'note', 'date': today, 'note': f"Telegram tam gun ozeti: ~{int(round(total['cal']))} kcal | P {round(total['p'],1)}g | K {round(total['c'],1)}g | Y {round(total['f'],1)}g"})
-    return actions
-
-def tg_supplement_actions_from_text_legacy(raw_text):
-    text = raw_text or ''
-    norm = tg_ascii_text(text) if 'tg_ascii_text' in globals() else text.lower()
-    if not any(w in norm for w in ['nac', 'omega', 'd3', 'k2', 'b-complex', 'b complex', 'probiyotik', 'probiotic', 'goz', 'göz', 'cinko', 'zinc', 'vitamin', 'takviye', 'supplement']):
-        return []
-    today = tg_effective_log_date(text, 'vitamin') if 'tg_effective_log_date' in globals() else operation_today()
-    catalog = [
-        ('nac', 'NAC', '1', 'kapsul', 'NOW NAC 600 mg'),
-        ('probiyotik', 'Probiyotik', '1', 'doz', 'Garden of Life probiotic'),
-        ('probiotic', 'Probiyotik', '1', 'doz', 'Garden of Life probiotic'),
-        ('omega', 'Omega-3', '3', 'kapsul', 'Life Extension Mega EPA/DHA'),
-        ('d3', 'D3+K2', '4', 'damla', 'Thorne Vitamin D + K2'),
-        ('k2', 'D3+K2', '4', 'damla', 'Thorne Vitamin D + K2'),
-        ('b-complex', 'B-Complex', '1', 'doz', 'Life Extension BioActive Complete B-Complex'),
-        ('b complex', 'B-Complex', '1', 'doz', 'Life Extension BioActive Complete B-Complex'),
-        ('goz', 'Goz Vitamini', '1', 'doz', 'Life Extension MacuGuard with Saffron'),
-        ('göz', 'Goz Vitamini', '1', 'doz', 'Life Extension MacuGuard with Saffron'),
-        ('cinko', 'Cinko', '1', 'kapsul', 'NOW Zinc Picolinate 50 mg'),
-        ('zinc', 'Cinko', '1', 'kapsul', 'NOW Zinc Picolinate 50 mg'),
-    ]
-    actions = []
-    seen = set()
-    for key, name, default_amount, default_unit, note in catalog:
-        if key not in norm or name in seen:
-            continue
-        line = next((ln for ln in text.splitlines() if key in ((tg_ascii_text(ln) if 'tg_ascii_text' in globals() else ln.lower()))), text)
-        amount = default_amount
-        unit = default_unit
-        local = line.lower()
-        if key in ['nac', 'probiyotik', 'probiotic', 'b-complex', 'b complex', 'goz', 'göz', 'cinko', 'zinc'] and '\n' not in text and len(text.split()) > 3:
-            local = key
-        m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(kapsul|kapsül|damla|doz|tablet|olcek|ölcek|ölçek|g|mg|iu)?', local)
-        if name == 'D3+K2':
-            m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(damla|drop)', line.lower()) or m
-        if m:
-            amount = m.group(1).replace(',', '.')
-            if m.group(2):
-                unit = m.group(2).replace('kapsül', 'kapsul').replace('ölçek', 'olcek').replace('ölcek', 'olcek')
-        notes = note
-        if 'gun asiri' in norm or 'gün aşırı' in text.lower() or 'asiri' in norm:
-            if name == 'Cinko':
-                notes += ' | gun asiri'
-        actions.append({'type': 'vitamin', 'date': today, 'name': name, 'amount': amount, 'unit': unit, 'notes': notes})
-        seen.add(name)
     return actions
 
 def tg_supplement_stack_slot(raw_text):
