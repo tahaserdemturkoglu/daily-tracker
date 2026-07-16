@@ -4830,37 +4830,42 @@ def tg_supplement_stack_slot(raw_text):
     return ''
 
 def tg_supplement_catalog():
+    """Isim alani (name) supplement_stack_items.product_name / vitamin_logs.name ile BIREBIR
+    ayni olmali - Dashboard/Coach/Takvim'deki 'alindi mi' eslesmesi tam string eslesmesine
+    dayaniyor. keys ise kullanicinin dogal dilde yazdigi kisa/rahat kelimeler icin - degismez.
+    2026-07-16: gercek 5 stack'e (Ac Karna/Sabah/Gece/Pre-workout/Post-workout) tam senkron edildi."""
     return [
-        {'keys':['nac'], 'name':'NAC', 'amount':'1', 'unit':'kapsul', 'note':'NOW NAC 600 mg'},
-        {'keys':['probiyotik','probiotic'], 'name':'Probiyotik', 'amount':'1', 'unit':'kapsul', 'note':'Garden of Life probiotic'},
-        {'keys':['omega','epa','dha'], 'name':'Omega-3', 'amount':'3', 'unit':'kapsul', 'note':'Life Extension Mega EPA/DHA'},
-        {'keys':['d3','k2','d+k'], 'name':'D3+K2', 'amount':'4', 'unit':'damla', 'note':'Thorne Vitamin D + K2'},
-        {'keys':['b-complex','b complex','bcomplex'], 'name':'B-Complex', 'amount':'1', 'unit':'kapsul', 'note':'Life Extension BioActive Complete B-Complex'},
-        {'keys':['goz','macuguard','saffron'], 'name':'Goz Vitamini', 'amount':'1', 'unit':'kapsul', 'note':'Life Extension MacuGuard with Saffron'},
-        {'keys':['vitamin c','c vitamini','gold c'], 'name':'Vitamin C', 'amount':'1', 'unit':'kapsul', 'note':'California Gold Nutrition Gold C 1000 mg'},
-        {'keys':['cinko','zinc'], 'name':'Cinko', 'amount':'1', 'unit':'kapsul', 'note':'NOW Zinc Picolinate 50 mg | gun asiri'},
-        {'keys':['magtein','threonate','l-threonate'], 'name':'Magtein Magnesium L-Threonate', 'amount':'1', 'unit':'kapsul', 'note':'NOW Magtein Magnesium L-Threonate'},
-        {'keys':['magnesium glycinate','magnezyum glisinat','glycinate'], 'name':'Magnesium Glycinate', 'amount':'3', 'unit':'kapsul', 'note':'NOW Magnesium Glycinate'},
-        {'keys':['ashwagandha','ksm','ksm-66'], 'name':'KSM-66 Ashwagandha', 'amount':'1', 'unit':'kapsul', 'note':'NutraBio KSM-66 Ashwagandha'},
-        {'keys':['glycine','glisin'], 'name':'Glycine', 'amount':'3', 'unit':'kapsul', 'note':'NOW Glycine 1000 mg'},
-        {'keys':['melatonin'], 'name':'Melatonin', 'amount':'3', 'unit':'kapsul', 'note':'NOW Melatonin 1 mg'},
-        {'keys':['theanine','l-theanine','l theanine'], 'name':'L-Theanine', 'amount':'1', 'unit':'kapsul', 'note':'NOW L-Theanine Double Strength 200 mg'},
-        {'keys':['creatine','kreatin'], 'name':'Creatine', 'amount':'5', 'unit':'g', 'note':'KFD Creatine'},
-        {'keys':['collagen','kolajen'], 'name':'Collagen Peptides', 'amount':'1', 'unit':'olcek', 'note':'Optimum Nutrition Collagen Peptides'},
-        {'keys':['hydration','hydrationup','elektrolit','electrolyte'], 'name':'HydrationUP', 'amount':'1', 'unit':'paket', 'note':'California Gold Nutrition HydrationUP'},
-        {'keys':['citrulline','sitrulin','l-citrulline'], 'name':'L-Citrulline', 'amount':'6', 'unit':'g', 'note':'L-Citrulline pre-workout'},
-        {'keys':['beta alanine','beta-alanine'], 'name':'Beta Alanine', 'amount':'3', 'unit':'g', 'note':'Beta Alanine pre-workout'},
+        {'keys':['nac'], 'name':'NOW NAC 600mg', 'amount':'1', 'unit':'kapsul', 'note':'Ac Karna'},
+        {'keys':['probiyotik','probiotic'], 'name':"Garden of Life Dr. Formulated Probiotics Once Daily Men's", 'amount':'1', 'unit':'kapsul', 'note':'Ac Karna'},
+        {'keys':['ashwagandha','ksm','ksm-66','weider'], 'name':'Weider Ashwagandha Professional', 'amount':'2', 'unit':'kapsul', 'note':'Ac Karna'},
+        {'keys':['collagen','kolajen'], 'name':'Optimum Nutrition Collagen Peptides (Unflavoured)', 'amount':'1', 'unit':'olcek', 'note':'Sabah - 20g'},
+        {'keys':['d3','k2','d+k','d vitamini'], 'name':'Thorne Vitamin D + K2', 'amount':'4', 'unit':'damla', 'note':'Sabah'},
+        {'keys':['omega','epa','dha'], 'name':'Life Extension Mega EPA/DHA', 'amount':'3', 'unit':'kapsul', 'note':'Sabah'},
+        {'keys':['magtein','threonate','l-threonate'], 'name':'NOW Magtein Magnesium L-Threonate', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
+        {'keys':['goz','macuguard','saffron'], 'name':'Life Extension MacuGuard with Saffron', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
+        {'keys':['b-complex','b complex','bcomplex'], 'name':'Life Extension BioActive Complete B-Complex', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
+        {'keys':['vitamin c','c vitamini','gold c'], 'name':'California Gold Nutrition Gold C 1000mg', 'amount':'1', 'unit':'tablet', 'note':'Sabah'},
+        {'keys':['astaxanthin','astaksantin'], 'name':'NOW Extra Strength Astaxanthin 10mg', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
+        {'keys':['cinko','zinc'], 'name':'NOW Zinc Picolinate 50mg', 'amount':'1', 'unit':'kapsul', 'note':'Sabah | gun asiri'},
+        {'keys':['theanine','l-theanine','l theanine'], 'name':'NOW L-Theanine Double Strength', 'amount':'1', 'unit':'kapsul', 'note':'Sabah + Gece'},
+        {'keys':['magnesium glycinate','magnezyum glisinat','glycinate'], 'name':'NOW Magnesium Glycinate', 'amount':'3', 'unit':'kapsul', 'note':'Gece'},
+        {'keys':['glycine','glisin'], 'name':'NOW Glycine 1000mg', 'amount':'3', 'unit':'kapsul', 'note':'Gece'},
+        {'keys':['melatonin'], 'name':'NOW Melatonin 1mg', 'amount':'3', 'unit':'tablet', 'note':'Gece'},
+        {'keys':['citrulline','sitrulin','l-citrulline'], 'name':"Doctor's Best L-Citrulline Powder", 'amount':'8', 'unit':'g', 'note':'Pre-workout'},
+        {'keys':['beta alanine','beta-alanine','alanin'], 'name':'KFD Premium Beta-Alanine', 'amount':'2', 'unit':'g', 'note':'Pre-workout'},
+        {'keys':['electrolyte','elektrolit','hydration'], 'name':'Optimum Nutrition Electrolyte Powder (Lemon)', 'amount':'8', 'unit':'g', 'note':'Pre-workout'},
+        {'keys':['taurine','taurin'], 'name':'Swedish Supplements Taurine', 'amount':'2', 'unit':'g', 'note':'Pre-workout'},
+        {'keys':['creatine','kreatin'], 'name':'California Gold Nutrition SPORT Creatine Monohydrate', 'amount':'5', 'unit':'g', 'note':'Post-workout'},
     ]
 
 def tg_stack_preset(slot):
     return {
-        'ac-karna': ['NAC', 'Probiyotik'],
-        'sabah': ['Collagen Peptides', 'D3+K2', 'Omega-3', 'Magtein Magnesium L-Threonate', 'Goz Vitamini', 'B-Complex', 'Vitamin C', 'L-Theanine', 'Cinko'],
-        'kahvalti': ['Collagen Peptides', 'D3+K2', 'Omega-3', 'Magtein Magnesium L-Threonate', 'Goz Vitamini', 'B-Complex', 'Vitamin C', 'L-Theanine', 'Cinko'],
-        'ogle': ['Creatine', 'Collagen Peptides', 'HydrationUP'],
-        'gece': ['L-Theanine', 'Magnesium Glycinate', 'KSM-66 Ashwagandha', 'Glycine', 'Melatonin'],
-        'pre-workout': ['L-Citrulline', 'Beta Alanine', 'HydrationUP'],
-        'post-workout': ['Creatine'],
+        'ac-karna': ['NOW NAC 600mg', "Garden of Life Dr. Formulated Probiotics Once Daily Men's", 'Weider Ashwagandha Professional'],
+        'sabah': ['Optimum Nutrition Collagen Peptides (Unflavoured)', 'Thorne Vitamin D + K2', 'Life Extension Mega EPA/DHA', 'NOW Magtein Magnesium L-Threonate', 'Life Extension MacuGuard with Saffron', 'Life Extension BioActive Complete B-Complex', 'California Gold Nutrition Gold C 1000mg', 'NOW L-Theanine Double Strength', 'NOW Zinc Picolinate 50mg', 'NOW Extra Strength Astaxanthin 10mg'],
+        'kahvalti': ['Optimum Nutrition Collagen Peptides (Unflavoured)', 'Thorne Vitamin D + K2', 'Life Extension Mega EPA/DHA', 'NOW Magtein Magnesium L-Threonate', 'Life Extension MacuGuard with Saffron', 'Life Extension BioActive Complete B-Complex', 'California Gold Nutrition Gold C 1000mg', 'NOW L-Theanine Double Strength', 'NOW Zinc Picolinate 50mg', 'NOW Extra Strength Astaxanthin 10mg'],
+        'gece': ['NOW L-Theanine Double Strength', 'NOW Magnesium Glycinate', 'NOW Glycine 1000mg', 'NOW Melatonin 1mg'],
+        'pre-workout': ["Doctor's Best L-Citrulline Powder", 'KFD Premium Beta-Alanine', 'Optimum Nutrition Electrolyte Powder (Lemon)', 'Swedish Supplements Taurine'],
+        'post-workout': ['California Gold Nutrition SPORT Creatine Monohydrate'],
     }.get(slot, [])
 
 def tg_stack_label(slot):
@@ -4883,13 +4888,44 @@ def tg_supplement_item_missing(item, norm):
             return True
     return False
 
+def tg_supplement_excluded_items(matched_items, norm):
+    """Coklu urunlu tek cumlede 'eksik/almadim/haric' gibi kelimeleri EN YAKIN urun mentionuyla
+    eslestirir. tg_supplement_item_missing'in sabit 28-karakter penceresi 'taurin 3g elektrolit
+    eksik' gibi cumlelerde 'eksik'i yanlislikla taurin'e de bagliyordu (elektrolit'e 1 karakter,
+    taurin'e ~21 karakter mesafede olmasina ragmen ikisini de disliyordu) - bu fonksiyon sadece
+    gercekten EN YAKIN olan urunu haric tutar."""
+    exclude_words = ['eksik', 'icmedim', 'almadim', 'haric', 'hari', 'yok']
+    item_spans = []
+    for item in matched_items:
+        for key in item['keys']:
+            key_norm = tg_ascii_text(key) if 'tg_ascii_text' in globals() else key
+            for m in re.finditer(re.escape(key_norm), norm):
+                item_spans.append((m.start(), m.end(), item['name']))
+    if not item_spans:
+        return set()
+    excluded = set()
+    for w in exclude_words:
+        for m in re.finditer(re.escape(w), norm):
+            wstart, wend = m.start(), m.end()
+            best_name, best_dist = None, None
+            for spos, epos, name in item_spans:
+                dist = (wstart - epos) if wstart >= epos else (spos - wend)
+                dist = abs(dist)
+                if dist > 32:
+                    continue
+                if best_dist is None or dist < best_dist:
+                    best_dist, best_name = dist, name
+            if best_name is not None:
+                excluded.add(best_name)
+    return excluded
+
 def tg_zinc_due_for_date(today):
     try:
         target = date.fromisoformat(today)
         conn = get_db()
         row = conn.execute("""
             SELECT date FROM vitamin_logs
-            WHERE lower(name) IN ('cinko', 'zinc')
+            WHERE lower(name) LIKE '%zinc%'
               AND date <= ?
             ORDER BY date DESC, id DESC
             LIMIT 1
@@ -4919,12 +4955,14 @@ def tg_supplement_actions_from_text(raw_text):
         if any(k in norm for k in item['keys']) and item not in matched:
             matched.append(item)
     unit_pat = r'(kapsul|damla|drop|doz|tablet|olcek|g|mg|iu|paket)'
+    excluded_names = tg_supplement_excluded_items(matched, norm) if len(matched) > 1 else (
+        {item['name'] for item in matched if tg_supplement_item_missing(item, norm)})
     actions, seen = [], set()
     for item in matched:
-        if item['name'] in seen or tg_supplement_item_missing(item, norm):
+        if item['name'] in seen or item['name'] in excluded_names:
             continue
         explicit_item = any(k in norm for k in item['keys'])
-        if item['name'] == 'Cinko' and slot in ('sabah', 'kahvalti') and not explicit_item and not tg_zinc_due_for_date(today):
+        if item['name'] == 'NOW Zinc Picolinate 50mg' and slot in ('sabah', 'kahvalti') and not explicit_item and not tg_zinc_due_for_date(today):
             continue
         line = next((ln for ln in text.splitlines() if any(k in (tg_ascii_text(ln) if 'tg_ascii_text' in globals() else ln.lower()) for k in item['keys'])), text)
         line_norm = tg_ascii_text(line) if 'tg_ascii_text' in globals() else line.lower()
@@ -4944,8 +4982,8 @@ def tg_supplement_actions_from_text(raw_text):
     # Çinko sabah/kahvaltı stack'te bekleniyor ama alınmadıysa bot notu ekle
     if slot in ('sabah', 'kahvalti'):
         wanted_names = set(tg_stack_preset(slot))
-        if 'Cinko' in wanted_names and 'Cinko' not in seen:
-            cinko_item = next((it for it in catalog if it['name'] == 'Cinko'), None)
+        if 'NOW Zinc Picolinate 50mg' in wanted_names and 'NOW Zinc Picolinate 50mg' not in seen:
+            cinko_item = next((it for it in catalog if it['name'] == 'NOW Zinc Picolinate 50mg'), None)
             explicitly_excluded = cinko_item and tg_supplement_item_missing(cinko_item, norm)
             if not explicitly_excluded:
                 actions.append({'type': '_bot_note', 'text': '⚠️ Çinko alınmadı — not edildi'})
