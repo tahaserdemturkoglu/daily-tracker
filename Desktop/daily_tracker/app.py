@@ -681,6 +681,23 @@ def api_dashboard_ai_insights():
     insights = generate_dashboard_ai_insights(date_str)
     return jsonify({'insights': insights, 'date': date_str})
 
+_FACT_STOPWORDS = {
+    'bir','bu','ve','ile','de','da','çok','gibi','var','olan','olarak','için','ama','ancak',
+    'daha','en','son','gün','günde','günlerde','günü','yapılan','yapılmış','yapıldı','değil',
+    'ile','ki','mi','mu','mü','ya','ya da','ise','olabilir','oluyor','olmuş','kadar','sonra',
+}
+def _facts_similar(a, b, threshold=0.4):
+    """Embedding yok; hafif kelime-kesisim benzerligi. Turkce ek farkli olsa da (yapilmayan/
+    yapilmadigi gibi) kok kelimelerin cogu ortak kalir, bu yuzden esik nispeten dusuk tutuldu.
+    Amac mukemmel dedup degil, LLM'in ayni gozlemi tekrar tekrar farkli cumlelerle yazmasini
+    (backfill sirasinda gozlemlendi) engellemek."""
+    wa = {w.strip('.,()—-') for w in a.lower().split() if len(w) > 3 and w not in _FACT_STOPWORDS}
+    wb = {w.strip('.,()—-') for w in b.lower().split() if len(w) > 3 and w not in _FACT_STOPWORDS}
+    if not wa or not wb:
+        return False
+    overlap = len(wa & wb) / min(len(wa), len(wb))
+    return overlap >= threshold
+
 def gather_day_snapshot(conn, date_str):
     """Bir gunun tum gercek verisini tek bir dict'te toplar (AI Koc payload'i ve Coach
     sayfasi gosterimi AYNI bu fonksiyonu kullanir, ikisi hep birbirini tutsun diye)."""
@@ -783,11 +800,13 @@ def generate_daily_profile_note(date_str):
         'alakalıysa (ör. yağlı/süt ürünü ağırlıklı beslenme günü) nazikçe bağlantı kur, alakasızsa hiç değinme.\n\n'
         '2-4 cümlelik Türkçe, samimi ama kısa bir günlük gözlem yaz. Tavsiye/emir verme, plan değiştirme '
         'önerisi yapma, sadece gözlemle. Veri eksikse o alan hakkında hiçbir şey uydurma.\n\n'
-        'Ayrıca: son 5 nottan bağımsız olarak, eğer bu SADECE tek günlük bir olay değil de gerçekten kalıcı, '
-        'tekrar eden (en az 3 kez gördüğün) ve "bilinen_kalici_notlar" listesinde henüz OLMAYAN yeni bir '
-        'kullanıcı özelliği/kalıbı fark ettiysen (ör. "her Pazartesi su tüketimi çok düşük oluyor"), bunu '
-        'kısa bir cümleyle "yeni_kalici_not" alanına yaz. Emin değilsen veya zaten biliniyorsa null bırak — '
-        'bu alanı nadiren kullan, sadece gerçekten kalıcı bir kalıp olduğuna eminsen.\n\n'
+        '"yeni_kalici_not" alanını NEREDEYSE HER ZAMAN null bırak. Sadece şu ÜÇ koşulun HEPSİ doğruysa doldur: '
+        '(1) gerçekten kalıcı, tek günlük bir olay değil, en az 3 kez gördüğün bir kalıp, (2) '
+        '"bilinen_kalici_notlar" listesindeki HİÇBİR maddenin farklı kelimelerle söylenmiş hali DEĞİL — yani '
+        'listedekilerle AYNI ANLAMA gelen bir cümleyi asla tekrar yazma, farklı kelimeler kullansan bile bu '
+        'yine de aynı bilgidir ve null dönmen gerekir, (3) küçük bir varyasyon/güncelleme değil, tamamen yeni '
+        'bir gözlem. Şüphedeysen null. Bu alan çoğu günde null olmalı — art arda birçok günde dolu dönüyorsan '
+        'muhtemelen aynı şeyi tekrar tekrar farklı cümlelerle yazıyorsundur, bunu YAPMA.\n\n'
         'SADECE şu JSON formatında dön, başka hiçbir şey yazma: '
         '{"note": "...", "yeni_kalici_not": "..." veya null}'
     )
@@ -826,9 +845,8 @@ def generate_daily_profile_note(date_str):
         (date_str, note)
     )
     if new_fact:
-        existing = [r['text'].lower() for r in conn2.execute("SELECT text FROM user_profile_facts WHERE active=1").fetchall()]
-        is_dupe = any(new_fact.lower() in e or e in new_fact.lower() for e in existing)
-        if not is_dupe:
+        existing = [r['text'] for r in conn2.execute("SELECT text FROM user_profile_facts WHERE active=1").fetchall()]
+        if not any(_facts_similar(new_fact, e) for e in existing):
             conn2.execute("INSERT INTO user_profile_facts (text, source) VALUES (?, 'ai_detected')", (new_fact,))
     conn2.commit(); conn2.close()
     return note
