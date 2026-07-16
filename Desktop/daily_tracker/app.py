@@ -3985,6 +3985,14 @@ def tg_ascii_text(raw_text):
     return text
 
 def tg_basic_actions_from_text(raw_text):
+    """AI cevap veremediginde bile kritik kayitlarin (kilo/su/adim) kacmamasi icin fallback.
+    2026-07-16: bir kod temizligi sirasinda bu fonksiyonun daha once var olan, daha esnek bir
+    kopyasi (ml cinsinden su, gevsek adim eslesmesi) yanlislikla dead-code sayilip silinmisti -
+    o iki iyilestirme burada geri eklendi. Ogun-makro cikarma dalini KASITLI olarak geri
+    eklemedim: tg_full_day_actions_from_text ayni tetikleyici kelimelerle (kahvalti/ogle/aksam)
+    zaten daha yetenekli bir versiyonunu yapiyor VE cagiran kod (cmd_chat_ai) full_day_actions
+    doluyken basic_actions'un meal girdilerini hic kullanmiyor (if/elif) - geri eklemek olu
+    kod olurdu."""
     actions = []
     norm = tg_ascii_text(raw_text)
     today = operation_today()
@@ -3992,37 +4000,22 @@ def tg_basic_actions_from_text(raw_text):
     if kg:
         actions.append({'type': 'weight', 'date': today, 'weight_kg': float(kg.group(1).replace(',', '.')), 'notes': 'telegram-basic'})
     water = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:l|lt|litre)\s*su', norm)
+    if not water and ('su' in norm or 'water' in norm):
+        water = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:l|lt|litre)\b', norm)
     if water:
         actions.append({'type': 'water', 'date': today, 'water_ml': int(round(float(water.group(1).replace(',', '.')) * 1000))})
+    elif 'su' in norm or 'water' in norm:
+        ml_m = re.search(r'(\d{3,5})\s*ml', norm)
+        if ml_m:
+            actions.append({'type': 'water', 'date': today, 'water_ml': int(ml_m.group(1))})
     steps = re.search(r'(\d{4,6})\s*(?:adim|ad\?m)', norm)
     if steps:
         actions.append({'type': 'steps', 'date': today, 'steps': int(steps.group(1)), 'notes': 'telegram-basic'})
+    elif 'adim' in norm or 'step' in norm:
+        step_nums = [int(x) for x in re.findall(r'\b\d{3,6}\b', norm)]
+        if step_nums:
+            actions.append({'type': 'steps', 'date': today, 'steps': max(step_nums), 'notes': 'telegram-basic'})
     return actions
-
-def tg_full_day_reply(actions):
-    meals = [a for a in actions if a.get('type') == 'meal']
-    if len(meals) < 2:
-        return ''
-    cal = sum(float(a.get('calories') or 0) for a in meals)
-    p = sum(float(a.get('protein_g') or 0) for a in meals)
-    c = sum(float(a.get('carbs_g') or 0) for a in meals)
-    f = sum(float(a.get('fat_g') or 0) for a in meals)
-    lines = ['Taha, bu tam gun kaydini rapor gibi isledim.', '', f'Gun toplami yaklasik: {int(round(cal))} kcal | Protein {round(p,1)}g | Karb {round(c,1)}g | Yag {round(f,1)}g', '']
-    for m in meals:
-        lines.append(f"- {m.get('slot')}: {m.get('calories')} kcal | P {m.get('protein_g')}g | K {m.get('carbs_g')}g | Y {m.get('fat_g')}g")
-    water = next((a for a in actions if a.get('type') == 'water'), None)
-    steps = next((a for a in actions if a.get('type') in ('steps', 'step')), None)
-    weight = next((a for a in actions if a.get('type') in ('weight', 'body_weight', 'kilo')), None)
-    extra = []
-    if water: extra.append(f"Su {round((water.get('water_ml') or 0)/1000,2)}L")
-    if steps: extra.append(f"Adim {steps.get('steps')}")
-    if weight: extra.append(f"Kilo {weight.get('weight_kg')}kg")
-    if extra: lines += ['', 'Ek takip: ' + ' | '.join(extra)]
-    lines += ['', 'Yorum: protein tarafi guclu. Tavuk miktari yuksek oldugu icin kas koruma iyi; yag spreyi ve yumurta yaglarini takipte tutacagiz. Bir sonraki revizede hedefe gore karbonhidrati antrenman gunlerine daha stratejik dagitabiliriz.']
-    return '\n'.join(lines)
-
-
-
 
 # TG_SMART_COACH_V4
 def tg_meal_count(actions):
