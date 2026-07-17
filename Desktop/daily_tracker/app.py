@@ -107,6 +107,8 @@ log = logging.getLogger(__name__)
 # ana app'in gerçek DB_PATH'iyle her zaman aynı dosyaya işaret etsin diye burada eşitliyoruz).
 os.environ.setdefault('DATABASE_PATH', DB_PATH)
 from whoop_integration import whoop_bp, init_whoop_tables, get_workouts_for_date, start_background_sync
+import whoop_integration as _whoop_mod
+_whoop_mod.OP_CUTOFF_HOUR = operation_cutoff_hour()  # workout op-gunu bucket'i app ile ayni kesimi kullansin
 app.register_blueprint(whoop_bp)
 init_whoop_tables()
 start_background_sync()
@@ -380,6 +382,36 @@ def init_db():
 # DB'yi uygulama baslarken otomatik olustur/migrate et
 init_db()
 
+# Ayni ogunun farkli yazimlarini tek kanonik slot'a indir. Kullanicinin OZEL basliklari
+# (Meal 1, Pre Meal, Post Meal...) ASLA degistirilmez - "ogun basligi asla degistirilmez"
+# kurali korunur; sadece ayni kelimenin yazim/dil varyantlari birlesir (kahvaltı/breakfast
+# → kahvalti gibi). Aksi halde Ozet/Dashboard ayni ogunu 3-4 ayri grup olarak gosteriyor.
+MEAL_SLOT_ALIASES = {
+    'kahvaltı': 'kahvalti', 'breakfast': 'kahvalti',
+    'öğle': 'ogle', 'öğlen': 'ogle', 'oglen': 'ogle', 'lunch': 'ogle',
+    'akşam': 'aksam', 'dinner': 'aksam',
+    'atistirma': 'ara', 'atıştırma': 'ara', 'atıştırmalık': 'ara', 'atistirmalik': 'ara',
+    'preworkout': 'pre-workout', 'pre workout': 'pre-workout', 'pre_workout': 'pre-workout',
+    'postworkout': 'post-workout', 'post workout': 'post-workout', 'post_workout': 'post-workout',
+    'night': 'gece',
+}
+
+def normalize_meal_slot(slot):
+    s = (slot or 'extra').strip().lower()
+    return MEAL_SLOT_ALIASES.get(s, s)
+
+def normalize_meal_slots_all():
+    """Tarihi meal_entries kayitlarindaki slot yazim varyantlarini kanonik isme cek
+    (idempotent - her boot'ta calisir, degisiklik yoksa 0 satir gunceller)."""
+    conn = get_db()
+    n = 0
+    for old, new in MEAL_SLOT_ALIASES.items():
+        n += conn.execute("UPDATE meal_entries SET slot=? WHERE slot=?", (new, old)).rowcount
+    conn.commit()
+    conn.close()
+    if n:
+        log.info("Ogun slot normalizasyonu: %d satir kanonik isme guncellendi", n)
+
 def consolidate_water_all_dates():
     """nutrition_logs'ta her tarih icin water_ml'yi tek satirda topla (kirli data temizligi)."""
     conn = get_db()
@@ -412,6 +444,7 @@ def migrate_body_metrics_weight_log():
 
 consolidate_water_all_dates()
 migrate_body_metrics_weight_log()
+normalize_meal_slots_all()
 
 def ensure_user_settings_table():
     conn = get_db()
@@ -1715,7 +1748,7 @@ def _num_or_none(v):
 def api_meal_save():
     data = request.get_json(force=True) or {}
     d = data.get('date', operation_today())
-    slot = data.get('slot', '').strip() or 'extra'
+    slot = normalize_meal_slot(data.get('slot', ''))
     title = data.get('title', '').strip()
     description = data.get('description', '').strip()
     calories = _num_or_none(data.get('calories'))
@@ -3005,11 +3038,21 @@ def tg_store_message(direction, message, chat_id='', username='', actions=None):
     except Exception:
         log.exception("Telegram mesaj kaydi basarisiz")
 
+def telegram_webhook_secret():
+    """Webhook sahteciligine karsi secret: bot token'indan deterministik turetilir,
+    start.py setWebhook'ta ayni degeri Telegram'a verir, Telegram her update'te
+    X-Telegram-Bot-Api-Secret-Token header'inda geri yollar. Ekstra env var gerekmez."""
+    import hashlib
+    return hashlib.sha256(('tg-webhook:' + TELEGRAM_TOKEN).encode()).hexdigest()
+
+
 @app.route('/telegram_webhook', methods=['POST'])
 def telegram_webhook():
     """Telegram webhook endpoint."""
     if not TELEGRAM_TOKEN:
         return 'no token', 200
+    if request.headers.get('X-Telegram-Bot-Api-Secret-Token') != telegram_webhook_secret():
+        return 'forbidden', 403
     data = request.get_json(force=True) or {}
     if not data:
         return 'ok', 200
@@ -3088,7 +3131,7 @@ async def cmd_yemek(u,c):
     try:
         a=c.args
         today=operation_today()
-        slot=a[0] if a else 'ara'
+        slot=normalize_meal_slot(a[0] if a else 'ara')
         cal=int(a[-1]) if a and str(a[-1]).isdigit() else None
         desc=' '.join(a[1:-1] if cal else a[1:])
         db_upsert('nutrition_logs', today, {'meal_type': slot, 'description': desc, 'calories': cal})
@@ -3744,7 +3787,7 @@ def ai_apply_actions(actions):
         try:
             if typ == 'meal':
                 conn = get_db()
-                slot = a.get('slot') or 'extra'
+                slot = normalize_meal_slot(a.get('slot'))
                 title = a.get('title') or a.get('name') or a.get('description') or slot
                 if title and len(title) > 80:
                     title = title[:80]

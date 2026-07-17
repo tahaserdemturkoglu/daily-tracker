@@ -48,6 +48,12 @@ SCOPES = "offline read:recovery read:sleep read:cycles read:workout read:body_me
 # Türkiye saati (DST yok)
 TR_TZ = timezone(timedelta(hours=3))
 
+# Operasyon günü kesim saati: app.py bunu import sonrasında kendi degeriyle senkronlar
+# (operation_cutoff_hour, su an 14). Taha'nin antrenmanlari gece 00:00-05:00 TR araliginda -
+# workout'u start'in TAKVIM gunune yazmak her gece seansini bir sonraki gune kaydiriyordu.
+# Bu yuzden workout bucket'i, saat < cutoff ise bir onceki (operasyon) gunune atar.
+OP_CUTOFF_HOUR = 14
+
 # DB yolu — mevcut app hangi dosyayı kullanıyorsa onu ver
 DB_PATH = os.environ.get("DATABASE_PATH", "tracker.db")
 
@@ -367,6 +373,16 @@ def sync_whoop_data(days=3):
         dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
         return dt.astimezone(TR_TZ).strftime("%Y-%m-%d")
 
+    def bucket_op(dt_str):
+        """UTC timestamp -> OPERASYON gunu: TR lokal saat < cutoff ise onceki gun.
+        Gece antrenmani (or. 00:01 TR) takvimde ertesi gune degil, ait oldugu
+        operasyon gunune yazilir - app.py'nin operation_date mantigiyla ayni."""
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(TR_TZ)
+        d = dt.date()
+        if dt.hour < OP_CUTOFF_HOUR:
+            d = d - timedelta(days=1)
+        return d.strftime("%Y-%m-%d")
+
     # sleep: id -> tarih eşlemesi (recovery sleep_id ile bağlanır)
     sleep_by_id = {}
     for s in sleeps:
@@ -425,7 +441,7 @@ def sync_whoop_data(days=3):
         if not wid or not start_ts:
             continue
         end_ts = w.get("end")
-        d = bucket(start_ts)
+        d = bucket_op(start_ts)
         score = w.get("score") or {}
         dur_min = None
         if end_ts:

@@ -6,7 +6,7 @@ import urllib.request
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 os.environ.setdefault("DISABLE_EMBEDDED_BOT", "1")
 
-from app import app, init_db, PORT, log, TELEGRAM_TOKEN
+from app import app, init_db, PORT, log, TELEGRAM_TOKEN, telegram_webhook_secret
 
 
 def register_webhook():
@@ -23,8 +23,12 @@ def register_webhook():
     webhook_url = f"https://{domain}/telegram_webhook"
     payload = json.dumps({
         'url': webhook_url,
-        'drop_pending_updates': True,
+        # False: redeploy sirasinda kuyrukta bekleyen kullanici mesajlari artik sessizce silinmiyor
+        'drop_pending_updates': False,
         'allowed_updates': ['message', 'callback_query'],
+        # Sahte update POST'larina karsi: Telegram bu degeri her update'te header'da geri yollar,
+        # app.py /telegram_webhook eslesmeyeni 403'ler.
+        'secret_token': telegram_webhook_secret(),
     }).encode()
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook",
