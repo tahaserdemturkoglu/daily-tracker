@@ -729,11 +729,23 @@ def gather_day_snapshot(conn, date_str):
     td = training_day(date_str)
     sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
     session_done = False
+    exercise_names_today = []
     if sess_row and sess_row['value']:
         try:
-            session_done = any(s.get('date') == date_str for s in json.loads(sess_row['value']))
+            all_sessions = json.loads(sess_row['value'])
+            todays = [s for s in all_sessions if s.get('date') == date_str]
+            session_done = bool(todays)
+            for s in todays:
+                exercise_names_today.extend(e.get('name') for e in (s.get('exercises') or []) if e.get('name'))
         except Exception:
             pass
+    # O gun calisilan hareketlerin gercek coklu-seans trendi (o tarihe kadar) - Koc'un
+    # sadece "bugun ne yaptin" degil "bu hareketler nereye gidiyor" bilmesi icin.
+    hareket_trendleri = []
+    if exercise_names_today:
+        all_trends = compute_exercise_trends(end_date=date_str)
+        by_name = {t['exercise']: t for t in all_trends}
+        hareket_trendleri = [by_name[n] for n in set(exercise_names_today) if n in by_name]
     kcal = round(sum(m['calories'] or 0 for m in meals))
     return {
         'date': date_str,
@@ -748,6 +760,7 @@ def gather_day_snapshot(conn, date_str):
         'whoop': dict(whoop) if whoop else None,
         'whoop_workouts': get_workouts_for_date(date_str),
         'supplements': {'taken': supp_taken, 'total': supp_total},
+        'antrenman_hareket_trendleri': hareket_trendleri,
         'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w'])),
     }
 
@@ -787,6 +800,8 @@ def generate_daily_profile_note(date_str):
         'bugun': {
             'antrenman': snap['training'], 'beslenme': snap['nutrition'], 'adim': snap['steps'],
             'kilo': snap['weight'], 'whoop': snap['whoop'], 'takviye': snap['supplements'],
+            'whoop_antrenman_detayi': snap['whoop_workouts'],
+            'hareket_trendleri': snap['antrenman_hareket_trendleri'],
         },
         'dun': {
             'tarih': yday_str, 'antrenman': yday_snap['training'], 'beslenme': yday_snap['nutrition'],
@@ -809,7 +824,13 @@ def generate_daily_profile_note(date_str):
         '- Önceki notlarla karşılaştırınca tekrar eden bir kalıp fark edersen (hafta sonu su düşüklüğü, '
         'belirli antrenmandan sonra recovery düşmesi, geç saatte yeme eğilimi vb.) açıkça belirt.\n'
         '- "bilinen_kalici_notlar" listesindeki bilgileri (ör. cilt/sivilce sorunu gibi) bugünün verisiyle '
-        'alakalıysa (ör. yağlı/süt ürünü ağırlıklı beslenme günü) nazikçe bağlantı kur, alakasızsa hiç değinme.\n\n'
+        'alakalıysa (ör. yağlı/süt ürünü ağırlıklı beslenme günü) nazikçe bağlantı kur, alakasızsa hiç değinme.\n'
+        '- "hareket_trendleri" varsa bugün çalıştığın hareketlerin 3 haftalık gerçek yönünü gösterir '
+        '(yukseliyor/dalgali_net_yukari/platoda/geriliyor, tahmini 1RM bazlı). Tek günlük ağırlık farkına değil '
+        'bu trende güven — "geriliyor" diyorsa gerçekten uyar, "dalgali_net_yukari" diyorsa bugün düşük görünse '
+        'bile net olarak ilerlediğini belirt, yanlış alarm verme.\n'
+        '- "whoop_antrenman_detayi" varsa bugünün gerçek (cihazın algıladığı) antrenman süresi/strain/kalori '
+        'bilgisidir — antrenmandan bahsedeceksen bunu kullan, tahmin etme.\n\n'
         '2-4 cümlelik Türkçe, samimi ama kısa bir günlük gözlem yaz. Tavsiye/emir verme, plan değiştirme '
         'önerisi yapma, sadece gözlemle. Veri eksikse o alan hakkında hiçbir şey uydurma.\n\n'
         '"yeni_kalici_not" alanını NEREDEYSE HER ZAMAN null bırak. Sadece şu ÜÇ koşulun HEPSİ doğruysa doldur: '
@@ -2671,14 +2692,15 @@ _TREND_LABELS = {
 }
 
 
-def compute_exercise_trends(days=21):
-    """Son N gundeki (varsayilan 3 hafta) her hareket icin coklu-seans yuk trendi.
-    Ham agirlik yerine tahmini 1RM kullanir (Epley: agirlik*(1+tekrar/30)) - dusuk
-    tekrar/yuksek agirlik ile yuksek tekrar/dusuk agirlik adil kiyaslansin diye.
-    Vucut agirlikli hareketlerde (weight=0) tekrar sayisi yuk gostergesi olur.
-    Trend, PENCERE ICINDEKI NET yone (ilk vs son kayit) gore siniflandirilir - tek
-    seanslik bir dususu 'gerileme' saymaz, sonra toparlanan bir hareketi 'net yukari'
-    olarak gorur (kullanicinin istedigi nuans budur)."""
+def compute_exercise_trends(days=21, end_date=None):
+    """Son N gundeki (varsayilan 3 hafta, end_date'e kadar - varsayilan bugun) her hareket
+    icin coklu-seans yuk trendi. Ham agirlik yerine tahmini 1RM kullanir (Epley:
+    agirlik*(1+tekrar/30)) - dusuk tekrar/yuksek agirlik ile yuksek tekrar/dusuk agirlik
+    adil kiyaslansin diye. Vucut agirlikli hareketlerde (weight=0) tekrar sayisi yuk
+    gostergesi olur. Trend, PENCERE ICINDEKI NET yone (ilk vs son kayit) gore siniflandirilir
+    - tek seanslik bir dususu 'gerileme' saymaz, sonra toparlanan bir hareketi 'net yukari'
+    olarak gorur (kullanicinin istedigi nuans budur). end_date parametresi, gecmis bir
+    gunun 'o gunku' trendini hesaplamak icin (Coach gunluk notu gibi) - bugune sabitlenmez."""
     conn = get_db()
     row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
     conn.close()
@@ -2689,8 +2711,9 @@ def compute_exercise_trends(days=21):
     except Exception:
         return []
 
-    cutoff = (datetime.strptime(operation_today(), '%Y-%m-%d') - timedelta(days=days)).strftime('%Y-%m-%d')
-    sessions = [s for s in sessions if s.get('date') and s['date'] >= cutoff]
+    end_date = end_date or operation_today()
+    cutoff = (datetime.strptime(end_date, '%Y-%m-%d') - timedelta(days=days)).strftime('%Y-%m-%d')
+    sessions = [s for s in sessions if s.get('date') and cutoff <= s['date'] <= end_date]
     sessions.sort(key=lambda s: s['date'])
 
     by_exercise = {}
