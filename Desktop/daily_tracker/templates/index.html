@@ -1803,14 +1803,15 @@ async function loadNewDashboard(){
   try{
     ndInjectStyle();
     const t0=today();
-    const [d,macro,week7,bm,aiRes,stacks,meals,whoopStatus,whoopDaily,breaks]=await Promise.all([
+    const [d,macro,week7,bm,aiRes,stacks,meals,whoopStatus,whoopDaily,breaks,suppToday]=await Promise.all([
       API('/api/today'),API('/api/macro/today'),API('/api/macro/range?days=7&detail=1'),
       API('/api/body/metrics?days=30'),API('/api/dashboard/ai-insights'),
       API('/api/supplements/stacks'),API('/api/meals/'+t0),
       API('/whoop/status').catch(()=>({connected:false})),API('/whoop/daily/'+t0).catch(()=>({found:false})),
-      API('/api/supplements/breaks').catch(()=>[])
+      API('/api/supplements/breaks').catch(()=>[]),
+      API('/api/supplements/today').catch(()=>null)
     ]);
-    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false},breaks:Array.isArray(breaks)?breaks:[]};
+    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false},breaks:Array.isArray(breaks)?breaks:[],zinc:(suppToday&&suppToday.zinc)||null};
     renderNewDashboard();
     // Insights arka planda uretiliyorsa (gunun ilk acilisi) kisa sure sonra bir kez daha sor -
     // backend artik sayfayi bekletmiyor, taze analiz hazir olunca kart kendini gunceller.
@@ -2286,7 +2287,8 @@ async function ndMarkStack(name){
   }catch(e){toast('Hata oluştu',false);}
 }
 let ND_LAST_STACKS=[], ND_LAST_VITAMINS=[], ND_LAST_BREAKS=[];
-function ndSuppSidebarHtml(stacks,vitamins,breaks){
+const ND_ZINC_NAME='NOW Zinc Picolinate 50mg';
+function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
   // Eski "canli" tasarim geri getirildi (kullanici istegi): akordiyon yok, her urun her
   // zaman kendi cerceveli kutusunda, ✓/○ + doz sagda, renkli buyuk-harf stack basliklari.
   // Break (ara veriliyor) destegi korunur: ara verilen satirlar soluk ⏸, sayaca girmez.
@@ -2309,8 +2311,14 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
           <span style="font-size:13px;font-weight:600;color:${ND.muted}">⏸ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted};text-align:right">Ara · ${breakLeftTxt(bEnd)}</span>
         </div>`;
       }
-      countable++; totalItems++;
       const v=vitByName[it.product_name];
+      if(!v && it.product_name===ND_ZINC_NAME && zinc && zinc.rest_today){
+        // Cinko gun asiri: dun alindi, bugun beklenmiyor - eksik gibi gosterme, sayaca katma.
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px dashed ${ND.border};border-radius:8px;padding:12px 16px;opacity:.5">
+          <span style="font-size:13px;font-weight:600;color:${ND.muted}">↷ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">Gün aşırı · bugün yok</span>
+        </div>`;
+      }
+      countable++; totalItems++;
       if(!v){
         return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px">
           <span style="font-size:13px;font-weight:600;color:${ND.muted}">○ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">${it.dose||1} ${escHtml(it.unit||'')}</span>
@@ -2453,7 +2461,7 @@ function ndCloseDayModal(){$('nd-day-modal-holder')?.remove();}
 
 function renderNewDashboard(){
   const root=$('dash-root');if(!root||!ND_STATE)return;
-  const {d,macro,week7,bm,ai,stacks,meals,whoopStatus,whoopDaily,breaks}=ND_STATE;
+  const {d,macro,week7,bm,ai,stacks,meals,whoopStatus,whoopDaily,breaks,zinc}=ND_STATE;
   const t=getT(d.training_day);
   const tot=macro.totals||{};
   const cal=tot.calories||0,prot=tot.protein_g||0,carb=tot.carbs_g||0,fat=tot.fat_g||0;
@@ -2477,7 +2485,7 @@ function renderNewDashboard(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start">
         ${ndMealLogHtml(groups)}
-        ${ndSuppSidebarHtml(stacks,d.vitamins||[],breaks||[])}
+        ${ndSuppSidebarHtml(stacks,d.vitamins||[],breaks||[],zinc)}
       </div>
     </div>`;
   const weightGoal=Number(t.weight_goal)||0;
@@ -3798,6 +3806,7 @@ const OZP_STATUS_META={
   half_dose:{label:'½ Yarım Doz',color:OZP_C.pur}, eod_skipped:{label:'⚠️ Gün Aşırı Atlandı',color:'var(--yellow)'},
   missed:{label:'✕ Eksik',color:OZP_C.red}, pending:{label:'· Bekliyor',color:'var(--muted2)'},
   on_break:{label:'⏸ Ara Veriliyor',color:'var(--muted2)'},
+  eod_rest:{label:'↷ Gün Aşırı — bugün yok',color:'var(--muted2)'},
 };
 
 async function loadOzet(){
