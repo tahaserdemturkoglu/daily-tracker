@@ -2649,6 +2649,101 @@ def api_training_exercise_sets_update(eid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+def _top_working_set(exercise):
+    """Antrenman.html'nin topWorkingSet()'iyle birebir ayni mantik: ws/bo tipinde,
+    weight>0 veya reps>0 olan setler arasindan (weight,reps) en yuksek olan - iki
+    kaynak arasinda sapma olmasin diye JS'deki secim mantigi burada tekrarlanir."""
+    candidates = [
+        s for s in (exercise.get('sets') or [])
+        if s.get('type') in ('ws', 'bo') and ((s.get('weight') or 0) > 0 or (s.get('reps') or 0) > 0)
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda s: (s.get('weight') or 0, s.get('reps') or 0), reverse=True)
+    return candidates[0]
+
+
+_TREND_LABELS = {
+    'yukseliyor': 'Sürekli yükseliyor',
+    'dalgali_net_yukari': 'Dalgalı ama net olarak yükseliyor',
+    'platoda': 'Platoda, sabit',
+    'geriliyor': 'Net olarak geriliyor',
+}
+
+
+def compute_exercise_trends(days=21):
+    """Son N gundeki (varsayilan 3 hafta) her hareket icin coklu-seans yuk trendi.
+    Ham agirlik yerine tahmini 1RM kullanir (Epley: agirlik*(1+tekrar/30)) - dusuk
+    tekrar/yuksek agirlik ile yuksek tekrar/dusuk agirlik adil kiyaslansin diye.
+    Vucut agirlikli hareketlerde (weight=0) tekrar sayisi yuk gostergesi olur.
+    Trend, PENCERE ICINDEKI NET yone (ilk vs son kayit) gore siniflandirilir - tek
+    seanslik bir dususu 'gerileme' saymaz, sonra toparlanan bir hareketi 'net yukari'
+    olarak gorur (kullanicinin istedigi nuans budur)."""
+    conn = get_db()
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    conn.close()
+    if not row or not row['value']:
+        return []
+    try:
+        sessions = json.loads(row['value'])
+    except Exception:
+        return []
+
+    cutoff = (datetime.strptime(operation_today(), '%Y-%m-%d') - timedelta(days=days)).strftime('%Y-%m-%d')
+    sessions = [s for s in sessions if s.get('date') and s['date'] >= cutoff]
+    sessions.sort(key=lambda s: s['date'])
+
+    by_exercise = {}
+    for s in sessions:
+        for ex in (s.get('exercises') or []):
+            name = ex.get('name')
+            if not name:
+                continue
+            top = _top_working_set(ex)
+            if not top:
+                continue
+            w, r = top.get('weight') or 0, top.get('reps') or 0
+            load = round(w * (1 + r / 30), 1) if w > 0 else r
+            if not load:
+                continue
+            by_exercise.setdefault(name, []).append(
+                {'date': s['date'], 'load': load, 'weight': w, 'reps': r}
+            )
+
+    trends = []
+    for name, points in by_exercise.items():
+        if len(points) < 2:
+            continue
+        first, last = points[0]['load'], points[-1]['load']
+        pct = round((last - first) / first * 100, 1)
+        monotonic_up = all(points[i]['load'] <= points[i + 1]['load'] for i in range(len(points) - 1))
+        if pct >= 3:
+            trend = 'yukseliyor' if monotonic_up else 'dalgali_net_yukari'
+        elif pct <= -3:
+            trend = 'geriliyor'
+        else:
+            trend = 'platoda'
+        trends.append({
+            'exercise': name,
+            'trend': trend,
+            'label': _TREND_LABELS[trend],
+            'change_pct': pct,
+            'sessions': len(points),
+            'first_date': points[0]['date'],
+            'last_date': points[-1]['date'],
+            'last_weight': points[-1]['weight'],
+            'last_reps': points[-1]['reps'],
+        })
+    trends.sort(key=lambda t: t['change_pct'])
+    return trends
+
+
+@app.route('/api/training/trends')
+def api_training_trends():
+    days = int(request.args.get('days', 21))
+    return jsonify(compute_exercise_trends(days=days))
+
+
 @app.route('/api/training/schedule')
 def api_training_schedule():
     today = operation_date()
@@ -3096,6 +3191,7 @@ def _today_ai_context():
         'note': note['note'] if note else '',
         'whoop': dict(whoop_row) if whoop_row else None,
         'whoop_workouts': get_workouts_for_date(today),
+        'hareket_trendleri': compute_exercise_trends(),
     }
     return ctx
 
@@ -3176,6 +3272,7 @@ def _week_ai_context():
         'antrenman_gecmisi': workout_history,
         'whoop_antrenman_gecmisi': whoop_workout_history,
         'su_gecmisi': water_history,
+        'hareket_trendleri': compute_exercise_trends(),
     }
 
 

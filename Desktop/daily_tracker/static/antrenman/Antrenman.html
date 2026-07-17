@@ -706,6 +706,22 @@ window.AntrenmanDataAdapter = {
       if (xhr.status === 200) return JSON.parse(xhr.responseText);
     } catch (e) { console.warn('AntrenmanDataAdapter.loadWhoopDurations failed', e); }
     return {};
+  },
+  // Hareket adi -> {trend, label, change_pct, ...}. 3 haftalik NET yon (tahmini 1RM
+  // bazli) - tek haftalik dususu 'gerileme' saymayan ayni backend hesabi (Koc da bunu kullanir).
+  loadExerciseTrends(days) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', `/api/training/trends?days=${days || 21}`, false);
+      xhr.send(null);
+      if (xhr.status === 200) {
+        const arr = JSON.parse(xhr.responseText);
+        const byName = {};
+        arr.forEach(t => byName[t.exercise] = t);
+        return byName;
+      }
+    } catch (e) { console.warn('AntrenmanDataAdapter.loadExerciseTrends failed', e); }
+    return {};
   }
 };
 </script>
@@ -2918,7 +2934,19 @@ function renderWeekly(){
     bullets.push(volPrev? (pct>=3?`📈 Toplam hacmin geçen haftaya göre <b style="color:var(--success)">%${pct} arttı</b> (${fmtV(volPrev)} → ${fmtV(volCur)}). İyi bir bindirme haftası.` : pct<=-3?`📉 Hacmin geçen haftadan <b>%${-pct} düşük</b> (${fmtV(volPrev)} → ${fmtV(volCur)}) — deload ya da yoğun bir hafta olabilir.`:`⚖️ Hacmin geçen haftayla neredeyse aynı (${fmtV(volCur)}). İstikrarlı gidiyorsun.`) : `Bu hafta toplam ${fmtV(volCur)} hacim.`);
     if(up.length) bullets.push(`💪 <b>${up.length} harekette ilerledin.</b>${topGain?` En güçlü sıçrama: <b>${topGain.n}</b> ${topGain.dw>0?'+'+topGain.dw+'kg':'+'+topGain.dr+' tekrar'}.`:''}`);
     if(same.length) bullets.push(`➖ ${same.length} harekette aynı seviyeyi korudun — bir sonraki hafta küçük bir artış (0.5–1kg veya +1 tekrar) hedefle.`);
-    if(down.length) bullets.push(`⚠️ ${down.length} harekette geriledin: ${down.slice(0,3).map(d=>d.n).join(', ')}. Bu hareketlerde dinlenme/form ya da veri girişini kontrol et.`);
+    if(down.length){
+      // Tek haftalik dusus her zaman gerileme demek degil — 3 haftalik gercek trende (tahmini
+      // 1RM bazli, backend'de hesaplanan) bakip sadece GERCEKTEN geriledigi dogrulananlari uyar,
+      // digerlerini "dalgalanma, sorun degil" diye ayirt et.
+      let trends={}; try{ if(window.AntrenmanDataAdapter&&typeof window.AntrenmanDataAdapter.loadExerciseTrends==='function') trends=window.AntrenmanDataAdapter.loadExerciseTrends(21); }catch(e){}
+      const trulyDown=[], justVariance=[];
+      down.forEach(d=>{
+        const t=trends[d.n];
+        if(t && t.trend!=='geriliyor') justVariance.push(d); else trulyDown.push(d);
+      });
+      if(trulyDown.length) bullets.push(`⚠️ ${trulyDown.length} harekette geriledin: ${trulyDown.slice(0,3).map(d=>d.n).join(', ')}. 3 haftalık trend de düşüşü doğruluyor — dinlenme/form ya da veri girişini kontrol et.`);
+      if(justVariance.length) bullets.push(`🔄 ${justVariance.length} harekette bu hafta düşüş var (${justVariance.slice(0,3).map(d=>d.n).join(', ')}) ama 3 haftalık trende bakınca net olarak ${justVariance.some(d=>trends[d.n]&&trends[d.n].trend!=='platoda')?'yükseliyorsun':'sabitsin'} — tek haftalık dalgalanma, sorun değil.`);
+    }
   } else {
     bullets.push(`Bu ilk haftan — ${cur.length} antrenman, ${fmtV(volCur)} toplam hacim. Gelecek hafta karşılaştırma başlayacak.`);
   }
