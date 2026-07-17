@@ -725,6 +725,8 @@ def gather_day_snapshot(conn, date_str):
     nutrition = conn.execute("SELECT SUM(water_ml) w FROM nutrition_logs WHERE date=?", (date_str,)).fetchone()
     step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (date_str,)).fetchone()
     body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (date_str,)).fetchone()
+    mood_row = conn.execute("SELECT energy, mood, stress, notes FROM mood_logs WHERE date=?", (date_str,)).fetchone()
+    sleep_row = conn.execute("SELECT hours, quality, bedtime, wake_time FROM sleep_logs WHERE date=?", (date_str,)).fetchone()
     whoop = conn.execute(
         "SELECT recovery_score, strain, sleep_hours, sleep_performance, hrv_ms, rhr_bpm FROM whoop_daily WHERE date=?",
         (date_str,)
@@ -775,12 +777,14 @@ def gather_day_snapshot(conn, date_str):
         },
         'steps': int(step_row['steps']) if step_row and step_row['steps'] else None,
         'weight': {'morning': body_row['weight_kg'] if body_row else None, 'night': body_row['weight_kg_night'] if body_row else None},
+        'mood': dict(mood_row) if mood_row else None,
+        'sleep_manuel': dict(sleep_row) if sleep_row else None,
         'whoop': dict(whoop) if whoop else None,
         'whoop_workouts': get_workouts_for_date(date_str),
         'supplements': {'taken': supp_taken, 'total': supp_total},
         'antrenman_hareket_trendleri': hareket_trendleri,
         'cilt': [dict(r) for r in skin_rows],
-        'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w']) or skin_rows),
+        'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w']) or skin_rows or mood_row or sleep_row),
     }
 
 def generate_daily_profile_note(date_str):
@@ -821,11 +825,12 @@ def generate_daily_profile_note(date_str):
             'kilo': snap['weight'], 'whoop': snap['whoop'], 'takviye': snap['supplements'],
             'whoop_antrenman_detayi': snap['whoop_workouts'],
             'hareket_trendleri': snap['antrenman_hareket_trendleri'],
-            'cilt': snap['cilt'],
+            'cilt': snap['cilt'], 'ruh_hali': snap['mood'], 'uyku_manuel': snap['sleep_manuel'],
         },
         'dun': {
             'tarih': yday_str, 'antrenman': yday_snap['training'], 'beslenme': yday_snap['nutrition'],
-            'kilo': yday_snap['weight'], 'cilt': yday_snap['cilt'],
+            'kilo': yday_snap['weight'], 'cilt': yday_snap['cilt'], 'ruh_hali': yday_snap['mood'],
+            'uyku_manuel': yday_snap['sleep_manuel'],
         } if yday_snap['has_data'] else None,
         'sabah_kilo_farki_dunden_bugune_kg': weight_delta,
         'kilo_trend_son_gunler': [{'date': r['date'], 'kg': r['weight_kg']} for r in reversed(weight_trend)],
@@ -851,6 +856,9 @@ def generate_daily_profile_note(date_str):
         'bile net olarak ilerlediğini belirt, yanlış alarm verme.\n'
         '- "whoop_antrenman_detayi" varsa bugünün gerçek (cihazın algıladığı) antrenman süresi/strain/kalori '
         'bilgisidir — antrenmandan bahsedeceksen bunu kullan, tahmin etme.\n'
+        '- "ruh_hali" (enerji/mood/stres, kullanıcının kendi girdiği) ve "uyku_manuel" (WHOOP dışı elle girilen '
+        'uyku saati/kalitesi) varsa bunlar en kişisel verilerdir — düşük enerji/yüksek stres günlerini beslenme, '
+        'antrenman yoğunluğu veya uykuyla ilişkilendirmeye çalış, görmezden gelme.\n'
         '- "cilt" listesi bugün/dün kaydedilen cilt/sivilce takibidir (alan, ürün, durum) — beslenmeyle '
         '(yağlı/süt ürünü/şeker ağırlıklı gün) ya da uyku/stresle bağlantılı olabilir, alakalıysa belirt.\n\n'
         '2-4 cümlelik Türkçe, kısa bir günlük gözlem yaz — ama ROBOT gibi nötr değil, gerçek bir arkadaş/koç '
