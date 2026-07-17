@@ -534,12 +534,14 @@ def normalize_meal_slots_all():
 # DB'si lokalden ayri oldugu icin lokal DB'de yapilan katalog duzeltmeleri prod'a hic
 # ulasmamisti (prod hala KSM-66/KFD/eski yapiyi gosteriyordu) - artik kod tasiyor.
 CANONICAL_SUPPLEMENT_STACKS = [
+    # NAC 2026-07-17 itibariyle gunde 2 kez: sabah kahvaltiyla + gece (kullanici istegi,
+    # eskiden Ac Karna'daydi).
     ('Aç Karna', [
-        ('NOW NAC 600mg', 1, 'kapsül'),
         ("Garden of Life Dr. Formulated Probiotics Once Daily Men's", 1, 'kapsül'),
         ('Weider Ashwagandha Professional', 2, 'kapsül'),
     ]),
     ('Sabah/Kahvaltı', [
+        ('NOW NAC 600mg', 1, 'kapsül'),
         ('Optimum Nutrition Collagen Peptides (Unflavoured)', 1, 'ölçek'),
         ('Thorne Vitamin D + K2', 4, 'damla'),
         ('Life Extension Mega EPA/DHA (Omega-3)', 3, 'kapsül'),
@@ -556,6 +558,7 @@ CANONICAL_SUPPLEMENT_STACKS = [
         ('NOW Melatonin 1mg', 3, 'tablet'),
         ('NOW Glycine 1000mg', 3, 'kapsül'),
         ('NOW L-Theanine Double Strength', 1, 'kapsül'),
+        ('NOW NAC 600mg', 1, 'kapsül'),
     ]),
     ('Pre-workout', [
         ("Doctor's Best L-Citrulline Powder", 8, 'gram'),
@@ -3757,9 +3760,10 @@ STANDART PANCAKE V2:
 - 4 yumurta, 200g sivi yumurta beyazi, 25g yulaf, 50g kuru kayisi, 200g cilek, 50ml sekersiz badem sutu, 6g kakao, 2 fis GymBeam.
 
 SUPPLEMENT SISTEMI (5 gercek stack, guncel):
-- Ac Karna: NOW NAC 600mg (1 kapsul), Garden of Life Dr. Formulated Probiotics Once Daily Men's (1 kapsul), Weider Ashwagandha Professional (2 kapsul).
-- Sabah/Kahvalti: Optimum Nutrition Collagen Peptides Unflavoured (1 olcek), Thorne Vitamin D+K2 (4 damla), Life Extension Mega EPA/DHA Omega-3 (3 kapsul), NOW Magtein Magnesium L-Threonate (1 kapsul), Life Extension MacuGuard with Saffron - goz vitamini (1 kapsul), Life Extension BioActive Complete B-Complex (1 kapsul), California Gold Nutrition Gold C 1000mg (1 tablet), NOW L-Theanine Double Strength (1 kapsul), NOW Zinc Picolinate 50mg - gun asiri (1 kapsul), NOW Extra Strength Astaxanthin 10mg (1 kapsul).
-- Gece: NOW Magnesium Glycinate (3 kapsul), NOW Melatonin 1mg (3 tablet), NOW Glycine 1000mg (3 kapsul), NOW L-Theanine Double Strength (1 kapsul). Ashwagandha Gece'de DEGIL, Ac Karna'da.
+- Ac Karna: Garden of Life Dr. Formulated Probiotics Once Daily Men's (1 kapsul), Weider Ashwagandha Professional (2 kapsul).
+- Sabah/Kahvalti: NOW NAC 600mg (1 kapsul), Optimum Nutrition Collagen Peptides Unflavoured (1 olcek), Thorne Vitamin D+K2 (4 damla), Life Extension Mega EPA/DHA Omega-3 (3 kapsul), NOW Magtein Magnesium L-Threonate (1 kapsul), Life Extension MacuGuard with Saffron - goz vitamini (1 kapsul), Life Extension BioActive Complete B-Complex (1 kapsul), California Gold Nutrition Gold C 1000mg (1 tablet), NOW L-Theanine Double Strength (1 kapsul), NOW Zinc Picolinate 50mg - gun asiri (1 kapsul), NOW Extra Strength Astaxanthin 10mg (1 kapsul).
+- Gece: NOW Magnesium Glycinate (3 kapsul), NOW Melatonin 1mg (3 tablet), NOW Glycine 1000mg (3 kapsul), NOW L-Theanine Double Strength (1 kapsul), NOW NAC 600mg (1 kapsul). Ashwagandha Gece'de DEGIL, Ac Karna'da.
+- NAC gunde 2 kez alinir (2026-07-17'den beri): sabah kahvaltiyla + gece. 'NAC aldim' derse hangi ogunde oldugunu baglamdan cikar (sabah saatleri=Sabah/Kahvalti, gece=Gece); belirsizse sor.
 - Pre-workout: Doctor's Best L-Citrulline Powder (8g), KFD Premium Beta-Alanine (2g), Optimum Nutrition Electrolyte Powder Lemon (8g), Swedish Supplements Taurine (2g).
 - Post-workout: California Gold Nutrition SPORT Creatine Monohydrate (5g).
 - Zinc 50mg yuksek doz; gun asiri takip edilir, her gun sart gibi yazma.

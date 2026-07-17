@@ -2235,64 +2235,62 @@ async function ndMarkStack(name){
     loadDashboard();
   }catch(e){toast('Hata oluştu',false);}
 }
-let ND_SUPP_EXPANDED={}, ND_LAST_STACKS=[], ND_LAST_VITAMINS=[], ND_LAST_BREAKS=[];
-function ndToggleStack(name){
-  ND_SUPP_EXPANDED[name]=!ND_SUPP_EXPANDED[name];
-  const el=$('nd-supp-sidebar');
-  if(el) el.outerHTML=ndSuppSidebarHtml(ND_LAST_STACKS,ND_LAST_VITAMINS,ND_LAST_BREAKS);
-}
+let ND_LAST_STACKS=[], ND_LAST_VITAMINS=[], ND_LAST_BREAKS=[];
 function ndSuppSidebarHtml(stacks,vitamins,breaks){
+  // Eski "canli" tasarim geri getirildi (kullanici istegi): akordiyon yok, her urun her
+  // zaman kendi cerceveli kutusunda, ✓/○ + doz sagda, renkli buyuk-harf stack basliklari.
+  // Break (ara veriliyor) destegi korunur: ara verilen satirlar soluk ⏸, sayaca girmez.
   ND_LAST_STACKS=stacks||[]; ND_LAST_VITAMINS=vitamins||[]; ND_LAST_BREAKS=breaks||[];
   const vitByName={};(vitamins||[]).forEach(v=>{vitByName[v.name]=v;});
   const brokenStacks=new Set((breaks||[]).filter(b=>b.target_type==='stack').map(b=>b.target_name));
   const brokenProducts=new Set((breaks||[]).filter(b=>b.target_type==='product').map(b=>b.target_name));
   let totalItems=0,totalTaken=0;
-  const groups=stacks.map((s)=>{
+  const groupColors=['#38BDF8','#FFB020','#FF9E4A','#A78BFA','#2DD4BF'];
+  const groups=stacks.map((s,i)=>{
     const items=s.items||[];
     const explicitStackBreak=brokenStacks.has(s.name);
     let taken=0,countable=0;
-    const itemRows=items.map(it=>{
+    const rows=items.map(it=>{
       const onBreak=explicitStackBreak||brokenProducts.has(it.product_name);
-      if(onBreak) return {name:it.product_name, taken:false, onBreak:true, meta:{label:'⏸ Ara Veriliyor',color:ND.muted}};
+      if(onBreak){
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px;opacity:.55">
+          <span style="font-size:13px;font-weight:600;color:${ND.muted}">⏸ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">Ara veriliyor</span>
+        </div>`;
+      }
       countable++; totalItems++;
       const v=vitByName[it.product_name];
-      const st=v?vitStatusOf(v):null;
-      const isTaken=!!(st&&['taken','eod_taken','half_dose'].includes(st));
-      if(isTaken){taken++;totalTaken++;}
-      return {name:it.product_name, taken:isTaken, onBreak:false, meta:st?(VIT_STATUS_META[st]||VIT_STATUS_META.taken):null};
-    });
-    // Stack rozeti hem gercek stack-seviyeli aralara hem de "stack'teki tek urun ayri ayri
-    // paused edildi ama sonucta hepsi kapandi" durumuna gore tetiklenir (ornek: tek urunlu
-    // Post-workout'ta urun-bazli break de ayni "Ara Veriliyor" gorselini vermeli).
+      if(!v){
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px">
+          <span style="font-size:13px;font-weight:600;color:${ND.muted}">○ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">${it.dose||1} ${escHtml(it.unit||'')}</span>
+        </div>`;
+      }
+      const st=vitStatusOf(v),meta=VIT_STATUS_META[st]||VIT_STATUS_META.taken;
+      const mc=(st==='taken')?ND.text2:meta.color;
+      if(['taken','eod_taken','half_dose'].includes(st)){taken++;totalTaken++;}
+      const strike=st==='missed'?'text-decoration:line-through':'';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${st==='taken'?ND.bg:ndHexA(mc,.08)};border:1px solid ${st==='taken'?ND.border:ndHexA(mc,.32)};border-radius:8px;padding:12px 16px">
+        <span style="font-size:13px;font-weight:600;color:${mc};${strike}">${meta.emoji} ${escHtml(it.product_name)}</span>
+        <span style="font-size:11px;color:${st==='taken'?ND.muted:mc}">${it.dose||1} ${escHtml(it.unit||'')}</span>
+      </div>`;
+    }).join('');
+    const c=groupColors[i%groupColors.length];
     const stackOnBreak=items.length>0&&countable===0;
-    const full=countable>0&&taken===countable;
-    const pct=countable?Math.round(taken/countable*100):0;
-    const expanded=!!ND_SUPP_EXPANDED[s.name];
-    const barColor=full?'#2fd6b0':taken>0?'#ffd166':'#3a4358';
     const nameEsc=escHtml(s.name).replace(/'/g,"\\'");
-    const itemsHtml=expanded?`<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid ${ND.border2}">
-      ${itemRows.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px">
-        <span style="color:${r.taken?ND.text:ND.muted}">${r.onBreak?'⏸':(r.taken?'✓':'○')} ${escHtml(r.name)}</span>
-        ${r.meta?`<span style="color:${r.meta.color};font-size:10px;font-weight:700">${r.meta.label}</span>`:''}
-      </div>`).join('')}
-      ${(!full&&!stackOnBreak)?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="align-self:flex-start;margin-top:4px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:''}
-    </div>`:'';
-    return `<div onclick="ndToggleStack('${nameEsc}')" style="background:#12161F;border:1px solid ${ND.border2};border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <span style="font-size:10px;color:${ND.muted};display:inline-block;transition:transform .15s;transform:rotate(${expanded?90:0}deg)">▸</span>
-          <span style="font-size:13px;font-weight:700;color:${ND.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          ${stackOnBreak?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${ND.muted}">⏸ Ara Veriliyor</span>`:`
-          <div style="width:64px;height:5px;border-radius:3px;background:#1e2430;overflow:hidden"><div style="width:${pct}%;height:100%;background:${barColor}"></div></div>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${barColor}">${taken}/${countable}</span>`}
-        </div>
+    const full=countable>0&&taken===countable;
+    const badge=stackOnBreak
+      ?`<span style="font-size:10px;color:${ND.muted}">⏸ ara veriliyor</span>`
+      :`<span style="font-size:10px;color:${full?ND.whoop:ND.kcal}">${taken}/${countable}</span>`;
+    const markBtn=(!full&&!stackOnBreak)?`<button onclick="ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:'';
+    return `<div style="background:${ndHexA(c,.07)};border:1px solid ${ndHexA(c,.25)};border-radius:12px;padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${c}">● ${escHtml((s.name||'').toUpperCase())}</div>
+        ${badge}
       </div>
-      ${itemsHtml}
+      <div style="display:flex;flex-direction:column;gap:6px">${rows||`<div style="color:${ND.muted};font-size:12px">Ürün yok</div>`}</div>
+      ${markBtn}
     </div>`;
   }).join('');
-  return `<div id="nd-supp-sidebar" style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;position:sticky;top:16px">
+  return `<div id="nd-supp-sidebar" style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:15px;font-weight:700">Takviye Stack</div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -2300,7 +2298,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
         <button onclick="ndMarkAllSupps()" id="nd-mark-all-btn" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:11px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü işaretle</button>
       </div>
     </div>
-    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Bir stack'e tıkla, ürünleri gör.</div>
+    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Günlük protokol, uyku stack ve vitaminler.</div>
     ${groups||`<div style="color:${ND.muted};font-size:13px">Aktif takviye stack yok</div>`}
   </div>`;
 }
