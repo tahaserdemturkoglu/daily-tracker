@@ -762,6 +762,10 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
           <button class="btn btn-blue btn-sm" onclick="saveShift()">Kaydet</button>
         </div>
         <div id="settings-shift-info" style="font-size:.72rem;color:var(--muted);margin-top:8px"></div>
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.5px;color:var(--muted);margin-top:14px;text-transform:uppercase">Vardiya Şablonları</div>
+        <div style="font-size:.7rem;color:var(--muted2);margin:2px 0 8px">5 vardiyanı bir kez tanımla, sonra tek tıkla (veya Telegram'a "2. shifte geçtim" yazarak) geçiş yap.</div>
+        <div id="settings-shift-templates" style="display:flex;flex-direction:column;gap:6px">Yükleniyor…</div>
+        <button class="btn btn-sm btn-ghost" style="margin-top:8px" onclick="saveShiftTemplates()">Şablonları Kaydet</button>
       </div>
 
       <!-- Takviye Molaları -->
@@ -1412,7 +1416,43 @@ async function settingsLoadShift(){
       en.value=(s.end||'').padStart(5,'0');
       if(info) info.textContent=`Aktif: ${s.name} · Gün kesimi: ${String(s.cutoff_hour).padStart(2,'0')}:00 (bu saatten önceki kayıtlar önceki güne yazılır)`;
     }
+    settingsRenderShiftTemplates((r&&r.templates)||[],(s&&s.name)||'');
   }catch(e){}
+}
+function settingsRenderShiftTemplates(templates,activeName){
+  const el=$('settings-shift-templates');if(!el)return;
+  window._shiftTemplates=templates;
+  el.innerHTML=templates.map((t,i)=>{
+    const isActive=t.start&&`${t.start}-${t.end}`===activeName;
+    return `<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid ${isActive?'var(--teal)':'var(--border)'};border-radius:10px;padding:6px 10px">
+      <span style="font-size:.74rem;font-weight:800;min-width:48px;color:${isActive?'var(--teal)':'var(--text)'}">${escHtml(t.name||('Shift '+(i+1)))}</span>
+      <input type="time" data-tpl-start="${i}" value="${escHtml(t.start||'')}" style="flex:1;min-width:0">
+      <input type="time" data-tpl-end="${i}" value="${escHtml(t.end||'')}" style="flex:1;min-width:0">
+      ${isActive?'<span style="font-size:.66rem;color:var(--teal);font-weight:700;flex-shrink:0">✓ aktif</span>':`<button class="btn btn-xs btn-blue" style="flex-shrink:0;font-size:.66rem" onclick="applyShiftTemplate(${i})">Uygula</button>`}
+    </div>`;
+  }).join('');
+}
+function _collectShiftTemplates(){
+  return (window._shiftTemplates||[]).map((t,i)=>({
+    name:t.name||('Shift '+(i+1)),
+    start:(document.querySelector(`[data-tpl-start="${i}"]`)||{}).value||'',
+    end:(document.querySelector(`[data-tpl-end="${i}"]`)||{}).value||'',
+  }));
+}
+async function saveShiftTemplates(){
+  const templates=_collectShiftTemplates().map(t=>({...t}));
+  const r=await POST('/api/settings/shift-templates',{templates});
+  if(r&&r.ok){toast('Şablonlar kaydedildi',true);settingsLoadShift();}
+  else toast((r&&r.error)||'Hata oluştu',false);
+}
+async function applyShiftTemplate(i){
+  const t=_collectShiftTemplates()[i];
+  if(!t||!t.start||!t.end) return toast('Önce bu şablonun saatlerini doldur',false);
+  // Sablonda degisiklik yapildiysa once sessizce kaydet, sonra uygula
+  await POST('/api/settings/shift-templates',{templates:_collectShiftTemplates()}).catch(()=>{});
+  const r=await POST('/api/settings/shift',{start:t.start,end:t.end,label:t.name});
+  if(r&&r.ok){toast(`${t.name} (${t.start}-${t.end}) aktif`,true);settingsLoadShift();}
+  else toast((r&&r.error)||'Hata oluştu',false);
 }
 async function saveShift(){
   const st=($('settings-shift-start')||{}).value,en=($('settings-shift-end')||{}).value;

@@ -1585,6 +1585,53 @@ def api_settings():
         result = {r['key']: r['value'] for r in rows}
         return jsonify(result)
 
+# 5 vardiya sablonu: kullanici 5 farkli vardiyada donusumlu calisiyor. Shift 1
+# (14:00-22:00) pazartesiden itibaren gecerli olacak; Shift 2 su anki aksam vardiyasi.
+# Kalan 3'unu kullanici Ayarlar'dan bir kez doldurur, sonra tek tikla/tek mesajla gecis.
+DEFAULT_SHIFT_TEMPLATES = [
+    {'name': 'Shift 1', 'start': '14:00', 'end': '22:00'},
+    {'name': 'Shift 2', 'start': '18:00', 'end': '03:00'},
+    {'name': 'Shift 3', 'start': '', 'end': ''},
+    {'name': 'Shift 4', 'start': '', 'end': ''},
+    {'name': 'Shift 5', 'start': '', 'end': ''},
+]
+
+def get_shift_templates():
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM user_settings WHERE key='shift_templates'").fetchone()
+        conn.close()
+        if row and row[0]:
+            data = json.loads(row[0])
+            if isinstance(data, list) and data:
+                return data
+    except Exception:
+        pass
+    return [dict(t) for t in DEFAULT_SHIFT_TEMPLATES]
+
+
+def tg_gunaydin_reply(raw, now=None):
+    """Telegram'a 'gunaydin' yazilirsa ve saat henuz cutoff'tan ONCEyse (erken uyanma),
+    operasyon gununu bugunun takvim gunune zorlar - sayfa sifirlanir, yeni gun baslar.
+    force_operation_date operation_date() icinde zaten sadece gercek bugunle eslesirse
+    gecerli ve ertesi gun otomatik temizleniyor. Donen dict: {'reply': str, 'reset': bool}.
+    reply doluysa kisa selam mesajidir (mesaj sadece selamsa) - direkt gonderilip donulur;
+    reset=True ama reply bossa mesajin devami normal akisla islenir, sonuca not eklenir."""
+    norm = _tg_norm(raw or '')
+    if 'gunaydin' not in norm and 'yeni gune basla' not in norm:
+        return {'reply': '', 'reset': False}
+    now = now or now_istanbul()
+    if now.hour >= operation_cutoff_hour(now):
+        return {'reply': '', 'reset': False}  # cutoff gecti, zaten yeni gun - AI normal selamlasir
+    today_cal = now.date().isoformat()
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('force_operation_date', ?)", (today_cal,))
+    conn.commit(); conn.close()
+    short = len(norm.strip()) <= 30
+    reply = f"Günaydın! ☀️ Erken kalkmışsın — yeni gün başlatıldı ({today_cal}). Sayaçlar sıfırdan, gününe başlayabilirsin." if short else ''
+    return {'reply': reply, 'reset': True}
+
+
 def apply_work_shift(start, end, label=''):
     """Aktif vardiyayi kaydeder ve tum bagimli sistemleri (op-gunu kesimi, WHOOP workout
     bucket'i) hemen gunceller. Hem /api/settings/shift hem Telegram work_shift action'i
@@ -1601,6 +1648,12 @@ def apply_work_shift(start, end, label=''):
     return current_shift_info()
 
 
+def _valid_shift_time(s):
+    """SS:DD formati + gecerli saat araligi (00-23:00-59)."""
+    m = re.match(r'^(\d{1,2}):(\d{2})$', s or '')
+    return bool(m) and int(m.group(1)) <= 23 and int(m.group(2)) <= 59
+
+
 @app.route('/api/settings/shift', methods=['GET', 'POST'])
 def api_settings_shift():
     """Vardiya goruntule/degistir. Kesim saati vardiya bitis+11 kuralindan otomatik turer."""
@@ -1608,11 +1661,32 @@ def api_settings_shift():
         data = request.get_json(force=True) or {}
         start = (data.get('start') or '').strip()
         end = (data.get('end') or '').strip()
-        if not re.match(r'^\d{1,2}:\d{2}$', start) or not re.match(r'^\d{1,2}:\d{2}$', end):
+        if not _valid_shift_time(start) or not _valid_shift_time(end):
             return jsonify({'ok': False, 'error': 'start/end SS:DD formatinda olmali (or. 14:00)'}), 400
         info = apply_work_shift(start, end, (data.get('label') or '').strip())
         return jsonify({'ok': True, 'shift': info})
-    return jsonify({'shift': current_shift_info()})
+    return jsonify({'shift': current_shift_info(), 'templates': get_shift_templates()})
+
+
+@app.route('/api/settings/shift-templates', methods=['POST'])
+def api_settings_shift_templates():
+    """5 vardiya sablonunu kaydeder. Bos start/end = henuz tanimlanmamis sablon (gecerli)."""
+    data = request.get_json(force=True) or {}
+    templates = data.get('templates')
+    if not isinstance(templates, list) or not (1 <= len(templates) <= 8):
+        return jsonify({'ok': False, 'error': 'templates listesi gerekli'}), 400
+    cleaned = []
+    for i, t in enumerate(templates, start=1):
+        st = (t.get('start') or '').strip()
+        en = (t.get('end') or '').strip()
+        if (st or en) and not (_valid_shift_time(st) and _valid_shift_time(en)):
+            return jsonify({'ok': False, 'error': f'Shift {i}: saatler SS:DD formatinda olmali'}), 400
+        cleaned.append({'name': (t.get('name') or f'Shift {i}').strip(), 'start': st, 'end': en})
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('shift_templates', ?)",
+                 (json.dumps(cleaned, ensure_ascii=False),))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'templates': cleaned})
 
 
 @app.route('/api/new-day', methods=['POST'])
@@ -3875,6 +3949,9 @@ def _claude_call(user_text):
     ctx = _today_ai_context()
     week_ctx = _week_ai_context()
     besin_db_ctx = _besin_db_for_prompt()
+    _shift_tpl_txt = ', '.join(
+        f"{t['name']}={t['start']}-{t['end']}" for t in get_shift_templates() if t.get('start')
+    ) or 'henuz tanimli sablon yok'
     system_prompt = (
         TAHA_COACHING_POLICY + "\n" + besin_db_ctx + "\n" +
         "Sen Taha Serdem'in kişisel antrenman ve günlük performans koçusun. "
@@ -3892,7 +3969,8 @@ def _claude_call(user_text):
         '{"type":"work_shift","start":"14:00","end":"22:00"},'
         '{"type":"note","date":"YYYY-MM-DD","note":"..."}'
         ']}\n'
-        'Vardiya kurali: kullanici calisma saatlerinin degistigini soylerse (or. "pazartesiden itibaren oglen 2 aksam 10 calisiyorum") work_shift action uret - start/end 24 saat formatinda. Gun kesim saati ve gece-kayit mantigi otomatik guncellenir.\n'
+        'Vardiya kurali: kullanici calisma saatlerinin degistigini soylerse (or. "pazartesiden itibaren oglen 2 aksam 10 calisiyorum") work_shift action uret - start/end 24 saat formatinda. Gun kesim saati ve gece-kayit mantigi otomatik guncellenir. '
+        f'Kayitli vardiya sablonlari: {_shift_tpl_txt}. "1. shifte gectim / shift 2 basladi" gibi mesajlarda ilgili sablonun saatleriyle work_shift uret.\n'
         f'Tarih kuralı: Kullanıcı tarih belirtmemişse date={operation_today()} (bugün). '
         f'"Dün" derse date={(operation_date()-timedelta(days=1)).isoformat()}. '
         '"X gün önce" veya "X Haziran" gibi ifadeleri doğru tarihe çevir. '
@@ -4273,7 +4351,7 @@ def ai_apply_actions(actions):
             elif typ == 'work_shift':
                 st = (a.get('start') or '').strip()
                 en = (a.get('end') or '').strip()
-                if re.match(r'^\d{1,2}:\d{2}$', st) and re.match(r'^\d{1,2}:\d{2}$', en):
+                if _valid_shift_time(st) and _valid_shift_time(en):
                     info = apply_work_shift(st, en, a.get('label') or '')
                     saved.append(f"vardiya {st}-{en} (gün kesimi {info['cutoff_hour']:02d}:00)")
             elif typ in ('body_weight', 'weight', 'kilo'):
@@ -5694,6 +5772,12 @@ async def cmd_chat_ai(u, c):
 
     tg_store_message('in', raw, chat_id, username)
     tg_touch_heartbeat('message', raw) if 'tg_touch_heartbeat' in globals() else None
+    gunaydin = tg_gunaydin_reply(raw) if 'tg_gunaydin_reply' in globals() else {'reply': '', 'reset': False}
+    if gunaydin['reply']:
+        tg_store_message('out', gunaydin['reply'], chat_id, 'AI Coach', [])
+        await u.message.reply_text(gunaydin['reply'])
+        return
+    gunaydin_reset = gunaydin['reset']
     training_stack_reply = tg_try_training_stack_template(raw) if 'tg_try_training_stack_template' in globals() else ''
     if training_stack_reply:
         tg_store_message('out', training_stack_reply, chat_id, 'AI Coach', [])
@@ -5825,6 +5909,8 @@ async def cmd_chat_ai(u, c):
     bot_notes = [a.get('text','') for a in actions if isinstance(a, dict) and a.get('type') == '_bot_note']
     if bot_notes:
         reply += '\n\n' + '\n'.join(bot_notes)
+    if 'gunaydin_reset' in locals() and gunaydin_reset:
+        reply += "\n\n☀️ Yeni gün başlatıldı — sayaçlar sıfırdan."
     if 'before_sleep_count' in locals() and before_sleep_count > after_sleep_count:
         reply += "\n\nUyku notu: uyuyacağım/yatacağım ifadesini saat olarak algılamadım; uyku süresi kaydetmedim. Uyandığında kalkış saatini yazarsan gerçek süreyi işleriz."
     if template_title:
