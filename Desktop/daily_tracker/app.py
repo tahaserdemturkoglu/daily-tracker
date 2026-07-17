@@ -4,7 +4,7 @@
 import os, sqlite3, threading, asyncio, json, logging, re
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect
 
 _TZ_ISTANBUL = ZoneInfo('Europe/Istanbul')
 
@@ -50,22 +50,52 @@ CYCLE_START = _cfg.get('CYCLE_START', date.today().isoformat())
 # OPERATION_DAY_CUTOFF_V1
 OPERATION_DAY_CUTOFF_HOUR = int(os.environ.get('OPERATION_DAY_CUTOFF_HOUR', _cfg.get('OPERATION_DAY_CUTOFF_HOUR', 6)))
 
-# SHIFT_AWARE_OPERATION_DAY_V1
+# SHIFT_AWARE_OPERATION_DAY_V2 - vardiya artik DINAMIK. Taha 2 haftada bir donen 6 farkli
+# vardiyada calisiyor (or. su an 18:00-03:00, pazartesiden itibaren 14:00-22:00). Aktif
+# vardiya user_settings['work_shift'] JSON'unda tutulur; Ayarlar sayfasindan veya Telegram'a
+# dogal dille ("pazartesiden itibaren oglen 2 aksam 10 calisiyorum") soylenerek guncellenir.
+# Gun kesim saati (operasyon gunu siniri) vardiya bitisinden turetilir: bitis + 11 saat
+# (18-03 vardiyasinda 03+11=14:00 - onceki sabit degerle birebir ayni sonuc).
 SHIFT_TRANSITION_DATE = date(2026, 6, 22)
 SHIFT_BLOCK_DAYS = 14
+_shift_cache = {'ts': 0.0, 'val': None}
+
+def _default_shift():
+    return {'start': '18:00', 'end': '03:00', 'label': 'akşam vardiyası'}
+
+def invalidate_shift_cache():
+    _shift_cache['ts'] = 0.0
+    _shift_cache['val'] = None
 
 def current_shift_info(now=None):
-    """
-    Sabit 18:00-03:00 vardiyasi (2026-07-06 itibariyle).
-    Uyanis ~14:15, uyku ~06:45. Gun siniri 14:00.
-    """
+    import time as _time
+    s = _shift_cache['val']
+    if s is None or _time.time() - _shift_cache['ts'] > 30:
+        s = _default_shift()
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            row = conn.execute("SELECT value FROM user_settings WHERE key='work_shift'").fetchone()
+            conn.close()
+            if row and row[0]:
+                data = json.loads(row[0])
+                if data.get('start') and data.get('end'):
+                    s = data
+        except Exception:
+            pass
+        _shift_cache['val'] = s
+        _shift_cache['ts'] = _time.time()
+    try:
+        end_h = int(str(s['end']).split(':')[0]) % 24
+    except Exception:
+        end_h = 3
+    cutoff = (end_h + 11) % 24
     return {
-        'name': '18:00-03:00',
-        'label': 'aksam vardiyasi',
-        'start': '18:00',
-        'end': '03:00',
-        'cutoff_hour': 14,
-        'late_window': '00:00-13:59',
+        'name': f"{s['start']}-{s['end']}",
+        'label': s.get('label') or 'vardiya',
+        'start': s['start'],
+        'end': s['end'],
+        'cutoff_hour': cutoff,
+        'late_window': f"00:00-{max(cutoff - 1, 0):02d}:59" if cutoff > 0 else 'yok',
     }
 
 def operation_cutoff_hour(now=None):
@@ -103,6 +133,59 @@ app = Flask(__name__, template_folder='templates')
 logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
+# ─── SITE ŞİFRE KAPISI ───────────────────────────────────────────────────────
+# Denetim bulgusu: sitenin tamami auth'suz public'ti - URL'yi bilen herkes tum saglik
+# verisini okuyabilir/silebilirdi. SITE_PASSWORD env degiskeni TANIMLIYSA devreye girer;
+# tanimli degilse kapi kapali kalmaz (deploy sirasinda kilitlenme olmasin - Railway
+# Variables'a SITE_PASSWORD ekleyince aktiflesir). Cookie 1 yil gecerli, tek girisle kalir.
+SITE_PASSWORD = os.environ.get('SITE_PASSWORD', _cfg.get('SITE_PASSWORD', '')).strip()
+import hashlib as _hashlib
+app.secret_key = _hashlib.sha256(('site-session:' + (TELEGRAM_TOKEN or 'dev-secret')).encode()).hexdigest()
+app.permanent_session_lifetime = timedelta(days=365)
+
+# Dis servislerin cagirdigi route'lar kapi disinda kalmali:
+# - /telegram_webhook: Telegram POST'lari (kendi secret_token korumasi var)
+# - /whoop/callback: WHOOP OAuth donusu
+_AUTH_EXEMPT_PATHS = {'/login', '/telegram_webhook', '/whoop/callback'}
+
+@app.before_request
+def _site_auth_gate():
+    if not SITE_PASSWORD:
+        return
+    if request.path in _AUTH_EXEMPT_PATHS:
+        return
+    if session.get('authed'):
+        return
+    if request.path.startswith('/api/') or request.path.startswith('/whoop/'):
+        return jsonify({'error': 'auth required'}), 401
+    return redirect('/login')
+
+@app.route('/login', methods=['GET', 'POST'])
+def site_login():
+    if not SITE_PASSWORD or session.get('authed'):
+        return redirect('/')
+    error = ''
+    if request.method == 'POST':
+        import hmac as _hmac
+        pw = (request.form.get('password') or '').strip()
+        if pw and _hmac.compare_digest(pw, SITE_PASSWORD):
+            session.permanent = True
+            session['authed'] = True
+            return redirect('/')
+        error = 'Şifre yanlış'
+    return f'''<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Giriş · Daily Rapor</title>
+<style>body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0B0E14;font-family:system-ui,sans-serif}}
+.box{{background:#10141E;border:1px solid #1e2536;border-radius:16px;padding:34px 30px;width:min(320px,86vw);text-align:center}}
+h1{{color:#e7edf7;font-size:18px;margin:0 0 4px}}p{{color:#8b93a7;font-size:12.5px;margin:0 0 18px}}
+input{{width:100%;box-sizing:border-box;background:#0B0E14;border:1px solid #2a3348;border-radius:10px;color:#e7edf7;padding:11px 13px;font-size:15px;margin-bottom:12px;outline:none}}
+input:focus{{border-color:#57c7e6}}button{{width:100%;background:#57c7e6;color:#05080F;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer}}
+.err{{color:#e0556b;font-size:12.5px;margin-bottom:10px}}</style></head>
+<body><form class="box" method="POST"><h1>Taha Serdem · Daily Rapor</h1><p>Devam etmek için şifreni gir</p>
+{f'<div class="err">{error}</div>' if error else ''}
+<input type="password" name="password" placeholder="Şifre" autofocus autocomplete="current-password">
+<button type="submit">Giriş</button></form></body></html>'''
+
 # WHOOP entegrasyonu (whoop_integration.py kendi DB_PATH'ini DATABASE_PATH env'inden okur -
 # ana app'in gerçek DB_PATH'iyle her zaman aynı dosyaya işaret etsin diye burada eşitliyoruz).
 os.environ.setdefault('DATABASE_PATH', DB_PATH)
@@ -111,7 +194,40 @@ import whoop_integration as _whoop_mod
 _whoop_mod.OP_CUTOFF_HOUR = operation_cutoff_hour()  # workout op-gunu bucket'i app ile ayni kesimi kullansin
 app.register_blueprint(whoop_bp)
 init_whoop_tables()
-start_background_sync()
+
+
+def start_daily_db_backup():
+    """Gunde bir tracker.db'yi DATA_DIR/backups/ altina kopyalar (sqlite backup API ile,
+    yazma ortasinda bozuk kopya olmaz), son 7 yedegi tutar. Denetim bulgusu: tek kopya
+    veri, hicbir yedek mekanizmasi yoktu."""
+    def _loop():
+        import time as _time
+        while True:
+            try:
+                bdir = os.path.join(DATA_DIR, 'backups')
+                os.makedirs(bdir, exist_ok=True)
+                dst = os.path.join(bdir, f'tracker-{date.today().isoformat()}.db')
+                if not os.path.exists(dst):
+                    src = sqlite3.connect(DB_PATH)
+                    dstc = sqlite3.connect(dst)
+                    src.backup(dstc)
+                    dstc.close(); src.close()
+                    files = sorted(f for f in os.listdir(bdir) if f.startswith('tracker-') and f.endswith('.db'))
+                    for f in files[:-7]:
+                        os.remove(os.path.join(bdir, f))
+                    log.info("Gunluk DB yedegi alindi: %s", dst)
+            except Exception:
+                log.exception("Gunluk DB yedegi basarisiz")
+            _time.sleep(6 * 3600)
+    threading.Thread(target=_loop, daemon=True, name='db-backup').start()
+
+
+import sys as _sys
+if '--telegram-only' not in _sys.argv:
+    # --telegram-only ayri bir surec olarak calisir; ayni DB'de ikinci bir 7/24
+    # senkron/yedek dongusu olmasin (denetim bulgusu).
+    start_background_sync()
+    start_daily_db_backup()
 
 # ─── ANTRENMAN DÖNGÜSÜ ─────────────────────────────────────────────────────────
 TRAINING_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
@@ -1461,6 +1577,36 @@ def api_settings():
         conn.close()
         result = {r['key']: r['value'] for r in rows}
         return jsonify(result)
+
+def apply_work_shift(start, end, label=''):
+    """Aktif vardiyayi kaydeder ve tum bagimli sistemleri (op-gunu kesimi, WHOOP workout
+    bucket'i) hemen gunceller. Hem /api/settings/shift hem Telegram work_shift action'i
+    ayni fonksiyonu kullanir."""
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('work_shift', ?)",
+                 (json.dumps({'start': start, 'end': end, 'label': label or 'vardiya'}, ensure_ascii=False),))
+    conn.commit(); conn.close()
+    invalidate_shift_cache()
+    try:
+        _whoop_mod.OP_CUTOFF_HOUR = operation_cutoff_hour()
+    except Exception:
+        pass
+    return current_shift_info()
+
+
+@app.route('/api/settings/shift', methods=['GET', 'POST'])
+def api_settings_shift():
+    """Vardiya goruntule/degistir. Kesim saati vardiya bitis+11 kuralindan otomatik turer."""
+    if request.method == 'POST':
+        data = request.get_json(force=True) or {}
+        start = (data.get('start') or '').strip()
+        end = (data.get('end') or '').strip()
+        if not re.match(r'^\d{1,2}:\d{2}$', start) or not re.match(r'^\d{1,2}:\d{2}$', end):
+            return jsonify({'ok': False, 'error': 'start/end SS:DD formatinda olmali (or. 14:00)'}), 400
+        info = apply_work_shift(start, end, (data.get('label') or '').strip())
+        return jsonify({'ok': True, 'shift': info})
+    return jsonify({'shift': current_shift_info()})
+
 
 @app.route('/api/new-day', methods=['POST'])
 def api_new_day():
@@ -3735,8 +3881,10 @@ def _claude_call(user_text):
         '{"type":"water","date":"YYYY-MM-DD","water_ml":500},'
         '{"type":"mood","date":"YYYY-MM-DD","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","date":"YYYY-MM-DD","name":"D3","amount":"5000","unit":"IU"},'
+        '{"type":"work_shift","start":"14:00","end":"22:00"},'
         '{"type":"note","date":"YYYY-MM-DD","note":"..."}'
         ']}\n'
+        'Vardiya kurali: kullanici calisma saatlerinin degistigini soylerse (or. "pazartesiden itibaren oglen 2 aksam 10 calisiyorum") work_shift action uret - start/end 24 saat formatinda. Gun kesim saati ve gece-kayit mantigi otomatik guncellenir.\n'
         f'Tarih kuralı: Kullanıcı tarih belirtmemişse date={operation_today()} (bugün). '
         f'"Dün" derse date={(operation_date()-timedelta(days=1)).isoformat()}. '
         '"X gün önce" veya "X Haziran" gibi ifadeleri doğru tarihe çevir. '
@@ -4114,6 +4262,12 @@ def ai_apply_actions(actions):
                 if ttype and tname:
                     end_supplement_break(ttype, tname)
                     saved.append('ara bitti')
+            elif typ == 'work_shift':
+                st = (a.get('start') or '').strip()
+                en = (a.get('end') or '').strip()
+                if re.match(r'^\d{1,2}:\d{2}$', st) and re.match(r'^\d{1,2}:\d{2}$', en):
+                    info = apply_work_shift(st, en, a.get('label') or '')
+                    saved.append(f"vardiya {st}-{en} (gün kesimi {info['cutoff_hour']:02d}:00)")
             elif typ in ('body_weight', 'weight', 'kilo'):
                 ensure_body_metrics_table()
                 kg = float(a.get('weight_kg') or a.get('kg') or a.get('value') or 0)
@@ -4234,23 +4388,15 @@ def tg_try_water_correction(raw_text):
 
 # TG_BASIC_NO_AI_FALLBACK_V1
 
-def tg_water_actions_from_text(raw_text):
-    text = raw_text or ''
-    norm = _tg_norm(text) if '_tg_norm' in globals() else text.lower()
-    if not any(w in norm for w in ['su', 'water', 'ml', 'litre', 'lt']):
-        return []
-    # "su 3 litre oldu/toplam" -> total set, otherwise "200ml su içildi" -> add
-    m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(ml|l|lt|litre)?', norm)
-    if not m:
-        return []
-    val = float(m.group(1).replace(',', '.'))
-    unit = (m.group(2) or '').lower()
-    ml = int(val * 1000) if unit in ('l', 'lt', 'litre') or (not unit and val <= 10) else int(val)
-    if ml <= 0:
-        return []
-    date = tg_effective_log_date(text, 'water') if 'tg_effective_log_date' in globals() else operation_today()
-    is_total = any(w in norm for w in ['toplam', 'olsun', 'olarak', 'yap', 'duzelt', 'düzelt', 'set'])
-    return [{'type': 'water_set' if is_total else 'water', 'date': date, 'water_ml': ml}]
+def _tg_norm(text):
+    """Turkce karakterleri ASCII'ye katlayip kucuk harfe cevirir - 'SÜT' ve 'sut' ayni
+    anahtar kelimeyle eslessin diye. (Denetim bulgusu: bu fonksiyon hic tanimlanmamisti,
+    '_tg_norm in globals()' korumali cagrilarin hepsi sessizce .lower() fallback'ine
+    dusuyordu ve Turkce buyuk harfli mesajlarda anahtar kelimeler kaciyordu.)"""
+    t = (text or '').lower()
+    for a, b in (('ı', 'i'), ('ö', 'o'), ('ü', 'u'), ('ç', 'c'), ('ş', 's'), ('ğ', 'g'), ('â', 'a'), ('İ', 'i')):
+        t = t.replace(a, b)
+    return t
 
 
 
@@ -5881,7 +6027,8 @@ def _build_tg_handlers(ptb_app):
                     ("yemek",cmd_yemek),("su",cmd_su),("is",cmd_is),("antrenor",cmd_antrenor),
                     ("mood",cmd_mood),("vitamin",cmd_vitamin),("bugun",cmd_bugun),
                     ("rapor",cmd_rapor),("antrenman",cmd_antrenman),
-                    ("hafta",cmd_hafta),("streak",cmd_streak)]:
+                    ("hafta",cmd_hafta),("streak",cmd_streak),
+                    ("ogun",cmd_ogun),("idman",cmd_idman),("sablonlar",cmd_sablonlar)]:
         ptb_app.add_handler(CommandHandler(cmd, fn))
     ptb_app.add_handler(MessageHandler(filters.PHOTO, cmd_photo))
     ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
@@ -5902,17 +6049,27 @@ def _get_wh_loop():
             log.info("Webhook event loop baslatildi.")
     return _wh_loop
 
+_wh_app_alock = None  # asyncio.Lock - wh-loop icinde lazily olusur
+
 async def _ensure_wh_app():
-    global _wh_app
+    """Application singleton'i. Ilk iki update ayni anda gelirse cifte initialize()
+    olmasin diye asyncio kilidiyle korunur (await noktasinda coroutine'ler
+    interleave edebiliyor - denetim bulgusu)."""
+    global _wh_app, _wh_app_alock
     if _wh_app is not None:
         return _wh_app
-    from telegram.ext import Application
-    ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
-    _build_tg_handlers(ptb_app)
-    await ptb_app.initialize()
-    _wh_app = ptb_app
-    log.info("Webhook Application hazir.")
-    return _wh_app
+    if _wh_app_alock is None:
+        _wh_app_alock = asyncio.Lock()
+    async with _wh_app_alock:
+        if _wh_app is not None:
+            return _wh_app
+        from telegram.ext import Application
+        ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
+        _build_tg_handlers(ptb_app)
+        await ptb_app.initialize()
+        _wh_app = ptb_app
+        log.info("Webhook Application hazir.")
+        return _wh_app
 
 async def _do_process_webhook_update(data: dict):
     from telegram import Update

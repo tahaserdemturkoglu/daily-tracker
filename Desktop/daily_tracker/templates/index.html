@@ -752,6 +752,18 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         </div>
       </div>
 
+      <!-- Vardiya -->
+      <div class="card ct ct-indigo">
+        <div class="card-head"><span class="card-icon">🕐</span><div><div class="card-name">Çalışma Vardiyası</div></div></div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Gün kesim saati (gece kayıtlarının hangi güne yazılacağı) vardiya bitişinden otomatik hesaplanır. Telegram'a "pazartesiden itibaren öğlen 2 akşam 10 çalışıyorum" yazarak da değiştirebilirsin.</div>
+        <div class="form-row" style="gap:8px;align-items:flex-end">
+          <div class="fg"><label>Başlangıç</label><input type="time" id="settings-shift-start"></div>
+          <div class="fg"><label>Bitiş</label><input type="time" id="settings-shift-end"></div>
+          <button class="btn btn-blue btn-sm" onclick="saveShift()">Kaydet</button>
+        </div>
+        <div id="settings-shift-info" style="font-size:.72rem;color:var(--muted);margin-top:8px"></div>
+      </div>
+
       <!-- Takviye Molaları -->
       <div class="card ct ct-teal">
         <div class="card-head"><span class="card-icon">⏸</span><div><div class="card-name">Takviye Molaları</div></div></div>
@@ -1383,10 +1395,31 @@ async function loadSettings(){
   settingsRenderThemePicker();
   settingsLoadWhoop();
   settingsLoadBreaks();
+  settingsLoadShift();
   const stepsInput=$('settings-steps-goal-input');
   if(stepsInput) stepsInput.value=getT().steps||10000;
   const waterInput=$('settings-water-goal-input');
   if(waterInput) waterInput.value=getT().water||3000;
+}
+async function settingsLoadShift(){
+  const st=$('settings-shift-start'),en=$('settings-shift-end'),info=$('settings-shift-info');
+  if(!st||!en) return;
+  try{
+    const r=await API('/api/settings/shift');
+    const s=r&&r.shift;
+    if(s){
+      st.value=(s.start||'').padStart(5,'0');
+      en.value=(s.end||'').padStart(5,'0');
+      if(info) info.textContent=`Aktif: ${s.name} · Gün kesimi: ${String(s.cutoff_hour).padStart(2,'0')}:00 (bu saatten önceki kayıtlar önceki güne yazılır)`;
+    }
+  }catch(e){}
+}
+async function saveShift(){
+  const st=($('settings-shift-start')||{}).value,en=($('settings-shift-end')||{}).value;
+  if(!st||!en) return toast('Başlangıç ve bitiş saati gir',false);
+  const r=await POST('/api/settings/shift',{start:st,end:en});
+  if(r&&r.ok){toast(`Vardiya ${st}-${en} kaydedildi`,true);settingsLoadShift();}
+  else toast((r&&r.error)||'Hata oluştu',false);
 }
 async function settingsLoadBreaks(){
   const listEl=$('settings-breaks-list'), stacksEl=$('settings-break-stacks');

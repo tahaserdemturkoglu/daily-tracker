@@ -155,8 +155,13 @@ def _token_request(data):
     return r
 
 
+# WHOOP rotating refresh token kullanir: her refresh'te eski token GECERSIZLESIR.
+# Arka plan sync thread'i + web istekleri ayni anda refresh atarsa biri eski token'la
+# 400 alir ve baglanti kopabilir - refresh bu kilitle serilestirilir (denetim bulgusu).
+_token_refresh_lock = threading.Lock()
+
 def _get_access_token():
-    """Geçerli access token döner; süresi dolduysa refresh eder (rotating)."""
+    """Geçerli access token döner; süresi dolduysa refresh eder (rotating, kilitli)."""
     conn = _db()
     row = conn.execute("SELECT * FROM whoop_tokens WHERE id = 1").fetchone()
     conn.close()
@@ -164,26 +169,42 @@ def _get_access_token():
         return None
     if row["expires_at"] and time.time() < row["expires_at"]:
         return row["access_token"]
-    # refresh — WHOOP her seferinde yeni refresh token döndürür
-    r = _token_request({
-        "grant_type": "refresh_token",
-        "refresh_token": row["refresh_token"],
-        "scope": "offline",
-    })
-    if r.status_code != 200:
-        return None
-    tok = r.json()
-    _save_tokens(tok["access_token"], tok["refresh_token"], tok.get("expires_in", 3600))
-    return tok["access_token"]
+    with _token_refresh_lock:
+        # Kilidi beklerken baska bir thread yenilemis olabilir - tekrar oku
+        conn = _db()
+        row = conn.execute("SELECT * FROM whoop_tokens WHERE id = 1").fetchone()
+        conn.close()
+        if not row or not row["refresh_token"]:
+            return None
+        if row["expires_at"] and time.time() < row["expires_at"]:
+            return row["access_token"]
+        try:
+            r = _token_request({
+                "grant_type": "refresh_token",
+                "refresh_token": row["refresh_token"],
+                "scope": "offline",
+            })
+        except requests.RequestException as e:
+            _bg_sync_log.warning("Token yenileme ag hatasi: %s", e)
+            return None
+        if r.status_code != 200:
+            return None
+        tok = r.json()
+        _save_tokens(tok["access_token"], tok["refresh_token"], tok.get("expires_in", 3600))
+        return tok["access_token"]
 
 
 def _api_get(path, params=None):
     token = _get_access_token()
     if not token:
         return None
-    r = requests.get(f"{API_BASE}{path}",
-                     headers={"Authorization": f"Bearer {token}"},
-                     params=params or {}, timeout=30)
+    try:
+        r = requests.get(f"{API_BASE}{path}",
+                         headers={"Authorization": f"Bearer {token}"},
+                         params=params or {}, timeout=30)
+    except requests.RequestException as e:
+        _bg_sync_log.warning("WHOOP API ag hatasi (%s): %s", path, e)
+        return None
     if r.status_code != 200:
         return None
     return r.json()
@@ -223,16 +244,22 @@ def whoop_callback():
     code = request.args.get("code")
     if not code:
         return "WHOOP yetkilendirme reddedildi.", 400
-    r = _token_request({
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": WHOOP_REDIRECT_URI,
-    })
+    try:
+        r = _token_request({
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": WHOOP_REDIRECT_URI,
+        })
+    except requests.RequestException as e:
+        return f"WHOOP'a ulaşılamadı (ağ hatası): {e}", 502
     if r.status_code != 200:
         return f"Token alınamadı: {r.text}", 400
     tok = r.json()
     _save_tokens(tok["access_token"], tok["refresh_token"], tok.get("expires_in", 3600))
-    sync_whoop_data(days=7)
+    try:
+        sync_whoop_data(days=7)
+    except Exception:
+        _bg_sync_log.exception("Baglanti sonrasi ilk senkron basarisiz (baglanti yine de kuruldu)")
     return redirect("/?whoop=connected")
 
 
@@ -254,7 +281,11 @@ def whoop_status():
 @whoop_bp.route("/whoop/sync", methods=["POST", "GET"])
 def whoop_sync_route():
     days = int(request.args.get("days", 3))
-    result = sync_whoop_data(days=days)
+    try:
+        result = sync_whoop_data(days=days)
+    except Exception as e:
+        _bg_sync_log.exception("Manuel WHOOP senkronu basarisiz")
+        return jsonify({"ok": False, "error": f"Senkron hatası: {e}"}), 502
     if result is None:
         return jsonify({"ok": False, "error": "WHOOP bağlı değil veya token yenilenemedi"}), 401
     return jsonify({"ok": True, "synced_dates": result})
@@ -414,7 +445,10 @@ def sync_whoop_data(days=3):
         score = r.get("score") or {}
         d = sleep_by_id.get(r.get("sleep_id"))
         if not d:
-            d = bucket(r.get("updated_at") or r.get("created_at"))
+            ts = r.get("updated_at") or r.get("created_at")
+            if not ts:
+                continue  # tarih atanacak hicbir alan yok - tum sync'i dusurme, kaydi atla
+            d = bucket(ts)
         rec = daily.setdefault(d, {})
         rec["recovery_score"] = score.get("recovery_score")
         rec["hrv_ms"] = score.get("hrv_rmssd_milli")
@@ -486,6 +520,7 @@ def sync_whoop_data(days=3):
                  sleep_deep_ms=COALESCE(excluded.sleep_deep_ms, sleep_deep_ms),
                  sleep_rem_ms=COALESCE(excluded.sleep_rem_ms, sleep_rem_ms),
                  sleep_awake_ms=COALESCE(excluded.sleep_awake_ms, sleep_awake_ms),
+                 raw_json=excluded.raw_json,
                  synced_at=excluded.synced_at""",
             (d, rec.get("recovery_score"), rec.get("strain"), rec.get("hrv_ms"),
              rec.get("rhr_bpm"), rec.get("spo2"), rec.get("skin_temp_c"),
