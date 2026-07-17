@@ -31,12 +31,12 @@ import requests
 from flask import Blueprint, request, redirect, jsonify
 
 # ---------------------------------------------------------------- config ---
-WHOOP_CLIENT_ID = os.environ.get("WHOOP_CLIENT_ID", "")
-WHOOP_CLIENT_SECRET = os.environ.get("WHOOP_CLIENT_SECRET", "")
+WHOOP_CLIENT_ID = os.environ.get("WHOOP_CLIENT_ID", "").strip()
+WHOOP_CLIENT_SECRET = os.environ.get("WHOOP_CLIENT_SECRET", "").strip()
 WHOOP_REDIRECT_URI = os.environ.get(
     "WHOOP_REDIRECT_URI",
     "https://web-production-87c2c.up.railway.app/whoop/callback",
-)
+).strip()
 
 AUTH_URL = "https://api.prod.whoop.com/oauth/oauth2/auth"
 TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
@@ -120,15 +120,15 @@ def _save_tokens(access_token, refresh_token, expires_in):
 
 
 def _token_request(data):
-    """Token istegi - once HTTP Basic auth (Ory Hydra default), olmazsa body auth dener."""
-    body = {k: v for k, v in data.items() if k not in ("client_id", "client_secret")}
-    r = requests.post(TOKEN_URL, data=body,
-                      auth=(WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET), timeout=30)
+    """Token istegi - WHOOP client_secret_post bekler (body auth); olmazsa Basic dener."""
+    body = dict(data)
+    body["client_id"] = WHOOP_CLIENT_ID
+    body["client_secret"] = WHOOP_CLIENT_SECRET
+    r = requests.post(TOKEN_URL, data=body, timeout=30)
     if r.status_code == 401:
-        body2 = dict(data)
-        body2["client_id"] = WHOOP_CLIENT_ID
-        body2["client_secret"] = WHOOP_CLIENT_SECRET
-        r = requests.post(TOKEN_URL, data=body2, timeout=30)
+        body2 = {k: v for k, v in data.items() if k not in ("client_id", "client_secret")}
+        r = requests.post(TOKEN_URL, data=body2,
+                          auth=(WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET), timeout=30)
     return r
 
 
