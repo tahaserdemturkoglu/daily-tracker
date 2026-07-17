@@ -44,7 +44,7 @@ def load_config():
 _cfg = load_config()
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', _cfg.get('TELEGRAM_TOKEN', ''))
 # Antrenman döngüsü başlangıç tarihi (Push günü). Bugün başlar.
-CYCLE_START = _cfg.get('CYCLE_START', date.today().isoformat())
+CYCLE_START = _cfg.get('CYCLE_START', now_istanbul().date().isoformat())
 
 
 # OPERATION_DAY_CUTOFF_V1
@@ -206,7 +206,7 @@ def start_daily_db_backup():
             try:
                 bdir = os.path.join(DATA_DIR, 'backups')
                 os.makedirs(bdir, exist_ok=True)
-                dst = os.path.join(bdir, f'tracker-{date.today().isoformat()}.db')
+                dst = os.path.join(bdir, f'tracker-{now_istanbul().date().isoformat()}.db')
                 if not os.path.exists(dst):
                     src = sqlite3.connect(DB_PATH)
                     dstc = sqlite3.connect(dst)
@@ -624,14 +624,25 @@ SUPPLEMENT_NAME_RENAMES = {
 }
 
 
+# Kanonik katalog surumu: stack icerigi kodda degistiginde artir. Stack item rewrite
+# SADECE surum degisince uygulanir - yoksa kullanicinin UI'dan yaptigi stack duzenlemeleri
+# her restart'ta sessizce geri aliniyordu. Isim rename'leri surumden bagimsiz her boot calisir.
+SUPPLEMENT_CATALOG_VERSION = '2026-07-17-v1'
+
+
 def sync_supplement_catalog_canonical():
-    """Kanonik katalogu DB'ye uygular (idempotent, her boot). Stack item listesi
-    kanonikten farkliysa yeniden yazilir; vitamin_logs / supplement_breaks /
-    supplement_products'taki eski isimler kanonige cekilir."""
+    """Kanonik katalogu DB'ye uygular (idempotent, her boot). Stack item listesi yalnizca
+    SUPPLEMENT_CATALOG_VERSION degistiginde kanonikten yeniden yazilir; vitamin_logs /
+    supplement_breaks / supplement_products'taki eski isimler her boot kanonige cekilir."""
     conn = get_db()
     try:
         if not conn.execute("SELECT name FROM sqlite_master WHERE name='supplement_stack_items'").fetchone():
             return
+        _has_settings = bool(conn.execute(
+            "SELECT name FROM sqlite_master WHERE name='user_settings'").fetchone())
+        ver_row = conn.execute(
+            "SELECT value FROM user_settings WHERE key='supplement_catalog_version'").fetchone() if _has_settings else None
+        apply_items = not ver_row or ver_row['value'] != SUPPLEMENT_CATALOG_VERSION
         changed = 0
         for order_i, (stack_name, items) in enumerate(CANONICAL_SUPPLEMENT_STACKS, start=1):
             row = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
@@ -651,7 +662,7 @@ def sync_supplement_catalog_canonical():
                 "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=?",
                 (sid,)).fetchall())
             canonical = sorted((n, float(d), u) for (n, d, u) in items)
-            if existing != canonical:
+            if apply_items and existing != canonical:
                 conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (sid,))
                 for i, (n, d, u) in enumerate(items, start=1):
                     conn.execute(
@@ -668,6 +679,9 @@ def sync_supplement_catalog_canonical():
                     conn.execute("DELETE FROM supplement_products WHERE id=?", (oldrow['id'],))
                 else:
                     conn.execute("UPDATE supplement_products SET name=? WHERE id=?", (new, oldrow['id']))
+        if apply_items and _has_settings:
+            conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('supplement_catalog_version', ?)",
+                         (SUPPLEMENT_CATALOG_VERSION,))
         conn.commit()
         if changed or renamed:
             log.info("Supplement katalog senkronu: %d stack yeniden yazildi, %d vitamin_logs satiri kanonige cekildi", changed, renamed)
@@ -907,6 +921,11 @@ def generate_dashboard_ai_insights(date_str=None):
     day_index = int(override_row['value']) if override_row and override_row['value'] not in (None, '') else date.fromisoformat(date_str).weekday()
     today_cyc = conn.execute("SELECT * FROM cycle_days WHERE day_index=?", (day_index,)).fetchone()
     tomorrow_cyc = conn.execute("SELECT * FROM cycle_days WHERE day_index=?", ((day_index + 1) % 7,)).fetchone()
+    whoop_row = None
+    try:
+        whoop_row = conn.execute("SELECT recovery_score, strain FROM whoop_daily WHERE date=?", (date_str,)).fetchone()
+    except Exception:
+        pass
     conn.close()
 
     total_cal = round(sum(m['calories'] or 0 for m in meals))
@@ -919,6 +938,10 @@ def generate_dashboard_ai_insights(date_str=None):
         recovery = mood_row['recovery'] if mood_row else None
     except Exception:
         recovery = None
+    # mood_logs.recovery pratikte hep bos - gercek deger whoop_daily'de (WHOOP senkronu yaziyor)
+    if recovery is None and whoop_row and whoop_row['recovery_score'] is not None:
+        recovery = whoop_row['recovery_score']
+    whoop_strain = whoop_row['strain'] if whoop_row else None
 
     target = None
     if today_cyc:
@@ -938,8 +961,10 @@ def generate_dashboard_ai_insights(date_str=None):
         'hedef': target,
         'yarinin_hedefi': tomorrow,
         'recovery_pct': recovery,
+        'whoop_strain': whoop_strain,
         'kilo_trend_son_gunler': weight_trend,
         'hedef_kilo': weight_goal_row['value'] if weight_goal_row else None,
+        'saat': now_istanbul().strftime('%H:%M'),
     }
     system_prompt = (
         'Sen kullanıcının kişisel antrenman ve beslenme koçusun. Sana bugünün gerçek verisini '
@@ -947,7 +972,9 @@ def generate_dashboard_ai_insights(date_str=None):
         'hedefi) JSON olarak vereceğim. En fazla 4, en az 2 kısa içgörü üret. Her içgörü şu 5 tipten '
         'BİRİNE ait olmalı: "kritik" (veri hatası/tehlikeli aşım şüphesi — örn. tek bir öğün kaydı '
         'toplam kalorinin çoğunu oluşturuyorsa muhtemel girdi hatasıdır), "aksiyon" (bugün yapılabilecek '
-        'somut bir şey, varsa recovery ile antrenman kesişimi), "hatirlatma" (saate göre su/öğün ritmi), '
+        'somut bir şey, varsa recovery ile antrenman kesişimi), "hatirlatma" (payload\'daki "saat" alanına '
+        'göre su/öğün ritmi — saat üretim anının saatidir, gün içinde değişmez; saate çok bağlı ifadeler yerine '
+        'günün geneline uyan ritim önerisi ver), '
         '"motivasyon" (kilo trendi/ilerleme), "ai_plan" (yarının Karb Cycle hedefinin kısa özeti). '
         'recovery_pct null ise recovery ile ilgili hiçbir şey uydurma. SADECE şu JSON formatında dön, '
         'başka hiçbir şey yazma: {"insights":[{"type":"kritik|aksiyon|hatirlatma|motivasyon|ai_plan",'
@@ -1055,6 +1082,45 @@ def _facts_similar(a, b, threshold=0.4):
     overlap = len(wa & wb) / min(len(wa), len(wb))
     return overlap >= threshold
 
+# Alinan takviye sayaci: duplike satirlar tek sayilir; ayni urun iki stack'te (NAC, L-Theanine)
+# web'in yazdigi 'stack:<ad>' notu sayesinde stack basina ayri sayilir. Statusu bos eski
+# kayitlar boot'taki backfill_vitamin_status() ile dolduruldugu icin status filtresi guvenli.
+SUPP_TAKEN_COUNT_SQL = (
+    "SELECT COUNT(DISTINCT name || '|' || (CASE WHEN notes LIKE 'stack:%' THEN notes ELSE '' END)) c "
+    "FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')"
+)
+
+
+def active_supplement_breaks():
+    """Aktif takviye aralarini dondurur (once suresi dolanlari kapatir)."""
+    try:
+        if 'expire_due_supplement_breaks' in globals():
+            expire_due_supplement_breaks()
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT target_type, target_name, since_date, end_date FROM supplement_breaks WHERE active=1"
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def active_breaks_prompt_txt():
+    """Aktif aralarin AI promptlari icin tek satirlik ozeti - AI'nin arada olan takviyeyi
+    'stack alindi' kaydina dahil etmemesi ve 'yine atladin' diye elestirmemesi icin."""
+    rows = active_supplement_breaks()
+    if not rows:
+        return 'ARA VERILEN TAKVIYELER: su an yok.'
+    parts = [
+        f"{r['target_name']} ({'stack' if r['target_type'] == 'stack' else 'urun'}, "
+        + (f"{r['end_date']} bitis" if r['end_date'] else 'suresiz') + ')'
+        for r in rows
+    ]
+    return ('ARA VERILEN TAKVIYELER: ' + '; '.join(parts)
+            + ". Bunlari stack kaydina dahil etme, eksik/atlandi diye elestirme - bilincli ara, UI'da 'Ara Veriliyor' gorunur.")
+
+
 def gather_day_snapshot(conn, date_str):
     """Bir gunun tum gercek verisini tek bir dict'te toplar (AI Koc payload'i ve Coach
     sayfasi gosterimi AYNI bu fonksiyonu kullanir, ikisi hep birbirini tutsun diye)."""
@@ -1068,12 +1134,17 @@ def gather_day_snapshot(conn, date_str):
         "SELECT recovery_score, strain, sleep_hours, sleep_performance, hrv_ms, rhr_bpm FROM whoop_daily WHERE date=?",
         (date_str,)
     ).fetchone()
-    supp_taken = conn.execute(
-        "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')", (date_str,)
-    ).fetchone()['c']
-    supp_total = conn.execute(
-        "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
-    ).fetchone()['c']
+    supp_taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (date_str,)).fetchone()['c']
+    # supp_total ara verilen stack/urunleri saymaz - yoksa Koc arada olan takviyeyi 'eksik' sanir
+    _breaks = active_supplement_breaks()
+    _broken_stacks = {b['target_name'] for b in _breaks if b['target_type'] == 'stack'}
+    _broken_products = {b['target_name'] for b in _breaks if b['target_type'] == 'product'}
+    _items = conn.execute(
+        "SELECT s.name stack_name, si.product_name FROM supplement_stack_items si "
+        "JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
+    ).fetchall()
+    supp_total = sum(1 for it in _items
+                     if it['stack_name'] not in _broken_stacks and it['product_name'] not in _broken_products)
     td = training_day(date_str)
     sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
     session_done = False
@@ -1118,7 +1189,10 @@ def gather_day_snapshot(conn, date_str):
         'sleep_manuel': dict(sleep_row) if sleep_row else None,
         'whoop': dict(whoop) if whoop else None,
         'whoop_workouts': get_workouts_for_date(date_str),
-        'supplements': {'taken': supp_taken, 'total': supp_total},
+        'supplements': {'taken': supp_taken, 'total': supp_total,
+                        'ara_verilenler': [f"{b['target_name']} ({b['target_type']}"
+                                           + (f", {b['end_date']} bitis)" if b['end_date'] else ', suresiz)')
+                                           for b in _breaks]},
         'antrenman_hareket_trendleri': hareket_trendleri,
         'cilt': [dict(r) for r in skin_rows],
         'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w']) or skin_rows or mood_row or sleep_row),
@@ -1691,9 +1765,10 @@ def api_settings_shift_templates():
 
 @app.route('/api/new-day', methods=['POST'])
 def api_new_day():
-    """Gunaydın: operation tarihi bugunun takvim tarihine ayarla (DB'ye kaydet)"""
-    from datetime import date as _dt
-    today = _dt.today().isoformat()
+    """Gunaydın: operation tarihi bugunun takvim tarihine ayarla (DB'ye kaydet).
+    TR takvim gunu kullanilir - sunucu UTC'deyken date.today() gece 00:00-03:00 TR
+    arasi dunu verir ve operation_date() override'i esitsizlikten hemen silerdi."""
+    today = now_istanbul().date().isoformat()
     conn = get_db()
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('force_operation_date', ?)", (today,))
     conn.commit(); conn.close()
@@ -2300,11 +2375,8 @@ def api_macro_range():
             entry['steps'] = int(step_row['steps']) if step_row and step_row['steps'] else 0
             entry['training_type'] = training_day(ds)
             entry['training_done'] = ds in session_dates
-            taken = conn.execute(
-                "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')",
-                (ds,)
-            ).fetchone()['c']
-            entry['supp_taken'] = taken
+            taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (ds,)).fetchone()['c']
+            entry['supp_taken'] = min(taken, supp_total) if supp_total else taken
             entry['supp_total'] = supp_total or 0
         result.append(entry)
     conn.close()
@@ -2530,7 +2602,7 @@ def api_calendar(year, month):
         pass
     water_goal_row = conn.execute("SELECT value FROM user_settings WHERE key='water'").fetchone()
     water_goal = int(water_goal_row['value']) if water_goal_row and water_goal_row['value'] else 3000
-    today_str = date.today().isoformat()
+    today_str = now_istanbul().date().isoformat()
 
     def pct(v, tg):
         try:
@@ -2567,10 +2639,7 @@ def api_calendar(year, month):
         if cyc:
             target = {'type': cyc['type'], 'protein_g': cyc['protein_g'], 'carb_g': cyc['carb_g'], 'fat_g': cyc['fat_g'],
                       'kcal': 4 * cyc['protein_g'] + 4 * cyc['carb_g'] + 9 * cyc['fat_g']}
-        supp_taken = conn.execute(
-            "SELECT COUNT(*) c FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')",
-            (d,)
-        ).fetchone()['c']
+        supp_taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (d,)).fetchone()['c']
         w = whoop_by_date.get(d)
         meals = meals_by_date.get(d) or {'kcal': 0, 'protein': 0}
         day_score = None
@@ -3716,7 +3785,8 @@ def _today_ai_context():
         'note': note['note'] if note else '',
         'whoop': dict(whoop_row) if whoop_row else None,
         'whoop_workouts': get_workouts_for_date(today),
-        'hareket_trendleri': compute_exercise_trends(),
+        # hareket_trendleri bilincli olarak YOK: _week_ai_context zaten ayni listeyi donduruyor
+        # ve ikisi ayni prompt'a gomuluyor - cift veri + her mesajda cift hesap oluyordu.
     }
     return ctx
 
@@ -3846,7 +3916,7 @@ SUPPLEMENT SISTEMI (5 gercek stack, guncel 2026-07-17):
 
 AKNE VE CILT:
 - Whey, yogurt, protein puding ve yuksek seker akne acisindan takip edilir.
-- Kreatin su an kullanilmiyor; akne gozlemi icin bunu koru.
+- Kreatin-akne iliskisi takip ediliyor: kreatin araya alinip tekrar baslandiginda akne gozlemini surdur (guncel kullanim durumu asagidaki ARA VERILEN TAKVIYELER blogunda).
 - Cilt bariyeri hassas. Is sonrasi dus: nemlendirici. Gece: CeraVe temizleyici, Akneroxid, nemlendirici.
 
 ANTRENMAN:
@@ -3953,7 +4023,7 @@ def _claude_call(user_text):
         f"{t['name']}={t['start']}-{t['end']}" for t in get_shift_templates() if t.get('start')
     ) or 'henuz tanimli sablon yok'
     system_prompt = (
-        TAHA_COACHING_POLICY + "\n" + besin_db_ctx + "\n" +
+        TAHA_COACHING_POLICY + "\n" + NUTRITION_ANALYSIS_POLICY + "\n" + besin_db_ctx + "\n" +
         "Sen Taha Serdem'in kişisel antrenman ve günlük performans koçusun. "
         "Türkçe, samimi, net ve motive edici konuş.\n"
         "Kullanıcının mesajını analiz et. Kayıt içeriyorsa actions listesini doldur. "
@@ -3966,9 +4036,15 @@ def _claude_call(user_text):
         '{"type":"water","date":"YYYY-MM-DD","water_ml":500},'
         '{"type":"mood","date":"YYYY-MM-DD","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","date":"YYYY-MM-DD","name":"D3","amount":"5000","unit":"IU"},'
+        '{"type":"steps","date":"YYYY-MM-DD","steps":9500},'
+        '{"type":"body_weight","date":"YYYY-MM-DD","weight_kg":83.4},'
+        '{"type":"skin_log","date":"YYYY-MM-DD","area":"yüz","name":"Akneroxid","status":"done","notes":""},'
+        '{"type":"training_exercise","date":"YYYY-MM-DD","exercise":"Hack Squat","set_details":[{"set":1,"type":"Working set","reps":"8","weight":"120"}]},'
         '{"type":"work_shift","start":"14:00","end":"22:00"},'
         '{"type":"note","date":"YYYY-MM-DD","note":"..."}'
         ']}\n'
+        'Cilt kurali: kullanici cilt rutini/akne/krem-surme gibi seylerden bahsederse skin_log action uret (area: yüz/sırt vb, name: urun/rutin adi). '
+        'Set detayli antrenman anlatiminda (orn. "hack squat 3x8 120kg") training_exercise uret; sadece "antrenman yaptim" genel ifadesinde exercise action yeterli.\n'
         'Vardiya kurali: kullanici calisma saatlerinin degistigini soylerse (or. "pazartesiden itibaren oglen 2 aksam 10 calisiyorum") work_shift action uret - start/end 24 saat formatinda. Gun kesim saati ve gece-kayit mantigi otomatik guncellenir. '
         f'Kayitli vardiya sablonlari: {_shift_tpl_txt}. "1. shifte gectim / shift 2 basladi" gibi mesajlarda ilgili sablonun saatleriyle work_shift uret.\n'
         f'Tarih kuralı: Kullanıcı tarih belirtmemişse date={operation_today()} (bugün). '
@@ -3977,6 +4053,7 @@ def _claude_call(user_text):
         f"Saat baglami: Simdiki yerel saat {now_istanbul().strftime('%H:%M')}. Aktif vardiya: {current_shift_info().get('name')} ({current_shift_info().get('label')}). Operasyon gunu kapanisi: {operation_cutoff_hour()}:00. Bu kapanis saatinden onceki kayitlari, kullanici aksini soylemedikce onceki operasyon gunune bagla; sabah gibi davranma.\n"
         f"Gece/vardiya kayit kurali: aktif gec pencere {current_shift_info().get('late_window')}. Bu pencerede yatmadan once stack, vitamin, ogun, su, adim, kilo ve gun sonu notlari kullanici aksini soylemedikce bir onceki operasyon gunune aittir. 03:30da uyuyacagim/yatacagim gibi ifadeler uyku suresi degildir; sleep hours olarak 3.3 kaydetme. Uyku kaydi icin ancak uyudum/kalktim/uyandim veya baslangic-bitis netse action uret.\n"
         'Bugün: ' + operation_today() + '\n'
+        + active_breaks_prompt_txt() + '\n'
         'Karar baglami: ' + (tg_context_note_for_prompt(user_text) if 'tg_context_note_for_prompt' in globals() else '') + '\n'
         'Bugünün verisi: ' + json.dumps(ctx, ensure_ascii=False) + '\n'
         'Son 7 günün özeti: ' + json.dumps(week_ctx, ensure_ascii=False)
@@ -4001,18 +4078,20 @@ def _claude_call(user_text):
         with urllib.request.urlopen(req, timeout=45) as resp:
             payload = json.loads(resp.read().decode('utf-8'))
         txt = payload['content'][0]['text']
-        return _json_from_text(txt)
     except urllib.error.HTTPError as e:
         detail = e.read().decode('utf-8', errors='ignore')
         log.error("Anthropic HTTP hatasi: %s", detail)
-        try:
-            msg = json.loads(detail).get('error', {}).get('message', detail[:200])
-        except Exception:
-            msg = detail[:200]
-        return {'reply': f'Claude hatası: {msg}', 'actions': []}
+        return {'reply': 'Koç şu an cevap veremedi (API hatası). Birazdan tekrar yazar mısın?', 'actions': []}
     except Exception:
         log.exception("Claude cevap hatasi")
         return {'reply': 'Bağlantı sorunu. Tekrar dener misin?', 'actions': []}
+    # Parse hatasi baglanti sorunu DEGIL: kullanici ayni mesaji tekrar gonderirse regex-fallback
+    # kayitlari cift islenebilir - o yuzden acikca 'kayit yapmadim' diyoruz.
+    try:
+        return _json_from_text(txt)
+    except Exception:
+        log.exception("Claude JSON parse hatasi; ham metin: %.300s", txt)
+        return {'reply': 'Cevabı düzgün işleyemedim, KAYIT YAPMADIM — aynı mesajı bir daha yollar mısın?', 'actions': []}
 
 
 def ai_coach_call(user_text):
@@ -4332,8 +4411,8 @@ def ai_apply_actions(actions):
                                 vunit = item['unit']
                             break
                 conn = get_db()
-                conn.execute("INSERT INTO vitamin_logs (date, name, amount, unit, notes) VALUES (?,?,?,?,?)",
-                             (action_date, vname, vamount, vunit, vnotes))
+                conn.execute("INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+                             (action_date, vname, vamount, vunit, vnotes, vit_status_of('', vnotes)))
                 conn.commit(); conn.close()
                 saved.append('supplement')
             elif typ == 'supplement_break_start':
@@ -4988,22 +5067,17 @@ def tg_touch_heartbeat(status='running', message=''):
         pass
 
 def tg_effective_log_date(raw_text='', action_type=''):
-    """Telegram'da gece 00:00 sonrası yazılan gün-sonu kayıtlarını önceki güne bağla."""
+    """Telegram kayitlarini OPERASYON gunu kavramiyla tarihler (WHOOP bucketing, web UI ve
+    Claude promptundaki tarih kuraliyla birebir ayni taban). 00:00-cutoff arasi operation_date()
+    zaten onceki takvim gunu oldugu icin eski late_types/gun-sonu-kelime ozel dallari gereksizlesti:
+    o pencerede TUM kayit tipleri (antrenman dahil) ayni operasyon gunune gider - eskiden
+    'exercise' takvim gunune, ayni mesajdaki ogun onceki gune yazilip bolunebiliyordu."""
     norm = tg_ascii_text(raw_text) if 'tg_ascii_text' in globals() else (raw_text or '').lower()
-    now = now_istanbul()
-    today = now.date()
-    if any(w in norm for w in ['dun', 'dunku', 'dün']):
-        return (today - timedelta(days=1)).isoformat()
-    if any(w in norm for w in ['bugun', 'bug??nk??', 'bugunku']):
-        return operation_today() if 'operation_today' in globals() else today.isoformat()
-    late_types = {'meal', 'vitamin', 'supplement', 'water', 'steps', 'step', 'weight', 'body_weight', 'kilo', 'note', 'mood'}
-    day_end_words = [
-        'gece', 'yatmadan', 'uyku oncesi', 'uyku öncesi', 'gun sonu', 'gün sonu',
-        'stack', 'vitamin', 'takviye', 'supplement', 'aksam', 'akşam', 'bugun yediklerim'
-    ]
-    if 0 <= now.hour < operation_cutoff_hour(now) and ((action_type or '') in late_types or any(w in norm for w in day_end_words)):
-        return (today - timedelta(days=1)).isoformat()
-    return today.isoformat()
+    op_today = operation_date()
+    # kelime siniri sart: 'koydun', 'uyudun' gibi -dun ekli fiiller tetiklememeli
+    if re.search(r'\bdun(ku)?\b', norm):
+        return (op_today - timedelta(days=1)).isoformat()
+    return op_today.isoformat()
 
 def tg_night_casual_reply(raw_text=''):
     """00:00-06:00 arasinda basit sohbeti sabah gibi karsilama."""
@@ -5290,44 +5364,60 @@ def tg_supplement_stack_slot(raw_text):
         return 'sabah'
     return ''
 
+# Kullanicinin dogal dilde yazdigi kisa kelimeler -> kanonik urun adi. SADECE eslesme
+# anahtarlari burada; uyelik/doz/stack bilgisi CANONICAL_SUPPLEMENT_STACKS'tan turetilir
+# (eskiden ikisi ayri elle tutuluyordu ve desenkron olmustu: eski Omega-3 adi, eski
+# Ac Karna/Gece dizilimi Telegram yolunda kalmisti).
+TG_SUPPLEMENT_KEYS = {
+    'NOW NAC 600mg': ['nac'],
+    "Garden of Life Dr. Formulated Probiotics Once Daily Men's": ['probiyotik', 'probiotic'],
+    'Weider Ashwagandha Professional': ['ashwagandha', 'ksm', 'ksm-66', 'weider'],
+    'Optimum Nutrition Collagen Peptides (Unflavoured)': ['collagen', 'kolajen'],
+    'Thorne Vitamin D + K2': ['d3', 'k2', 'd+k', 'd vitamini'],
+    'Life Extension Mega EPA/DHA (Omega-3)': ['omega', 'epa', 'dha'],
+    'NOW Magtein Magnesium L-Threonate': ['magtein', 'threonate', 'l-threonate'],
+    'Life Extension MacuGuard with Saffron': ['goz', 'macuguard', 'saffron'],
+    'Life Extension BioActive Complete B-Complex': ['b-complex', 'b complex', 'bcomplex'],
+    'California Gold Nutrition Gold C 1000mg': ['vitamin c', 'c vitamini', 'gold c'],
+    'NOW Zinc Picolinate 50mg': ['cinko', 'zinc'],
+    'NOW Extra Strength Astaxanthin 10mg': ['astaxanthin', 'astaksantin'],
+    'NOW L-Theanine Double Strength': ['theanine', 'l-theanine', 'l theanine'],
+    'NOW Magnesium Glycinate': ['magnesium glycinate', 'magnezyum glisinat', 'glycinate'],
+    'NOW Glycine 1000mg': ['glycine', 'glisin'],
+    'NOW Melatonin 1mg': ['melatonin'],
+    "Doctor's Best L-Citrulline Powder": ['citrulline', 'sitrulin', 'l-citrulline'],
+    'KFD Premium Beta-Alanine': ['beta alanine', 'beta-alanine', 'alanin'],
+    'Optimum Nutrition Electrolyte Powder (Lemon)': ['electrolyte', 'elektrolit', 'hydration'],
+    'Swedish Supplements Taurine': ['taurine', 'taurin'],
+    'California Gold Nutrition SPORT Creatine Monohydrate': ['creatine', 'kreatin'],
+}
+
 def tg_supplement_catalog():
     """Isim alani (name) supplement_stack_items.product_name / vitamin_logs.name ile BIREBIR
     ayni olmali - Dashboard/Coach/Takvim'deki 'alindi mi' eslesmesi tam string eslesmesine
-    dayaniyor. keys ise kullanicinin dogal dilde yazdigi kisa/rahat kelimeler icin - degismez.
-    2026-07-16: gercek 5 stack'e (Ac Karna/Sabah/Gece/Pre-workout/Post-workout) tam senkron edildi."""
-    return [
-        {'keys':['nac'], 'name':'NOW NAC 600mg', 'amount':'1', 'unit':'kapsul', 'note':'Ac Karna'},
-        {'keys':['probiyotik','probiotic'], 'name':"Garden of Life Dr. Formulated Probiotics Once Daily Men's", 'amount':'1', 'unit':'kapsul', 'note':'Ac Karna'},
-        {'keys':['ashwagandha','ksm','ksm-66','weider'], 'name':'Weider Ashwagandha Professional', 'amount':'2', 'unit':'kapsul', 'note':'Ac Karna'},
-        {'keys':['collagen','kolajen'], 'name':'Optimum Nutrition Collagen Peptides (Unflavoured)', 'amount':'1', 'unit':'olcek', 'note':'Sabah - 20g'},
-        {'keys':['d3','k2','d+k','d vitamini'], 'name':'Thorne Vitamin D + K2', 'amount':'4', 'unit':'damla', 'note':'Sabah'},
-        {'keys':['omega','epa','dha'], 'name':'Life Extension Mega EPA/DHA', 'amount':'3', 'unit':'kapsul', 'note':'Sabah'},
-        {'keys':['magtein','threonate','l-threonate'], 'name':'NOW Magtein Magnesium L-Threonate', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
-        {'keys':['goz','macuguard','saffron'], 'name':'Life Extension MacuGuard with Saffron', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
-        {'keys':['b-complex','b complex','bcomplex'], 'name':'Life Extension BioActive Complete B-Complex', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
-        {'keys':['vitamin c','c vitamini','gold c'], 'name':'California Gold Nutrition Gold C 1000mg', 'amount':'1', 'unit':'tablet', 'note':'Sabah'},
-        {'keys':['astaxanthin','astaksantin'], 'name':'NOW Extra Strength Astaxanthin 10mg', 'amount':'1', 'unit':'kapsul', 'note':'Sabah'},
-        {'keys':['cinko','zinc'], 'name':'NOW Zinc Picolinate 50mg', 'amount':'1', 'unit':'kapsul', 'note':'Sabah | gun asiri'},
-        {'keys':['theanine','l-theanine','l theanine'], 'name':'NOW L-Theanine Double Strength', 'amount':'1', 'unit':'kapsul', 'note':'Sabah + Gece'},
-        {'keys':['magnesium glycinate','magnezyum glisinat','glycinate'], 'name':'NOW Magnesium Glycinate', 'amount':'3', 'unit':'kapsul', 'note':'Gece'},
-        {'keys':['glycine','glisin'], 'name':'NOW Glycine 1000mg', 'amount':'3', 'unit':'kapsul', 'note':'Gece'},
-        {'keys':['melatonin'], 'name':'NOW Melatonin 1mg', 'amount':'3', 'unit':'tablet', 'note':'Gece'},
-        {'keys':['citrulline','sitrulin','l-citrulline'], 'name':"Doctor's Best L-Citrulline Powder", 'amount':'8', 'unit':'g', 'note':'Pre-workout'},
-        {'keys':['beta alanine','beta-alanine','alanin'], 'name':'KFD Premium Beta-Alanine', 'amount':'2', 'unit':'g', 'note':'Pre-workout'},
-        {'keys':['electrolyte','elektrolit','hydration'], 'name':'Optimum Nutrition Electrolyte Powder (Lemon)', 'amount':'8', 'unit':'g', 'note':'Pre-workout'},
-        {'keys':['taurine','taurin'], 'name':'Swedish Supplements Taurine', 'amount':'2', 'unit':'g', 'note':'Pre-workout'},
-        {'keys':['creatine','kreatin'], 'name':'California Gold Nutrition SPORT Creatine Monohydrate', 'amount':'5', 'unit':'g', 'note':'Post-workout'},
-    ]
+    dayaniyor. Tek kaynak: CANONICAL_SUPPLEMENT_STACKS (elle liste tutulmaz, desenkron olamaz)."""
+    items, by_name = [], {}
+    for stack_name, stack_items in CANONICAL_SUPPLEMENT_STACKS:
+        for name, dose, unit in stack_items:
+            if name in by_name:
+                # ayni urun ikinci stack'te de var (NAC, L-Theanine): notu genislet
+                if stack_name not in by_name[name]['note']:
+                    by_name[name]['note'] += f' + {stack_name}'
+                continue
+            it = {'keys': TG_SUPPLEMENT_KEYS.get(name, []), 'name': name,
+                  'amount': str(dose), 'unit': unit, 'note': stack_name}
+            if name == 'NOW Zinc Picolinate 50mg':
+                it['note'] += ' | gun asiri'
+            by_name[name] = it
+            items.append(it)
+    return items
 
 def tg_stack_preset(slot):
-    return {
-        'ac-karna': ['NOW NAC 600mg', "Garden of Life Dr. Formulated Probiotics Once Daily Men's", 'Weider Ashwagandha Professional'],
-        'sabah': ['Optimum Nutrition Collagen Peptides (Unflavoured)', 'Thorne Vitamin D + K2', 'Life Extension Mega EPA/DHA', 'NOW Magtein Magnesium L-Threonate', 'Life Extension MacuGuard with Saffron', 'Life Extension BioActive Complete B-Complex', 'California Gold Nutrition Gold C 1000mg', 'NOW L-Theanine Double Strength', 'NOW Zinc Picolinate 50mg', 'NOW Extra Strength Astaxanthin 10mg'],
-        'kahvalti': ['Optimum Nutrition Collagen Peptides (Unflavoured)', 'Thorne Vitamin D + K2', 'Life Extension Mega EPA/DHA', 'NOW Magtein Magnesium L-Threonate', 'Life Extension MacuGuard with Saffron', 'Life Extension BioActive Complete B-Complex', 'California Gold Nutrition Gold C 1000mg', 'NOW L-Theanine Double Strength', 'NOW Zinc Picolinate 50mg', 'NOW Extra Strength Astaxanthin 10mg'],
-        'gece': ['NOW L-Theanine Double Strength', 'NOW Magnesium Glycinate', 'NOW Glycine 1000mg', 'NOW Melatonin 1mg'],
-        'pre-workout': ["Doctor's Best L-Citrulline Powder", 'KFD Premium Beta-Alanine', 'Optimum Nutrition Electrolyte Powder (Lemon)', 'Swedish Supplements Taurine'],
-        'post-workout': ['California Gold Nutrition SPORT Creatine Monohydrate'],
-    }.get(slot, [])
+    """Slot adini kanonik stack'in guncel urun listesine cevirir (tek kaynak: kanonik katalog)."""
+    canon = {s: [n for (n, _d, _u) in its] for s, its in CANONICAL_SUPPLEMENT_STACKS}
+    slot_to_stack = {'ac-karna': 'Aç Karna', 'sabah': 'Sabah/Kahvaltı', 'kahvalti': 'Sabah/Kahvaltı',
+                     'gece': 'Gece', 'pre-workout': 'Pre-workout', 'post-workout': 'Post-workout'}
+    return canon.get(slot_to_stack.get(slot, ''), [])
 
 def tg_stack_label(slot):
     return {
@@ -6061,9 +6151,9 @@ async def cmd_photo(u, c):
             reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
         tg_store_message('out', reply, getattr(u.effective_chat, 'id', ''), 'AI Coach', actions)
         await msg.reply_text(reply)
-    except Exception as e:
+    except Exception:
         log.exception("Fotograf analizi basarisiz")
-        await msg.reply_text(f"Fotografi analiz edemedim: {e}")
+        await msg.reply_text("Fotoğrafı analiz edemedim, kayıt yapmadım — bir daha gönderir misin?")
 
 # TELEGRAM_STANDALONE_ALWAYS_ON_V1
 TELEGRAM_LOCK_PATH = os.path.join(BASE_DIR, 'telegram_bot.lock')
@@ -6859,6 +6949,24 @@ def vit_status_of(status, notes):
         return 'half_dose'
     return 'taken'
 
+
+def backfill_vitamin_status():
+    """status'u bos eski vitamin_logs kayitlarina vit_status_of sonucunu yazar (idempotent,
+    her boot). SUPP_TAKEN_COUNT_SQL gibi SQL sayaclari '' status'lu satirlari goremiyordu -
+    web 'stack alindi' butonu eskiden status yazmadigi icin o gunler 0/23 sayiliyordu."""
+    conn = get_db()
+    rows = conn.execute("SELECT id, notes FROM vitamin_logs WHERE status IS NULL OR status=''").fetchall()
+    for r in rows:
+        conn.execute("UPDATE vitamin_logs SET status=? WHERE id=?", (vit_status_of('', r['notes']), r['id']))
+    if rows:
+        conn.commit()
+        log.info("vitamin_logs status backfill: %d satir dolduruldu", len(rows))
+    conn.close()
+
+
+backfill_vitamin_status()
+
+
 @app.route('/api/supplements/breaks', methods=['GET'])
 def api_supplements_breaks():
     """Su an aktif olan 'ara veriliyor' durumlarini doner (stack veya urun bazli).
@@ -6918,16 +7026,57 @@ def api_supplements_range():
 
     vlogs = conn.execute(
         "SELECT date, name, status, notes FROM vitamin_logs WHERE date>=? AND date<=?", (start, end)).fetchall()
+    # TUM break'ler (kapali olanlar dahil): kapanan bir ara, kendi tarih araligindaki gecmis
+    # gunlerde 'ara verildi' olarak gorunmeye DEVAM etmeli - eskiden sadece active=1 okununca
+    # ara bitince tarihsel gunler geriye donuk 'kacirilmis'a donuyordu; end_date sinirsiz
+    # sayildigi icin gelecek gunler de yanlis 'ara veriliyor' cikiyordu.
     breaks = conn.execute(
-        "SELECT target_type, target_name, since_date, end_date FROM supplement_breaks WHERE active=1").fetchall()
+        "SELECT target_type, target_name, since_date, end_date, active, ended_at FROM supplement_breaks").fetchall()
     conn.close()
+    # (date, name) -> log listesi; web loglari notes'ta 'stack:<ad>' tasir. Ayni urun iki
+    # stack'te olunca (NAC, L-Theanine) once ayni stack'e etiketli log aranir - eskiden tek
+    # sabah NAC kaydi Gece stack'ini de 'alindi' gosteriyordu. Etiketsiz (Telegram) loglar
+    # fallback olarak her iki stack'e de sayilir (bilinen sinirlama).
     by_date_name = {}
     for r in vlogs:
-        by_date_name[(r['date'], r['name'])] = vit_status_of(r['status'], r['notes'])
-    broken_stacks = {r['target_name']: {'since': r['since_date'] or '0000-00-00', 'end': r['end_date']}
-                     for r in breaks if r['target_type'] == 'stack'}
-    broken_products = {r['target_name']: {'since': r['since_date'] or '0000-00-00', 'end': r['end_date']}
-                       for r in breaks if r['target_type'] == 'product'}
+        nt = r['notes'] or ''
+        by_date_name.setdefault((r['date'], r['name']), []).append({
+            'status': vit_status_of(r['status'], r['notes']),
+            'stack': nt[6:].strip() if nt.startswith('stack:') else None,
+        })
+
+    def _pick_log(logs_, stack_name):
+        tagged = [l for l in logs_ if l['stack'] == stack_name]
+        untagged = [l for l in logs_ if l['stack'] is None]
+        pool = tagged if tagged else untagged
+        for l in pool:
+            if l['status'] in ('taken', 'eod_taken', 'half_dose'):
+                return l
+        return pool[0] if pool else None
+
+    def _break_map(rows_):
+        m = {}
+        for r in rows_:
+            m.setdefault(r['target_name'], []).append({
+                'since': r['since_date'] or '0000-00-00', 'end': r['end_date'],
+                'active': bool(r['active']), 'ended_at': r['ended_at'],
+            })
+        return m
+    broken_stacks = _break_map([r for r in breaks if r['target_type'] == 'stack'])
+    broken_products = _break_map([r for r in breaks if r['target_type'] == 'product'])
+
+    def _covering_break(brs, ds):
+        """ds gununu kapsayan break kaydini doner. Pencere: since <= ds <= end_date (varsa);
+        elle bitirilen aralarda (active=0, ended_at) bitis gunu HARIC - o gun tekrar baslanmistir."""
+        for b in brs or []:
+            if ds < b['since']:
+                continue
+            if b['end'] and ds > b['end']:
+                continue
+            if not b['active'] and not (b['ended_at'] and ds < b['ended_at']):
+                continue
+            return b
+        return None
 
     d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
     days = []
@@ -6936,19 +7085,20 @@ def api_supplements_range():
         ds = d.isoformat()
         day_stacks = []
         for s in stacks:
-            stack_break = broken_stacks.get(s['name'])
+            stack_break = _covering_break(broken_stacks.get(s['name']), ds)
             items_out = []
             taken_n = 0
             total_n = 0
             item_break_ends = []
             for it in s['items']:
-                br = broken_products.get(it['product_name']) or stack_break
-                on_break = br is not None and ds >= br['since']
+                br = _covering_break(broken_products.get(it['product_name']), ds) or stack_break
+                on_break = br is not None
                 if on_break:
                     ui_status = 'on_break'
                     item_break_ends.append(br['end'])
                 else:
-                    st = by_date_name.get((ds, it['product_name']))
+                    chosen = _pick_log(by_date_name.get((ds, it['product_name'])) or [], s['name'])
+                    st = chosen['status'] if chosen else None
                     total_n += 1
                     if st in ('taken', 'eod_taken', 'half_dose'):
                         taken_n += 1
@@ -7024,7 +7174,7 @@ def api_supplements_log():
             conn.execute("UPDATE supplement_rules SET rule_data=? WHERE product_name='NOW Zinc Picolinate 50mg'", (rd,))
         # Also log to vitamin_logs for backward compat
         if taken:
-            conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+            conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes,status) VALUES (?,?,?,?,?,'taken')",
                          (today, pname, str(dose), unit, f'stack:{stack_name}'))
 
     # Extras
@@ -7034,7 +7184,7 @@ def api_supplements_log():
         eunit = ex.get('unit', '')
         conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,1,'extra')",
                      (log_id, ename, edose, eunit))
-        conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes) VALUES (?,?,?,?,?)",
+        conn.execute("INSERT INTO vitamin_logs (date,name,amount,unit,notes,status) VALUES (?,?,?,?,?,'taken')",
                      (today, ename, str(edose), eunit, f'extra:{stack_name}'))
 
     conn.commit(); conn.close()
