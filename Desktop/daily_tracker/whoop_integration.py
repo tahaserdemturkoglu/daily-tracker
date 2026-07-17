@@ -119,6 +119,19 @@ def _save_tokens(access_token, refresh_token, expires_in):
     conn.close()
 
 
+def _token_request(data):
+    """Token istegi - once HTTP Basic auth (Ory Hydra default), olmazsa body auth dener."""
+    body = {k: v for k, v in data.items() if k not in ("client_id", "client_secret")}
+    r = requests.post(TOKEN_URL, data=body,
+                      auth=(WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET), timeout=30)
+    if r.status_code == 401:
+        body2 = dict(data)
+        body2["client_id"] = WHOOP_CLIENT_ID
+        body2["client_secret"] = WHOOP_CLIENT_SECRET
+        r = requests.post(TOKEN_URL, data=body2, timeout=30)
+    return r
+
+
 def _get_access_token():
     """Geçerli access token döner; süresi dolduysa refresh eder (rotating)."""
     conn = _db()
@@ -129,13 +142,11 @@ def _get_access_token():
     if row["expires_at"] and time.time() < row["expires_at"]:
         return row["access_token"]
     # refresh — WHOOP her seferinde yeni refresh token döndürür
-    r = requests.post(TOKEN_URL, data={
+    r = _token_request({
         "grant_type": "refresh_token",
         "refresh_token": row["refresh_token"],
-        "client_id": WHOOP_CLIENT_ID,
-        "client_secret": WHOOP_CLIENT_SECRET,
         "scope": "offline",
-    }, timeout=30)
+    })
     if r.status_code != 200:
         return None
     tok = r.json()
@@ -189,13 +200,11 @@ def whoop_callback():
     code = request.args.get("code")
     if not code:
         return "WHOOP yetkilendirme reddedildi.", 400
-    r = requests.post(TOKEN_URL, data={
+    r = _token_request({
         "grant_type": "authorization_code",
         "code": code,
-        "client_id": WHOOP_CLIENT_ID,
-        "client_secret": WHOOP_CLIENT_SECRET,
         "redirect_uri": WHOOP_REDIRECT_URI,
-    }, timeout=30)
+    })
     if r.status_code != 200:
         return f"Token alınamadı: {r.text}", 400
     tok = r.json()
