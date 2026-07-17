@@ -2281,9 +2281,9 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
       ?`<span style="font-size:10px;color:${ND.muted}">⏸ ara veriliyor</span>`
       :`<span style="font-size:10px;color:${full?ND.whoop:ND.kcal}">${taken}/${countable}</span>`;
     const markBtn=(!full&&!stackOnBreak)?`<button onclick="ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:'';
-    return `<div style="background:${ndHexA(c,.07)};border:1px solid ${ndHexA(c,.25)};border-radius:12px;padding:14px 16px;margin-bottom:14px">
+    return `<div style="background:#0F131C;border:1px solid ${ndHexA(c,.3)};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.28)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${c}">● ${escHtml((s.name||'').toUpperCase())}</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:${c}">▪ ${escHtml((s.name||'').toUpperCase())} STACK</div>
         ${badge}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">${rows||`<div style="color:${ND.muted};font-size:12px">Ürün yok</div>`}</div>
