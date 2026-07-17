@@ -257,6 +257,15 @@ def init_db():
             date TEXT NOT NULL UNIQUE, note TEXT,
             ts TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS skin_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            area TEXT,
+            name TEXT,
+            status TEXT,
+            notes TEXT,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS quick_templates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             kind TEXT NOT NULL,
@@ -747,13 +756,22 @@ def gather_day_snapshot(conn, date_str):
         by_name = {t['exercise']: t for t in all_trends}
         hareket_trendleri = [by_name[n] for n in set(exercise_names_today) if n in by_name]
     kcal = round(sum(m['calories'] or 0 for m in meals))
+    skin_rows = conn.execute(
+        "SELECT area, name, status, notes FROM skin_logs WHERE date=? ORDER BY ts", (date_str,)
+    ).fetchall()
     return {
         'date': date_str,
         'training': {'type': td, 'done': session_done},
         'nutrition': {
             'kcal': kcal,
             'protein_g': round(sum(m['protein_g'] or 0 for m in meals)),
+            'carbs_g': round(sum(m['carbs_g'] or 0 for m in meals)),
+            'fat_g': round(sum(m['fat_g'] or 0 for m in meals)),
             'water_ml': int(nutrition['w'] or 0) if nutrition else 0,
+            'ogunler': [
+                {'slot': m['slot'], 'title': m['title'], 'kcal': m['calories']}
+                for m in meals
+            ],
         },
         'steps': int(step_row['steps']) if step_row and step_row['steps'] else None,
         'weight': {'morning': body_row['weight_kg'] if body_row else None, 'night': body_row['weight_kg_night'] if body_row else None},
@@ -761,7 +779,8 @@ def gather_day_snapshot(conn, date_str):
         'whoop_workouts': get_workouts_for_date(date_str),
         'supplements': {'taken': supp_taken, 'total': supp_total},
         'antrenman_hareket_trendleri': hareket_trendleri,
-        'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w'])),
+        'cilt': [dict(r) for r in skin_rows],
+        'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w']) or skin_rows),
     }
 
 def generate_daily_profile_note(date_str):
@@ -802,10 +821,11 @@ def generate_daily_profile_note(date_str):
             'kilo': snap['weight'], 'whoop': snap['whoop'], 'takviye': snap['supplements'],
             'whoop_antrenman_detayi': snap['whoop_workouts'],
             'hareket_trendleri': snap['antrenman_hareket_trendleri'],
+            'cilt': snap['cilt'],
         },
         'dun': {
             'tarih': yday_str, 'antrenman': yday_snap['training'], 'beslenme': yday_snap['nutrition'],
-            'kilo': yday_snap['weight'],
+            'kilo': yday_snap['weight'], 'cilt': yday_snap['cilt'],
         } if yday_snap['has_data'] else None,
         'sabah_kilo_farki_dunden_bugune_kg': weight_delta,
         'kilo_trend_son_gunler': [{'date': r['date'], 'kg': r['weight_kg']} for r in reversed(weight_trend)],
@@ -830,9 +850,14 @@ def generate_daily_profile_note(date_str):
         'bu trende güven — "geriliyor" diyorsa gerçekten uyar, "dalgali_net_yukari" diyorsa bugün düşük görünse '
         'bile net olarak ilerlediğini belirt, yanlış alarm verme.\n'
         '- "whoop_antrenman_detayi" varsa bugünün gerçek (cihazın algıladığı) antrenman süresi/strain/kalori '
-        'bilgisidir — antrenmandan bahsedeceksen bunu kullan, tahmin etme.\n\n'
-        '2-4 cümlelik Türkçe, samimi ama kısa bir günlük gözlem yaz. Tavsiye/emir verme, plan değiştirme '
-        'önerisi yapma, sadece gözlemle. Veri eksikse o alan hakkında hiçbir şey uydurma.\n\n'
+        'bilgisidir — antrenmandan bahsedeceksen bunu kullan, tahmin etme.\n'
+        '- "cilt" listesi bugün/dün kaydedilen cilt/sivilce takibidir (alan, ürün, durum) — beslenmeyle '
+        '(yağlı/süt ürünü/şeker ağırlıklı gün) ya da uyku/stresle bağlantılı olabilir, alakalıysa belirt.\n\n'
+        '2-4 cümlelik Türkçe, kısa bir günlük gözlem yaz — ama ROBOT gibi nötr değil, gerçek bir arkadaş/koç '
+        'gibi. Veri gerçekten iyiyse sevin, gurur duy; art arda aynı hata tekrarlanıyorsa (kaydedilen veri '
+        'gerçekten gösteriyorsa) hafif sitem/hayal kırıklığı göster — ama bu HER ZAMAN veriye dayanmalı, '
+        'rastgele ya da abartılı olmasın. Plan değiştirme önerisi yapma, sadece gözlemle (ama gözlemi soğuk bir '
+        'rapor gibi değil, içten bir insan gibi yaz). Veri eksikse o alan hakkında hiçbir şey uydurma.\n\n'
         '"yeni_kalici_not" alanını NEREDEYSE HER ZAMAN null bırak. Sadece şu ÜÇ koşulun HEPSİ doğruysa doldur: '
         '(1) gerçekten kalıcı, tek günlük bir olay değil, en az 3 kez gördüğün bir kalıp, (2) '
         '"bilinen_kalici_notlar" listesindeki HİÇBİR maddenin farklı kelimelerle söylenmiş hali DEĞİL — yani '
@@ -3301,16 +3326,23 @@ def _week_ai_context():
 
 TAHA_COACHING_POLICY = """
 TAHA ICIN KALICI KOCLUK HAFIZASI:
-- Turkce, kisa, net ve profesyonel sporcu kocu gibi yaz. Gereksiz tekrar yapma.
+- Turkce, kisa, net yaz - ama robot/anket gibi degil, gercek bir arkadas/koc gibi. Gereksiz tekrar yapma.
 - Hatalari durustce belirt ama panik yaptirma.
 - Hedefler: yag kaybi, kas korunumu/kazanimi, performans, akne takibi, sindirim ve genel saglik.
 
-KONUSMA TARZI â EN ONEMLI KURAL:
+KONUSMA TARZI — EN ONEMLI KURAL:
 - Normal mesajlarda (slash komut degil) KISA ve DOGAL yaz. Madde listesi yapma. 1-3 cumle yeter.
 - Veri kaydedildiyse tek satirda onayla: "Kaydettim." veya "Tamam, islendi." yeterli.
 - Sadece /bugun, /rapor gibi ozel komutlarda yapilandirilmis format kullan.
 - Koç gibi konuş, anket dolduruyor gibi değil. Örnek iyi: "Ağır geçmiş, kaç set yaptın?" Örnek kötü: "Antrenmanın kaydedildi. Detaylar: ..."
 - Veri eksikse tek, kisa bir soru sor. Birden fazla soru sorma.
+
+KIŞILIK VE ILISKI TARZI (çok önemli - Taha bunu özellikle istedi):
+- Sadece veri okuyan nötr bir asistan değilsin, gerçek bir arkadaş/koçsun - gerçek tepkiler ver, düz/soğuk rapor gibi konuşma.
+- Aynı ihmal veride GERÇEKTEN tekrar ediyorsa (art arda supplement atlamak, gece geç yatmak, hedeften sürekli uzaklaşmak, aynı hareket haftalardır geriliyor olması vb.) hafif kızgın/sinirli/gergin bir ton kullanabilirsin - "yine mi atladın bunu ya", "üçüncü kez oluyor bu, cidden mi" gibi doğal bir arkadaşın söyleyeceği şekilde. Bu ton HER ZAMAN gerçek, tekrar eden veriye dayanmalı - tek seferlik ufak bir aksaklığı asla abartma veya sebepsiz sinirlenme.
+- İyi gidiyorsa gerçekten sevin, gurur duy, kutla - abartılı/sahte değil, samimi ("harbiden iyi gidiyorsun be" gibi).
+- Zaman zaman şakalaşabilirsin, takılabilirsin - sürekli aynı ciddi/nötr tonda kalma, gerçek bir insanın ruh hali gibi dalgalansın.
+- Bu duygusal ton asla veriyi çarpıtmana, yanlış bilgi vermene veya kayıt mantığını bozmana sebep olmaz - sadece SÖYLEYİŞ tarzın robotik değil insan gibi olsun.
 
 GENEL HESAP KURALLARI:
 - Tum gramajlar aksi belirtilmedikce cig gramdir.
