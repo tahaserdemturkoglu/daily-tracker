@@ -2544,15 +2544,10 @@ function renderVitList(elId,vitamins,canDel){
       const safeName=(v.name||'').replace(/'/g,"\\'");
       const amt=v.amount?fmtAmt(v.amount):'';
       const unit=v.unit?' '+v.unit:'';
-      const arrows=canDel?`<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">
-          <button onclick="vitMove(${v.id},-1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.62rem;line-height:1;padding:1px 3px">▲</button>
-          <button onclick="vitMove(${v.id},1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.62rem;line-height:1;padding:1px 3px">▼</button>
-        </div>`:'';
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;position:relative;${cardBorder}">
         ${badge}
         <div style="font-size:.8rem;font-weight:700;flex:1;min-width:0;${nameStyle}">${v.name||''}</div>
         ${amt||unit?`<div style="font-size:.75rem;color:var(--muted);white-space:nowrap;flex-shrink:0">${amt}${unit}</div>`:''}
-        ${arrows}
         ${canDel?`<button class="del-btn" style="font-size:.55rem;padding:2px 6px;opacity:.5;flex-shrink:0" onclick="confirmDelVit(${v.id},'${safeName}')">del</button>`:''}
       </div>`;
     }).join('');
@@ -3034,29 +3029,84 @@ async function renameFoodDbItem(id,curName){
   loadMealDbMgmtList();
 }
 
+let _suppOrderStacks=[];
 async function loadVitamins(){
-  const d=await API('/api/today');
-  const vits=d.vitamins||[];
+  // Takviye Sırası kartı: DB'deki GERÇEK protokol (supplement_stacks) dashboard stilinde,
+  // ▲▼ ile stack + ürün sıralaması kalıcı (order_num) - bugünkü log durumu ikon olarak bindirilir.
+  const [d,stacks,breaks]=await Promise.all([
+    API('/api/today'),
+    API('/api/supplements/stacks').catch(()=>[]),
+    API('/api/supplements/breaks').catch(()=>[])
+  ]);
+  const vits=(d&&d.vitamins)||[];
   window._vitToday=vits;
-  renderVitList('vit-list',vits,true);
+  window._suppBreaksCache=Array.isArray(breaks)?breaks:[];
+  _suppOrderStacks=Array.isArray(stacks)?stacks:[];
+  renderSuppOrderCard(vits,window._suppBreaksCache);
   const sub=$('vit-list-sub');
   if(sub) sub.textContent=vits.length?vits.length+' takviye kaydı':'Bugünkü protokol';
   updateVitListScrollHint();
 }
-async function vitMove(id,dir){
-  // Takviye Sırası'nda kaydı kendi stack grubu içinde yukarı/aşağı taşır ve kalıcılaştırır
-  // (display_order backend'de COALESCE ile sıralamaya girer, tüm görünümler aynı sırayı okur).
-  const arr=window._vitToday||[];
-  const i=arr.findIndex(v=>v.id===id); if(i<0)return;
-  const g=vitGroupOf(arr[i]);
-  let j=i+dir;
-  while(j>=0&&j<arr.length&&vitGroupOf(arr[j])!==g) j+=dir;
-  if(j<0||j>=arr.length)return;
-  [arr[i],arr[j]]=[arr[j],arr[i]];
-  renderVitList('vit-list',arr,true);
-  try{
-    await Promise.all(arr.map((v,idx)=>fetch('/api/vitamin/'+v.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({display_order:idx})})));
-  }catch(e){console.warn('vitMove persist',e);}
+function renderSuppOrderCard(vits,breaks){
+  const el=$('vit-list');if(!el)return;
+  vits=vits||window._vitToday||[];breaks=breaks||window._suppBreaksCache||[];
+  if(!_suppOrderStacks.length){el.innerHTML='<div class="list-empty">Stack tanımlı değil</div>';return;}
+  const brokenStacks=new Set(breaks.filter(b=>b.target_type==='stack').map(b=>b.target_name));
+  const brokenProducts=new Set(breaks.filter(b=>b.target_type==='product').map(b=>b.target_name));
+  const SC={'Aç Karna':'#67e8f9','Sabah/Kahvaltı':'#38bdf8','Pre-workout':'#fb923c','Post-workout':'#4ade80','Gece':'#a78bfa'};
+  el.innerHTML=_suppOrderStacks.map((s,si)=>{
+    const gc=SC[s.name]||'#94a3b8';
+    const sOnBreak=brokenStacks.has(s.name);
+    const items=s.items||[];
+    let taken=0,countable=0;
+    const rows=items.map((it,ii)=>{
+      const pBreak=sOnBreak||brokenProducts.has(it.product_name);
+      const logEntry=vits.find(v=>v.name===it.product_name);
+      const st=logEntry?vitStatusOf(logEntry):null;
+      const m=st?VIT_STATUS_META[st]:null;
+      if(!pBreak){countable++;if(st==='taken'||st==='eod_taken'||st==='half_dose')taken++;}
+      const icon=pBreak?'⏸':(m?m.emoji:'○');
+      const iconColor=pBreak?'var(--muted)':(m?m.color:'var(--muted2)');
+      const dose=it.dose?((+it.dose%1===0?+it.dose:it.dose)+' '+(it.unit||'')):'';
+      return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;${pBreak?'opacity:.55;':''}">
+        <span style="color:${iconColor};font-weight:800;font-size:.8rem;flex-shrink:0;width:14px;text-align:center">${icon}</span>
+        <span style="font-size:.78rem;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(it.product_name)}</span>
+        <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;flex-shrink:0">${dose}</span>
+        <div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">
+          <button onclick="suppOrderMoveItem(${si},${ii},-1)" ${ii===0?'disabled':''} style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;line-height:1;padding:1px 3px;${ii===0?'opacity:.25;':''}">▲</button>
+          <button onclick="suppOrderMoveItem(${si},${ii},1)" ${ii===items.length-1?'disabled':''} style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;line-height:1;padding:1px 3px;${ii===items.length-1?'opacity:.25;':''}">▼</button>
+        </div>
+      </div>`;
+    }).join('');
+    const countTxt=sOnBreak?'⏸ ara':`${taken}/${countable}`;
+    return `<div class="meal-slot-group" style="border-top-color:${gc}55;overflow:hidden">
+      <div class="meal-slot-header" style="background:linear-gradient(90deg,${gc}18 0%,transparent 80%);border-bottom-color:${gc}30">
+        <div style="display:flex;align-items:center;gap:7px;width:100%">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${gc};box-shadow:0 0 8px ${gc};flex-shrink:0"></span>
+          <span style="font-size:.76rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:${gc}">${escHtml(s.name)}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--muted);margin-left:auto">${countTxt}</span>
+          <div style="display:flex;flex-direction:column;gap:1px">
+            <button onclick="suppOrderMoveStack(${si},-1)" ${si===0?'disabled':''} style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;line-height:1;padding:1px 3px;${si===0?'opacity:.25;':''}">▲</button>
+            <button onclick="suppOrderMoveStack(${si},1)" ${si===_suppOrderStacks.length-1?'disabled':''} style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.6rem;line-height:1;padding:1px 3px;${si===_suppOrderStacks.length-1?'opacity:.25;':''}">▼</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;padding:8px 10px 10px">${rows}</div>
+    </div>`;
+  }).join('');
+}
+async function suppOrderMoveStack(i,dir){
+  const j=i+dir;if(j<0||j>=_suppOrderStacks.length)return;
+  [_suppOrderStacks[i],_suppOrderStacks[j]]=[_suppOrderStacks[j],_suppOrderStacks[i]];
+  renderSuppOrderCard();
+  try{await POST('/api/supplements/reorder',{stack_ids:_suppOrderStacks.map(s=>s.id)});}catch(e){console.warn('stack reorder',e);}
+}
+async function suppOrderMoveItem(si,ii,dir){
+  const s=_suppOrderStacks[si];if(!s)return;
+  const j=ii+dir;if(j<0||j>=s.items.length)return;
+  [s.items[ii],s.items[j]]=[s.items[j],s.items[ii]];
+  renderSuppOrderCard();
+  try{await POST('/api/supplements/reorder',{stack_id:s.id,item_ids:s.items.map(it=>it.id)});}catch(e){console.warn('item reorder',e);}
 }
 function updateVitListScrollHint(){
   const list=$('vit-list'),card=$('supp-order-card');

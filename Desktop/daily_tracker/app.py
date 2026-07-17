@@ -634,16 +634,20 @@ def sync_supplement_catalog_canonical():
             row = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
             if row:
                 sid = row['id']
-                conn.execute("UPDATE supplement_stacks SET active=1, order_num=? WHERE id=?", (order_i, sid))
+                # order_num'a DOKUNMA - kullanicinin Log'daki Takviye Sirasi'nda yaptigi
+                # siralama boot'ta sifirlanmasin. Sadece aktiflik garanti edilir.
+                conn.execute("UPDATE supplement_stacks SET active=1 WHERE id=?", (sid,))
             else:
                 cur = conn.execute(
                     "INSERT INTO supplement_stacks (name, category, active, order_num) VALUES (?, 'custom', 1, ?)",
                     (stack_name, order_i))
                 sid = cur.lastrowid
-            existing = [(r['product_name'], float(r['dose'] or 0), r['unit'] or '') for r in conn.execute(
-                "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num, id",
-                (sid,)).fetchall()]
-            canonical = [(n, float(d), u) for (n, d, u) in items]
+            # Karsilastirma SIRA-DUYARSIZ (sorted) - kullanici urunleri yeniden siralarsa
+            # icerik ayni kaldigi surece migration yeniden yazmaz, siralama korunur.
+            existing = sorted((r['product_name'], float(r['dose'] or 0), r['unit'] or '') for r in conn.execute(
+                "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=?",
+                (sid,)).fetchall())
+            canonical = sorted((n, float(d), u) for (n, d, u) in items)
             if existing != canonical:
                 conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (sid,))
                 for i, (n, d, u) in enumerate(items, start=1):
@@ -6695,11 +6699,29 @@ def api_supplement_stacks():
         "SELECT * FROM supplement_stacks WHERE active=1 ORDER BY order_num, name").fetchall()]
     for s in stacks:
         items = conn.execute(
-            "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num",
+            "SELECT id, product_name, dose, unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num, id",
             (s['id'],)).fetchall()
         s['items'] = [dict(i) for i in items]
     conn.close()
     return jsonify(stacks)
+
+
+@app.route('/api/supplements/reorder', methods=['POST'])
+def api_supplements_reorder():
+    """Log'daki Takviye Sirasi kartindan stack/urun sirasini kalicilastirir.
+    {stack_ids:[...]} tum stack sirasini, {stack_id, item_ids:[...]} bir stack'in
+    urun sirasini yeni listedeki konuma gore yazar."""
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    if isinstance(data.get('stack_ids'), list):
+        for i, sid in enumerate(data['stack_ids'], start=1):
+            conn.execute("UPDATE supplement_stacks SET order_num=? WHERE id=?", (i, int(sid)))
+    if data.get('stack_id') and isinstance(data.get('item_ids'), list):
+        for i, iid in enumerate(data['item_ids'], start=1):
+            conn.execute("UPDATE supplement_stack_items SET order_num=? WHERE id=? AND stack_id=?",
+                         (i, int(iid), int(data['stack_id'])))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 @app.route('/api/supplements/today', methods=['GET'])
 def api_supplements_today():
