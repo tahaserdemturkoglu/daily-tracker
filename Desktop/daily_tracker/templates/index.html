@@ -1887,10 +1887,11 @@ function ndRenderWeightChart(bm,weightGoal){
 function ndNormSlot(s){
   s=(s||'extra').toLowerCase().trim();
   if(s==='breakfast'||s==='kahvaltı')return'kahvalti';
-  if(s==='lunch')return'ogle';
-  if(s==='dinner')return'aksam';
-  if(s==='preworkout')return'pre-workout';
-  if(s==='postworkout'||s==='posworkout')return'post-workout';
+  if(s==='lunch'||s==='öğle'||s==='öğlen'||s==='oglen')return'ogle';
+  if(s==='dinner'||s==='akşam')return'aksam';
+  if(s==='atistirma'||s==='atıştırma'||s==='atıştırmalık'||s==='atistirmalik')return'ara';
+  if(s==='preworkout'||s==='pre workout'||s==='pre_workout')return'pre-workout';
+  if(s==='postworkout'||s==='posworkout'||s==='post workout'||s==='post_workout')return'post-workout';
   if(s==='night')return'gece';
   return s;
 }
@@ -3767,20 +3768,23 @@ async function ozpRenderDaily(dateStr){
 
   const slotLabel={kahvalti:'☕ Kahvaltı',kahvaltı:'☕ Kahvaltı',pre_meal:'🥗 Pre Meal',meal1:'🍽️ Meal 1',meal2:'🍽️ Meal 2',meal3:'🍽️ Meal 3',pre_snack:'🍎 Pre Snack',post_meal:'💪 Post Meal',post_snack:'🌙 Post Snack',ogle:'🍛 Öğle',öğle:'🍛 Öğle',aksam:'🌆 Akşam',akşam:'🌆 Akşam',gece:'🌙 Gece','pre-workout':'💪 Pre-Workout','post-workout':'🏋️ Post-Workout',snack:'🍎 Snack',ara:'🍎 Atıştırmalık',extra:'✨ Ekstra'};
   const groups={};
-  ml.forEach(m=>{const k=(m.slot||'extra').toLowerCase();(groups[k]=groups[k]||[]).push(m);});
+  ml.forEach(m=>{const k=ndNormSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
   const sortedSlots=[...new Set([...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups)])];
   const mealHtml=ozpPanel('🍽 ÖĞÜN ZAMAN ÇİZELGESİ',OZP_C.org,
     sortedSlots.length?sortedSlots.map(slot=>{
       const items=groups[slot]||[];
-      const stot=items.reduce((a,m)=>a+(m.calories||0),0);
-      return `<div style="margin-top:12px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:1px solid var(--border)">
-          <div style="font-size:13px;font-weight:800;color:var(--text)">${slotLabel[slot]||('🍴 '+slot)}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${OZP_C.org};font-weight:600">${Math.round(stot)} kcal</div>
+      const stot=items.reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),c:a.c+(m.carbs_g||0),f:a.f+(m.fat_g||0)}),{cal:0,p:0,c:0,f:0});
+      return `<div style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:11px 13px 9px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding-bottom:7px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:13px;font-weight:800;color:var(--text)">${slotLabel[slot]||('🍴 '+slot)}</div>
+            <div style="font-size:10px;color:var(--muted2);font-family:'JetBrains Mono',monospace">${items.length} kalem</div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700"><span style="color:${OZP_C.org}">${Math.round(stot.cal)} kcal</span><span style="color:var(--muted2)"> · </span><span style="color:${OZP_C.grn}">P${Math.round(stot.p)}</span> <span style="color:${OZP_C.blu}">K${Math.round(stot.c)}</span> <span style="color:${OZP_C.org}">Y${Math.round(stot.f)}</span></div>
         </div>
-        ${items.map(m=>`<div style="display:flex;justify-content:space-between;padding:6px 2px 0;font-size:12px">
-          <span style="color:var(--text)">${escHtml(m.title||m.description||'')} ${m.title&&m.description&&m.description!==m.title?`<span style="color:var(--muted2);font-size:11px">${escHtml(m.description)}</span>`:''}</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${Math.round(m.calories||0)} kcal · <span style="color:${OZP_C.grn}">P${Math.round(m.protein_g||0)}</span> <span style="color:${OZP_C.blu}">K${Math.round(m.carbs_g||0)}</span> <span style="color:${OZP_C.org}">Y${Math.round(m.fat_g||0)}</span></span>
+        ${items.map(m=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 2px 0;font-size:12px">
+          <span style="color:var(--text);min-width:0">${escHtml(m.title||m.description||'')} ${m.title&&m.description&&m.description!==m.title?`<span style="color:var(--muted2);font-size:11px">${escHtml(m.description)}</span>`:''}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap">${Math.round(m.calories||0)} kcal · <span style="color:${OZP_C.grn}">P${Math.round(m.protein_g||0)}</span> <span style="color:${OZP_C.blu}">K${Math.round(m.carbs_g||0)}</span> <span style="color:${OZP_C.org}">Y${Math.round(m.fat_g||0)}</span></span>
         </div>`).join('')}
       </div>`;
     }).join(''):`<div style="color:var(--muted);font-size:13px;margin-top:8px">Öğün kaydı yok.</div>`,
