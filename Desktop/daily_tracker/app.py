@@ -6919,13 +6919,15 @@ def api_supplements_range():
     vlogs = conn.execute(
         "SELECT date, name, status, notes FROM vitamin_logs WHERE date>=? AND date<=?", (start, end)).fetchall()
     breaks = conn.execute(
-        "SELECT target_type, target_name, since_date FROM supplement_breaks WHERE active=1").fetchall()
+        "SELECT target_type, target_name, since_date, end_date FROM supplement_breaks WHERE active=1").fetchall()
     conn.close()
     by_date_name = {}
     for r in vlogs:
         by_date_name[(r['date'], r['name'])] = vit_status_of(r['status'], r['notes'])
-    broken_stacks = {r['target_name']: (r['since_date'] or '0000-00-00') for r in breaks if r['target_type'] == 'stack'}
-    broken_products = {r['target_name']: (r['since_date'] or '0000-00-00') for r in breaks if r['target_type'] == 'product'}
+    broken_stacks = {r['target_name']: {'since': r['since_date'] or '0000-00-00', 'end': r['end_date']}
+                     for r in breaks if r['target_type'] == 'stack'}
+    broken_products = {r['target_name']: {'since': r['since_date'] or '0000-00-00', 'end': r['end_date']}
+                       for r in breaks if r['target_type'] == 'product'}
 
     d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
     days = []
@@ -6934,15 +6936,17 @@ def api_supplements_range():
         ds = d.isoformat()
         day_stacks = []
         for s in stacks:
-            stack_break_since = broken_stacks.get(s['name'])
+            stack_break = broken_stacks.get(s['name'])
             items_out = []
             taken_n = 0
             total_n = 0
+            item_break_ends = []
             for it in s['items']:
-                since = broken_products.get(it['product_name']) or (stack_break_since if stack_break_since else None)
-                on_break = since is not None and ds >= since
+                br = broken_products.get(it['product_name']) or stack_break
+                on_break = br is not None and ds >= br['since']
                 if on_break:
                     ui_status = 'on_break'
+                    item_break_ends.append(br['end'])
                 else:
                     st = by_date_name.get((ds, it['product_name']))
                     total_n += 1
@@ -6953,13 +6957,27 @@ def api_supplements_range():
                         ui_status = st
                     else:
                         ui_status = 'pending'
-                items_out.append({'name': it['product_name'], 'dose': it['dose'], 'unit': it['unit'], 'status': ui_status})
+                item_out = {'name': it['product_name'], 'dose': it['dose'], 'unit': it['unit'], 'status': ui_status}
+                if on_break:
+                    item_out['break_until'] = br['end']  # None = suresiz
+                items_out.append(item_out)
+            stack_on_break = len(s['items']) > 0 and total_n == 0
+            # Stack rozetindeki geri sayac: stack-seviyeli break varsa onun bitisi; degilse
+            # tum urunler ayri ayri paused demektir - biri suresizse (None) rozet de suresiz,
+            # hepsinin tarihi varsa en gec bitis gosterilir.
+            stack_until = None
+            if stack_on_break:
+                if stack_break:
+                    stack_until = stack_break['end']
+                elif item_break_ends and all(e for e in item_break_ends):
+                    stack_until = max(item_break_ends)
             day_stacks.append({
                 'stack_id': s['id'], 'name': s['name'], 'taken': taken_n, 'total': total_n,
                 # Stack rozeti hem gercek stack-seviyeli aralara hem de "stack'teki TEK urun
                 # ayri ayri paused edildi ama sonucta hepsi kapandi" durumuna gore tetiklenir
                 # (ornek: tek urunlu Post-workout'ta urun bazli break de ayni gorseli vermeli).
-                'on_break': len(s['items']) > 0 and total_n == 0,
+                'on_break': stack_on_break,
+                'break_until': stack_until,
                 'items': items_out,
             })
         days.append({'date': ds, 'stacks': day_stacks})

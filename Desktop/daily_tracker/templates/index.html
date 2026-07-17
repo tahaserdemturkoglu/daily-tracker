@@ -818,6 +818,15 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
    CORE
 ════════════════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
+// Takviye ara-verme geri sayaci: end_date yoksa suresiz, varsa bugun DAHIL kalan ara gunu.
+function breakLeftTxt(endDate){
+  if(!endDate) return 'süresiz';
+  const t=new Date(today()+'T12:00:00'), e=new Date(endDate+'T12:00:00');
+  const n=Math.round((e-t)/86400000)+1;
+  if(n<=0) return 'bitiyor';
+  if(n===1) return 'son gün';
+  return n+' gün kaldı';
+}
 const sv = (id, v) => $(id) && ($(id).textContent = v);
 const API  = u => fetch(u, {cache:'no-store'}).then(r=>r.json()).catch(()=>({}));
 const POST = (u,d) => fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).catch(()=>({}));
@@ -1470,9 +1479,10 @@ async function settingsLoadBreaks(){
   const activeBreaks=Array.isArray(breaks)?breaks:[];
   const brokenStacks=new Set(activeBreaks.filter(b=>b.target_type==='stack').map(b=>b.target_name));
   const brokenProducts=new Set(activeBreaks.filter(b=>b.target_type==='product').map(b=>b.target_name));
+  const brEnd={};activeBreaks.forEach(b=>{brEnd[b.target_type+':'+b.target_name]=b.end_date||null;});
   listEl.innerHTML=activeBreaks.length?activeBreaks.map(b=>{
     const label=(b.target_type==='stack'?'📦 ':'💊 ')+escHtml(b.target_name);
-    const range=b.end_date?`${escHtml(b.since_date||'')} → ${escHtml(b.end_date)} (otomatik biter)`:`${escHtml(b.since_date||'')} tarihinden itibaren · süresiz`;
+    const range=b.end_date?`${escHtml(b.since_date||'')} → ${escHtml(b.end_date)} · ${breakLeftTxt(b.end_date)} (otomatik biter)`:`${escHtml(b.since_date||'')} tarihinden itibaren · süresiz`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:7px 11px">
       <div style="min-width:0"><div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div><div style="font-size:.66rem;color:var(--muted)">⏸ ${range}</div></div>
       <button class="btn btn-sm btn-ghost" style="flex-shrink:0" data-endbreak-ttype="${b.target_type}" data-endbreak-tname="${escHtml(b.target_name)}">▶ Tekrar Başla</button>
@@ -1483,7 +1493,7 @@ async function settingsLoadBreaks(){
     const sOnBreak=brokenStacks.has(s.name);
     const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)">
       <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--orange)">▪ ${escHtml(s.name)}</div>
-      ${sOnBreak?'<span style="font-size:.68rem;color:var(--muted)">⏸ Ara veriliyor</span>':`<button class="btn btn-sm btn-ghost" style="font-size:.68rem" data-break-ttype="stack" data-break-tname="${escHtml(s.name)}">⏸ Stack'i Duraklat</button>`}
+      ${sOnBreak?`<span style="font-size:.68rem;color:var(--muted)">⏸ Ara · ${breakLeftTxt(brEnd['stack:'+s.name])}</span>`:`<button class="btn btn-sm btn-ghost" style="font-size:.68rem" data-break-ttype="stack" data-break-tname="${escHtml(s.name)}">⏸ Stack'i Duraklat</button>`}
     </div>`;
     const rows=(s.items||[]).map(it=>{
       const pOnBreak=brokenProducts.has(it.product_name)||sOnBreak;
@@ -2284,6 +2294,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
   const vitByName={};(vitamins||[]).forEach(v=>{vitByName[v.name]=v;});
   const brokenStacks=new Set((breaks||[]).filter(b=>b.target_type==='stack').map(b=>b.target_name));
   const brokenProducts=new Set((breaks||[]).filter(b=>b.target_type==='product').map(b=>b.target_name));
+  const breakEnd={};(breaks||[]).forEach(b=>{breakEnd[b.target_type+':'+b.target_name]=b.end_date||null;});
   let totalItems=0,totalTaken=0;
   const groupColors=['#38BDF8','#FFB020','#FF9E4A','#A78BFA','#2DD4BF'];
   const groups=stacks.map((s,i)=>{
@@ -2293,8 +2304,9 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
     const rows=items.map(it=>{
       const onBreak=explicitStackBreak||brokenProducts.has(it.product_name);
       if(onBreak){
+        const bEnd=brokenProducts.has(it.product_name)?breakEnd['product:'+it.product_name]:breakEnd['stack:'+s.name];
         return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px;opacity:.55">
-          <span style="font-size:13px;font-weight:600;color:${ND.muted}">⏸ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">Ara veriliyor</span>
+          <span style="font-size:13px;font-weight:600;color:${ND.muted}">⏸ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted};text-align:right">Ara · ${breakLeftTxt(bEnd)}</span>
         </div>`;
       }
       countable++; totalItems++;
@@ -2317,8 +2329,16 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks){
     const stackOnBreak=items.length>0&&countable===0;
     const nameEsc=escHtml(s.name).replace(/'/g,"\\'");
     const full=countable>0&&taken===countable;
+    let stackBreakUntil=null;
+    if(stackOnBreak){
+      if(explicitStackBreak){stackBreakUntil=breakEnd['stack:'+s.name];}
+      else{
+        const ends=items.map(it=>breakEnd['product:'+it.product_name]);
+        stackBreakUntil=ends.length&&ends.every(e=>e)?ends.slice().sort().pop():null;
+      }
+    }
     const badge=stackOnBreak
-      ?`<span style="font-size:10px;color:${ND.muted}">⏸ ara veriliyor</span>`
+      ?`<span style="font-size:10px;color:${ND.muted}">⏸ ara · ${breakLeftTxt(stackBreakUntil)}</span>`
       :`<span style="font-size:10px;color:${full?ND.whoop:ND.kcal}">${taken}/${countable}</span>`;
     const markBtn=(!full&&!stackOnBreak)?`<button onclick="ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:'';
     return `<div style="background:#0F131C;border:1px solid ${ndHexA(c,.3)};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.28)">
@@ -3847,7 +3867,7 @@ function ozpSuppPanelHtml(stacks){
         <div onclick="ozpToggleStack(${st.stack_id})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg3)">
           <div style="font-size:13px;font-weight:800;color:var(--text)">${open?'▾':'▸'} ${escHtml(st.name)}</div>
           <div style="display:flex;align-items:center;gap:10px">
-            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);font-weight:700">⏸ Ara Veriliyor</span>`:`
+            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);font-weight:700">⏸ Ara · ${breakLeftTxt(st.break_until)}</span>`:`
             <div style="width:60px">${ozpBar(p,barColor)}</div>
             <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>`}
           </div>
@@ -3855,9 +3875,10 @@ function ozpSuppPanelHtml(stacks){
         ${open?`<div style="border-top:1px solid var(--border)">
           ${st.items.map(it=>{
             const meta=OZP_STATUS_META[it.status]||OZP_STATUS_META.pending;
+            const lbl=it.status==='on_break'?`${meta.label} · ${breakLeftTxt(it.break_until)}`:meta.label;
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border)">
               <span style="color:var(--text)">${escHtml(it.name)} <span style="color:var(--muted2);font-size:11px;font-family:'JetBrains Mono',monospace">${it.dose}${it.unit||''}</span></span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${meta.color}">${meta.label}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${meta.color}">${lbl}</span>
             </div>`;
           }).join('')}
         </div>`:''}
