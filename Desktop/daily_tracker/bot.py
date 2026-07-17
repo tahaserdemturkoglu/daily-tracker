@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Taha Serdem — Standalone Telegram Bot (Flask gerekmez)"""
+"""Taha Serdem — Standalone Telegram Bot (Flask gerekmez)
+
+UYARI (2026-07-17): Bu dosya artik PRODUCTION'da kullanilmiyor. Railway'deki
+gercek bot (start.py -> app.py webhook, /telegram_webhook rotasi) kendi
+handler/parsing/cmd_photo/webhook mantigini dogrudan app.py icinde tasiyor
+(bkz. app.py: _build_tg_handlers, process_webhook_update, cmd_chat_ai, cmd_photo).
+Bu dosyadaki tum tg_* parsing/AI/besin-eslestirme mantigi app.py'de AYRI ve
+GUNCEL olarak yasiyor; buradaki kopyalar eski/duzeltilmemis kalabilir.
+
+Bu dosya sadece bot.bat / yeniden_baslat.bat gibi lokal "python bot.py"
+standalone-polling test scriptleri icin hala calisir durumda birakildi.
+Gercek/guncel davranisi test etmek icin bunun yerine app.py'yi (Flask + bot,
+`python app.py`) veya gercek webhook'u kullan; burasi degil.
+"""
 
 import os, sys, sqlite3, asyncio, json, logging, re
 from datetime import datetime, date, timedelta

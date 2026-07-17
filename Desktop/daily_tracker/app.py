@@ -2851,9 +2851,7 @@ def telegram_webhook():
     if not data:
         return 'ok', 200
     try:
-        from bot import process_webhook_update
-        import threading as _thr
-        t = _thr.Thread(target=process_webhook_update, args=(data,), daemon=True)
+        t = threading.Thread(target=process_webhook_update, args=(data,), daemon=True)
         t.start()
     except Exception as e:
         log.error("Telegram webhook dispatch error: %s", e)
@@ -3202,6 +3200,52 @@ DEGERLENDIRME:
 GUNLUK LOG SIRASI:
 1) Tarih 2) Sabah kilo 3) Uyku 4) Aktivite/adim 5) Su 6) Supplementler
 7) Ogunler ve ogun yorumlari 8) Toplam makrolar 9) Koc yorumu 10) Gun puani /10.
+"""
+
+NUTRITION_ANALYSIS_POLICY = """
+BESIN ANALIZ MOTORU - KAYNAK ONCELIGI:
+1) Kullanicinin bu mesajda verdigi etiket/makro degeri.
+2) brand-fixed veya Taha'ya ait kayitli besin sablonu.
+3) Urunun okunabilen etiketi ya da dogrulanmis urun verisi.
+4) Standart besin referansi.
+5) En son care olarak porsiyon/gorsel tahmini.
+Ust siradaki kaynak varken alttakini kullanma. Kaynaklar celisirse ust siradakini sec ve kisa belirt.
+
+METIN VE FOTOGRAF ANALIZ KURALLARI:
+- Tabaktaki her besini ayri kalem olarak tanimla; tek bir toplu 'tabak' kaydi yapma.
+- Once gorulen/soylenen miktari, cig-pismis durumunu ve hazirlama yontemini belirle.
+- Et/tavuk/hindi ve Yasmin pirinc aksi belirtilmedikce cig gram kabul edilir.
+- Fotograf tek basina kesin gram vermez. Tabak, kasik, paket, el gibi olceklerden porsiyon araligi tahmin et.
+- Gorunmeyen yag, sos ve pisirme kaybini kesinmis gibi yazma. Varsa ayri tahmin kalemi yap.
+- Paket/etiket okunuyorsa marka, porsiyon ve 100g degerini aynen kullan.
+- Kalori kontrolu yap: yaklasik enerji = 4*protein + 4*karbonhidrat + 9*yag. Buyuk fark varsa hesabi yeniden kontrol et.
+- Yuvarlama kaynakli kucuk farklar kabul edilir; toplamlar kalemlerin toplami olmak zorundadir.
+- Tahminde tek bir sahte kesin sayi yerine en makul orta degeri kaydet, cevapta 'tahmini' de ve gerekirse kisa aralik ver.
+- Porsiyon veya urun kimligi toplam kaloriyi %25'ten fazla degistirecek kadar belirsizse tek bir net soru sor; cevap gelmeden kaydetme.
+- Kullanici 'kaydet/isle/yedim' demediyse fotografi analiz et fakat meal action olusturma.
+- Kayit istenirse her besin icin ayri meal action olustur. Gorsel/standart tahminde estimated=true; etiket, kullanici makrosu veya brand-fixed kaynakta estimated=false yaz.
+- source alani: user-label, brand-fixed, product-data, standard-reference veya visual-estimate degerlerinden biri olsun.
+
+OGUN GOSTERIM FORMATI (KESIN KURAL):
+Her ogun/besin ciktisinda asagidaki format kullanilir:
+  Kahvalti
+  510 kcal · P39 · K37 · Y24
+  210 g Carrefour BIO Yumurta
+  288 kcal · P26 · K3 · Y19
+  20 g Kakao
+  62 kcal · P5 · K3 · Y2
+Kural:
+- Ayirici: · (nokta degil, orta nokta)
+- Makro sirasi DAIMA: kcal · P · K · Y
+- Ogun basligi kullanicinin yazdigi sekilde korunur (Kahvalti, Pre Meal, Meal1 vb.)
+- Ogun basligi asla degistirilmez (Ogle, Aksam gibi standart isimlere donusturme)
+- Grams: "210 g Urun Adi" formatinda (g oncesi bosluk)
+- Urun adi daima resmi isimle (YASMiN Pirinci, Skyr Yogurt vb.)
+
+CEVAP SIRASI:
+1) Besin kalemleri ve miktarlari 2) Her kalemin kcal/P/K/Y degeri (· format)
+3) Ogun toplami (· format) 4) Tahmin guveni (yuksek/orta/dusuk)
+5) Taha'nin hedeflerine uygun 1-3 cumle koc yorumu.
 """
 
 
@@ -5180,6 +5224,151 @@ async def cmd_chat_ai(u, c):
     tg_store_message('out', reply, chat_id, 'AI Coach', actions)
     await u.message.reply_text(reply)
 
+
+def enforce_training_day_on_actions(actions, date_val=None):
+    """AI yanilsa bile kayitlar resmi sistem gunune baglanir."""
+    official = training_day(date_val or operation_today())
+    valid_days = {"Push", "Pull", "Leg", "Legs", "Upper", "Lower", "Off", "Off 1", "Off 2"}
+    fixed = []
+    for action in actions or []:
+        if not isinstance(action, dict):
+            fixed.append(action)
+            continue
+        a = dict(action)
+        kind = a.get("type")
+        guessed = a.get("exercise_type") or a.get("training_day")
+        if kind in ("exercise", "workout_set") and guessed in valid_days and guessed != official:
+            if kind == "exercise":
+                a["exercise_type"] = official
+            else:
+                a["training_day"] = official
+            note = (a.get("notes") or "").strip()
+            a["notes"] = (note + " | resmi_gun_duzeltildi").strip(" |")
+        if kind == "workout_set":
+            a.setdefault("training_day", official)
+        fixed.append(a)
+    return fixed
+
+
+def food_db_auto_learn(actions):
+    """Kaydedilen yemek eylemlerini quick_templates'e otomatik ekle/guncelle."""
+    meals = [a for a in (actions or []) if isinstance(a, dict) and a.get('type') == 'meal']
+    if not meals:
+        return
+    conn = get_db()
+    for m in meals:
+        if m.get('estimated') is True:
+            continue
+        title = (m.get('title') or '').strip()
+        cal = m.get('calories')
+        if not title or not cal:
+            continue  # Basliksiz veya kalori bilinmeyen ogunleri ogrenme
+        existing = conn.execute(
+            "SELECT id FROM quick_templates WHERE kind='meal' AND lower(title)=lower(?)", (title,)
+        ).fetchone()
+        if existing:
+            # Guncelle — kullanici son girdigi degerleri kullaniyor demek
+            conn.execute(
+                "UPDATE quick_templates SET calories=?, protein_g=?, carbs_g=?, fat_g=?, "
+                "description=?, ts=CURRENT_TIMESTAMP WHERE id=?",
+                (cal, m.get('protein_g'), m.get('carbs_g'), m.get('fat_g'),
+                 m.get('description') or '', existing['id'])
+            )
+        else:
+            conn.execute(
+                "INSERT INTO quick_templates (kind, category, title, description, calories, protein_g, carbs_g, fat_g, notes) "
+                "VALUES ('meal', ?, ?, ?, ?, ?, ?, ?, 'auto-learned')",
+                (m.get('slot') or 'extra', title, m.get('description') or '',
+                 cal, m.get('protein_g'), m.get('carbs_g'), m.get('fat_g'))
+            )
+    conn.commit()
+    conn.close()
+
+
+async def cmd_photo(u, c):
+    """Kullanici fotograf gonderdiyse Claude vision ile analiz et"""
+    msg = u.message
+    caption = (msg.caption or '').strip()
+    chat_id = getattr(u.effective_chat, 'id', '') if u else ''
+    username = ''
+    if getattr(u, 'effective_user', None):
+        username = u.effective_user.username or u.effective_user.first_name or ''
+    tg_store_message('in', caption or '[fotoğraf]', chat_id, username)
+    await msg.chat.send_action('typing')
+    try:
+        photo = msg.photo[-1]  # en yuksek cozunurluk
+        tg_file = await photo.get_file()
+        import urllib.request as _ur
+        img_bytes = _ur.urlopen(tg_file.file_path, timeout=15).read()
+        import base64 as _b64
+        img_b64 = _b64.b64encode(img_bytes).decode('utf-8')
+        today = operation_today()
+        yesterday = (operation_date() - timedelta(days=1)).isoformat()
+        ctx = _today_ai_context()
+        official_training = ctx.get('training_day') or training_day(today)
+        besin_db_ctx = _besin_db_for_prompt()
+        system_prompt = (
+            "Sen Taha Serdem'in kisisel antrenman ve gunluk performans kocusun. "
+            "Turkce, samimi, net ve motive edici konus.\n"
+            + TAHA_COACHING_POLICY
+            + NUTRITION_ANALYSIS_POLICY
+            + f"RESMI ANTRENMAN GUNU: {official_training}. Bu sistem verisidir; fotografla tahmin edilmez. "
+            "Bugun icin antrenman onerisi yapacaksan sadece bu resmi gunle uyumlu oner. "
+            "Ornek: resmi gun Leg ise Push onerme.\n"
+            "Fotografi analiz et. Antrenman programi, ilerleme, vucut olcumu, yemek veya "
+            "herhangi bir not gorebilirsin.\n"
+            "- Antrenman programi/logu fotografiysa: eksiklikleri, iyilestirme onerilerini, "
+            "o gune uygun antrenmani yaz\n"
+            "- Vucud fotografiysa: durusu, kas gelisimini, genel yorumu paylas\n"
+            "- Yemek fotografiysa besinleri ayri ayri analiz et; caption kayit istiyorsa ayri meal actionlari olustur.\n"
+            "- Kayit istenmediyse actions bos kalsin. Belirsizlik yuksekse once tek net soru sor.\n"
+            "SADECE gecerli JSON dondur:\n"
+            '{"reply":"...","actions":[{"type":"meal","date":"YYYY-MM-DD","slot":"kahvalti|ogle|aksam|ara","title":"Besin ve miktar","description":"cig/pismis ve hazirlama","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0,"estimated":true,"source":"visual-estimate"}]}'
+            f"\nTarih: bugun={today}, dun={yesterday}\n"
+            f"Bugunun verisi: {json.dumps(ctx, ensure_ascii=False)}"
+            + "\n" + besin_db_ctx
+        )
+        user_content = []
+        if caption:
+            user_content.append({"type": "text", "text": caption})
+        user_content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/jpeg", "data": img_b64}
+        })
+        import urllib.request, urllib.error
+        body = {
+            "model": ANTHROPIC_MODEL,
+            "max_tokens": 2000,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_content}]
+        }
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        result = _json_from_text(payload["content"][0]["text"])
+        actions = enforce_training_day_on_actions(result.get("actions") or [], today)
+        saved = ai_apply_actions(actions)
+        food_db_auto_learn(actions)
+        reply = result.get("reply") or "Fotografi inceledim."
+        if official_training and official_training.lower() not in reply.lower():
+            reply += f"\n\nSistem notu: Bugunun resmi antrenman gunu {official_training}."
+        if saved:
+            reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
+        tg_store_message('out', reply, getattr(u.effective_chat, 'id', ''), 'AI Coach', actions)
+        await msg.reply_text(reply)
+    except Exception as e:
+        log.exception("Fotograf analizi basarisiz")
+        await msg.reply_text(f"Fotografi analiz edemedim: {e}")
+
 # TELEGRAM_STANDALONE_ALWAYS_ON_V1
 TELEGRAM_LOCK_PATH = os.path.join(BASE_DIR, 'telegram_bot.lock')
 _TELEGRAM_LOCK_HANDLE = None
@@ -5228,6 +5417,63 @@ def release_telegram_bot_lock():
         pass
     _TELEGRAM_LOCK_HANDLE = None
 
+def _build_tg_handlers(ptb_app):
+    """Tum komut/mesaj/foto handler'larini tek yerden kurar - polling ve webhook
+    modlari ayni listeyi kullanir, iki yerde ayri ayri elle senkron tutulmaz."""
+    from telegram.ext import CommandHandler, MessageHandler, filters
+    for cmd, fn in [("start",cmd_start),("uyku",cmd_uyku),("egzersiz",cmd_egzersiz),
+                    ("yemek",cmd_yemek),("su",cmd_su),("is",cmd_is),("antrenor",cmd_antrenor),
+                    ("mood",cmd_mood),("vitamin",cmd_vitamin),("bugun",cmd_bugun),
+                    ("rapor",cmd_rapor),("antrenman",cmd_antrenman),
+                    ("hafta",cmd_hafta),("streak",cmd_streak)]:
+        ptb_app.add_handler(CommandHandler(cmd, fn))
+    ptb_app.add_handler(MessageHandler(filters.PHOTO, cmd_photo))
+    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
+
+
+# --- WEBHOOK MODE (Railway/start.py) ---------------------------------------
+_wh_app  = None
+_wh_loop = None
+_wh_lock = threading.Lock()
+
+def _get_wh_loop():
+    global _wh_loop
+    with _wh_lock:
+        if _wh_loop is None or _wh_loop.is_closed():
+            _wh_loop = asyncio.new_event_loop()
+            t = threading.Thread(target=_wh_loop.run_forever, daemon=True, name='bot-wh-loop')
+            t.start()
+            log.info("Webhook event loop baslatildi.")
+    return _wh_loop
+
+async def _ensure_wh_app():
+    global _wh_app
+    if _wh_app is not None:
+        return _wh_app
+    from telegram.ext import Application
+    ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
+    _build_tg_handlers(ptb_app)
+    await ptb_app.initialize()
+    _wh_app = ptb_app
+    log.info("Webhook Application hazir.")
+    return _wh_app
+
+async def _do_process_webhook_update(data: dict):
+    from telegram import Update
+    ptb_app = await _ensure_wh_app()
+    update = Update.de_json(data, ptb_app.bot)
+    await ptb_app.process_update(update)
+
+def process_webhook_update(data: dict):
+    """Flask /telegram_webhook route'undan cagrilir -- bot loop'unda async isler."""
+    loop = _get_wh_loop()
+    future = asyncio.run_coroutine_threadsafe(_do_process_webhook_update(data), loop)
+    try:
+        future.result(timeout=55)
+    except Exception as e:
+        log.error("Webhook update isleme hatasi: %s", e)
+
+
 def start_telegram_bot():
     """Standalone polling fallback. Uretimde start.py webhook modu kullanir
     (DISABLE_EMBEDDED_BOT=1) - bu fonksiyon sadece lokal calistirma / 'python app.py
@@ -5239,7 +5485,7 @@ def start_telegram_bot():
         log.info("Telegram bot zaten baska bir surecte aktif; ikinci polling baslatilmadi.")
         return
     try:
-        from telegram.ext import Application, CommandHandler, MessageHandler, filters
+        from telegram.ext import Application
     except ImportError:
         release_telegram_bot_lock()
         log.warning("python-telegram-bot kurulu degil."); return
@@ -5248,13 +5494,7 @@ def start_telegram_bot():
     asyncio.set_event_loop(loop)
 
     app2 = Application.builder().token(TELEGRAM_TOKEN).build()
-    for cmd, fn in [("start",cmd_start),("uyku",cmd_uyku),("egzersiz",cmd_egzersiz),
-                    ("yemek",cmd_yemek),("su",cmd_su),("is",cmd_is),("antrenor",cmd_antrenor),
-                    ("mood",cmd_mood),("vitamin",cmd_vitamin),("bugun",cmd_bugun),
-                    ("rapor",cmd_rapor),("antrenman",cmd_antrenman),
-                    ("hafta",cmd_hafta),("streak",cmd_streak)]:
-        app2.add_handler(CommandHandler(cmd, fn))
-    app2.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_chat_ai))
+    _build_tg_handlers(app2)
     log.info("Telegram bot aktif: web sitesinden bagimsiz veri takibi basladi.")
     tg_touch_heartbeat('running', 'telegram polling started') if 'tg_touch_heartbeat' in globals() else None
     try:

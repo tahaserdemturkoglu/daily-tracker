@@ -6,8 +6,7 @@ import urllib.request
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 os.environ.setdefault("DISABLE_EMBEDDED_BOT", "1")
 
-from app import app, init_db, PORT, log
-from bot import TELEGRAM_TOKEN
+from app import app, init_db, PORT, log, TELEGRAM_TOKEN
 
 
 def register_webhook():
