@@ -42,24 +42,8 @@ def register_webhook():
         log.error("Webhook kayıt exception: %s", e)
 
 
-def pull_latest_template():
-    """GitHub'dan index.html çek, Railway volume'daki eski dosyayı güncelle."""
-    try:
-        url = 'https://raw.githubusercontent.com/tahaserdemturkoglu/daily-tracker/main/templates/index.html'
-        with urllib.request.urlopen(url, timeout=30) as resp:
-            content = resp.read().decode('utf-8')
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        tpl_path = os.path.join(base_dir, 'templates', 'index.html')
-        with open(tpl_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        log.info('Template auto-pulled from GitHub: %d bytes', len(content))
-    except Exception as e:
-        log.warning('Template auto-pull failed (volume may have old file): %s', e)
-
-
 def main():
     init_db()
-    pull_latest_template()
     register_webhook()
     app.run(
         host="0.0.0.0",
