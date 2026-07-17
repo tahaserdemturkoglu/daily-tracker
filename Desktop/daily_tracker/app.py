@@ -106,7 +106,7 @@ log = logging.getLogger(__name__)
 # WHOOP entegrasyonu (whoop_integration.py kendi DB_PATH'ini DATABASE_PATH env'inden okur -
 # ana app'in gerçek DB_PATH'iyle her zaman aynı dosyaya işaret etsin diye burada eşitliyoruz).
 os.environ.setdefault('DATABASE_PATH', DB_PATH)
-from whoop_integration import whoop_bp, init_whoop_tables
+from whoop_integration import whoop_bp, init_whoop_tables, get_workouts_for_date
 app.register_blueprint(whoop_bp)
 init_whoop_tables()
 
@@ -745,6 +745,7 @@ def gather_day_snapshot(conn, date_str):
         'steps': int(step_row['steps']) if step_row and step_row['steps'] else None,
         'weight': {'morning': body_row['weight_kg'] if body_row else None, 'night': body_row['weight_kg_night'] if body_row else None},
         'whoop': dict(whoop) if whoop else None,
+        'whoop_workouts': get_workouts_for_date(date_str),
         'supplements': {'taken': supp_taken, 'total': supp_total},
         'has_data': bool(meals or whoop or body_row or session_done or (nutrition and nutrition['w'])),
     }
@@ -1977,6 +1978,15 @@ def api_calendar(year, month):
             whoop_by_date[r['date']] = {'recovery': r['recovery_score'], 'strain': r['strain'], 'sleep_performance': r['sleep_performance']}
     except Exception:
         pass
+    whoop_workout_min_by_date = {}
+    try:
+        for r in conn.execute(
+            "SELECT date, SUM(duration_min) m FROM whoop_workouts WHERE date>=? AND date<=? GROUP BY date",
+            (month_start, month_end)
+        ).fetchall():
+            whoop_workout_min_by_date[r['date']] = round(r['m']) if r['m'] else None
+    except Exception:
+        pass
     meals_by_date = {}
     try:
         for r in conn.execute(
@@ -2087,6 +2097,7 @@ def api_calendar(year, month):
             'whoop_note': whoop_note,
             'kcal_actual': round(meals['kcal']) if d <= today_str else None,
             'exercises': exercise_count_by_type.get(td, 0),
+            'whoop_workout_min': whoop_workout_min_by_date.get(d),
         })
     conn.close()
     return jsonify(result)
@@ -3063,6 +3074,9 @@ def _today_ai_context():
         # Adım ve kilo
         step_row = conn.execute("SELECT steps FROM step_logs WHERE date=?", (today,)).fetchone()
         body_row = conn.execute("SELECT weight_kg, weight_kg_night FROM body_metrics WHERE date=?", (today,)).fetchone()
+        whoop_row = conn.execute(
+            "SELECT recovery_score, strain, sleep_hours, sleep_performance, hrv_ms, rhr_bpm, kcal_burned FROM whoop_daily WHERE date=?",
+            (today,)).fetchone()
     finally:
         conn.close()
     ctx = {
@@ -3079,6 +3093,8 @@ def _today_ai_context():
         'vitamins': vitamins,
         'meals': meals,
         'note': note['note'] if note else '',
+        'whoop': dict(whoop_row) if whoop_row else None,
+        'whoop_workouts': get_workouts_for_date(today),
     }
     return ctx
 
@@ -3127,6 +3143,19 @@ def _week_ai_context():
             if r and r['total']:
                 water_history.append({'date': d, 'litre': round((r['total'] or 0) / 1000, 2)})
 
+        # WHOOP antrenman geçmişi (gerçek başlangıç/bitiş/süre, cihazın algıladığı)
+        whoop_workout_history = []
+        for d in days:
+            ws = get_workouts_for_date(d)
+            if ws:
+                whoop_workout_history.append({
+                    'date': d,
+                    'antrenmanlar': [
+                        {'spor': w['sport_name'], 'sure_dk': w['duration_min'], 'strain': w['strain']}
+                        for w in ws
+                    ],
+                })
+
         # Kilo trendi özeti
         trend_note = ''
         weights_sorted = sorted(weights, key=lambda x: x['date'])
@@ -3144,6 +3173,7 @@ def _week_ai_context():
         'kilo_trendi': trend_note,
         'makro_gecmisi': macro_history,
         'antrenman_gecmisi': workout_history,
+        'whoop_antrenman_gecmisi': whoop_workout_history,
         'su_gecmisi': water_history,
     }
 

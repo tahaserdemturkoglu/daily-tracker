@@ -84,6 +84,21 @@ def init_whoop_tables():
             raw_json TEXT,
             synced_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS whoop_workouts (
+            id TEXT PRIMARY KEY,        -- WHOOP'un kendi workout id'si
+            date TEXT,                  -- YYYY-MM-DD (TR lokal, start'a gore)
+            sport_name TEXT,
+            start TEXT,                 -- ISO UTC
+            end TEXT,                   -- ISO UTC
+            duration_min REAL,
+            strain REAL,
+            kcal_burned REAL,
+            avg_hr INTEGER,
+            max_hr INTEGER,
+            raw_json TEXT,
+            synced_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_whoop_workouts_date ON whoop_workouts(date);
         """
     )
     # Eski DB'lerde eksik olabilecek kolonlari sonradan ekle (uyku evreleri + solunum hizi)
@@ -251,6 +266,23 @@ def whoop_daily(date):
     return jsonify(d)
 
 
+def get_workouts_for_date(date):
+    """date = YYYY-MM-DD. app.py'nin AI context helper'ları da bunu dogrudan cagirir."""
+    conn = _db()
+    rows = conn.execute(
+        "SELECT id, sport_name, start, end, duration_min, strain, kcal_burned, avg_hr, max_hr "
+        "FROM whoop_workouts WHERE date = ? ORDER BY start", (date,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@whoop_bp.route("/whoop/workouts/<date>")
+def whoop_workouts_route(date):
+    """Antrenman sayfasi bu endpoint'ten o gunun WHOOP-algiladigi antrenman(lar)ini okur."""
+    return jsonify({"date": date, "workouts": get_workouts_for_date(date)})
+
+
 _WHOOP_SUMMARY_METRICS = [
     "recovery_score", "strain", "hrv_ms", "rhr_bpm", "sleep_hours",
     "sleep_performance", "kcal_burned", "spo2", "respiratory_rate",
@@ -309,6 +341,7 @@ def sync_whoop_data(days=3):
     recoveries = _paged("/recovery", params)
     sleeps = _paged("/activity/sleep", params)
     cycles = _paged("/cycle", params)
+    workouts = _paged("/activity/workout", params)
 
     daily = {}  # date -> dict
 
@@ -368,6 +401,32 @@ def sync_whoop_data(days=3):
         kj = score.get("kilojoule")
         rec["kcal_burned"] = round(kj * 0.239006, 0) if kj else None
 
+    workout_rows = []
+    for w in workouts:
+        wid = w.get("id")
+        start_ts = w.get("start")
+        if not wid or not start_ts:
+            continue
+        end_ts = w.get("end")
+        d = bucket(start_ts)
+        score = w.get("score") or {}
+        dur_min = None
+        if end_ts:
+            try:
+                sdt = datetime.fromisoformat(start_ts.replace("Z", "+00:00"))
+                edt = datetime.fromisoformat(end_ts.replace("Z", "+00:00"))
+                dur_min = round((edt - sdt).total_seconds() / 60, 1)
+            except (ValueError, TypeError):
+                dur_min = None
+        kj = score.get("kilojoule")
+        workout_rows.append((
+            str(wid), d, w.get("sport_name") or (str(w.get("sport_id")) if w.get("sport_id") is not None else None),
+            start_ts, end_ts, dur_min, score.get("strain"),
+            round(kj * 0.239006, 0) if kj else None,
+            score.get("average_heart_rate"), score.get("max_heart_rate"),
+            json.dumps(w, ensure_ascii=False),
+        ))
+
     now = datetime.now(TR_TZ).isoformat()
     conn = _db()
     for d, rec in daily.items():
@@ -403,6 +462,21 @@ def sync_whoop_data(days=3):
              rec.get("sleep_rem_ms"), rec.get("sleep_awake_ms"),
              json.dumps(rec, ensure_ascii=False), now),
         )
+
+    for row in workout_rows:
+        conn.execute(
+            """INSERT INTO whoop_workouts
+               (id, date, sport_name, start, end, duration_min, strain, kcal_burned,
+                avg_hr, max_hr, raw_json, synced_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 date=excluded.date, sport_name=excluded.sport_name, start=excluded.start,
+                 end=excluded.end, duration_min=excluded.duration_min, strain=excluded.strain,
+                 kcal_burned=excluded.kcal_burned, avg_hr=excluded.avg_hr, max_hr=excluded.max_hr,
+                 raw_json=excluded.raw_json, synced_at=excluded.synced_at""",
+            row + (now,),
+        )
+
     conn.commit()
     conn.close()
-    return sorted(daily.keys())
+    return sorted(set(daily.keys()) | {r[1] for r in workout_rows})
