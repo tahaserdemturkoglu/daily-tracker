@@ -2313,9 +2313,9 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
       }
       const v=vitByName[it.product_name];
       if(!v && it.product_name===ND_ZINC_NAME && zinc && zinc.rest_today){
-        // Cinko gun asiri: dun alindi, bugun beklenmiyor - eksik gibi gosterme, sayaca katma.
+        // Cinko programi Pzt/Car/Cum: diger gunler beklenmez - eksik gibi gosterme, sayaca katma.
         return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px dashed ${ND.border};border-radius:8px;padding:12px 16px;opacity:.5">
-          <span style="font-size:13px;font-weight:600;color:${ND.muted}">↷ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">Gün aşırı · bugün yok</span>
+          <span style="font-size:13px;font-weight:600;color:${ND.muted}">↷ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">Pzt·Çar·Cum · bugün yok</span>
         </div>`;
       }
       countable++; totalItems++;
@@ -3806,7 +3806,7 @@ const OZP_STATUS_META={
   half_dose:{label:'½ Yarım Doz',color:OZP_C.pur}, eod_skipped:{label:'⚠️ Gün Aşırı Atlandı',color:'var(--yellow)'},
   missed:{label:'✕ Eksik',color:OZP_C.red}, pending:{label:'· Bekliyor',color:'var(--muted2)'},
   on_break:{label:'⏸ Ara Veriliyor',color:'var(--muted2)'},
-  eod_rest:{label:'↷ Gün Aşırı — bugün yok',color:'var(--muted2)'},
+  eod_rest:{label:'↷ Pzt·Çar·Cum — bugün yok',color:'var(--muted2)'},
 };
 
 async function loadOzet(){

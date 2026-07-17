@@ -1090,8 +1090,11 @@ SUPP_TAKEN_COUNT_SQL = (
     "FROM vitamin_logs WHERE date=? AND status IN ('taken','eod_taken','half_dose')"
 )
 
-# Gun asiri alinan tek urun: dun alindiysa bugun beklenmez (eod_rest), sayaclara girmez.
+# Cinko programi (kullanici 2026-07-18: 'pazartesi carsamba cuma alindi seklinde olsun'):
+# yalnizca Pzt/Car/Cum gunleri beklenir; diger gunler 'eod_rest' olur, sayaclara girmez.
+# Baska bir gun yine de alinirsa normal 'taken' sayilir.
 ZINC_PRODUCT_NAME = 'NOW Zinc Picolinate 50mg'
+ZINC_DAYS = (0, 2, 4)  # Pazartesi, Carsamba, Cuma (date.weekday)
 
 
 def active_supplement_breaks():
@@ -1148,13 +1151,10 @@ def gather_day_snapshot(conn, date_str):
     ).fetchall()
     supp_total = sum(1 for it in _items
                      if it['stack_name'] not in _broken_stacks and it['product_name'] not in _broken_products)
-    # Cinko gun asiri: dun alindiysa ve bugun (henuz) alinmadiysa bugun beklenmez - toplamdan dus.
-    _zprev = (date.fromisoformat(date_str) - timedelta(days=1)).isoformat()
+    # Cinko gunu degilse (Pzt/Car/Cum disi) ve bugun alinmadiysa beklenmez - toplamdan dus.
     _z_today = conn.execute("SELECT 1 FROM vitamin_logs WHERE date=? AND name=? LIMIT 1",
                             (date_str, ZINC_PRODUCT_NAME)).fetchone()
-    _z_yday = conn.execute("SELECT 1 FROM vitamin_logs WHERE date=? AND name=? LIMIT 1",
-                           (_zprev, ZINC_PRODUCT_NAME)).fetchone()
-    if _z_yday and not _z_today and any(
+    if date.fromisoformat(date_str).weekday() not in ZINC_DAYS and not _z_today and any(
             it['product_name'] == ZINC_PRODUCT_NAME and it['stack_name'] not in _broken_stacks
             and it['product_name'] not in _broken_products for it in _items):
         supp_total -= 1
@@ -3923,7 +3923,7 @@ SUPPLEMENT SISTEMI (5 gercek stack, guncel 2026-07-17):
 - NAC gunde 2 kez alinir: ac karna (sabah) + gece. 'NAC aldim' derse saatten hangisi oldugunu cikar; belirsizse sor.
 - Pre-workout: Doctor's Best L-Citrulline Powder (8g), KFD Premium Beta-Alanine (2g), Optimum Nutrition Electrolyte Powder Lemon (8g), Swedish Supplements Taurine (2g).
 - Post-workout: California Gold Nutrition SPORT Creatine Monohydrate (5g).
-- Zinc 50mg yuksek doz; gun asiri takip edilir, her gun sart gibi yazma.
+- Zinc 50mg yuksek doz; program: SADECE pazartesi/carsamba/cuma alinir. Diger gunler eksik sayma, hatirlatma yapma; cinko gununde alinmazsa belirt.
 - Kullanici 'stack alindi' derse ilgili stackteki urunleri tek tek vitamin kaydi olarak isle, tam urun ismini kullan (yukaridaki isimler DB'deki gercek kayitli isimlerdir).
 - Kullanici 'haric/eksik/yok' derse o supplementi stackten dus; 'X kapsul/g' gibi miktar override'i soylerse o urune ozel dozu kullan.
 
@@ -5420,7 +5420,7 @@ def tg_supplement_catalog():
             it = {'keys': TG_SUPPLEMENT_KEYS.get(name, []), 'name': name,
                   'amount': str(dose), 'unit': unit, 'note': stack_name}
             if name == 'NOW Zinc Picolinate 50mg':
-                it['note'] += ' | gun asiri'
+                it['note'] += ' | pzt-car-cum'
             by_name[name] = it
             items.append(it)
     return items
@@ -5484,21 +5484,9 @@ def tg_supplement_excluded_items(matched_items, norm):
     return excluded
 
 def tg_zinc_due_for_date(today):
+    """Cinko yalnizca Pzt/Car/Cum beklenir (kullanici programi, 2026-07-18)."""
     try:
-        target = date.fromisoformat(today)
-        conn = get_db()
-        row = conn.execute("""
-            SELECT date FROM vitamin_logs
-            WHERE lower(name) LIKE '%zinc%'
-              AND date <= ?
-            ORDER BY date DESC, id DESC
-            LIMIT 1
-        """, (today,)).fetchone()
-        conn.close()
-        if not row or not row['date']:
-            return True
-        last = date.fromisoformat(row['date'])
-        return (target - last).days >= 2
+        return date.fromisoformat(today).weekday() in ZINC_DAYS
     except Exception:
         return True
 
@@ -6926,16 +6914,14 @@ def api_supplements_today():
         items = conn.execute(
             "SELECT * FROM supplement_log_items WHERE log_id=?", (log['id'],)).fetchall()
         log['items'] = [dict(i) for i in items]
-    # Zinc gun asiri durumu - dogrudan vitamin_logs'tan turetilir (eski supplement_rules
-    # yolu yalnizca web stack butonunda guncelleniyordu, Telegram loglarinda bayatliyordu).
+    # Zinc programi: Pzt/Car/Cum (ZINC_DAYS). last_date bilgi amacli vitamin_logs'tan.
     zrow = conn.execute(
         "SELECT date FROM vitamin_logs WHERE name=? AND date<=? ORDER BY date DESC, id DESC LIMIT 1",
         (ZINC_PRODUCT_NAME, today)).fetchone()
     conn.close()
     last_zinc = zrow['date'] if zrow else None
-    diff = (date.fromisoformat(today) - date.fromisoformat(last_zinc)).days if last_zinc else None
-    zinc_today = (diff is None) or diff >= 2      # bugun alinmasi gereken gun mu
-    zinc_rest = (diff == 1)                        # dun alindi -> bugun dinlenme, eksik degil
+    zinc_today = date.fromisoformat(today).weekday() in ZINC_DAYS
+    zinc_rest = not zinc_today                     # cinko gunu degil -> eksik sayilmaz
     return jsonify({'date': today, 'logs': logs,
                     'zinc': {'take_today': zinc_today, 'rest_today': zinc_rest, 'last_date': last_zinc}})
 
@@ -7088,16 +7074,6 @@ def api_supplements_range():
             return b
         return None
 
-    # Cinko gun asiri: dunku gunlerde zinc alinmissa ertesi gun BEKLENMEZ - o gun
-    # 'eod_rest' statusu alir ve stack toplamina girmez (eksik/atlanmis sayilmaz).
-    zinc_taken_dates = {r['date'] for r in vlogs if r['name'] == ZINC_PRODUCT_NAME
-                        and vit_status_of(r['status'], r['notes']) in ('taken', 'eod_taken', 'half_dose')}
-    _zprev = (date.fromisoformat(start) - timedelta(days=1)).isoformat()
-    conn2 = get_db()
-    if conn2.execute("SELECT 1 FROM vitamin_logs WHERE date=? AND name=? LIMIT 1",
-                     (_zprev, ZINC_PRODUCT_NAME)).fetchone():
-        zinc_taken_dates.add(_zprev)
-    conn2.close()
 
     d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
     days = []
@@ -7121,8 +7097,8 @@ def api_supplements_range():
                     chosen = _pick_log(by_date_name.get((ds, it['product_name'])) or [], s['name'])
                     st = chosen['status'] if chosen else None
                     if (it['product_name'] == ZINC_PRODUCT_NAME and st is None
-                            and (d - timedelta(days=1)).isoformat() in zinc_taken_dates):
-                        # dun cinko alindi -> bugun gun asiri dinlenme, toplam sayilmaz
+                            and d.weekday() not in ZINC_DAYS):
+                        # cinko gunu degil (Pzt/Car/Cum disi) -> beklenmez, toplam sayilmaz
                         items_out.append({'name': it['product_name'], 'dose': it['dose'],
                                           'unit': it['unit'], 'status': 'eod_rest'})
                         continue
