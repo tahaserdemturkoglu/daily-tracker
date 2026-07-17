@@ -3796,7 +3796,43 @@ async function ozpAiNotesAsBullets(days,cap){
     return {icon:'🧠',color:OZP_C.pur,text:dLbl+': '+r.note};
   });
 }
-function ozpToggleStack(sid){OZP_STACK_OPEN[sid]=!OZP_STACK_OPEN[sid];ozpRenderDaily(OZ_DATE);}
+let OZP_LAST_SUPP_STACKS=[];
+function ozpSuppPanelHtml(stacks){
+  return ozpPanel('💊 TAKVİYE PROTOKOLÜ',OZP_C.pnk,
+    stacks.length?stacks.map(st=>{
+      const open=!!OZP_STACK_OPEN[st.stack_id];
+      const p=st.total>0?Math.round(st.taken/st.total*100):0;
+      const barColor=p===100?OZP_C.grn:p>=60?OZP_C.mnt:OZP_C.org;
+      return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden">
+        <div onclick="ozpToggleStack(${st.stack_id})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg3)">
+          <div style="font-size:13px;font-weight:800;color:var(--text)">${open?'▾':'▸'} ${escHtml(st.name)}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);font-weight:700">⏸ Ara Veriliyor</span>`:`
+            <div style="width:60px">${ozpBar(p,barColor)}</div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>`}
+          </div>
+        </div>
+        ${open?`<div style="border-top:1px solid var(--border)">
+          ${st.items.map(it=>{
+            const meta=OZP_STATUS_META[it.status]||OZP_STATUS_META.pending;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text)">${escHtml(it.name)} <span style="color:var(--muted2);font-size:11px;font-family:'JetBrains Mono',monospace">${it.dose}${it.unit||''}</span></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${meta.color}">${meta.label}</span>
+            </div>`;
+          }).join('')}
+        </div>`:''}
+      </div>`;
+    }).join(''):`<div style="color:var(--muted);font-size:13px">Aktif stack yok.</div>`
+  );
+}
+function ozpToggleStack(sid){
+  // Kart ac/kapa artik SADECE takviye panelini yerinde yeniden cizer - eskiden tum
+  // gunu (6 API cagrisi + "Yukleniyor..." flasi) bastan yukluyordu, refresh gibi hissettiriyordu.
+  OZP_STACK_OPEN[sid]=!OZP_STACK_OPEN[sid];
+  const wrap=$('ozp-supp-wrap');
+  if(wrap){wrap.innerHTML=ozpSuppPanelHtml(OZP_LAST_SUPP_STACKS);}
+  else ozpRenderDaily(OZ_DATE);
+}
 
 async function ozpRenderDaily(dateStr){
   if(!dateStr)dateStr=today();
@@ -3934,32 +3970,8 @@ async function ozpRenderDaily(dateStr){
   );
 
   const stacks=(suppRange&&suppRange.days&&suppRange.days[0]&&suppRange.days[0].stacks)||[];
-  const suppHtml=ozpPanel('💊 TAKVİYE PROTOKOLÜ',OZP_C.pnk,
-    stacks.length?stacks.map(st=>{
-      const open=!!OZP_STACK_OPEN[st.stack_id];
-      const p=st.total>0?Math.round(st.taken/st.total*100):0;
-      const barColor=p===100?OZP_C.grn:p>=60?OZP_C.mnt:OZP_C.org;
-      return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden">
-        <div onclick="ozpToggleStack(${st.stack_id})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg3)">
-          <div style="font-size:13px;font-weight:800;color:var(--text)">${open?'▾':'▸'} ${escHtml(st.name)}</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);font-weight:700">⏸ Ara Veriliyor</span>`:`
-            <div style="width:60px">${ozpBar(p,barColor)}</div>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>`}
-          </div>
-        </div>
-        ${open?`<div style="border-top:1px solid var(--border)">
-          ${st.items.map(it=>{
-            const meta=OZP_STATUS_META[it.status]||OZP_STATUS_META.pending;
-            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border)">
-              <span style="color:var(--text)">${escHtml(it.name)} <span style="color:var(--muted2);font-size:11px;font-family:'JetBrains Mono',monospace">${it.dose}${it.unit||''}</span></span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${meta.color}">${meta.label}</span>
-            </div>`;
-          }).join('')}
-        </div>`:''}
-      </div>`;
-    }).join(''):`<div style="color:var(--muted);font-size:13px">Aktif stack yok.</div>`
-  );
+  OZP_LAST_SUPP_STACKS=stacks;
+  const suppHtml=`<div id="ozp-supp-wrap">${ozpSuppPanelHtml(stacks)}</div>`;
 
   const progHtml=ozpPanel('🏋 ANTRENMAN',phaseColor,
     exercises.length?exercises.map(ex=>`<div style="display:flex;justify-content:space-between;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--border)">
