@@ -695,6 +695,17 @@ window.AntrenmanDataAdapter = {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sessions)
     }).catch(e => console.warn('AntrenmanDataAdapter.saveSessions failed', e));
+  },
+  // date -> toplam WHOOP antrenman suresi (dk). Elle kronometre yerine gercek cihaz
+  // verisini kullanmak icin — gun basina degil TEK istekte tum aralik.
+  loadWhoopDurations(startDate, endDate) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', `/whoop/workouts-summary?start=${startDate}&end=${endDate}`, false);
+      xhr.send(null);
+      if (xhr.status === 200) return JSON.parse(xhr.responseText);
+    } catch (e) { console.warn('AntrenmanDataAdapter.loadWhoopDurations failed', e); }
+    return {};
   }
 };
 </script>
@@ -1223,9 +1234,18 @@ const SESSIONS = [
 (function(){ try{
   if(window.AntrenmanDataAdapter && typeof window.AntrenmanDataAdapter.loadSessions==='function'){
     const ext = window.AntrenmanDataAdapter.loadSessions();
-    if(Array.isArray(ext) && ext.length){ SESSIONS.length=0; ext.forEach(s=>SESSIONS.push(s)); return; }
+    if(Array.isArray(ext) && ext.length){ SESSIONS.length=0; ext.forEach(s=>SESSIONS.push(s)); }
   }
-}catch(e){ console.warn('adapter.loadSessions', e); } })();
+}catch(e){ console.warn('adapter.loadSessions', e); }
+// WHOOP suresi: elle kronometre yerine gercek cihaz verisi varsa onu kullan.
+try{
+  if(window.AntrenmanDataAdapter && typeof window.AntrenmanDataAdapter.loadWhoopDurations==='function' && SESSIONS.length){
+    const dates = SESSIONS.map(s=>s.date).sort();
+    const wd = window.AntrenmanDataAdapter.loadWhoopDurations(dates[0], dates[dates.length-1]);
+    SESSIONS.forEach(s=>{ if(wd[s.date]) s.whoopDurMin = wd[s.date]; });
+  }
+}catch(e){ console.warn('adapter.loadWhoopDurations', e); }
+})();
 // SEED_VERSION arttıkça kodda tanımlı tarihler yeniden tohumlanır (düzeltmelerim uygulanır),
 // kullanıcının kendi eklediği (kodda olmayan) günler her zaman korunur.
 // NOT: AntrenmanDataAdapter tanımlıysa (backend'e bağlıyken) bu birleştirme bloğu atlanır —
@@ -2023,12 +2043,20 @@ function buildHistory(){
       if(pv && (cur.weight>pv.weight || (cur.weight===pv.weight && cur.reps>pv.reps)))
         prs.push({name:ex.name,label:cur.weight?(cur.weight+'kg × '+cur.reps):('BW × '+cur.reps)});
     });
-    arr.push({date:s.short,wd:s.dow,full:s.dateLabel,split:s.label,volume:st.vol,setsDone:st.done,setsTotal:st.total,dur:s.dur,prev:prevVol,prs,muscles:st.musc,exercises:s.exercises,sessionIndex:i});
+    arr.push({date:s.short,wd:s.dow,full:s.dateLabel,split:s.label,volume:st.vol,setsDone:st.done,setsTotal:st.total,dur:s.dur,whoopDurMin:s.whoopDurMin,prev:prevVol,prs,muscles:st.musc,exercises:s.exercises,sessionIndex:i});
   }
   return arr;
 }
 
 function fmtKg(v){return v>=1000?(v/1000).toFixed(1).replace('.0','')+'t':Math.round(v).toLocaleString('tr')+' kg';}
+// WHOOP gercek antrenman suresi varsa onu goster (elle kronometreden guvenilir), yoksa elle kronometreye don.
+function fmtDur(s){
+  if(s.whoopDurMin){
+    const h=Math.floor(s.whoopDurMin/60), m=Math.round(s.whoopDurMin%60);
+    return (h>0?h+'sa ':'')+m+'dk';
+  }
+  return s.dur;
+}
 
 function muscleBreakdown(){
   const m={};
@@ -2073,7 +2101,7 @@ function openSummary(s, fromHistory){
       <div style="display:flex;justify-content:center">${progPill}</div>
     </div>
     <div class="sum-stats">
-      <div class="sum-stat"><div class="v">${s.dur}</div><div class="l">Süre</div></div>
+      <div class="sum-stat"><div class="v">${fmtDur(s)}</div><div class="l">Süre</div></div>
       <div class="sum-stat"><div class="v" style="color:var(--success)">${fmtKg(s.volume)}</div><div class="l">Hacim</div></div>
       <div class="sum-stat"><div class="v">${s.setsDone}/${s.setsTotal}</div><div class="l">Set</div></div>
       <div class="sum-stat"><div class="v" style="color:var(--warning)">${s.prs?s.prs.length:0}</div><div class="l">PR</div></div>
@@ -2112,7 +2140,7 @@ function renderHistory(){
       <div class="hist-meta">
         <span class="hm"><b>${fmtKg(s.volume)}</b> hacim</span>
         <span class="hm"><b>${s.setsDone}/${s.setsTotal}</b> set</span>
-        <span class="hm">⏱ <b>${s.dur}</b></span>
+        <span class="hm">⏱ <b>${fmtDur(s)}</b></span>
         ${s.prs.length?`<span class="hm" style="color:var(--warning)"><b style="color:var(--warning)">${s.prs.length} PR</b></span>`:''}
       </div>
       <div class="hist-dots">${dots}</div>

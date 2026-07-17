@@ -25,6 +25,8 @@ import os
 import time
 import json
 import sqlite3
+import threading
+import logging
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -283,6 +285,21 @@ def whoop_workouts_route(date):
     return jsonify({"date": date, "workouts": get_workouts_for_date(date)})
 
 
+@whoop_bp.route("/whoop/workouts-summary")
+def whoop_workouts_summary_route():
+    """Antrenman panelinin gecmis seans listesi icin: start/end araligindaki her gunun
+    toplam WHOOP antrenman suresini (dk) tek istekte doner - gun basina N ayri istek yerine."""
+    start = request.args.get("start", "2000-01-01")
+    end = request.args.get("end", "2999-12-31")
+    conn = _db()
+    rows = conn.execute(
+        "SELECT date, SUM(duration_min) m FROM whoop_workouts WHERE date>=? AND date<=? GROUP BY date",
+        (start, end),
+    ).fetchall()
+    conn.close()
+    return jsonify({r["date"]: round(r["m"]) for r in rows if r["m"]})
+
+
 _WHOOP_SUMMARY_METRICS = [
     "recovery_score", "strain", "hrv_ms", "rhr_bpm", "sleep_hours",
     "sleep_performance", "kcal_burned", "spo2", "respiratory_rate",
@@ -480,3 +497,32 @@ def sync_whoop_data(days=3):
     conn.commit()
     conn.close()
     return sorted(set(daily.keys()) | {r[1] for r in workout_rows})
+
+
+# --------------------------------------------------------------- bg sync ---
+_bg_sync_log = logging.getLogger("whoop")
+_bg_sync_started = False
+_bg_sync_lock = threading.Lock()
+
+
+def start_background_sync(interval_minutes=15):
+    """Periyodik oto-senkron - Coach/Takvim'in her zaman guncel WHOOP verisi
+    gormesi icin (once sadece manuel/Ayarlar butonuyla senkronlaniyordu).
+    Tek process varsayimiyla guvenli (Railway'de tek worker calisiyor)."""
+    global _bg_sync_started
+    with _bg_sync_lock:
+        if _bg_sync_started:
+            return
+        _bg_sync_started = True
+
+    def _loop():
+        while True:
+            try:
+                sync_whoop_data(days=1)
+            except Exception as e:
+                _bg_sync_log.warning("Arka plan WHOOP senkronu basarisiz: %s", e)
+            time.sleep(interval_minutes * 60)
+
+    t = threading.Thread(target=_loop, daemon=True, name="whoop-bg-sync")
+    t.start()
+    _bg_sync_log.info("WHOOP arka plan senkronu baslatildi (%s dk araliklarla).", interval_minutes)

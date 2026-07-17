@@ -106,9 +106,10 @@ log = logging.getLogger(__name__)
 # WHOOP entegrasyonu (whoop_integration.py kendi DB_PATH'ini DATABASE_PATH env'inden okur -
 # ana app'in gerçek DB_PATH'iyle her zaman aynı dosyaya işaret etsin diye burada eşitliyoruz).
 os.environ.setdefault('DATABASE_PATH', DB_PATH)
-from whoop_integration import whoop_bp, init_whoop_tables, get_workouts_for_date
+from whoop_integration import whoop_bp, init_whoop_tables, get_workouts_for_date, start_background_sync
 app.register_blueprint(whoop_bp)
 init_whoop_tables()
+start_background_sync()
 
 # ─── ANTRENMAN DÖNGÜSÜ ─────────────────────────────────────────────────────────
 TRAINING_CYCLE = ['Push', 'Pull', 'Leg', 'Upper', 'Lower', 'Off', 'Off']
