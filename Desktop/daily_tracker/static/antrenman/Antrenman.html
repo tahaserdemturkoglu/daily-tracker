@@ -1439,6 +1439,7 @@ let exercises = SESSIONS[viewIndex].exercises;
 let idCounter = 200;
 let startTime = null;
 let timerInterval = null;
+let _lastFinishDur = null; // finishWorkout()'ta hesaplanan elle kronometre suresi, saveSession()'a tasinir
 let modalMode = 'add';
 let modalTargetEid = null;
 
@@ -2070,6 +2071,7 @@ function finishWorkout() {
   const vol   = exercises.reduce((a,e)=>a+calcVolume(e),0);
   const ms    = startTime ? Date.now()-startTime : 0;
   const dur   = Math.floor(ms/60000)+':'+Math.floor((ms%60000)/1000).toString().padStart(2,'0');
+  _lastFinishDur = dur;
   const prs   = exercises.filter(isPRHit).map(e=>({name:e.name,label:e.pr?e.pr.label:''}));
   openSummary({split:window.currentSplitLabel||'Antrenman',full:SESSIONS[viewIndex].dateLabel,dur,volume:vol,setsDone:done,setsTotal:total,prev:(viewIndex>0?sessionStats(SESSIONS[viewIndex-1]).vol:0),prs,muscles:muscleBreakdown()},false);
 }
@@ -2117,7 +2119,25 @@ function openSummary(s, fromHistory){
   document.getElementById('summaryScreen').classList.add('show');
 }
 function closeSummary(){document.getElementById('summaryScreen').classList.remove('show');}
-function saveSession(){closeSummary();showToast('✅ Seans kaydedildi','success');}
+function saveSession(){
+  closeSummary();
+  const s = SESSIONS[viewIndex];
+  if(s){
+    // Kaydettigin an WHOOP o gunun suresini zaten senkronlamissa gercek veriyi tercih et,
+    // yoksa elle kronometreyi kaydet (WHOOP daha sonra senkronlaninca bir sonraki acilista uzerine yazar).
+    let whoopDur = null;
+    try{
+      if(window.AntrenmanDataAdapter && typeof window.AntrenmanDataAdapter.loadWhoopDurations==='function'){
+        const wd = window.AntrenmanDataAdapter.loadWhoopDurations(s.date, s.date);
+        if(wd[s.date]) whoopDur = wd[s.date];
+      }
+    }catch(e){ console.warn('saveSession whoop check', e); }
+    if(whoopDur){ s.whoopDurMin = whoopDur; }
+    else if(_lastFinishDur){ s.dur = _lastFinishDur; }
+    saveSessions();
+  }
+  showToast('✅ Seans kaydedildi','success');
+}
 
 // ── GEÇMİŞ ──
 function openHistory(){renderHistory();document.getElementById('historyScreen').classList.add('show');}
