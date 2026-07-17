@@ -120,7 +120,7 @@ def _save_tokens(access_token, refresh_token, expires_in):
 
 
 def _token_request(data):
-    """Token istegi - WHOOP client_secret_post bekler (body auth); olmazsa Basic dener."""
+    """Token isteği — WHOOP client_secret_post bekler (body auth); olmazsa Basic dener."""
     body = dict(data)
     body["client_id"] = WHOOP_CLIENT_ID
     body["client_secret"] = WHOOP_CLIENT_SECRET
