@@ -755,12 +755,13 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
       <!-- Takviye Molaları -->
       <div class="card ct ct-teal">
         <div class="card-head"><span class="card-icon">⏸</span><div><div class="card-name">Takviye Molaları</div></div></div>
-        <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Bir stack'i veya tek bir ürünü duraklat — "eksik" olarak değil "ara veriliyor" olarak gösterilir, uyum yüzdesini etkilemez. Telegram'a "X'e ara verdim" / "X'i tekrar başladım" yazarak da yönetebilirsin.</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Bir stack'i veya tek bir ürünü duraklat — "eksik" olarak değil "ara veriliyor" olarak gösterilir, uyum yüzdesini etkilemez. Bitiş tarihi verirsen o günün sonunda otomatik devam eder. Telegram'a "X'e ara verdim" / "X'i tekrar başladım" yazarak da yönetebilirsin.</div>
         <div id="settings-breaks-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">Yükleniyor…</div>
-        <div class="form-row" style="gap:8px;align-items:flex-end">
-          <div class="fg" style="flex:1"><label>Duraklat</label><select id="settings-break-target"><option value="">Yükleniyor…</option></select></div>
-          <button class="btn btn-blue btn-sm" onclick="settingsStartBreak()">⏸ Ara Ver</button>
+        <div class="form-row" style="gap:8px">
+          <div class="fg"><label>Başlangıç</label><input type="date" id="settings-break-start"></div>
+          <div class="fg"><label>Bitiş (opsiyonel)</label><input type="date" id="settings-break-end"></div>
         </div>
+        <div id="settings-break-stacks" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">Yükleniyor…</div>
       </div>
 
     </div>
@@ -1388,31 +1389,57 @@ async function loadSettings(){
   if(waterInput) waterInput.value=getT().water||3000;
 }
 async function settingsLoadBreaks(){
-  const listEl=$('settings-breaks-list'), selEl=$('settings-break-target');
-  if(!listEl||!selEl) return;
+  const listEl=$('settings-breaks-list'), stacksEl=$('settings-break-stacks');
+  if(!listEl||!stacksEl) return;
+  const startInp=$('settings-break-start');
+  if(startInp&&!startInp.value) startInp.value=today();
   const [breaks,stacks]=await Promise.all([API('/api/supplements/breaks'),API('/api/supplements/stacks')]);
   const activeBreaks=Array.isArray(breaks)?breaks:[];
+  const brokenStacks=new Set(activeBreaks.filter(b=>b.target_type==='stack').map(b=>b.target_name));
+  const brokenProducts=new Set(activeBreaks.filter(b=>b.target_type==='product').map(b=>b.target_name));
   listEl.innerHTML=activeBreaks.length?activeBreaks.map(b=>{
     const label=(b.target_type==='stack'?'📦 ':'💊 ')+escHtml(b.target_name);
-    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 10px">
-      <div style="min-width:0"><div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div><div style="font-size:.66rem;color:var(--muted)">${escHtml(b.since_date||'')} tarihinden itibaren</div></div>
-      <button class="btn btn-sm btn-ghost" style="flex-shrink:0" onclick="settingsEndBreak('${b.target_type}','${escHtml(b.target_name).replace(/'/g,"\\'")}')">▶ Tekrar Başla</button>
+    const range=b.end_date?`${escHtml(b.since_date||'')} → ${escHtml(b.end_date)} (otomatik biter)`:`${escHtml(b.since_date||'')} tarihinden itibaren · süresiz`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:7px 11px">
+      <div style="min-width:0"><div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div><div style="font-size:.66rem;color:var(--muted)">⏸ ${range}</div></div>
+      <button class="btn btn-sm btn-ghost" style="flex-shrink:0" data-endbreak-ttype="${b.target_type}" data-endbreak-tname="${escHtml(b.target_name)}">▶ Tekrar Başla</button>
     </div>`;
   }).join(''):'<div style="font-size:.78rem;color:var(--muted)">Aktif mola yok.</div>';
   const stackList=Array.isArray(stacks)?stacks:[];
-  selEl.innerHTML=stackList.map(s=>{
-    const stackOpt=`<option value="stack::${escHtml(s.name)}">📦 ${escHtml(s.name)} (tüm stack)</option>`;
-    const itemOpts=(s.items||[]).map(it=>`<option value="product::${escHtml(it.product_name)}">　💊 ${escHtml(it.product_name)}</option>`).join('');
-    return stackOpt+itemOpts;
+  stacksEl.innerHTML=stackList.map(s=>{
+    const sOnBreak=brokenStacks.has(s.name);
+    const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--orange)">▪ ${escHtml(s.name)}</div>
+      ${sOnBreak?'<span style="font-size:.68rem;color:var(--muted)">⏸ Ara veriliyor</span>':`<button class="btn btn-sm btn-ghost" style="font-size:.68rem" data-break-ttype="stack" data-break-tname="${escHtml(s.name)}">⏸ Stack'i Duraklat</button>`}
+    </div>`;
+    const rows=(s.items||[]).map(it=>{
+      const pOnBreak=brokenProducts.has(it.product_name)||sOnBreak;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border)">
+        <div style="min-width:0;font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${pOnBreak?'color:var(--muted);':''}">${pOnBreak?'⏸':'💊'} ${escHtml(it.product_name)}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--muted2)">${it.dose?(+it.dose%1===0?+it.dose:it.dose):''} ${escHtml(it.unit||'')}</span>
+          ${pOnBreak?'':`<button class="btn btn-sm btn-ghost" style="font-size:.66rem;padding:2px 8px" data-break-ttype="product" data-break-tname="${escHtml(it.product_name)}">⏸</button>`}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:13px;overflow:hidden">${head}${rows}</div>`;
   }).join('');
+  stacksEl.onclick=settingsBreakCardClick;
+  listEl.onclick=settingsBreakCardClick;
 }
-async function settingsStartBreak(){
-  const sel=$('settings-break-target');
-  const val=sel&&sel.value;
-  if(!val) return toast('Bir stack veya ürün seç',false);
-  const [ttype,tname]=val.split('::');
-  const r=await POST('/api/supplements/breaks',{target_type:ttype,target_name:tname});
-  if(r&&r.ok){toast('Ara verildi',true);settingsLoadBreaks();}
+function settingsBreakCardClick(e){
+  const startBtn=e.target.closest('[data-break-ttype]');
+  if(startBtn){settingsStartBreak(startBtn.getAttribute('data-break-ttype'),startBtn.getAttribute('data-break-tname'));return;}
+  const endBtn=e.target.closest('[data-endbreak-ttype]');
+  if(endBtn){settingsEndBreak(endBtn.getAttribute('data-endbreak-ttype'),endBtn.getAttribute('data-endbreak-tname'));}
+}
+async function settingsStartBreak(ttype,tname){
+  if(!ttype||!tname) return toast('Bir stack veya ürün seç',false);
+  const since=($('settings-break-start')||{}).value||today();
+  const endd=($('settings-break-end')||{}).value||'';
+  if(endd&&endd<since) return toast('Bitiş tarihi başlangıçtan önce olamaz',false);
+  const r=await POST('/api/supplements/breaks',{target_type:ttype,target_name:tname,since_date:since,end_date:endd});
+  if(r&&r.ok){toast(endd?`Ara verildi (${endd} bitiş)`:'Ara verildi',true);settingsLoadBreaks();}
   else toast('Hata oluştu',false);
 }
 async function settingsEndBreak(ttype,tname){
@@ -1702,6 +1729,18 @@ async function loadNewDashboard(){
     ]);
     ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false},breaks:Array.isArray(breaks)?breaks:[]};
     renderNewDashboard();
+    // Insights arka planda uretiliyorsa (gunun ilk acilisi) kisa sure sonra bir kez daha sor -
+    // backend artik sayfayi bekletmiyor, taze analiz hazir olunca kart kendini gunceller.
+    if(aiRes&&aiRes.generating){
+      setTimeout(async()=>{
+        try{
+          const fresh=await API('/api/dashboard/ai-insights');
+          if(fresh&&!fresh.generating&&Array.isArray(fresh.insights)&&fresh.insights.length){
+            ND_STATE.ai=fresh.insights; renderNewDashboard();
+          }
+        }catch(e){}
+      },12000);
+    }
   }catch(e){console.warn('loadNewDashboard:',e);}
 }
 
@@ -2441,20 +2480,21 @@ async function loadDashboardExtra(d,t,cal,wml){
 /* ═══════════════════════════════════════════════════
    RENDERS
 ════════════════════════════════════════════════════ */
+const VIT_NIGHT_KEYS=['melatonin','magnesium glycinate','glycine','theanine','ashwagandha','l-theanine'];
+const VIT_MORNING_KEYS=['nac','probiyotik','collagen','d3','omega','magtein','goz','b-complex','vitamin c','l-theanine'];
+function vitGroupOf(v){
+  const n=(v.name||'').toLowerCase(),notes=(v.notes||'').toLowerCase();
+  if(notes.includes('gece')||notes.includes('night')||VIT_NIGHT_KEYS.some(k=>n.includes(k))) return 'GECE STACK';
+  if(notes.includes('ac karna')||notes.includes('aç karna')||notes.includes('ackarna')) return 'AÇ KARNA STACK';
+  if(notes.includes('kahvalti')||notes.includes('kahvaltı')||notes.includes('sabah')||VIT_MORNING_KEYS.some(k=>n.includes(k))) return 'SABAH STACK';
+  if(notes.includes('pre-workout')||notes.includes('pre workout')||notes.includes('pre workout stack')) return 'PRE-WORKOUT STACK';
+  if(notes.includes('post-workout')||notes.includes('post workout')||notes.includes('creatine')||n.includes('creatine')) return 'POST-WORKOUT';
+  return 'DİĞER';
+}
 function renderVitList(elId,vitamins,canDel){
   const el=$(elId);if(!el)return;
   if(!vitamins.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
-  const NIGHT_KEYS=['melatonin','magnesium glycinate','glycine','theanine','ashwagandha','l-theanine'];
-  const MORNING_KEYS=['nac','probiyotik','collagen','d3','omega','magtein','goz','b-complex','vitamin c','l-theanine'];
-  function vitGroup(v){
-    const n=(v.name||'').toLowerCase(),notes=(v.notes||'').toLowerCase();
-    if(notes.includes('gece')||notes.includes('night')||NIGHT_KEYS.some(k=>n.includes(k))) return 'GECE STACK';
-    if(notes.includes('ac karna')||notes.includes('aç karna')||notes.includes('ackarna')) return 'AÇ KARNA STACK';
-    if(notes.includes('kahvalti')||notes.includes('kahvaltı')||notes.includes('sabah')||MORNING_KEYS.some(k=>n.includes(k))) return 'SABAH STACK';
-    if(notes.includes('pre-workout')||notes.includes('pre workout')||notes.includes('pre workout stack')) return 'PRE-WORKOUT STACK';
-    if(notes.includes('post-workout')||notes.includes('post workout')||notes.includes('creatine')||n.includes('creatine')) return 'POST-WORKOUT';
-    return 'DİĞER';
-  }
+  const vitGroup=vitGroupOf;
   const groups={};
   vitamins.forEach(v=>{const g=vitGroup(v);(groups[g]=groups[g]||[]).push(v);});
   const GORDER=['AÇ KARNA STACK','SABAH STACK','PRE-WORKOUT STACK','POST-WORKOUT','GECE STACK','DİĞER'];
@@ -2471,10 +2511,15 @@ function renderVitList(elId,vitamins,canDel){
       const safeName=(v.name||'').replace(/'/g,"\\'");
       const amt=v.amount?fmtAmt(v.amount):'';
       const unit=v.unit?' '+v.unit:'';
+      const arrows=canDel?`<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">
+          <button onclick="vitMove(${v.id},-1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.62rem;line-height:1;padding:1px 3px">▲</button>
+          <button onclick="vitMove(${v.id},1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.62rem;line-height:1;padding:1px 3px">▼</button>
+        </div>`:'';
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;position:relative;${cardBorder}">
         ${badge}
         <div style="font-size:.8rem;font-weight:700;flex:1;min-width:0;${nameStyle}">${v.name||''}</div>
         ${amt||unit?`<div style="font-size:.75rem;color:var(--muted);white-space:nowrap;flex-shrink:0">${amt}${unit}</div>`:''}
+        ${arrows}
         ${canDel?`<button class="del-btn" style="font-size:.55rem;padding:2px 6px;opacity:.5;flex-shrink:0" onclick="confirmDelVit(${v.id},'${safeName}')">del</button>`:''}
       </div>`;
     }).join('');
@@ -2959,10 +3004,26 @@ async function renameFoodDbItem(id,curName){
 async function loadVitamins(){
   const d=await API('/api/today');
   const vits=d.vitamins||[];
+  window._vitToday=vits;
   renderVitList('vit-list',vits,true);
   const sub=$('vit-list-sub');
   if(sub) sub.textContent=vits.length?vits.length+' takviye kaydı':'Bugünkü protokol';
   updateVitListScrollHint();
+}
+async function vitMove(id,dir){
+  // Takviye Sırası'nda kaydı kendi stack grubu içinde yukarı/aşağı taşır ve kalıcılaştırır
+  // (display_order backend'de COALESCE ile sıralamaya girer, tüm görünümler aynı sırayı okur).
+  const arr=window._vitToday||[];
+  const i=arr.findIndex(v=>v.id===id); if(i<0)return;
+  const g=vitGroupOf(arr[i]);
+  let j=i+dir;
+  while(j>=0&&j<arr.length&&vitGroupOf(arr[j])!==g) j+=dir;
+  if(j<0||j>=arr.length)return;
+  [arr[i],arr[j]]=[arr[j],arr[i]];
+  renderVitList('vit-list',arr,true);
+  try{
+    await Promise.all(arr.map((v,idx)=>fetch('/api/vitamin/'+v.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({display_order:idx})})));
+  }catch(e){console.warn('vitMove persist',e);}
 }
 function updateVitListScrollHint(){
   const list=$('vit-list'),card=$('supp-order-card');

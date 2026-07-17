@@ -367,8 +367,9 @@ def init_db():
         'quick_templates': {'protein_g': 'REAL', 'carbs_g': 'REAL', 'fat_g': 'REAL', 'fiber_g': 'REAL'},
         'meal_entries': {'protein_g': 'REAL', 'carbs_g': 'REAL', 'fat_g': 'REAL', 'fiber_g': 'REAL'},
         'workout_logs': {'set_type': 'TEXT', 'rir': 'INTEGER'},
-        'vitamin_logs': {'status': "TEXT DEFAULT ''"},
+        'vitamin_logs': {'status': "TEXT DEFAULT ''", 'display_order': 'INTEGER'},
         'mood_logs': {'recovery': 'REAL', 'strain': 'REAL'},
+        'supplement_breaks': {'end_date': 'TEXT'},
     }
     for table, cols in macro_cols.items():
         existing = {r['name'] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -412,6 +413,147 @@ def normalize_meal_slots_all():
     if n:
         log.info("Ogun slot normalizasyonu: %d satir kanonik isme guncellendi", n)
 
+# ─── KANONİK SUPPLEMENT KATALOĞU ─────────────────────────────────────────────
+# Tek dogruluk kaynagi: bu katalog her boot'ta DB'ye uygulanir. Prod (Railway volume)
+# DB'si lokalden ayri oldugu icin lokal DB'de yapilan katalog duzeltmeleri prod'a hic
+# ulasmamisti (prod hala KSM-66/KFD/eski yapiyi gosteriyordu) - artik kod tasiyor.
+CANONICAL_SUPPLEMENT_STACKS = [
+    ('Aç Karna', [
+        ('NOW NAC 600mg', 1, 'kapsül'),
+        ("Garden of Life Dr. Formulated Probiotics Once Daily Men's", 1, 'kapsül'),
+        ('Weider Ashwagandha Professional', 2, 'kapsül'),
+    ]),
+    ('Sabah/Kahvaltı', [
+        ('Optimum Nutrition Collagen Peptides (Unflavoured)', 1, 'ölçek'),
+        ('Thorne Vitamin D + K2', 4, 'damla'),
+        ('Life Extension Mega EPA/DHA (Omega-3)', 3, 'kapsül'),
+        ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
+        ('Life Extension MacuGuard with Saffron', 1, 'kapsül'),
+        ('Life Extension BioActive Complete B-Complex', 1, 'kapsül'),
+        ('California Gold Nutrition Gold C 1000mg', 1, 'tablet'),
+        ('NOW L-Theanine Double Strength', 1, 'kapsül'),
+        ('NOW Zinc Picolinate 50mg', 1, 'kapsül'),
+        ('NOW Extra Strength Astaxanthin 10mg', 1, 'kapsül'),
+    ]),
+    ('Gece', [
+        ('NOW Magnesium Glycinate', 3, 'kapsül'),
+        ('NOW Melatonin 1mg', 3, 'tablet'),
+        ('NOW Glycine 1000mg', 3, 'kapsül'),
+        ('NOW L-Theanine Double Strength', 1, 'kapsül'),
+    ]),
+    ('Pre-workout', [
+        ("Doctor's Best L-Citrulline Powder", 8, 'gram'),
+        ('KFD Premium Beta-Alanine', 2, 'gram'),
+        ('Optimum Nutrition Electrolyte Powder (Lemon)', 8, 'gram'),
+        ('Swedish Supplements Taurine', 2, 'gram'),
+    ]),
+    ('Post-workout', [
+        ('California Gold Nutrition SPORT Creatine Monohydrate', 5, 'gram'),
+    ]),
+]
+
+# Eski/kisa/yanlis urun isimleri -> kanonik isim. vitamin_logs uyum eslesmesi isim bazli
+# oldugu icin gecmis loglar da cekilir; supplement_breaks target'lari ve products tablosu da.
+SUPPLEMENT_NAME_RENAMES = {
+    'KSM-66 Ashwagandha': 'Weider Ashwagandha Professional',
+    'Ashwagandha': 'Weider Ashwagandha Professional',
+    'L-Theanine': 'NOW L-Theanine Double Strength',
+    'L-Theanine Gece': 'NOW L-Theanine Double Strength',
+    'L-Theanine Double Strength (NOW)': 'NOW L-Theanine Double Strength',
+    '5% Nutrition L-Citrulline 3000': "Doctor's Best L-Citrulline Powder",
+    'L-Citrulline': "Doctor's Best L-Citrulline Powder",
+    'KFD Premium Beta-Alanin': 'KFD Premium Beta-Alanine',
+    'Beta Alanine': 'KFD Premium Beta-Alanine',
+    'Optimum Nutrition Elektrolit': 'Optimum Nutrition Electrolyte Powder (Lemon)',
+    'Elektrolit Tozu': 'Optimum Nutrition Electrolyte Powder (Lemon)',
+    'Optimum Nutrition Electrolyte Powder': 'Optimum Nutrition Electrolyte Powder (Lemon)',
+    'KFD Creatine Monohydrate': 'California Gold Nutrition SPORT Creatine Monohydrate',
+    'Creatine Monohydrate': 'California Gold Nutrition SPORT Creatine Monohydrate',
+    'Garden of Life Probiyotik': "Garden of Life Dr. Formulated Probiotics Once Daily Men's",
+    'Probiyotik': "Garden of Life Dr. Formulated Probiotics Once Daily Men's",
+    'California Gold Nutrition C 1000mg': 'California Gold Nutrition Gold C 1000mg',
+    'Vitamin C': 'California Gold Nutrition Gold C 1000mg',
+    'Optimum Nutrition Collagen Peptides': 'Optimum Nutrition Collagen Peptides (Unflavoured)',
+    'Collagen Peptides': 'Optimum Nutrition Collagen Peptides (Unflavoured)',
+    'Kolajen': 'Optimum Nutrition Collagen Peptides (Unflavoured)',
+    'NOW Astaxanthin 10mg': 'NOW Extra Strength Astaxanthin 10mg',
+    'Life Extension Mega EPA/DHA': 'Life Extension Mega EPA/DHA (Omega-3)',
+    'Omega-3': 'Life Extension Mega EPA/DHA (Omega-3)',
+    'Mega EPA/DHA (Life Extension)': 'Life Extension Mega EPA/DHA (Omega-3)',
+    'B-Complex': 'Life Extension BioActive Complete B-Complex',
+    'BioActive Complete B-Complex (Life Extension)': 'Life Extension BioActive Complete B-Complex',
+    'Cinko': 'NOW Zinc Picolinate 50mg',
+    'Çinko': 'NOW Zinc Picolinate 50mg',
+    'Zinc Picolinate (NOW)': 'NOW Zinc Picolinate 50mg',
+    'D+K2': 'Thorne Vitamin D + K2',
+    'D3+K2': 'Thorne Vitamin D + K2',
+    'Vitamin D + K2 Liquid (Thorne)': 'Thorne Vitamin D + K2',
+    'Glycine': 'NOW Glycine 1000mg',
+    'NOW Glycine': 'NOW Glycine 1000mg',
+    'Goz Vitamini': 'Life Extension MacuGuard with Saffron',
+    'Göz Vitamini': 'Life Extension MacuGuard with Saffron',
+    'MacuGuard with Saffron (Life Extension)': 'Life Extension MacuGuard with Saffron',
+    'Magnesium Glycinate': 'NOW Magnesium Glycinate',
+    'Magnesium L-Threonate': 'NOW Magtein Magnesium L-Threonate',
+    'Magnesium L-Threonate (NOW Magtein)': 'NOW Magtein Magnesium L-Threonate',
+    'Magtein': 'NOW Magtein Magnesium L-Threonate',
+    'Magtein Magnesium L-Threonate': 'NOW Magtein Magnesium L-Threonate',
+    'Melatonin': 'NOW Melatonin 1mg',
+    'NOW Melatonin': 'NOW Melatonin 1mg',
+    'NAC': 'NOW NAC 600mg',
+    'Taurin': 'Swedish Supplements Taurine',
+}
+
+
+def sync_supplement_catalog_canonical():
+    """Kanonik katalogu DB'ye uygular (idempotent, her boot). Stack item listesi
+    kanonikten farkliysa yeniden yazilir; vitamin_logs / supplement_breaks /
+    supplement_products'taki eski isimler kanonige cekilir."""
+    conn = get_db()
+    try:
+        if not conn.execute("SELECT name FROM sqlite_master WHERE name='supplement_stack_items'").fetchone():
+            return
+        changed = 0
+        for order_i, (stack_name, items) in enumerate(CANONICAL_SUPPLEMENT_STACKS, start=1):
+            row = conn.execute("SELECT id FROM supplement_stacks WHERE name=?", (stack_name,)).fetchone()
+            if row:
+                sid = row['id']
+                conn.execute("UPDATE supplement_stacks SET active=1, order_num=? WHERE id=?", (order_i, sid))
+            else:
+                cur = conn.execute(
+                    "INSERT INTO supplement_stacks (name, category, active, order_num) VALUES (?, 'custom', 1, ?)",
+                    (stack_name, order_i))
+                sid = cur.lastrowid
+            existing = [(r['product_name'], float(r['dose'] or 0), r['unit'] or '') for r in conn.execute(
+                "SELECT product_name, dose, unit FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num, id",
+                (sid,)).fetchall()]
+            canonical = [(n, float(d), u) for (n, d, u) in items]
+            if existing != canonical:
+                conn.execute("DELETE FROM supplement_stack_items WHERE stack_id=?", (sid,))
+                for i, (n, d, u) in enumerate(items, start=1):
+                    conn.execute(
+                        "INSERT INTO supplement_stack_items (stack_id, product_name, dose, unit, order_num) VALUES (?,?,?,?,?)",
+                        (sid, n, d, u, i))
+                changed += 1
+        renamed = 0
+        for old, new in SUPPLEMENT_NAME_RENAMES.items():
+            renamed += conn.execute("UPDATE vitamin_logs SET name=? WHERE name=?", (new, old)).rowcount
+            conn.execute("UPDATE supplement_breaks SET target_name=? WHERE target_type='product' AND target_name=?", (new, old))
+            oldrow = conn.execute("SELECT id FROM supplement_products WHERE name=?", (old,)).fetchone()
+            if oldrow:
+                if conn.execute("SELECT id FROM supplement_products WHERE name=?", (new,)).fetchone():
+                    conn.execute("DELETE FROM supplement_products WHERE id=?", (oldrow['id'],))
+                else:
+                    conn.execute("UPDATE supplement_products SET name=? WHERE id=?", (new, oldrow['id']))
+        conn.commit()
+        if changed or renamed:
+            log.info("Supplement katalog senkronu: %d stack yeniden yazildi, %d vitamin_logs satiri kanonige cekildi", changed, renamed)
+    except Exception:
+        log.exception("sync_supplement_catalog_canonical basarisiz")
+    finally:
+        conn.close()
+
+
 def consolidate_water_all_dates():
     """nutrition_logs'ta her tarih icin water_ml'yi tek satirda topla (kirli data temizligi)."""
     conn = get_db()
@@ -445,6 +587,7 @@ def migrate_body_metrics_weight_log():
 consolidate_water_all_dates()
 migrate_body_metrics_weight_log()
 normalize_meal_slots_all()
+sync_supplement_catalog_canonical()
 
 def ensure_user_settings_table():
     conn = get_db()
@@ -717,6 +860,31 @@ def generate_dashboard_ai_insights(date_str=None):
     conn2.commit(); conn2.close()
     return insights
 
+# Arka plan AI uretimi: sayfa acilislari canli Claude cagrisini BEKLEMESIN diye.
+# Eskiden her operasyon gununun ilk Dashboard acilisi insights uretimini (3-10 sn),
+# ilk Ozet/Coach acilisi da dunku Koc notunu (30 sn'ye kadar) istek icinde bekliyordu -
+# kullanicinin gordugu "sekmeler 5-10 saniye gec aciliyor" gecikmesinin kaynagi buydu.
+_bg_ai_lock = threading.Lock()
+_bg_ai_running = set()
+
+def _spawn_bg_ai(key, fn):
+    """Ayni is iki kez ayni anda uretilmesin diye anahtar bazli tekil arka plan is."""
+    with _bg_ai_lock:
+        if key in _bg_ai_running:
+            return False
+        _bg_ai_running.add(key)
+    def _run():
+        try:
+            fn()
+        except Exception:
+            log.exception("arka plan AI uretimi basarisiz: %s", key)
+        finally:
+            with _bg_ai_lock:
+                _bg_ai_running.discard(key)
+    threading.Thread(target=_run, daemon=True, name=f'bg-ai-{key}').start()
+    return True
+
+
 @app.route('/api/dashboard/ai-insights')
 def api_dashboard_ai_insights():
     date_str = request.args.get('date') or operation_today()
@@ -725,14 +893,27 @@ def api_dashboard_ai_insights():
     row = None if force else conn.execute(
         "SELECT value FROM user_settings WHERE key=?", (f'dashboard_ai_insights_{date_str}',)
     ).fetchone()
-    conn.close()
     if row and row['value']:
+        conn.close()
         try:
             return jsonify({'insights': json.loads(row['value']), 'date': date_str})
         except Exception:
             pass
-    insights = generate_dashboard_ai_insights(date_str)
-    return jsonify({'insights': insights, 'date': date_str})
+    # Cache yok: uretimi arka plana at, istegi BLOKLAMADAN dunun insights'iyla (varsa) don.
+    # Frontend 'generating' bayragini gorunce kisa bir gecikmeyle bir kez daha sorar.
+    _spawn_bg_ai(f'dash_insights_{date_str}', lambda: generate_dashboard_ai_insights(date_str))
+    yday = (date.fromisoformat(date_str) - timedelta(days=1)).isoformat()
+    stale = conn.execute(
+        "SELECT value FROM user_settings WHERE key=?", (f'dashboard_ai_insights_{yday}',)
+    ).fetchone()
+    conn.close()
+    fallback = []
+    if stale and stale['value']:
+        try:
+            fallback = json.loads(stale['value'])
+        except Exception:
+            fallback = []
+    return jsonify({'insights': fallback, 'date': date_str, 'generating': True})
 
 _FACT_STOPWORDS = {
     'bir','bu','ve','ile','de','da','çok','gibi','var','olan','olarak','için','ama','ancak',
@@ -959,7 +1140,9 @@ def ensure_yesterday_ai_note():
         row = conn.execute("SELECT 1 FROM ai_profile_notes WHERE date=?", (yday,)).fetchone()
         conn.close()
         if not row:
-            generate_daily_profile_note(yday)
+            # Istegi bloklamadan arka planda uret - 30 sn'lik Claude cagrisi sayfa
+            # acilisini bekletmesin, not bir sonraki ziyarette gorunur.
+            _spawn_bg_ai(f'yday_note_{yday}', lambda: generate_daily_profile_note(yday))
     except Exception as _e:
         import logging; logging.getLogger('daily').warning(f"ensure_yesterday_ai_note failed: {_e}")
 
@@ -1241,7 +1424,7 @@ def api_today():
     ensure_step_logs_table()
     ensure_body_metrics_table()
     conn = get_db()
-    vitamins = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY id", (today,)).fetchall()]
+    vitamins = [dict(r) for r in conn.execute("SELECT * FROM vitamin_logs WHERE date=? ORDER BY COALESCE(display_order, 999999), id", (today,)).fetchall()]
     note_row = conn.execute("SELECT note FROM daily_notes WHERE date=?", (today,)).fetchone()
     step_row = conn.execute("SELECT * FROM step_logs WHERE date=?", (today,)).fetchone()
     body_row = conn.execute("SELECT * FROM body_metrics WHERE date=?", (today,)).fetchone()
@@ -1567,6 +1750,22 @@ def api_vitamin_delete(vid):
     conn.execute("DELETE FROM vitamin_logs WHERE id=?", (vid,))
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'deleted': deleted})
+
+
+@app.route('/api/vitamin/<int:vid>', methods=['PATCH'])
+def api_vitamin_patch(vid):
+    """Kismi guncelleme - su an sadece display_order (Log'daki Takviye Sirasi
+    yukari/asagi tasima) icin kullaniliyor, PUT gibi diger alanlari ezmez."""
+    data = request.get_json(force=True) or {}
+    if 'display_order' in data:
+        try:
+            order = int(data['display_order'])
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'error': 'display_order sayi olmali'}), 400
+        conn = get_db()
+        conn.execute("UPDATE vitamin_logs SET display_order=? WHERE id=?", (order, vid))
+        conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 
 @app.route('/api/vitamin/<int:vid>', methods=['PUT'])
@@ -3722,11 +3921,31 @@ def tg_normalize_mood_payload(a):
     notes = a.get('notes') or ''
     return {'energy': energy, 'mood': mood, 'stress': stress, 'notes': notes}
 
-def start_supplement_break(target_type, target_name, since_date=None, note=''):
+def expire_due_supplement_breaks():
+    """Bitis tarihi gecmis aktif break'leri kapatir (lazy - break okuyan her yol once
+    bunu cagirir, cron gerekmez). end_date DAHIL: break o gunun sonuna kadar surer."""
+    today = operation_today()
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, target_name FROM supplement_breaks WHERE active=1 AND end_date IS NOT NULL AND end_date < ?",
+        (today,)
+    ).fetchall()
+    for r in rows:
+        conn.execute("UPDATE supplement_breaks SET active=0, ended_at=CURRENT_TIMESTAMP WHERE id=?", (r['id'],))
+        conn.execute(
+            "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
+            (today, f'▶ {r["target_name"]} — Tekrar Başlandı', '', '', 'planlı ara süresi doldu', 'on_break')
+        )
+    conn.commit(); conn.close()
+    return len(rows)
+
+
+def start_supplement_break(target_type, target_name, since_date=None, note='', end_date=None):
     """Bir stack'i veya tek bir urunu 'ara veriliyor' durumuna alir - hem Telegram
     dispatcher'i (ai_apply_actions) hem /api/supplements/breaks REST route'u bunu kullanir,
     tek yerden yonetilsin diye. Zaten aktif bir break varsa tekrar eklemez (idempotent),
-    ama her cagirista goruntulenebilir bir vitamin_logs kaydi birakir."""
+    ama her cagirista goruntulenebilir bir vitamin_logs kaydi birakir.
+    end_date verilirse break o tarihin sonunda otomatik biter (expire_due_supplement_breaks)."""
     today = operation_today()
     since_date = since_date or today
     conn = get_db()
@@ -3736,10 +3955,13 @@ def start_supplement_break(target_type, target_name, since_date=None, note=''):
     ).fetchone()
     if not existing:
         conn.execute(
-            "INSERT INTO supplement_breaks (target_type, target_name, active, since_date, note) VALUES (?,?,1,?,?)",
-            (target_type, target_name, since_date, note or '')
+            "INSERT INTO supplement_breaks (target_type, target_name, active, since_date, note, end_date) VALUES (?,?,1,?,?,?)",
+            (target_type, target_name, since_date, note or '', end_date or None)
         )
-    log_note = (f"{since_date} tarihinden itibaren ara veriliyor" if since_date != today else 'ara veriliyor')
+    elif end_date:
+        conn.execute("UPDATE supplement_breaks SET end_date=? WHERE id=?", (end_date, existing['id']))
+    range_txt = f"{since_date} → {end_date}" if end_date else (f"{since_date} tarihinden itibaren" if since_date != today else '')
+    log_note = (range_txt + ' ara veriliyor').strip()
     conn.execute(
         "INSERT INTO vitamin_logs (date, name, amount, unit, notes, status) VALUES (?,?,?,?,?,?)",
         (today, f'⏸ {target_name} — Ara Verildi', '', '', log_note, 'on_break')
@@ -6372,9 +6594,10 @@ def vit_status_of(status, notes):
 def api_supplements_breaks():
     """Su an aktif olan 'ara veriliyor' durumlarini doner (stack veya urun bazli).
     Dashboard/Ozet gibi ayri render yollarinin hepsi bunu kullanabilsin diye tek yer."""
+    expire_due_supplement_breaks()
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, target_type, target_name, since_date, note FROM supplement_breaks WHERE active=1 ORDER BY created_at DESC"
+        "SELECT id, target_type, target_name, since_date, end_date, note FROM supplement_breaks WHERE active=1 ORDER BY created_at DESC"
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
@@ -6388,7 +6611,8 @@ def api_supplements_break_start():
     tname = (data.get('target_name') or '').strip()
     if ttype not in ('stack', 'product') or not tname:
         return jsonify({'ok': False, 'error': "target_type ('stack' veya 'product') ve target_name gerekli"}), 400
-    start_supplement_break(ttype, tname, data.get('since_date'), data.get('note') or 'Ayarlar sayfasından manuel')
+    start_supplement_break(ttype, tname, data.get('since_date'), data.get('note') or 'Ayarlar sayfasından manuel',
+                           end_date=(data.get('end_date') or '').strip() or None)
     return jsonify({'ok': True})
 
 @app.route('/api/supplements/breaks/end', methods=['POST'])
@@ -6413,6 +6637,7 @@ def api_supplements_range():
     end = request.args.get('end', start)
     if not start:
         return jsonify({'error': 'start is required'}), 400
+    expire_due_supplement_breaks()
     conn = get_db()
     stacks = [dict(r) for r in conn.execute(
         "SELECT * FROM supplement_stacks WHERE active=1 ORDER BY order_num, name").fetchall()]
