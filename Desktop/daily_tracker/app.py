@@ -1025,10 +1025,15 @@ def generate_dashboard_ai_insights(date_str=None):
     except Exception as _e:
         import logging; logging.getLogger('daily').warning(f"dashboard AI insights failed: {_e}")
         return []
-    conn2 = get_db()
-    conn2.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
-                  (f'dashboard_ai_insights_{date_str}', json.dumps(insights, ensure_ascii=False)))
-    conn2.commit(); conn2.close()
+    # Bos gunu (henuz veri girilmemis) KALICI cache'leme: yoksa gunun erken saatinde
+    # uretilen "bugun 0 kcal" insight'i, veri sonradan girilince guncellenmeden takili kalir.
+    # Sadece gercek veri olan gunler cache'lenir; bos gun her acilista yeniden uretilir.
+    day_has_data = (total_cal or 0) > 0 or (water_ml or 0) > 0 or (steps or 0) > 0
+    if day_has_data:
+        conn2 = get_db()
+        conn2.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES (?,?)",
+                      (f'dashboard_ai_insights_{date_str}', json.dumps(insights, ensure_ascii=False)))
+        conn2.commit(); conn2.close()
     return insights
 
 # Arka plan AI uretimi: sayfa acilislari canli Claude cagrisini BEKLEMESIN diye.

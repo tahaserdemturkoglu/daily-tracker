@@ -465,8 +465,14 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="w-btn" onclick="addWater(500)">+500ml</button>
             <button class="w-btn" onclick="addWater(750)">+750ml</button>
           </div>
+          <div class="water-btns" style="margin-top:6px">
+            <button class="w-btn" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 35%,transparent)" onclick="addWater(-200)">−200ml</button>
+            <button class="w-btn" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 35%,transparent)" onclick="addWater(-330)">−330ml</button>
+            <button class="w-btn" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 35%,transparent)" onclick="addWater(-500)">−500ml</button>
+            <button class="w-btn" style="color:var(--muted)" onclick="addWater(-999999)">Sıfırla</button>
+          </div>
           <div class="form-row" style="margin-top:6px">
-            <div class="fg"><label>Manuel (L)</label><input type="number" id="water-m" step=".1" placeholder="1.5"></div>
+            <div class="fg"><label>Manuel (L) — yanlış girdiysen düzelt</label><input type="number" id="water-m" step=".1" placeholder="1.5"></div>
             <button class="btn btn-teal btn-sm" onclick="addWaterManual()">+ Ekle</button>
             <button class="btn btn-blue btn-sm" onclick="setWaterManualTotal()">Toplamı Ayarla</button>
           </div>
@@ -3387,7 +3393,7 @@ async function saveWork(){const h=parseFloat($('wo-h').value);if(!h)return toast
 async function saveCoaching(){const s=parseInt($('co-s').value);if(!s)return toast('Seans gir',false);await POST('/api/log/coaching',{sessions:s,clients:$('co-c').value.trim()});toast('Antrenörlük kaydedildi');}
 async function saveNote(){const n=$('note-txt').value.trim();if(!n)return toast('Not gir',false);await POST('/api/note',{note:n});toast('Not kaydedildi');}
 async function clearTodayConfirm(){confirm_('Bugünü temizle','Tüm öğün ve takviye kayıtları silinecek. Emin misin?',async()=>{const d=today();await DEL('/api/meals/today?date='+d);await DEL('/api/vitamins/today?date='+d);toast('✅ Bugünün tüm kayıtları silindi',true);loadDashboard();loadTodayMeals&&loadTodayMeals();loadVitamins&&loadVitamins();});}
-async function addWater(ml){if(!guardClick())return;const cur=await API('/api/today');const now=(cur.nutrition?.water_ml||0)+ml;await POST('/api/log/nutrition',{water_ml:now});sv('water-cur',(now/1000).toFixed(1)+'L bugün');toast('+'+ml+'ml su');loadDashboard();}
+async function addWater(ml){if(!guardClick())return;const cur=await API('/api/today');const now=Math.max(0,(cur.nutrition?.water_ml||0)+ml);await POST('/api/log/nutrition',{water_ml:now});sv('water-cur',(now/1000).toFixed(1)+'L bugün');toast(ml>=0?('+'+ml+'ml su'):(ml<=-999999?'Su sıfırlandı':(ml+'ml su')));loadDashboard();}
 async function addWaterManual(){const l=parseFloat($('water-m').value);if(!l||l<=0)return toast('Litre gir',false);await addWater(Math.round(l*1000));$('water-m').value='';}
 async function setWaterTotal(ml){const total=Math.max(0,Math.round(Number(ml)||0));await POST('/api/log/nutrition',{date:today(),water_ml:total});sv('water-cur',(total/1000).toFixed(1)+'L bugün');if(typeof refreshAllVisibleData==='function')await refreshAllVisibleData();else loadDashboard();return total;}
 async function setWaterManualTotal(){const raw=String($('water-m').value||'').replace(',','.');const l=parseFloat(raw);if(!Number.isFinite(l)||l<0)return toast('Toplam litreyi gir',false);const total=await setWaterTotal(l*1000);$('water-m').value='';toast('Su toplamı '+(total/1000).toFixed(1)+'L olarak ayarlandı');}
