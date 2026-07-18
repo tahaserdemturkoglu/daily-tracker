@@ -2227,7 +2227,9 @@ def api_meal_from_food_registry():
     fat  = round((food.get('fat_per_100') or 0) * ratio, 1)
 
     official_name = food.get('official_name') or food.get('name')
-    description = f"{amount} {unit} {official_name}"
+    disp = (data.get('display') or '').strip()   # ör. "4 adet (210g)" - frontend adet birimi
+    amount_txt = f"{amount:g}"
+    description = f"{disp} {official_name}" if disp else f"{amount_txt} {unit} {official_name}"
 
     conn.execute("""
         INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,source)

@@ -519,8 +519,8 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <div id="nu-food-add-form" style="display:none;background:rgba(255,255,255,.04);border-radius:10px;padding:10px;margin-bottom:8px">
               <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap">
                 <div class="fg" style="flex:2"><b id="nu-food-selected-name" style="font-size:.85rem"></b></div>
-                <div class="fg" style="flex:1"><label>Miktar</label><input type="number" id="nu-food-amount" value="100" min="1" step="1" oninput="updateFoodPreview()" style="width:100%"></div>
-                <div class="fg" style="flex:0.7"><label>Birim</label><input type="text" id="nu-food-unit" value="g" style="width:100%"></div>
+                <div class="fg" style="flex:1"><label>Miktar</label><input type="number" id="nu-food-amount" value="100" min="1" step=".5" oninput="updateFoodPreview()" style="width:100%"></div>
+                <div class="fg" style="flex:0.9"><label>Birim</label><select id="nu-food-unit" onchange="updateFoodPreview()" style="width:100%"><option value="g">g</option></select></div>
               </div>
               <div id="nu-food-quick-amounts" style="display:flex;gap:5px;margin:6px 0;flex-wrap:wrap"></div>
               <div id="nu-food-preview" style="font-size:.85rem;font-weight:600;color:#60a5fa;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:8px 10px;margin:4px 0;min-height:18px"></div>
@@ -755,6 +755,20 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
         <div class="form-row" style="gap:8px;align-items:flex-end">
           <div class="fg"><label>Günlük Su Hedefi (ml)</label><input type="number" id="settings-water-goal-input" step="100" placeholder="3000"></div>
           <button class="btn btn-blue btn-sm" onclick="saveWaterGoalFromSettings()">Kaydet</button>
+        </div>
+      </div>
+
+      <!-- Bugünkü Veri Düzelt (su/adım yanlış girildiyse) -->
+      <div class="card ct ct-blue">
+        <div class="card-head"><span class="card-icon">✏️</span><div><div class="card-name">Bugünkü Veri Düzelt</div></div></div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Su veya adımı yanlış girdiysen buradan bugünün TOPLAM değerini düzelt (üzerine yazar). <span id="settings-fix-cur" style="color:var(--muted2)"></span></div>
+        <div class="form-row" style="gap:8px;align-items:flex-end;margin-bottom:8px">
+          <div class="fg"><label>Bugünkü Su Toplamı (L)</label><input type="number" id="settings-fix-water" step=".1" placeholder="2.5"></div>
+          <button class="btn btn-teal btn-sm" onclick="settingsFixWater()">Su'yu Ayarla</button>
+        </div>
+        <div class="form-row" style="gap:8px;align-items:flex-end">
+          <div class="fg"><label>Bugünkü Adım Toplamı</label><input type="number" id="settings-fix-steps" step="100" placeholder="8000"></div>
+          <button class="btn btn-teal btn-sm" onclick="settingsFixSteps()">Adımı Ayarla</button>
         </div>
       </div>
 
@@ -1415,6 +1429,7 @@ async function loadSettings(){
   settingsLoadWhoop();
   settingsLoadBreaks();
   settingsLoadShift();
+  settingsLoadTodayFix();
   const stepsInput=$('settings-steps-goal-input');
   if(stepsInput) stepsInput.value=getT().steps||10000;
   const waterInput=$('settings-water-goal-input');
@@ -1553,6 +1568,34 @@ function saveWaterGoalFromSettings(){
   fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(t)});
   toast('Su hedefi güncellendi');
   loadDashboard();loadLogPage();
+}
+// Bugünkü su/adım TOPLAMINI düzelt (yanlış giriş için). date göndermiyoruz -> backend
+// operation_today() kullanir (gece cutoff öncesi doğru operasyon gününe yazar).
+async function settingsFixWater(){
+  const l=parseFloat($('settings-fix-water').value);
+  if(isNaN(l)||l<0)return toast('Litre gir (ör. 2.5)',false);
+  await POST('/api/log/nutrition',{water_ml:Math.round(l*1000)});
+  toast('Bugünkü su '+l+'L olarak ayarlandı');
+  $('settings-fix-water').value='';settingsLoadTodayFix();loadDashboard();
+}
+async function settingsFixSteps(){
+  const s=parseInt($('settings-fix-steps').value);
+  if(isNaN(s)||s<0)return toast('Adım gir',false);
+  await POST('/api/steps',{steps:s,mode:'set'});
+  toast('Bugünkü adım '+s.toLocaleString('tr-TR')+' olarak ayarlandı');
+  $('settings-fix-steps').value='';settingsLoadTodayFix();loadDashboard();
+}
+async function settingsLoadTodayFix(){
+  try{
+    const d=await API('/api/today');
+    const w=((d.nutrition?.water_ml||0)/1000).toFixed(1);
+    const st=(d.steps?.steps||0);
+    const el=$('settings-fix-cur');
+    if(el)el.textContent=`Şu an: ${w}L su · ${st.toLocaleString('tr-TR')} adım`;
+    const wi=$('settings-fix-water'),si=$('settings-fix-steps');
+    if(wi&&!wi.value)wi.placeholder=w;
+    if(si&&!si.value)si.placeholder=String(st);
+  }catch(e){}
 }
 function settingsRenderThemePicker(){
   const el=$('settings-theme-picker'); if(!el) return;
@@ -1978,7 +2021,10 @@ function ndRenderWeightChart(bm,weightGoal){
   try{
     weightGoal=Number(weightGoal)||0;
     const rows=Array.isArray(bm)?bm:[];
-    const L30=Array.from({length:30},(_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-29+i);return dt.toISOString().slice(0,10);});
+    // Yerel (TR) tarih - ham toISOString UTC olduğu için gece saatlerinde bir gün geri kalıp
+    // bugünün (ör. 18 Temmuz) kilo noktasını grafikten düşürüyordu.
+    const localISO=dt=>new Date(dt.getTime()-dt.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const L30=Array.from({length:30},(_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-29+i);return localISO(dt);});
     const lb30=L30.map(ds=>{const dt=new Date(ds+'T12:00:00');return dt.getDate()+' '+dt.toLocaleDateString('tr-TR',{month:'short'});});
     const wData=L30.map(ds=>{const r=rows.find(x=>x.date===ds);return r&&r.weight_kg?+r.weight_kg:null;});
     const nightData=L30.map(ds=>{const r=rows.find(x=>x.date===ds);return r&&r.weight_kg_night?+r.weight_kg_night:null;});
@@ -2309,7 +2355,18 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
   // zaman kendi cerceveli kutusunda, ✓/○ + doz sagda, renkli buyuk-harf stack basliklari.
   // Break (ara veriliyor) destegi korunur: ara verilen satirlar soluk ⏸, sayaca girmez.
   ND_LAST_STACKS=stacks||[]; ND_LAST_VITAMINS=vitamins||[]; ND_LAST_BREAKS=breaks||[];
-  const vitByName={};(vitamins||[]).forEach(v=>{vitByName[v.name]=v;});
+  // Aynı ürün iki stack'te (NAC = Aç Karna + Gece): 'stack:<ad>' notu olan log ÖNCE o stack'e
+  // eşlenir. Böylece Aç Karna NAC alınınca Gece NAC 'alındı' görünmez. Etiketsiz (Telegram)
+  // loglar fallback olarak eşleşir (bilinen sınırlama).
+  const ndPickVit=(name,stackName)=>{
+    const logs=(vitamins||[]).filter(v=>v.name===name);
+    if(!logs.length) return null;
+    const tag='stack:'+stackName;
+    const tagged=logs.filter(v=>{const n=(v.notes||'').trim();return n===tag||n.startsWith(tag);});
+    const pool=tagged.length?tagged:logs.filter(v=>!(v.notes||'').trim().startsWith('stack:'));
+    for(const v of pool){if(['taken','eod_taken','half_dose'].includes(vitStatusOf(v)))return v;}
+    return pool[0]||null;
+  };
   const brokenStacks=new Set((breaks||[]).filter(b=>b.target_type==='stack').map(b=>b.target_name));
   const brokenProducts=new Set((breaks||[]).filter(b=>b.target_type==='product').map(b=>b.target_name));
   const breakEnd={};(breaks||[]).forEach(b=>{breakEnd[b.target_type+':'+b.target_name]=b.end_date||null;});
@@ -2327,7 +2384,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
           <span style="font-size:13px;font-weight:600;color:${ND.muted}">⏸ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted};text-align:right">Ara · ${breakLeftTxt(bEnd)}</span>
         </div>`;
       }
-      const v=vitByName[it.product_name];
+      const v=ndPickVit(it.product_name,s.name);
       if(!v && it.product_name===ND_ZINC_NAME && zinc && zinc.rest_today){
         // Cinko programi Pzt/Car/Cum: diger gunler beklenmez - eksik gibi gosterme, sayaca katma.
         return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px dashed ${ND.border};border-radius:8px;padding:12px 16px;opacity:.5">
@@ -2889,7 +2946,18 @@ function selectFood(id,name){
   $('nu-food-add-form').scrollIntoView({behavior:'smooth',block:'nearest'});
   const food=(_foodList||[]).find(f=>f.id===id);
   if(food){
-    $('nu-food-unit').value=food.unit||'g';
+    // Birim seçici: gram + (ürünün adet-benzeri porsiyon birimi varsa) o birim.
+    // Adet seçilince miktar × serving_size(gram) = gerçek gram olarak hesaplanır.
+    const uSel=$('nu-food-unit');
+    if(uSel){
+      const gUnit=food.unit||'g';
+      const su=(food.serving_unit||'').trim();
+      const ss=Number(food.serving_size)||0;
+      const gramLike=['g','ml','gram','gr'].includes(su.toLowerCase());
+      let html='<option value="g">'+escHtml(gUnit)+'</option>';
+      if(su && !gramLike && ss>0) html+='<option value="__unit__">'+escHtml(su)+' (1='+ss+'g)</option>';
+      uSel.innerHTML=html; uSel.value='g';
+    }
     $('nu-food-amount').value=100;
     let quick=[];
     try{quick=JSON.parse(food.quick_amounts||'[]');}catch(e){}
@@ -2936,12 +3004,18 @@ async function updateFoodPreview(){
       return;
     }
   }
-  const r=amount/100;
+  // Adet birimi seçiliyse gerçek gram = miktar × serving_size
+  const unitSel=($('nu-food-unit')?.value||'g');
+  const su=(food.serving_unit||'').trim();
+  const ss=Number(food.serving_size)||0;
+  let grams=amount, amtLabel=amount+'g';
+  if(unitSel==='__unit__' && ss>0){ grams=amount*ss; amtLabel=amount+' '+su+' ('+Math.round(grams)+'g)'; }
+  const r=grams/100;
   const kcal=Math.round((cal100||0)*r);
   const p=Math.round((p100||0)*r*10)/10;
   const k=Math.round((k100||0)*r*10)/10;
   const y=Math.round((y100||0)*r*10)/10;
-  $('nu-food-preview').innerHTML=`<span style="color:#f59e0b;font-weight:700">${amount}g → ${kcal} kcal</span> · <span style="color:#22c55e">P ${p}g</span> · <span style="color:#3b82f6">K ${k}g</span> · <span style="color:#f97316">Y ${y}g</span>`;
+  $('nu-food-preview').innerHTML=`<span style="color:#f59e0b;font-weight:700">${amtLabel} → ${kcal} kcal</span> · <span style="color:#22c55e">P ${p}g</span> · <span style="color:#3b82f6">K ${k}g</span> · <span style="color:#f97316">Y ${y}g</span>`;
 }
 
 async function saveMealFromDB(){
@@ -2950,12 +3024,16 @@ async function saveMealFromDB(){
   const foodName=$('nu-food-name').value.trim();
   if(!foodId&&!foodName)return toast('Ürün seç',false);
   if(!slot||slot==='-- Seç --')return toast('Öğün başlığı seç',false);
-  const amount=parseFloat($('nu-food-amount').value)||100;
-  const unit=$('nu-food-unit').value.trim()||'g';
+  const amtRaw=parseFloat($('nu-food-amount').value)||100;
+  const unitSel=($('nu-food-unit')?.value)||'g';
+  const foodObj=(_foodList||[]).find(f=>f.id===foodId);
+  const su=(foodObj?.serving_unit||'').trim(); const ss=Number(foodObj?.serving_size)||0;
+  let amount=amtRaw, unit='g', display=null;
+  if(unitSel==='__unit__' && ss>0){ amount=amtRaw*ss; unit=su; display=(amtRaw%1===0?amtRaw:amtRaw)+' '+su+' ('+Math.round(amount)+'g)'; }
   // Yeni başlık varsa kaydet
   const newTitle=($('nu-slot-new')?.value||'').trim();
   if(newTitle){await POST('/api/meal-titles',{name:newTitle});await loadMealTitles();$('nu-slot-new').value='';}
-  const r=await POST('/api/meals/from-food-registry',{slot,food_id:foodId||undefined,food_name:foodName||undefined,amount,unit});
+  const r=await POST('/api/meals/from-food-registry',{slot,food_id:foodId||undefined,food_name:foodName||undefined,amount,unit,display});
   if(r.ok===false){toast(r.error||'Hata',false);return;}
   toast(`${r.item?.name||foodName} eklendi · ${r.item?.kcal||'?'} kcal`);
   $('nu-food-search').value='';$('nu-food-id').value='';$('nu-food-name').value='';$('nu-food-preview').textContent='';
