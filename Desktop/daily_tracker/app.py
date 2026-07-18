@@ -691,6 +691,26 @@ def sync_supplement_catalog_canonical():
         conn.close()
 
 
+def fix_food_registry_typos():
+    """food_registry birim/not yazim duzeltmesi (idempotent, her boot). Kullanici duzeltmesi:
+    GymBeam birimi 'fış' degil 'fıs' (s ile). 'basış' gibi baska kelimelere dokunmaz cunku
+    sadece 'fış' alt-dizisi degistirilir."""
+    try:
+        conn = get_db()
+        if not conn.execute("SELECT name FROM sqlite_master WHERE name='food_registry'").fetchone():
+            conn.close()
+            return
+        n = conn.execute(
+            "UPDATE food_registry SET unit=REPLACE(unit,'fış','fıs'), notes=REPLACE(notes,'fış','fıs') "
+            "WHERE unit LIKE '%fış%' OR notes LIKE '%fış%'").rowcount
+        conn.commit()
+        conn.close()
+        if n:
+            log.info("food_registry yazim duzeltmesi: %d satir (fış->fıs)", n)
+    except Exception:
+        log.exception("fix_food_registry_typos basarisiz")
+
+
 def consolidate_water_all_dates():
     """nutrition_logs'ta her tarih icin water_ml'yi tek satirda topla (kirli data temizligi)."""
     conn = get_db()
@@ -725,6 +745,7 @@ consolidate_water_all_dates()
 migrate_body_metrics_weight_log()
 normalize_meal_slots_all()
 sync_supplement_catalog_canonical()
+fix_food_registry_typos()
 
 def ensure_user_settings_table():
     conn = get_db()
@@ -6739,7 +6760,7 @@ def import_real_besin_supplement_db():
         ('Alpro Badem Sütü Şekersiz', 24, 0.4, 3.1, 1.1, 'ml', 'sut', 'Şekersiz. 100ml=24kcal P0.4 K3.1 Y1.1', [100,200,250]),
         ('Badem', 606, 20, 7.6, 52, 'g', 'atistirmalik', 'Almond entry restored from old blank record.', [10,30,100]),
         ('Carrefour BIO Yumurta', 137, 12.4, 1.3, 9.1, 'g', 'protein', '[ETIKETLI] Kullanici etiketi: 100g = 137 kcal, P12.4, K1.3, Y9.1.', [50,100,150]),
-        ('Carrefour Tam Tahıllı Tost Ekmeği', 252, 9.5, 45, 2.1, 'g', 'tahil', '1 kromka ~23g / etiket: 252kcal P9.5 K45 Y2.1 per 100g', [23,46,69]),
+        ('Tam Tahıllı Tost Ekmeği', 252, 9.5, 45, 2.1, 'g', 'tahil', '1 dilim ~22.5g; "2 adet" = 45g / etiket: 252kcal P9.5 K45 Y2.1 per 100g', [23,45,90]),
         ('Domates', 18, 0.9, 3.9, 0.2, 'g', 'sebze', 'Genel domates - çeri/salkım/normal', [100,150,200]),
         ('Genç Patates', 70, 1.9, 15, 0.1, 'g', 'sebze', 'Ziemniaki Młode - Carrefour, çiğ ağırlık, airfryer uygun', [100,150,200]),
         ('GymBeam Sprey Yağ', 1500, 0, 0, 165, 'fış', 'yag', '[KULLANICI ONAYLI] 1 fış/basış = 15 kcal, 1.65Y.', [1,2,5]),
@@ -6767,14 +6788,14 @@ def import_real_besin_supplement_db():
         cat = CAT_LABELS.get(cat_key, '')
         qa = json.dumps(quick)
         existing = conn.execute("SELECT id FROM food_registry WHERE name=?", (name,)).fetchone()
+        # Mevcut urunu EZME: kullanicinin Besin DB'de yaptigi duzeltmeler (isim/deger/birim/
+        # alias) her restart'ta silinmesin. Seed yalnizca ilk kurulumda (urun yoksa) yazar;
+        # kod tarafi tek seferlik duzeltmeler icin ayri migration fonksiyonlari kullanir.
         if existing:
-            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,
-                            fat_per_100=?,unit=?,category=?,notes=?,quick_amounts=? WHERE id=?""",
-                         (kcal, prot, carb, fat, unit, cat, note, qa, existing['id']))
-        else:
-            conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,category,notes,quick_amounts)
-                            VALUES (?,?,?,?,?,?,?,?,?)""",
-                         (name, kcal, prot, carb, fat, unit, cat, note, qa))
+            continue
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,category,notes,quick_amounts)
+                        VALUES (?,?,?,?,?,?,?,?,?)""",
+                     (name, kcal, prot, carb, fat, unit, cat, note, qa))
     conn.commit()
 
     # Ogun sablonu: Kahvalti Stack
