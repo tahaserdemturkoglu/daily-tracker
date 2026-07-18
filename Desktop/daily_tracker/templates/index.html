@@ -3938,9 +3938,14 @@ async function ozpRenderDaily(dateStr){
   if(OZ_DATE!==dateStr||OZ_TAB!=='daily')return;
   const trainingType=(cd&&cd.training)||td.training_day||'Off';
   const isOff=trainingType==='Off';
-  const exRaw=await API('/api/training/exercises/'+trainingType);
+  const [exRaw, sessionsRaw]=await Promise.all([
+    API('/api/training/exercises/'+trainingType),
+    API('/api/antrenman/sessions').catch(()=>[]),
+  ]);
   if(OZ_DATE!==dateStr||OZ_TAB!=='daily')return;
   const exercises=Array.isArray(exRaw)?exRaw:[];
+  // O gün GERÇEKTEN yapılan seans (antrenman_sessions) - program şablonu değil, gerçek kayıt
+  const realSession=(Array.isArray(sessionsRaw)?sessionsRaw:[]).find(s=>s&&s.date===dateStr)||null;
 
   const splitLabel=(isOff&&cd&&cd.target&&cd.target.type)?cd.target.type:trainingType;
   const phaseColor=cd?dayTypeColor(cd):(CAL_COLORS[trainingType]||'#444');
@@ -4056,13 +4061,29 @@ async function ozpRenderDaily(dateStr){
   OZP_LAST_SUPP_STACKS=stacks;
   const suppHtml=`<div id="ozp-supp-wrap">${ozpSuppPanelHtml(stacks)}</div>`;
 
-  const progHtml=ozpPanel('🏋 ANTRENMAN',phaseColor,
-    exercises.length?exercises.map(ex=>`<div style="display:flex;justify-content:space-between;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--border)">
+  // O gün gerçek seans varsa YAPILAN hareketleri göster (isim + working set özeti); yoksa program şablonu.
+  const realExs=(realSession&&Array.isArray(realSession.exercises))?realSession.exercises:[];
+  let progInner, progTag;
+  if(realExs.length){
+    progInner=realExs.map(ex=>{
+      const ws=(ex.sets||[]).filter(s=>['ws','bo'].includes(s.type)&&((s.weight||0)>0||(s.reps||0)>0));
+      const summary=ws.length
+        ? ws.map(s=>(s.weight>0?s.weight+'×'+s.reps:'BW×'+s.reps)).join(' · ')
+        : ((ex.sets||[]).length+' set');
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--border)">
+        <span style="font-weight:600;color:var(--text);min-width:0">${escHtml(ex.name||'Hareket')}${ex.ssGroup?' <span style="font-size:9px;color:#38BDF8">🔗</span>':''}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${OZP_C.blu};text-align:right">${escHtml(summary)}</span>
+      </div>`;
+    }).join('');
+    progTag=`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:#05080F;background:${OZP_C.grn};border-radius:999px;padding:3px 12px;letter-spacing:1px">${escHtml(splitLabel)} · YAPILDI</div>`;
+  } else {
+    progInner=exercises.length?exercises.map(ex=>`<div style="display:flex;justify-content:space-between;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--border)">
       <span style="font-weight:600;color:var(--text)">${escHtml(ex.exercise)}</span>
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${OZP_C.blu}">${escHtml(ex.sets||'')}${ex.reps?'×'+escHtml(ex.reps):''}</span>
-    </div>`).join(''):`<div style="color:var(--muted);font-size:13px">${isOff?'Dinlenme günü.':'Program tanımlı değil.'}</div>`,
-    `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:#fff;background:${phaseColor};border-radius:999px;padding:3px 12px;letter-spacing:1px">${escHtml(splitLabel)}</div>`
-  );
+    </div>`).join(''):`<div style="color:var(--muted);font-size:13px">${isOff?'Dinlenme günü.':'Program tanımlı değil.'}</div>`;
+    progTag=`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:#fff;background:${phaseColor};border-radius:999px;padding:3px 12px;letter-spacing:1px">${escHtml(splitLabel)}${isOff?'':' · PROGRAM'}</div>`;
+  }
+  const progHtml=ozpPanel('🏋 ANTRENMAN',phaseColor, progInner, progTag);
 
   const sl=td.sleep||{}, ex0=td.exercise||{}, mo=td.mood||{};
   const fmtSleep=h=>{if(!h)return'—';const hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+'sa'+(mm?mm+'dk':'');};
