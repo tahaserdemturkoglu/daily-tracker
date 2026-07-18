@@ -2422,12 +2422,15 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
         </div>`;
       }
       const st=vitStatusOf(v),meta=VIT_STATUS_META[st]||VIT_STATUS_META.taken;
-      const mc=(st==='taken')?ND.text2:meta.color;
-      if(['taken','eod_taken','half_dose'].includes(st)){taken++;totalTaken++;}
+      const isTaken=['taken','eod_taken','half_dose'].includes(st);
+      const GRN='#22C55E';
+      // Alinan takviyeler hafif yesil canlilik alsin (mavi ara / sari cinko yaninda sonuk kalmasin).
+      const mc=(st==='taken')?GRN:meta.color;
+      if(isTaken){taken++;totalTaken++;}
       const strike=st==='missed'?'text-decoration:line-through':'';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${st==='taken'?ND.bg:ndHexA(mc,.08)};border:1px solid ${st==='taken'?ND.border:ndHexA(mc,.32)};border-radius:8px;padding:12px 16px">
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${isTaken?ndHexA(GRN,.07):ndHexA(mc,.08)};border:1px solid ${isTaken?ndHexA(GRN,.28):ndHexA(mc,.32)};border-radius:8px;padding:12px 16px">
         <span style="font-size:13px;font-weight:600;color:${mc};${strike}">${meta.emoji} ${escHtml(it.product_name)}</span>
-        <span style="font-size:11px;color:${st==='taken'?ND.muted:mc}">${it.dose||1} ${escHtml(it.unit||'')}</span>
+        <span style="font-size:11px;color:${isTaken?ndHexA(GRN,.75):mc}">${it.dose||1} ${escHtml(it.unit||'')}</span>
       </div>`;
     }).join('');
     const c=groupColors[i%groupColors.length];
