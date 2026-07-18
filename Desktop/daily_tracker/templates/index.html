@@ -2398,12 +2398,21 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
         </div>`;
       }
       const v=ndPickVit(it.product_name,s.name);
-      if(!v && it.product_name===ND_ZINC_NAME && zinc && zinc.rest_today){
-        // Cinko programi Pzt/Car/Cum: diger gunler beklenmez - eski stil: sari + dikkat isareti.
-        const YEL='#F5B23A';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(YEL,.1)};border:1px solid ${ndHexA(YEL,.4)};border-radius:8px;padding:12px 16px">
-          <span style="font-size:13px;font-weight:600;color:${YEL}">⚠️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${YEL};font-weight:600">Gün aşırı · bugün yok</span>
-        </div>`;
+      if(it.product_name===ND_ZINC_NAME){
+        // Cinko gun-asiri (Pzt/Car/Cum): ALINMADIYSA sari ⚠, ALINDIYSA yesil ✓ "gun asiri alindi".
+        if(!v && zinc && zinc.rest_today){
+          const YEL='#F5B23A';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(YEL,.1)};border:1px solid ${ndHexA(YEL,.4)};border-radius:8px;padding:12px 16px">
+            <span style="font-size:13px;font-weight:600;color:${YEL}">⚠️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${YEL};font-weight:600">Gün aşırı · bugün yok</span>
+          </div>`;
+        }
+        if(v && ['taken','eod_taken','half_dose'].includes(vitStatusOf(v))){
+          countable++; totalItems++; taken++; totalTaken++;
+          const GRN='#22C55E';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(GRN,.1)};border:1px solid ${ndHexA(GRN,.4)};border-radius:8px;padding:12px 16px">
+            <span style="font-size:13px;font-weight:600;color:${GRN}">✓ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${GRN};font-weight:600">Gün aşırı alındı</span>
+          </div>`;
+        }
       }
       countable++; totalItems++;
       if(!v){
