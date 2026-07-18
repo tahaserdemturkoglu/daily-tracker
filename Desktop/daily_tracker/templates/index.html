@@ -2930,15 +2930,18 @@ async function foodSearch(q){
   if(_foodCat)pool=pool.filter(f=>(f.category||'')===_foodCat);
   const matches=q?pool.filter(f=>(f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q)||(f.aliases||'').toLowerCase().includes(q)):pool;
   if(!matches.length){grid.innerHTML='<div style="grid-column:1/-1;padding:12px;color:var(--muted);font-size:.8rem">Sonuç yok</div>';return;}
-  grid.innerHTML=matches.map(f=>`<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"`")}')" style="cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
+  grid.innerHTML=matches.map(f=>{
+    const isRecipe=(f.category||'')==='Tarif'||/karışım|karisim/i.test(f.notes||'');
+    const recipeBadge=isRecipe?` <span title="${escHtml(f.notes||'')}" style="font-size:.58rem;font-weight:700;color:#a78bfa;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.35);padding:1px 5px;border-radius:5px;vertical-align:middle;white-space:nowrap">🍳 tarif</span>`:'';
+    return `<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"\`")}')" style="cursor:pointer;background:rgba(255,255,255,.04);border:1px solid ${isRecipe?'rgba(167,139,250,.3)':'rgba(255,255,255,.08)'};border-radius:10px;padding:10px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:start">
-      <b style="font-size:.82rem;line-height:1.25">${f.official_name||f.name}</b>
+      <b style="font-size:.82rem;line-height:1.25">${f.official_name||f.name}${recipeBadge}</b>
       <span style="color:var(--yellow);font-size:.72rem;white-space:nowrap;flex-shrink:0">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span>
     </div>
     <div style="font-size:.72rem;margin-top:5px;display:flex;gap:6px">
       <span style="color:#22c55e">P${f.protein_per_100||0}</span><span style="color:#3b82f6">K${f.carbs_per_100||0}</span><span style="color:#f97316">Y${f.fat_per_100||0}</span>
     </div>
-  </div>`).join('');
+  </div>`;}).join('');
 }
 
 function setFoodAmount(g){$('nu-food-amount').value=g;updateFoodPreview();}
