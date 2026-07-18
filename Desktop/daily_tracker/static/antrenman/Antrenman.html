@@ -1496,6 +1496,11 @@ function exIsNew(name){
   return !SESSIONS.some(s => s.date < cur.date &&
     (s.exercises||[]).some(e => (e.name||'').trim().toLocaleLowerCase('tr') === norm));
 }
+// ── Aynı süperset grubundaki hareketler (sıra numarasıyla) ──
+function ssGroupMembers(ex){
+  if(!ex.ssGroup) return [];
+  return exercises.map((e,i)=>({e,i})).filter(o=>o.e.ssGroup===ex.ssGroup);
+}
 // ── BUILD CARD ──
 function buildCard(ex, idx) {
   const doneSets = ex.sets.filter(s=>s.done).length;
@@ -1514,7 +1519,7 @@ function buildCard(ex, idx) {
         <div class="ex-num">${idx+1}</div>
         <span class="ex-name">${ex.name}</span>
         <span class="muscle-badge ${ex.muscle}">${ex.muscleLabel}</span>
-        ${ex.ssGroup?`<span style="font-size:10px;font-weight:700;color:#38BDF8;background:color-mix(in srgb,#38BDF8 15%,transparent);border:1px solid color-mix(in srgb,#38BDF8 35%,transparent);padding:2px 7px;border-radius:6px">🔗 Süperset</span>`:''}
+        ${ex.ssGroup?(()=>{const mem=ssGroupMembers(ex);const others=mem.filter(o=>o.e.id!==ex.id).map(o=>`${o.i+1}. ${o.e.name}`);const tip=others.length?('Süperset — şununla: '+others.join(' + ')):'Süperset';return `<span class="ss-badge" title="${tip.replace(/"/g,'&quot;')}" onclick="event.stopPropagation();showToast('🔗 '+${JSON.stringify(tip)},'info')" style="font-size:10px;font-weight:700;color:#38BDF8;background:color-mix(in srgb,#38BDF8 15%,transparent);border:1px solid color-mix(in srgb,#38BDF8 35%,transparent);padding:2px 7px;border-radius:6px;cursor:help">🔗 Süperset${others.length?` <span style="opacity:.75">·${others.map(o=>o.split('. ')[0]).join(',')}</span>`:''}</span>`;})():''}
         ${exIsNew(ex.name)?`<span style="font-size:10px;font-weight:700;color:#22C55E;background:color-mix(in srgb,#22C55E 15%,transparent);border:1px solid color-mix(in srgb,#22C55E 40%,transparent);padding:2px 7px;border-radius:6px">🆕 Yeni Hareket</span>`:''}
         ${isAllDone?`<span style="font-size:11px;color:var(--success);font-weight:700;">✓ Tamam</span>`:''}
       </div>
