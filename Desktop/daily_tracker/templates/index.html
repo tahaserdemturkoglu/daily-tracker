@@ -1851,6 +1851,7 @@ function ndInjectStyle(){
 async function loadNewDashboard(){
   try{
     ndInjectStyle();
+    if(!window._foodList) window._foodList=await API('/api/food-registry')||[];  // tarif kalemi tanıma için
     const t0=today();
     const [d,macro,week7,bm,aiRes,stacks,meals,whoopStatus,whoopDaily,breaks,suppToday]=await Promise.all([
       API('/api/today'),API('/api/macro/today'),API('/api/macro/range?days=7&detail=1'),
@@ -2283,12 +2284,20 @@ function ndMealLogHtml(groups){
       const title=(m.title||m.slot||'—').trim();
       const name=(desc&&desc!==title)?(desc.includes(title)?desc:(desc+' '+title)):title;
       const chip=(lbl,v,color)=>(v!=null&&v!=='')?`<span style="background:${ndHexA(color,.12)};border:1px solid ${ndHexA(color,.32)};color:${color};font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px">${lbl}:${+(Math.round(v*10)/10)}</span>`:'';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid #1E2637">
-        <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${escHtml(name)}">${escHtml(name)}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <b style="font-size:13px;color:${ND.kcal}">${Math.round(m.calories||0)} kcal</b>
-          ${chip('P',m.protein_g,ND.p)}${chip('K',m.carbs_g,ND.k)}${chip('Y',m.fat_g,ND.y)}
+      // Tarif/karışım kalemi mi? Besin DB'den bul; ise tıkla-aç bileşen kartı göster.
+      const rf=(window._foodList||[]).find(f=>f.name===(m.title||'')||(f.official_name||'')===title||f.name===title);
+      const recipeNote=(rf&&((rf.category||'')==='Tarif'||/kar[ıi]ş[ıi]m/i.test(rf.notes||'')))?(rf.notes||''):'';
+      const rid='ndrcp'+m.id;
+      const clickAttr=recipeNote?`onclick="var e=document.getElementById('${rid}');if(e){e.style.display=e.style.display==='none'?'block':'none'}" style="cursor:pointer"`:'';
+      return `<div style="border-top:1px solid #1E2637">
+        <div ${clickAttr} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;${recipeNote?'cursor:pointer':''}">
+          <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${escHtml(name)}">${recipeNote?'🍳 ':''}${escHtml(name)}${recipeNote?' <span style="font-size:9px;color:#a78bfa">▸ içerik</span>':''}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <b style="font-size:13px;color:${ND.kcal}">${Math.round(m.calories||0)} kcal</b>
+            ${chip('P',m.protein_g,ND.p)}${chip('K',m.carbs_g,ND.k)}${chip('Y',m.fat_g,ND.y)}
+          </div>
         </div>
+        ${recipeNote?`<div id="${rid}" style="display:none;padding:0 16px 12px;font-size:11.5px;color:${ND.muted};line-height:1.6;background:${ndHexA('#a78bfa',.05)}">${escHtml(recipeNote)}</div>`:''}
       </div>`;
     }).join(''):'';
     const slotEsc=escHtml(g.slot).replace(/'/g,"\\'");
