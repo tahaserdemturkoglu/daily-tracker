@@ -1882,7 +1882,7 @@ function ndGoAddMeal(){
   setTimeout(()=>{$('meal-add-card')?.scrollIntoView({behavior:'smooth',block:'start'});},150);
 }
 
-function ndHeroHtml(t,cal,prot,carb,fat,wml,steps){
+function ndHeroHtml(t,cal,prot,carb,fat,wml,steps,fiber){
   const pct=Math.round(cal/(t.cal||1)*100);
   const over=cal>t.cal;
   const badge=over
@@ -1928,6 +1928,10 @@ function ndHeroHtml(t,cal,prot,carb,fat,wml,steps){
         <div style="font-size:17px;font-weight:600;margin-top:4px">${steps.toLocaleString('tr-TR')}<span style="font-size:12px;color:${ND.muted}">/${(t.steps||10000).toLocaleString('tr-TR')}</span></div>
       </div>
     </div>
+    ${(()=>{const fg=Number(t.fiber)||35;const fb=Number(fiber)||0;const fp=Math.min(100,Math.round(fb/fg*100));const done=fb>=fg;return `<div style="background:${ND.bg};border:1px solid ${done?ndHexA(ND.ok,.4):ND.border};border-radius:10px;padding:10px 12px;margin-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:${ND.muted}"><span>🌾 Lif</span><span style="color:${done?ND.ok:ND.kcal};font-weight:700">${fb.toFixed(0)}<span style="color:${ND.muted};font-weight:400">/${fg}g · ${fp}%</span></span></div>
+      <div style="height:4px;background:${ND.border};border-radius:2px;margin-top:8px"><div style="height:100%;width:${fp}%;background:${done?ND.ok:'#22C55E'};border-radius:2px"></div></div>
+    </div>`;})()}
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button onclick="ndGoAddMeal()" style="background:${ND.kcal};color:${ND.bg};border:none;font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer">+ Öğün Ekle</button>
       <button onclick="addWater(500)" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer">+500ml Su</button>
@@ -2548,7 +2552,7 @@ function renderNewDashboard(){
 
   root.innerHTML=`<div style="width:100%;display:flex;flex-direction:column;gap:16px">
       <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:16px">
-        ${ndHeroHtml(t,cal,prot,carb,fat,wml,steps)}
+        ${ndHeroHtml(t,cal,prot,carb,fat,wml,steps,tot.fiber_g||0)}
         ${ndWeekChartHtml(week7,t)}
         ${ndWeightCardHtml(bm)}
       </div>

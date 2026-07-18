@@ -691,6 +691,43 @@ def sync_supplement_catalog_canonical():
         conn.close()
 
 
+# Ürün başına lif (g/100g) - hemoroid için lif takibi (Taha 2026-07-18). Değeri 0 olan
+# ürünlere set edilir; kullanıcı elle değiştirdiyse (0'dan farklıysa) ezmez.
+FOOD_FIBER_PER_100 = {
+    'Yulaf': 10.6, 'Muz': 2.6, 'Çilek': 2.0, 'Kırmızı Elma': 2.4,
+    'Salatalık': 0.5, 'Domates': 1.2, 'Marul': 1.3, 'Karışık Yeşillik': 2.0,
+    'Badem': 12.5, 'Kaju': 3.3, 'Tam Tahıllı Tost Ekmeği': 7.0,
+    'Carrefour Tam Tahıllı Tost Ekmeği': 7.0, 'Yasmin Pirinc': 1.3,
+    'Genç Patates': 2.4, 'Kakao': 33.0, 'Panko': 2.5, 'Keto Ketçap': 2.0,
+    'Çikolatalı Protein Bar 33%': 2.0, 'Turşu': 1.2,
+    'Alpro Badem Sütü Şekersiz': 0.4, 'Valio PROfeel Protein Pudding Chocolate': 0.5,
+}
+
+
+def seed_food_fiber():
+    """Bilinen ürünlere lif (fiber_per_100) doldurur (idempotent). fiber_per_100 kolonu
+    yeni eklendiği için tum urunler 0 basliyor; bu fonksiyon lifli olanlari doldurur."""
+    try:
+        conn = get_db()
+        if not conn.execute("SELECT name FROM sqlite_master WHERE name='food_registry'").fetchone():
+            conn.close()
+            return
+        cols = {r['name'] for r in conn.execute("PRAGMA table_info(food_registry)").fetchall()}
+        if 'fiber_per_100' not in cols:
+            conn.execute("ALTER TABLE food_registry ADD COLUMN fiber_per_100 REAL DEFAULT 0")
+            conn.commit()
+        n = 0
+        for name, fib in FOOD_FIBER_PER_100.items():
+            n += conn.execute(
+                "UPDATE food_registry SET fiber_per_100=? WHERE (fiber_per_100 IS NULL OR fiber_per_100=0) "
+                "AND (name=? OR official_name=?)", (fib, name, name)).rowcount
+        conn.commit(); conn.close()
+        if n:
+            log.info("food_registry lif tohumu: %d urune fiber_per_100 dolduruldu", n)
+    except Exception:
+        log.exception("seed_food_fiber basarisiz")
+
+
 def fix_food_registry_typos():
     """food_registry birim/not yazim duzeltmesi (idempotent, her boot). Kullanici duzeltmesi:
     GymBeam birimi 'fış' degil 'fıs' (s ile). 'basış' gibi baska kelimelere dokunmaz cunku
@@ -746,6 +783,7 @@ migrate_body_metrics_weight_log()
 normalize_meal_slots_all()
 sync_supplement_catalog_canonical()
 fix_food_registry_typos()
+seed_food_fiber()
 
 def ensure_user_settings_table():
     conn = get_db()
@@ -953,6 +991,7 @@ def generate_dashboard_ai_insights(date_str=None):
     total_p = round(sum(m['protein_g'] or 0 for m in meals))
     total_k = round(sum(m['carbs_g'] or 0 for m in meals))
     total_y = round(sum(m['fat_g'] or 0 for m in meals))
+    total_fiber = round(sum((m['fiber_g'] if 'fiber_g' in m.keys() else 0) or 0 for m in meals))
     water_ml = int(nutrition['water_ml'] if nutrition and nutrition['water_ml'] else 0)
     steps = int(step_row['steps']) if step_row and step_row['steps'] else 0
     try:
@@ -978,7 +1017,8 @@ def generate_dashboard_ai_insights(date_str=None):
     payload = {
         'tarih': date_str,
         'gercek': {'kcal': total_cal, 'protein_g': total_p, 'carb_g': total_k, 'fat_g': total_y,
-                   'su_ml': water_ml, 'adim': steps},
+                   'su_ml': water_ml, 'adim': steps, 'lif_g': total_fiber},
+        'lif_hedefi_g': 35,
         'hedef': target,
         'yarinin_hedefi': tomorrow,
         'recovery_pct': recovery,
@@ -997,6 +1037,9 @@ def generate_dashboard_ai_insights(date_str=None):
         'göre su/öğün ritmi — saat üretim anının saatidir, gün içinde değişmez; saate çok bağlı ifadeler yerine '
         'günün geneline uyan ritim önerisi ver), '
         '"motivasyon" (kilo trendi/ilerleme), "ai_plan" (yarının Karb Cycle hedefinin kısa özeti). '
+        'Lif: kullanıcının sindirim/bağırsak sağlığı için günlük lif hedefi lif_hedefi_g (35g). '
+        'lif_g bu hedefin belirgin altındaysa (ör. <25) ve gün ilerlediyse, bir "hatirlatma" ile lif + su '
+        'artırmasını hatırlat (yulaf/meyve/sebze öner); sebep/teşhis yazma, sadece "lif bugün düşük" de. '
         'recovery_pct null ise recovery ile ilgili hiçbir şey uydurma. SADECE şu JSON formatında dön, '
         'başka hiçbir şey yazma: {"insights":[{"type":"kritik|aksiyon|hatirlatma|motivasyon|ai_plan",'
         '"text":"Türkçe, kısa, somut, 1-2 cümle"}]}'
@@ -2225,6 +2268,7 @@ def api_meal_from_food_registry():
     prot = round((food.get('protein_per_100') or 0) * ratio, 1)
     carb = round((food.get('carbs_per_100') or 0) * ratio, 1)
     fat  = round((food.get('fat_per_100') or 0) * ratio, 1)
+    fiber = round((food.get('fiber_per_100') or 0) * ratio, 1)
 
     official_name = food.get('official_name') or food.get('name')
     disp = (data.get('display') or '').strip()   # ör. "4 adet (210g)" - frontend adet birimi
@@ -2232,15 +2276,15 @@ def api_meal_from_food_registry():
     description = f"{disp} {official_name}" if disp else f"{amount_txt} {unit} {official_name}"
 
     conn.execute("""
-        INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,source)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    """, (d, slot, official_name, description, kcal, prot, carb, fat, 'food_registry'))
+        INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,source)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """, (d, slot, official_name, description, kcal, prot, carb, fat, fiber, 'food_registry'))
     conn.commit(); conn.close()
 
     return jsonify({
         'ok': True, 'date': d, 'slot': slot,
         'item': {'name': official_name, 'amount': amount, 'unit': unit,
-                 'kcal': kcal, 'protein': prot, 'carbs': carb, 'fat': fat}
+                 'kcal': kcal, 'protein': prot, 'carbs': carb, 'fat': fat, 'fiber': fiber}
     })
 
 @app.route('/api/meals/from-template/<int:tid>', methods=['POST'])
@@ -6366,7 +6410,7 @@ def ensure_food_registry():
     for col, defval in [('aliases',"TEXT DEFAULT ''"),('unit',"TEXT DEFAULT 'g'"),('serving_size','REAL DEFAULT 100'),
                         ('product_id',"TEXT DEFAULT ''"),('official_name',"TEXT DEFAULT ''"),
                         ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''"),
-                        ('category',"TEXT DEFAULT ''")]:
+                        ('category',"TEXT DEFAULT ''"),('fiber_per_100','REAL DEFAULT 0')]:
         if col not in cols:
             try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} {defval}")
             except: pass
@@ -6389,8 +6433,8 @@ def api_food_registry_add():
         if not data.get('name','').strip():
             return jsonify({'error':'name required'}), 400
         conn = get_db()
-        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,unit,serving_size,serving_unit,notes,aliases,category) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category','')))
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category','')))
         conn.commit()
         new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
@@ -6403,7 +6447,7 @@ def api_food_registry_add():
 def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
-    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','unit','serving_size','serving_unit','notes','aliases','category']
+    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','unit','serving_size','serving_unit','notes','aliases','category']
     sent = {k: data[k] for k in fields if k in data}
     if not sent:
         return jsonify({'ok': False, 'error': 'Güncellenecek alan yok'}), 400
