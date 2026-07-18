@@ -6410,7 +6410,8 @@ def ensure_food_registry():
     for col, defval in [('aliases',"TEXT DEFAULT ''"),('unit',"TEXT DEFAULT 'g'"),('serving_size','REAL DEFAULT 100'),
                         ('product_id',"TEXT DEFAULT ''"),('official_name',"TEXT DEFAULT ''"),
                         ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''"),
-                        ('category',"TEXT DEFAULT ''"),('fiber_per_100','REAL DEFAULT 0')]:
+                        ('category',"TEXT DEFAULT ''"),('fiber_per_100','REAL DEFAULT 0'),
+                        ('recipe',"TEXT DEFAULT ''")]:
         if col not in cols:
             try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} {defval}")
             except: pass
@@ -6447,7 +6448,7 @@ def api_food_registry_add():
 def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
-    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','unit','serving_size','serving_unit','notes','aliases','category']
+    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','unit','serving_size','serving_unit','notes','aliases','category','recipe']
     sent = {k: data[k] for k in fields if k in data}
     if not sent:
         return jsonify({'ok': False, 'error': 'Güncellenecek alan yok'}), 400
