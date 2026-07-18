@@ -7234,6 +7234,7 @@ def api_supplements_log():
 
     # Items (snapshot with overrides)
     items = conn.execute("SELECT * FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num", (stack['id'],)).fetchall()
+    _zinc_day = date.fromisoformat(today).weekday() in ZINC_DAYS
     for item in items:
         pname = item['product_name']
         ov = overrides.get(pname, {})
@@ -7241,6 +7242,10 @@ def api_supplements_log():
         unit   = ov.get('unit',  item['unit'])
         taken  = ov.get('taken', 1)
         ov_note = ov.get('note', '')
+        # Cinko yalnizca Pzt/Car/Cum beklenir: gun-asiri gunde 'Tumunu Isaretle' onu ATLAR
+        # (kullanici override ile acikca istemedikce). Boylece gun-asiri rozeti (sari ⚠) korunur.
+        if pname == ZINC_PRODUCT_NAME and not _zinc_day and pname not in overrides:
+            continue
         conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,?,?)",
                      (log_id, pname, dose, unit, taken, ov_note))
         # Zinc last date update
