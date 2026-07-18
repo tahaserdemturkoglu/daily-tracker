@@ -1328,7 +1328,7 @@ function ingestSession(parsedWorkout){
   const uid = 'ext'+Date.now().toString(36);
   parsedWorkout.exercises = (parsedWorkout.exercises||[]).map((ex,ei)=>({
     id: ex.id || uid+'e'+ei, name:ex.name, muscle:ex.muscle, muscleLabel:ex.muscleLabel,
-    pr: ex.pr||null, feel: ex.feel||'',
+    pr: ex.pr||null, feel: ex.feel||'', ...(ex.ssGroup?{ssGroup:ex.ssGroup}:{}),
     sets:(ex.sets||[]).map((s,si)=>({
       id: s.id || uid+'e'+ei+'s'+si, type:s.type||'ws', weight:s.weight||0, reps:s.reps||0,
       done: s.done!==false, bw:!!s.bw, note:s.note||'',
@@ -1487,6 +1487,15 @@ function scrollToEx(eid) {
   if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+// ── "Yeni Hareket": bu hareket, goruntulenen seansin tarihinden ONCEKI hicbir seansta yoksa ──
+function exIsNew(name){
+  const cur = SESSIONS[viewIndex];
+  if(!cur || !cur.date) return false;
+  const norm = (name||'').trim().toLocaleLowerCase('tr');
+  if(!norm) return false;
+  return !SESSIONS.some(s => s.date < cur.date &&
+    (s.exercises||[]).some(e => (e.name||'').trim().toLocaleLowerCase('tr') === norm));
+}
 // ── BUILD CARD ──
 function buildCard(ex, idx) {
   const doneSets = ex.sets.filter(s=>s.done).length;
@@ -1505,6 +1514,8 @@ function buildCard(ex, idx) {
         <div class="ex-num">${idx+1}</div>
         <span class="ex-name">${ex.name}</span>
         <span class="muscle-badge ${ex.muscle}">${ex.muscleLabel}</span>
+        ${ex.ssGroup?`<span style="font-size:10px;font-weight:700;color:#38BDF8;background:color-mix(in srgb,#38BDF8 15%,transparent);border:1px solid color-mix(in srgb,#38BDF8 35%,transparent);padding:2px 7px;border-radius:6px">🔗 Süperset</span>`:''}
+        ${exIsNew(ex.name)?`<span style="font-size:10px;font-weight:700;color:#22C55E;background:color-mix(in srgb,#22C55E 15%,transparent);border:1px solid color-mix(in srgb,#22C55E 40%,transparent);padding:2px 7px;border-radius:6px">🆕 Yeni Hareket</span>`:''}
         ${isAllDone?`<span style="font-size:11px;color:var(--success);font-weight:700;">✓ Tamam</span>`:''}
       </div>
       <div class="ex-right">
