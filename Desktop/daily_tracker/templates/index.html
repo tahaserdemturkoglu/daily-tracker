@@ -1514,7 +1514,7 @@ async function settingsLoadBreaks(){
     const sOnBreak=brokenStacks.has(s.name);
     const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)">
       <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--orange)">▪ ${escHtml(s.name)}</div>
-      ${sOnBreak?`<span style="font-size:.68rem;color:var(--muted)">⏸ Ara · ${breakLeftTxt(brEnd['stack:'+s.name])}</span>`:`<button class="btn btn-sm btn-ghost" style="font-size:.68rem" data-break-ttype="stack" data-break-tname="${escHtml(s.name)}">⏸ Stack'i Duraklat</button>`}
+      ${sOnBreak?`<span style="font-size:.68rem;color:#38BDF8;font-weight:600">❄️ Ara · ${breakLeftTxt(brEnd['stack:'+s.name])}</span>`:`<button class="btn btn-sm btn-ghost" style="font-size:.68rem" data-break-ttype="stack" data-break-tname="${escHtml(s.name)}">⏸ Stack'i Duraklat</button>`}
     </div>`;
     const rows=(s.items||[]).map(it=>{
       const pOnBreak=brokenProducts.has(it.product_name)||sOnBreak;
@@ -2393,8 +2393,9 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
       const onBreak=explicitStackBreak||brokenProducts.has(it.product_name);
       if(onBreak){
         const bEnd=brokenProducts.has(it.product_name)?breakEnd['product:'+it.product_name]:breakEnd['stack:'+s.name];
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px;opacity:.55">
-          <span style="font-size:13px;font-weight:600;color:${ND.muted}">⏸ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted};text-align:right">Ara · ${breakLeftTxt(bEnd)}</span>
+        const BLU='#38BDF8';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(BLU,.1)};border:1px solid ${ndHexA(BLU,.4)};border-radius:8px;padding:12px 16px">
+          <span style="font-size:13px;font-weight:600;color:${BLU}">❄️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${BLU};font-weight:600;text-align:right">Ara · ${breakLeftTxt(bEnd)}</span>
         </div>`;
       }
       const v=ndPickVit(it.product_name,s.name);
@@ -2442,7 +2443,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
       }
     }
     const badge=stackOnBreak
-      ?`<span style="font-size:10px;color:${ND.muted}">⏸ ara · ${breakLeftTxt(stackBreakUntil)}</span>`
+      ?`<span style="font-size:10px;color:#38BDF8;font-weight:700">❄️ ara · ${breakLeftTxt(stackBreakUntil)}</span>`
       :`<span style="font-size:10px;color:${full?ND.whoop:ND.kcal}">${taken}/${countable}</span>`;
     const markBtn=(!full&&!stackOnBreak)?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`:'';
     const isOpen=ND_SUPP_OPEN[s.name]!==false;   // varsayilan acik; kullanici kapatinca hatirlanir
@@ -3928,7 +3929,7 @@ const OZP_STATUS_META={
   taken:{label:'✓ Alındı',color:OZP_C.grn}, eod_taken:{label:'✅ Gün Aşırı Alındı',color:OZP_C.grn},
   half_dose:{label:'½ Yarım Doz',color:OZP_C.pur}, eod_skipped:{label:'⚠️ Gün Aşırı Atlandı',color:'var(--yellow)'},
   missed:{label:'✕ Eksik',color:OZP_C.red}, pending:{label:'· Bekliyor',color:'var(--muted2)'},
-  on_break:{label:'⏸ Ara Veriliyor',color:'var(--muted2)'},
+  on_break:{label:'❄️ Ara Veriliyor',color:'#38BDF8'},
   eod_rest:{label:'⚠️ Gün aşırı — bugün yok',color:'#F5B23A'},
 };
 
@@ -3999,7 +4000,7 @@ function ozpSuppPanelHtml(stacks){
         <div onclick="ozpToggleStack(${st.stack_id})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;background:var(--bg3)">
           <div style="font-size:13px;font-weight:800;color:var(--text)">${open?'▾':'▸'} ${escHtml(st.name)}</div>
           <div style="display:flex;align-items:center;gap:10px">
-            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);font-weight:700">⏸ Ara · ${breakLeftTxt(st.break_until)}</span>`:`
+            ${st.on_break?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#38BDF8;font-weight:700">❄️ Ara · ${breakLeftTxt(st.break_until)}</span>`:`
             <div style="width:60px">${ozpBar(p,barColor)}</div>
             <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${barColor};font-weight:700">${st.taken}/${st.total}</span>`}
           </div>
