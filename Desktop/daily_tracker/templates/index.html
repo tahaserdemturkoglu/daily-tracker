@@ -2399,9 +2399,10 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
       }
       const v=ndPickVit(it.product_name,s.name);
       if(!v && it.product_name===ND_ZINC_NAME && zinc && zinc.rest_today){
-        // Cinko programi Pzt/Car/Cum: diger gunler beklenmez - eksik gibi gosterme, sayaca katma.
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px dashed ${ND.border};border-radius:8px;padding:12px 16px;opacity:.5">
-          <span style="font-size:13px;font-weight:600;color:${ND.muted}">↷ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">Pzt·Çar·Cum · bugün yok</span>
+        // Cinko programi Pzt/Car/Cum: diger gunler beklenmez - eski stil: sari + dikkat isareti.
+        const YEL='#F5B23A';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(YEL,.1)};border:1px solid ${ndHexA(YEL,.4)};border-radius:8px;padding:12px 16px">
+          <span style="font-size:13px;font-weight:600;color:${YEL}">⚠️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${YEL};font-weight:600">Gün aşırı · bugün yok</span>
         </div>`;
       }
       countable++; totalItems++;
@@ -3919,7 +3920,7 @@ const OZP_STATUS_META={
   half_dose:{label:'½ Yarım Doz',color:OZP_C.pur}, eod_skipped:{label:'⚠️ Gün Aşırı Atlandı',color:'var(--yellow)'},
   missed:{label:'✕ Eksik',color:OZP_C.red}, pending:{label:'· Bekliyor',color:'var(--muted2)'},
   on_break:{label:'⏸ Ara Veriliyor',color:'var(--muted2)'},
-  eod_rest:{label:'↷ Pzt·Çar·Cum — bugün yok',color:'var(--muted2)'},
+  eod_rest:{label:'⚠️ Gün aşırı — bugün yok',color:'#F5B23A'},
 };
 
 async function loadOzet(){
