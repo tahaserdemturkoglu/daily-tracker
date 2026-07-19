@@ -1944,18 +1944,24 @@ function ndGoAddMeal(){
 function ndHeroHtml(t,cal,prot,carb,fat,wml,steps,fiber,fiberSrc){
   const pct=Math.round(cal/(t.cal||1)*100);
   const over=cal>t.cal;
+  // Kademeli asim: %100-120 arasi HAFIF asim -> amber (yumusak uyari), >%120 GERCEK asim -> kirmizi.
+  const OVER_HARD=120;
+  const kHard=pct>OVER_HARD;
+  const kCol=kHard?ND.danger:ND.kcal;
   const badge=over
-    ?`<span style="background:${ndHexA(ND.danger,.12)};border:1px solid ${ndHexA(ND.danger,.45)};color:${ND.danger};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">⚠ +${Math.round(cal-t.cal).toLocaleString('tr-TR')} kcal fazla</span>`
+    ?`<span style="background:${ndHexA(kCol,.12)};border:1px solid ${ndHexA(kCol,.45)};color:${kCol};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${kHard?'⚠ ':'+'}${kHard?'+':''}${Math.round(cal-t.cal).toLocaleString('tr-TR')} kcal fazla</span>`
     :`<span style="background:${ndHexA(ND.ok,.1)};border:1px solid ${ndHexA(ND.ok,.35)};color:${ND.ok};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${Math.max(0,Math.round(t.cal-cal)).toLocaleString('tr-TR')} kcal kaldı</span>`;
   const barPct=Math.min(100,pct);
-  const barBg=over?ND.danger:`linear-gradient(90deg,${ND.ok},${ND.kcal})`;
+  const barBg=over?kCol:`linear-gradient(90deg,${ND.ok},${ND.kcal})`;
   const mini=(label,val,mx,color)=>{
     const p=Math.round(val/(mx||1)*100);
-    const warn=p>=100;
-    return `<div style="background:${warn?ndHexA(ND.danger,.06):ND.bg};border:1px solid ${warn?ndHexA(ND.danger,.45):ND.border};border-radius:10px;padding:10px 12px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:${warn?ND.danger:ND.muted}"><span>${label}${warn?' ⚠':''}</span><span style="${warn?'font-weight:700':''}">${p}%</span></div>
-      <div style="font-size:17px;font-weight:600;margin:4px 0 8px;color:${warn?ND.danger:ND.text}">${Math.round(val)}<span style="font-size:12px;color:${ND.muted}">/${Math.round(mx)}g</span></div>
-      <div style="height:4px;background:${ND.border};border-radius:2px"><div style="height:100%;width:${Math.min(100,p)}%;background:${warn?ND.danger:color};border-radius:2px"></div></div>
+    const over=p>=100;
+    const hard=p>OVER_HARD;
+    const wc=hard?ND.danger:ND.kcal;  // hafif asim amber, gercek asim kirmizi
+    return `<div style="background:${over?ndHexA(wc,.06):ND.bg};border:1px solid ${over?ndHexA(wc,hard?.45:.32):ND.border};border-radius:10px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:${over?wc:ND.muted}"><span>${label}${hard?' ⚠':over?' ·':''}</span><span style="${over?'font-weight:700':''}">${p}%</span></div>
+      <div style="font-size:17px;font-weight:600;margin:4px 0 8px;color:${over?wc:ND.text}">${Math.round(val)}<span style="font-size:12px;color:${ND.muted}">/${Math.round(mx)}g</span></div>
+      <div style="height:4px;background:${ND.border};border-radius:2px"><div style="height:100%;width:${Math.min(100,p)}%;background:${over?wc:color};border-radius:2px"></div></div>
     </div>`;
   };
   const waterSegs=Math.max(1,Math.round((t.water||3000)/500));
@@ -1968,8 +1974,8 @@ function ndHeroHtml(t,cal,prot,carb,fat,wml,steps,fiber,fiberSrc){
       ${badge}
     </div>
     <div style="display:flex;align-items:baseline;gap:10px;margin-top:6px">
-      <div style="font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;color:${over?ND.danger:ND.text}">${Math.round(cal).toLocaleString('tr-TR')}</div>
-      <div style="font-size:15px;color:${ND.muted}">/ ${Math.round(t.cal).toLocaleString('tr-TR')} kcal · <b style="color:${over?ND.danger:ND.text2}">${pct}%</b></div>
+      <div style="font-size:52px;font-weight:700;letter-spacing:-.03em;line-height:1;color:${over?kCol:ND.text}">${Math.round(cal).toLocaleString('tr-TR')}</div>
+      <div style="font-size:15px;color:${ND.muted}">/ ${Math.round(t.cal).toLocaleString('tr-TR')} kcal · <b style="color:${over?kCol:ND.text2}">${pct}%</b></div>
     </div>
     <div style="height:6px;background:${ND.border};border-radius:3px;margin-top:14px;overflow:hidden"><div style="height:100%;width:${barPct}%;background:${barBg};border-radius:3px"></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px">
