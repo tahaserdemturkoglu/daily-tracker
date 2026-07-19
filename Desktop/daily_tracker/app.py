@@ -2387,8 +2387,13 @@ def api_meal_from_food_registry():
         return jsonify({'ok': False, 'error': f'Ürün bulunamadı: {food_name}'}), 404
 
     food = dict(food)
-    # Makro hesaplama (100g bazından)
-    ratio = amount / 100.0
+    # Makro hesaplama (100g bazından). Adet gibi gram-disi birim porsiyon gramina
+    # (serving_size) cevrilir - web UI bunu client-side yapiyordu ama API'ye dogrudan
+    # 'adet' gelirse (Telegram/otomasyon) 2 adet = 2g sayilip makrolar sifirlaniyordu.
+    grams_eq = amount
+    if unit.lower() not in ('g', 'gr', 'gram', 'ml') and (food.get('serving_size') or 0) > 0:
+        grams_eq = amount * food['serving_size']
+    ratio = grams_eq / 100.0
     kcal = round((food.get('calories_per_100') or 0) * ratio, 1)
     prot = round((food.get('protein_per_100') or 0) * ratio, 1)
     carb = round((food.get('carbs_per_100') or 0) * ratio, 1)
