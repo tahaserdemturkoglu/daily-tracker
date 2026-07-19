@@ -1118,6 +1118,18 @@ def _spawn_bg_ai(key, fn):
     return True
 
 
+def invalidate_ai_insights_cache(date_str=None):
+    """Gunun verisi degisince (ogun/su/kilo) Koc Analizi cache'ini dusur - bir sonraki
+    Dashboard acilisinda guncel veriyle yeniden uretilir. Yoksa sabah uretilen yorum
+    aksama kadar bayat kaliyordu ('100 kcal kaydedilmis' gibi)."""
+    try:
+        d = date_str or operation_today()
+        conn = get_db()
+        conn.execute("DELETE FROM user_settings WHERE key=?", (f'dashboard_ai_insights_{d}',))
+        conn.commit(); conn.close()
+    except Exception as _e:
+        log.warning(f"insights cache invalidate skip: {_e}")
+
 @app.route('/api/dashboard/ai-insights')
 def api_dashboard_ai_insights():
     date_str = request.args.get('date') or operation_today()
@@ -2054,6 +2066,7 @@ def api_log(category):
             db_upsert('nutrition_logs', d, other)
     else:
         db_upsert(tables[category], d, data)
+    invalidate_ai_insights_cache(d)
     return jsonify({'ok': True, 'date': d})
 
 
@@ -2239,6 +2252,7 @@ def api_body_save():
         conn.execute("INSERT INTO body_metrics (date, weight_kg, weight_kg_night) VALUES (?,?,?)",
                      (d, kg, kg_night))
     conn.commit(); conn.close()
+    invalidate_ai_insights_cache(d)
     return jsonify({'ok': True, 'date': d})
 
 @app.route('/api/vitamin', methods=['POST'])
@@ -2410,6 +2424,7 @@ def api_meal_from_food_registry():
         VALUES (?,?,?,?,?,?,?,?,?,?)
     """, (d, slot, official_name, description, kcal, prot, carb, fat, fiber, 'food_registry'))
     conn.commit(); conn.close()
+    invalidate_ai_insights_cache(d)
 
     return jsonify({
         'ok': True, 'date': d, 'slot': slot,
@@ -2483,6 +2498,7 @@ def api_meal_save():
             VALUES (?,?,?,?,?,?,?,?,?,?)
         """, (d, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, source))
     conn.commit(); conn.close()
+    invalidate_ai_insights_cache(d)
     return jsonify({'ok': True})
 
 @app.route('/api/meals/<int:mid>', methods=['DELETE'])
@@ -2492,6 +2508,8 @@ def api_meal_delete(mid):
     deleted = dict(row) if row else None
     conn.execute("DELETE FROM meal_entries WHERE id=?", (mid,))
     conn.commit(); conn.close()
+    if deleted:
+        invalidate_ai_insights_cache(deleted.get('date'))
     return jsonify({'ok': True, 'deleted': deleted})
 
 
@@ -2529,6 +2547,7 @@ def api_meal_update(mid):
         mid
     ))
     conn.commit(); conn.close()
+    invalidate_ai_insights_cache(ex.get('date'))
     return jsonify({'ok': True})
 
 def meal_macro_totals(date_str):
