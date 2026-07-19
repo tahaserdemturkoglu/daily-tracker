@@ -6378,7 +6378,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   if(window.__nutritionDateFlowRebuildV1) return;
   window.__nutritionDateFlowRebuildV1 = true;
   const $=id=>document.getElementById(id);
-  const today=()=>new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const today=()=>(typeof window.operationToday==='function')?window.operationToday():new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   const n=v=>Number(v||0);
 
   function ensureNutritionFlow(){
@@ -6665,7 +6665,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
 
   const byId=id=>document.getElementById(id);
   const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const today = () => { const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+  const today = () => (typeof window.operationToday==='function') ? window.operationToday() : (function(){ const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); })();
   const setTypes=['Warm up','Feeder','Working set','Top set','Back off','Drop set','Failure'];
   let currentProgram=[];
   let activeExercise=null;
@@ -6854,7 +6854,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
   if(window.__dailyRecordArchiveV1) return;
   window.__dailyRecordArchiveV1 = true;
   const q=id=>document.getElementById(id);
-  const today = () => { const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+  const today = () => (typeof window.operationToday==='function') ? window.operationToday() : (function(){ const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); })();
   const n=v=>Number(v||0);
   const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const fmt=v=>{v=n(v); return Number.isInteger(v)?String(v):v.toFixed(1);};
