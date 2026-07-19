@@ -837,9 +837,37 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   <!-- ═══ AI KOÇ ═══ -->
   <style id="AIC_V2-css">
     @keyframes om-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    @keyframes aic-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    #page-aicoach.active { background:
+      radial-gradient(circle at 88% -8%, color-mix(in srgb, var(--teal) 8%, transparent), transparent 42%),
+      radial-gradient(circle at -5% 3%, color-mix(in srgb, var(--purple) 6%, transparent), transparent 40%); }
     .aic-scroll::-webkit-scrollbar { width: 9px; }
-    .aic-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+    .aic-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
     .aic-scroll::-webkit-scrollbar-track { background: transparent; }
+    /* kartlar: hafif gradient derinlik + hover yükselme */
+    .aic-card { background: linear-gradient(180deg, color-mix(in srgb, var(--bg3,var(--bg1)) 32%, var(--bg2)), var(--bg2)) !important;
+      transition: transform .2s cubic-bezier(.2,.7,.3,1), border-color .2s ease, box-shadow .2s ease; }
+    .aic-card.aic-click { cursor: pointer; }
+    .aic-card.aic-click:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--teal) 42%, var(--border)) !important;
+      box-shadow: 0 10px 30px -8px color-mix(in srgb, #000 45%, transparent); }
+    .aic-chat { background: linear-gradient(180deg, color-mix(in srgb, var(--teal) 9%, var(--bg2)), var(--bg2)) !important;
+      box-shadow: 0 1px 0 color-mix(in srgb, var(--teal) 25%, transparent) inset; }
+    /* öneri çipleri + tab + gönder hover */
+    .aic-sugg { transition: border-color .15s ease, color .15s ease, background .15s ease; }
+    .aic-sugg:hover { border-color: color-mix(in srgb, var(--teal) 50%, var(--border)) !important; color: var(--text) !important; background: color-mix(in srgb, var(--teal) 8%, var(--bg3,var(--bg1))) !important; }
+    .aic-send { transition: filter .15s ease, transform .08s ease, box-shadow .2s ease; box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--teal) 60%, transparent); }
+    .aic-send:hover { filter: brightness(1.07); box-shadow: 0 6px 20px -4px color-mix(in srgb, var(--teal) 70%, transparent); }
+    .aic-send:active { transform: scale(.97); }
+    .aic-tab { transition: color .15s ease, background .15s ease, border-color .15s ease; }
+    .aic-tab:hover { color: var(--text) !important; }
+    .aic-genbtn { transition: border-color .15s ease, background .15s ease; }
+    .aic-genbtn:hover { border-color: color-mix(in srgb, var(--teal) 45%, var(--border)) !important; }
+    .aic-chip { transition: transform .12s ease, border-color .15s ease; }
+    .aic-chip:hover { transform: translateY(-1px); }
+    /* input focus */
+    #aic-root input:focus { border-color: color-mix(in srgb, var(--teal) 55%, var(--border)) !important;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 16%, transparent); }
+    #aic-root .aic-msg { animation: aic-rise .28s ease both; }
   </style>
   <div class="page" id="page-aicoach">
     <div class="pg-title">🧭 Coach</div>
@@ -4926,7 +4954,7 @@ function aicReadiness(n){
   return {pct,color,label};
 }
 function aicMetricChip(label,val,color){
-  return `<span style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${color||'var(--text)'};background:${color?calHexA(color,.13):'var(--bg3,var(--bg1))'};border:1px solid ${color?calHexA(color,.3):'var(--border)'};border-radius:8px;padding:6px 10px;white-space:nowrap"><span style="color:var(--muted);font-size:10px;letter-spacing:.03em">${label}</span><strong style="font-weight:600">${val}</strong></span>`;
+  return `<span class="aic-chip" style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${color||'var(--text)'};background:${color?calHexA(color,.13):'var(--bg3,var(--bg1))'};border:1px solid ${color?calHexA(color,.3):'var(--border)'};border-radius:8px;padding:6px 10px;white-space:nowrap"><span style="color:var(--muted);font-size:10px;letter-spacing:.03em">${label}</span><strong style="font-weight:600">${val}</strong></span>`;
 }
 function aicMetricChips(n){
   const s=n.summary||{}, nut=s.nutrition||{}, w=s.whoop, wt=s.weight||{};
@@ -4965,7 +4993,7 @@ function aicCardHtml(n,prev,detailed){
   const headline=(struct&&struct.headline)||'';
   const r=aicReadiness(n);
   const chips=aicMetricChips(n), trend=aicTrendChips(n,prev);
-  const clickAttr=detailed?'':`onclick="aicOpenDay('${n.date}')" style="cursor:pointer"`;
+  const clickAttr=detailed?'':`onclick="aicOpenDay('${n.date}')"`;
   let body='';
   if(detailed){
     let insHtml='';
@@ -4991,7 +5019,7 @@ function aicCardHtml(n,prev,detailed){
       <div style="min-width:0;flex:1">
         ${headline?`<p style="margin:0 0 14px;font-size:15px;font-weight:600;line-height:1.5;color:var(--text)">${escHtml(headline)}</p>`:''}
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <div style="flex:1;height:7px;background:var(--bg3,var(--bg1));border-radius:999px;overflow:hidden;border:1px solid var(--border)"><div style="height:100%;width:${r.pct}%;background:${r.color};border-radius:999px"></div></div>
+          <div style="flex:1;height:7px;background:var(--bg3,var(--bg1));border-radius:999px;overflow:hidden;border:1px solid var(--border)"><div style="height:100%;width:${r.pct}%;background:linear-gradient(90deg,${calHexA(r.color,.75)},${r.color});border-radius:999px;box-shadow:0 0 10px -1px ${calHexA(r.color,.6)}"></div></div>
           <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);white-space:nowrap"><strong style="color:${r.color}">%${r.pct}</strong> · ${r.label}</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:14px">${insHtml}</div>
@@ -4999,7 +5027,7 @@ function aicCardHtml(n,prev,detailed){
       </div>
     </div>`;
   }
-  return `<article ${clickAttr} style="background:var(--bg2);border:1px solid ${detailed?'var(--border)':calHexA(tagC,.25)};border-radius:16px;overflow:hidden">
+  return `<article class="aic-card${detailed?'':' aic-click'}" ${clickAttr} style="border:1px solid ${detailed?'var(--border)':calHexA(tagC,.25)};border-radius:16px;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px ${detailed?'14px':'16px'};gap:14px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:11px">
         <span style="font-size:15px;font-weight:600;color:var(--text)">${label}</span>
@@ -5022,7 +5050,7 @@ function aicWeeklyGlanceHtml(){
     const h=st==='full'?'100%':st==='partial'?'55%':'14%';
     cells.push({day:DAY[dt.getDay()],col,h}); }
   const logged=cells.filter(c=>c.col!=='var(--border)').length;
-  return `<section style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:16px">
+  return `<section class="aic-card" style="border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--muted)">HAFTALIK BAKIŞ · SON 7 GÜN</span>
       <span style="font-size:12.5px;color:var(--muted)"><span style="color:${AIC_C.good};font-weight:600">${logged}</span>/7 gün kaydedildi</span>
@@ -5042,8 +5070,8 @@ function aicWeeklyGlanceHtml(){
 }
 function aicChatBodyHtml(){
   const rows=AIC_CHAT.map(m=>{const u=m.role==='user';
-    return `<div style="display:flex;${u?'justify-content:flex-end':'justify-content:flex-start'}">
-      <div style="max-width:82%;${u?`background:${AIC_C.accent};color:#08201c;border-radius:14px 14px 4px 14px;font-weight:500`:'background:var(--bg3,var(--bg1));border:1px solid var(--border);color:var(--text);border-radius:14px 14px 14px 4px'};padding:11px 15px;font-size:13.5px;line-height:1.6;white-space:pre-line">${escHtml(m.text)}</div>
+    return `<div class="aic-msg" style="display:flex;${u?'justify-content:flex-end':'justify-content:flex-start'}">
+      <div style="max-width:82%;${u?`background:${AIC_C.accent};color:#08201c;border-radius:14px 14px 4px 14px;font-weight:500;box-shadow:0 3px 12px -4px ${calHexA(AIC_C.accent,.6)}`:'background:var(--bg3,var(--bg1));border:1px solid var(--border);color:var(--text);border-radius:14px 14px 14px 4px'};padding:11px 15px;font-size:13.5px;line-height:1.6;white-space:pre-line">${escHtml(m.text)}</div>
     </div>`;}).join('');
   const think=AIC_CHAT_BUSY?`<div style="align-self:flex-start;display:flex;align-items:center;gap:6px;background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:12px 15px">
     ${[0,.2,.4].map(dl=>`<span style="width:7px;height:7px;border-radius:999px;background:${AIC_C.accent};animation:om-pulse 1s ease-in-out ${dl}s infinite"></span>`).join('')}</div>`:'';
@@ -5056,7 +5084,7 @@ function aicUpdateChat(){
 }
 function aicChatHtml(){
   const sugg=['Bugün hangi antrenman?','Bugün ağırlık kaldırayım mı?','Recovery\'m neden düşük?','Bu hafta nasıl gidiyorum?','Yeterince su içtim mi?'];
-  return `<section style="background:var(--bg2);border:1px solid ${calHexA(AIC_C.accent,.35)};border-radius:18px;margin-bottom:16px;overflow:hidden">
+  return `<section class="aic-chat aic-card" style="border:1px solid ${calHexA(AIC_C.accent,.35)};border-radius:18px;margin-bottom:16px;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:${calHexA(AIC_C.accent,.2)};border:1px solid ${calHexA(AIC_C.accent,.4)};font-size:17px">🧭</div>
@@ -5067,11 +5095,11 @@ function aicChatHtml(){
     <div id="aic-chat-body" class="aic-scroll" style="max-height:320px;min-height:120px;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:12px">${aicChatBodyHtml()}</div>
     <div style="padding:12px 16px;border-top:1px solid var(--border)">
       <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
-        ${sugg.map(q=>`<button onclick="aicSendChat(${JSON.stringify(q).replace(/"/g,'&quot;')})" style="background:var(--bg3,var(--bg1));border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:12px;font-family:inherit;cursor:pointer">${escHtml(q)}</button>`).join('')}
+        ${sugg.map(q=>`<button class="aic-sugg" onclick="aicSendChat(${JSON.stringify(q).replace(/"/g,'&quot;')})" style="background:var(--bg3,var(--bg1));border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:12px;font-family:inherit;cursor:pointer">${escHtml(q)}</button>`).join('')}
       </div>
       <div style="display:flex;gap:10px">
         <input id="aic-chat-input" placeholder="Koça bir şey sor — 'bugün ağırlık kaldırayım mı?'" onkeydown="if(event.key==='Enter')aicSendChat()" style="flex:1;background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:11px;padding:12px 15px;font-size:14px;color:var(--text);font-family:inherit;outline:none">
-        <button onclick="aicSendChat()" style="background:${AIC_C.accent};color:#08201c;border:none;border-radius:11px;padding:0 22px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">Gönder</button>
+        <button class="aic-send" onclick="aicSendChat()" style="background:${AIC_C.accent};color:#08201c;border:none;border-radius:11px;padding:0 22px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">Gönder</button>
       </div>
     </div>
   </section>`;
@@ -5101,8 +5129,8 @@ function aicRenderPage(){
   let streak=0; for(const n of AIC_NOTES){ if(aicStatus(n)!=='none') streak++; else break; }
   const filtered=AIC_FILTER==='all'?AIC_NOTES:AIC_NOTES.filter(n=>aicStatus(n)===AIC_FILTER);
   const tabBtn=(active)=>`padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;border:1px solid ${active?calHexA(AIC_C.accent,.5):'transparent'};background:${active?calHexA(AIC_C.accent,.2):'transparent'};color:${active?AIC_C.accent:'var(--muted)'}`;
-  const periods=[['day','Günlük'],['month','Aylık']].map(([k,l])=>`<button onclick="aicSetPeriod('${k}')" style="${tabBtn(AIC_PERIOD===k)}">${l}</button>`).join('');
-  const filters=[['all','Tümü'],['partial','Eksik veri'],['full','Tam kayıt']].map(([k,l])=>`<button onclick="aicSetFilter('${k}')" style="${tabBtn(AIC_FILTER===k)}">${l}</button>`).join('');
+  const periods=[['day','Günlük'],['month','Aylık']].map(([k,l])=>`<button class="aic-tab" onclick="aicSetPeriod('${k}')" style="${tabBtn(AIC_PERIOD===k)}">${l}</button>`).join('');
+  const filters=[['all','Tümü'],['partial','Eksik veri'],['full','Tam kayıt']].map(([k,l])=>`<button class="aic-tab" onclick="aicSetFilter('${k}')" style="${tabBtn(AIC_FILTER===k)}">${l}</button>`).join('');
   // görünür kartlar
   let cardsHtml='', visCount=0;
   if(AIC_PERIOD==='day'){
@@ -5125,10 +5153,10 @@ function aicRenderPage(){
     </div>
     ${aicChatHtml()}
     ${aicWeeklyGlanceHtml()}
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:18px">
+    <div class="aic-card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:18px">
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em">MANUEL OLUŞTUR</span>
       <input type="date" id="aic-date-input" value="${todayStr}" max="${todayStr}" style="background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px">
-      <button class="btn btn-sm" onclick="aicGenerate($('aic-date-input').value)">Not Oluştur / Yenile</button>
+      <button class="btn btn-sm aic-genbtn" onclick="aicGenerate($('aic-date-input').value)">Not Oluştur / Yenile</button>
       <span style="font-size:11px;color:var(--muted);margin-left:auto">Her gün otomatik oluşur — bu sadece elle tetiklemek için</span>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:14px;flex-wrap:wrap">
@@ -5137,7 +5165,7 @@ function aicRenderPage(){
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px">${backBtn}<span style="font-size:12.5px;color:var(--muted)">${visCount} gözlem</span></div>
     <div style="display:flex;flex-direction:column;gap:16px">${cardsHtml}</div>
-    <div style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+    <div class="aic-card" style="margin-top:20px;border:1px solid var(--border);border-radius:14px;padding:14px 16px">
       <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="aicToggleFacts()">
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">🧠 KALICI PROFİL NOTLARI <span style="opacity:.7">(${AIC_FACTS.length})</span></span>
         <span style="color:var(--muted);font-size:13px">${AIC_FACTS_OPEN?'▾':'▸'}</span>
