@@ -1224,8 +1224,12 @@ def gather_day_snapshot(conn, date_str):
         (date_str,)
     ).fetchone()
     supp_taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (date_str,)).fetchone()['c']
-    # supp_total ara verilen stack/urunleri saymaz - yoksa Koc arada olan takviyeyi 'eksik' sanir
-    _breaks = active_supplement_breaks()
+    # supp_total ara verilen stack/urunleri saymaz - yoksa Koc arada olan takviyeyi 'eksik' sanir.
+    # Denetim fix: ara SADECE kendi tarih penceresinde (since<=gun<=end) uygulanir - yoksa bugun
+    # baslayan bir ara gecmis gunlerin sayacini/rozetini de retroaktif bozuyordu.
+    _breaks = [b for b in active_supplement_breaks()
+               if (not b.get('since_date') or b['since_date'] <= date_str)
+               and (not b.get('end_date') or date_str <= b['end_date'])]
     _broken_stacks = {b['target_name'] for b in _breaks if b['target_type'] == 'stack'}
     _broken_products = {b['target_name'] for b in _breaks if b['target_type'] == 'product'}
     _items = conn.execute(
@@ -1404,6 +1408,7 @@ def generate_daily_profile_note(date_str):
         headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
         method='POST'
     )
+    text = ''
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read().decode('utf-8'))
@@ -1426,8 +1431,18 @@ def generate_daily_profile_note(date_str):
             'oneri': (parsed.get('oneri') or '').strip() or None,
         }
     except Exception as _e:
-        import logging; logging.getLogger('daily').warning(f"ai profile note failed: {_e}")
-        return None
+        # Denetim fix: JSON kesik/bozuksa (max_tokens vb.) tum notu sessizce kaybetme -
+        # en azindan "note" alanini regex ile kurtarmayi dene.
+        import logging; logging.getLogger('daily').warning(f"ai profile note parse failed, salvage deneniyor: {_e}")
+        m = re.search(r'"note"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+        if not m:
+            return None
+        try:
+            note = json.loads('"' + m.group(1) + '"').strip()
+        except Exception:
+            note = m.group(1).strip()
+        new_fact = None
+        structured = {'headline': '', 'insights': [], 'izle': None, 'oneri': None}
     if not note:
         return None
     structured_json = json.dumps(structured, ensure_ascii=False)
@@ -1462,7 +1477,10 @@ def ensure_yesterday_ai_note():
 @app.route('/api/ai-coach/notes', methods=['GET'])
 def api_ai_coach_notes():
     ensure_yesterday_ai_note()
-    days = int(request.args.get('days', 30))
+    try:
+        days = max(1, min(365, int(request.args.get('days', 30))))
+    except (TypeError, ValueError):
+        days = 30
     conn = get_db()
     rows = conn.execute(
         "SELECT date, note, generated_at, structured FROM ai_profile_notes ORDER BY date DESC LIMIT ?", (days,)
@@ -1576,6 +1594,9 @@ def api_coach_chat():
         content = (m.get('text') or m.get('content') or '').strip()
         if content:
             messages.append({'role': role, 'content': content})
+    # Anthropic ilk mesajin 'user' olmasini bekler - bastaki karsilama/assistant mesajlarini kirp
+    while messages and messages[0]['role'] != 'user':
+        messages.pop(0)
     if not messages or messages[-1]['role'] != 'user':
         return jsonify({'ok': False, 'error': 'son mesaj kullanıcıdan olmalı'}), 400
     body = {'model': ANTHROPIC_MODEL, 'max_tokens': 400, 'system': system, 'messages': messages}
@@ -6566,20 +6587,45 @@ def api_food_registry_recipe():
         tot = {'kcal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0, 'fiber': 0.0}
         grams = 0.0
         recipe_rows = []
+        unresolved = []
         for it in comps:
-            item = {'food_id': it.get('food_id'), 'food_name': (it.get('food_name') or it.get('name') or '').strip(),
-                    'amount': float(it.get('amount') or 0), 'unit': it.get('unit') or 'g'}
-            calc = _meal_stack_calc_item(conn, item)
-            if not calc:
+            fid = it.get('food_id')
+            fname = (it.get('food_name') or it.get('name') or '').strip()
+            food = None
+            if fid:
+                food = conn.execute("SELECT * FROM food_registry WHERE id=?", (fid,)).fetchone()
+            if not food and fname:
+                food = conn.execute("SELECT * FROM food_registry WHERE name=? OR official_name=?", (fname, fname)).fetchone()
+            if not food:
+                unresolved.append(fname or '(isimsiz)')
                 continue
-            food = conn.execute("SELECT fiber_per_100 FROM food_registry WHERE id=?", (calc['food_id'],)).fetchone()
-            ratio = item['amount'] / 100.0
-            tot['kcal'] += calc['kcal']; tot['p'] += calc['protein']; tot['c'] += calc['carbs']; tot['f'] += calc['fat']
-            tot['fiber'] += round((food['fiber_per_100'] if food and food['fiber_per_100'] else 0) * ratio, 2)
-            # gram sayilan birimler toplam agirliga girer (g/gr/ml); adet/yumurta vb. haric tutulur
-            if item['unit'].lower() in ('g', 'gr', 'gram', 'ml'):
-                grams += item['amount']
-            recipe_rows.append({'name': calc['name'], 'amount': item['amount'], 'unit': item['unit']})
+            food = dict(food)
+            disp = food.get('official_name') or food.get('name')
+            amount = float(it.get('amount') or 0)
+            unit = (it.get('unit') or 'g').strip()
+            # Denetim fix: adet gibi gram-disi birim porsiyon gramina (serving_size) cevrilir -
+            # hem makro payina hem gram paydasina AYNI agirlikla girer (eskiden makro pay'a
+            # amount/100 ile girip paydadan dislaniyordu, per-100g sisiyordu).
+            if unit.lower() in ('g', 'gr', 'gram', 'ml'):
+                grams_eq = amount
+            else:
+                srv = food.get('serving_size') or 0
+                if not srv:
+                    unresolved.append(f"{disp} ({unit} → porsiyon gramı tanımsız)")
+                    continue
+                grams_eq = amount * srv
+            ratio = grams_eq / 100.0
+            tot['kcal'] += (food.get('calories_per_100') or 0) * ratio
+            tot['p'] += (food.get('protein_per_100') or 0) * ratio
+            tot['c'] += (food.get('carbs_per_100') or 0) * ratio
+            tot['f'] += (food.get('fat_per_100') or 0) * ratio
+            tot['fiber'] += (food.get('fiber_per_100') or 0) * ratio
+            grams += grams_eq
+            recipe_rows.append({'name': disp, 'amount': amount, 'unit': unit})
+        # Denetim fix: cozulemeyen bilesen sessizce dusmesin - eksik makroyla yanlis tarif kaydetmek yerine hata ver
+        if unresolved:
+            conn.close()
+            return jsonify({'ok': False, 'error': 'Bileşen(ler) Besin DB\'de bulunamadı/çevrilemedi: ' + ', '.join(unresolved)}), 400
         if grams <= 0:
             conn.close()
             return jsonify({'ok': False, 'error': 'Toplam gram 0 — en az bir bileşen gram/ml birimli olmalı'}), 400
@@ -6590,7 +6636,11 @@ def api_food_registry_recipe():
             'fiber_per_100': round(tot['fiber'] * k, 2),
         }
         recipe_json = json.dumps(recipe_rows, ensure_ascii=False)
-        existing = conn.execute("SELECT id FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
+        existing = conn.execute("SELECT id, category FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
+        # Denetim fix: ayni isimde TARIF OLMAYAN bir besin varsa sessizce ezme - veri kaybi olur
+        if existing and (existing['category'] or '') != 'Tarif':
+            conn.close()
+            return jsonify({'ok': False, 'error': f'"{name}" isminde tarif olmayan bir besin zaten var — farklı bir isim seç veya önce onu sil'}), 400
         if existing:
             conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,category='Tarif',notes='karışım',recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
                 (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], recipe_json, existing['id']))
@@ -7464,11 +7514,9 @@ def api_supplements_zinc():
         try: last_date = _json.loads(row['rule_data'] or '{}').get('last_date')
         except: pass
     today = operation_today()
-    take_today = True
-    if last_date:
-        from datetime import date as _date
-        diff = (_date.fromisoformat(today) - _date.fromisoformat(last_date)).days
-        take_today = diff >= 2
+    # Denetim fix: eski 'son alimdan 2 gun gecti mi' hesabi sistemin geri kalaniyla celisiyordu -
+    # tek gercek program ZINC_DAYS (Pzt/Car/Cum), her yer ayni kurali kullanir.
+    take_today = date.fromisoformat(today).weekday() in ZINC_DAYS
     return jsonify({'take_today': take_today, 'last_date': last_date, 'today': today})
 
 @app.route('/api/supplements/stacks', methods=['POST'])
@@ -7510,7 +7558,12 @@ def api_supplement_stack_rename(sid):
     if not name:
         return jsonify({'ok': False, 'error': 'name gerekli'}), 400
     conn = get_db()
+    old = conn.execute("SELECT name FROM supplement_stacks WHERE id=?", (sid,)).fetchone()
     conn.execute("UPDATE supplement_stacks SET name=? WHERE id=?", (name, sid))
+    # Denetim fix: stack rename edilince ismine bagli aktif ara kaydi yetim kalmasin
+    if old and old['name'] != name:
+        conn.execute("UPDATE supplement_breaks SET target_name=? WHERE target_type='stack' AND target_name=? AND active=1",
+                     (name, old['name']))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -7706,13 +7759,13 @@ def api_ai_insights():
         insight = payload['content'][0]['text']
         return jsonify({'insight': insight, 'ok': True})
     except Exception as e:
-        log.exception("ai-insights error")
-        err_msg = str(e)
+        # Denetim fix: ust servis (Anthropic) hata govdesi istemciye sizmasin - loga yaz, generic don
         import urllib.error as _ue
         if isinstance(e, _ue.HTTPError):
-            try: err_msg = e.read().decode('utf-8', errors='ignore')[:300]
-            except: pass
-        return jsonify({'insight': f'Analiz yuklenemedi: {err_msg}', 'ok': False, 'error': err_msg})
+            try: log.warning("ai-insights upstream: %s", e.read().decode('utf-8', errors='ignore')[:300])
+            except Exception: pass
+        log.exception("ai-insights error")
+        return jsonify({'insight': 'Analiz yüklenemedi — birazdan tekrar dene.', 'ok': False}), 502
 
 
 if __name__ == '__main__':

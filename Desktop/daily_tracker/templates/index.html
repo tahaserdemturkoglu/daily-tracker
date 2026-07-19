@@ -3272,7 +3272,7 @@ async function recipeRowSearch(q){
   // Tarif icine baska tarif koymayi engelle (dongu riski)
   const matches=_foodList.filter(f=>(f.category||'')!=='Tarif'&&((f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q))).slice(0,8);
   if(!matches.length){res.style.display='none';return;}
-  res.innerHTML=matches.map(f=>`<div onclick="selectRecipeRow(${f.id},'${(f.official_name||f.name).replace(/'/g,"\`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${f.official_name||f.name} <span style="color:var(--yellow);font-size:.72rem">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span></div>`).join('');
+  res.innerHTML=matches.map(f=>{const disp=f.official_name||f.name;return `<div onclick="selectRecipeRow(${f.id},${JSON.stringify(disp).replace(/"/g,'&quot;')})" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${escHtml(disp)} <span style="color:var(--yellow);font-size:.72rem">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span></div>`;}).join('');
   res.style.display='block';
 }
 function selectRecipeRow(id,name){
@@ -3303,9 +3303,13 @@ function renderRcPreview(){
   _rcDraftItems.forEach(it=>{
     const food=list.find(x=>x.id===it.food_id)||list.find(x=>(x.official_name||x.name)===it.food_name);
     if(!food){missing++;return;}
-    const r=(it.amount||0)/100;
+    // adet gibi gram-disi birim porsiyon gramina cevrilir (backend ile ayni hesap)
+    let gramsEq;
+    if(['g','gr','gram','ml'].includes((it.unit||'').toLowerCase())) gramsEq=(it.amount||0);
+    else { const srv=food.serving_size||0; if(!srv){missing++;return;} gramsEq=(it.amount||0)*srv; }
+    const r=gramsEq/100;
     kcal+=(food.calories_per_100||0)*r;p+=(food.protein_per_100||0)*r;c+=(food.carbs_per_100||0)*r;f+=(food.fat_per_100||0)*r;fib+=(food.fiber_per_100||0)*r;
-    if(['g','gr','gram','ml'].includes((it.unit||'').toLowerCase()))grams+=(it.amount||0);
+    grams+=gramsEq;
   });
   if(grams<=0){box.style.display='none';return;}
   const k=100/grams;
