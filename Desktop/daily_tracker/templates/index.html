@@ -835,9 +835,15 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
   </div>
 
   <!-- ═══ AI KOÇ ═══ -->
+  <style id="AIC_V2-css">
+    @keyframes om-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .aic-scroll::-webkit-scrollbar { width: 9px; }
+    .aic-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+    .aic-scroll::-webkit-scrollbar-track { background: transparent; }
+  </style>
   <div class="page" id="page-aicoach">
     <div class="pg-title">🧭 Coach</div>
-    <div class="pg-sub">Her gün sonunda gerçek verinden gözlem üretir — plan değiştirmez, zamanla seni tanır</div>
+    <div class="pg-sub">Her gün sonunda gerçek verinden gözlem üretir — plan değiştirmez, zamanla seni tanır. Ayrıca istediğin an koça sorabilirsin.</div>
     <div id="aic-root"></div>
   </div>
 </div>
@@ -4886,40 +4892,269 @@ async function calGenerateAiNote(dateStr){
 /* ═══════════════════════════════════════════════════
    AI KOÇ SAYFASI
 ════════════════════════════════════════════════════ */
-let AIC_NOTES=[], AIC_FACTS=[];
+let AIC_NOTES=[], AIC_FACTS=[], AIC_PERIOD='day', AIC_FILTER='all', AIC_SEL=null, AIC_CHAT=[], AIC_CHAT_BUSY=false, AIC_FACTS_OPEN=false;
+const AIC_C={good:'var(--green)',warn:'var(--yellow)',bad:'var(--red)',accent:'var(--teal)',neutral:'var(--muted2,var(--muted))'};
 async function loadAiCoachPage(){
   const root=$('aic-root'); if(!root) return;
-  root.innerHTML=`<div style="color:var(--muted);padding:20px;text-align:center">Yükleniyor…</div>`;
+  root.innerHTML=`<div style="color:var(--muted);padding:40px;text-align:center">Yükleniyor…</div>`;
   const [notes,facts]=await Promise.all([
     API('/api/ai-coach/notes?days=60'),
     API('/api/profile/facts'),
   ]);
   AIC_NOTES=notes||[]; AIC_FACTS=facts||[];
+  if(!AIC_CHAT.length){
+    const t=(AIC_NOTES[0]&&AIC_NOTES[0].note)?AIC_NOTES[0].note:'';
+    AIC_CHAT=[{role:'coach',text:'Selam reis. Verini önümde tutuyorum — ne var ne yok, sor bakalım.'+(t?' (Son gözlem: '+t.slice(0,90)+(t.length>90?'…':'')+')':'')}];
+  }
   aicRenderPage();
 }
+/* ── durum + readiness (summary'den deterministik, eski+yeni tüm notlar için) ── */
+function aicStatus(n){
+  const s=n.summary||{}; if(!s.has_data) return 'none';
+  const nut=s.nutrition||{}, wt=s.weight||{}, w=s.whoop;
+  const hasKcal=(nut.kcal||0)>0, hasWater=(nut.water_ml||0)>0, hasWeight=wt.morning!=null, hasWhoop=w&&w.recovery_score!=null;
+  return (hasKcal&&hasWater&&(hasWeight||hasWhoop))?'full':'partial';
+}
+function aicReadiness(n){
+  const s=n.summary||{}, w=s.whoop, sm=s.sleep_manuel||{};
+  let pct;
+  if(w&&w.recovery_score!=null){ pct=w.recovery_score; if((w.sleep_hours||sm.hours||9)<6) pct-=8; }
+  else { const h=(w&&w.sleep_hours)||sm.hours||0; pct=h?Math.min(85,40+h*5):50; if(aicStatus(n)==='partial')pct-=8; }
+  pct=Math.max(5,Math.min(100,Math.round(pct)));
+  const color=pct>=80?AIC_C.good:pct>=60?'var(--teal)':pct>=40?AIC_C.warn:AIC_C.bad;
+  const label=pct>=80?'Yüksek hazırlık':pct>=60?'İyi hazırlık':pct>=40?'Orta hazırlık':'Düşük hazırlık';
+  return {pct,color,label};
+}
+function aicMetricChip(label,val,color){
+  return `<span style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:${color||'var(--text)'};background:${color?calHexA(color,.13):'var(--bg3,var(--bg1))'};border:1px solid ${color?calHexA(color,.3):'var(--border)'};border-radius:8px;padding:6px 10px;white-space:nowrap"><span style="color:var(--muted);font-size:10px;letter-spacing:.03em">${label}</span><strong style="font-weight:600">${val}</strong></span>`;
+}
+function aicMetricChips(n){
+  const s=n.summary||{}, nut=s.nutrition||{}, w=s.whoop, wt=s.weight||{};
+  return [
+    nut.kcal?aicMetricChip('KCAL',Math.round(nut.kcal).toLocaleString('tr-TR')):'',
+    nut.water_ml?aicMetricChip('SU',(nut.water_ml/1000).toFixed(1)+'L',(nut.water_ml/1000)<3.5?AIC_C.warn:'var(--blue)'):'',
+    s.steps?aicMetricChip('ADIM',s.steps.toLocaleString('tr-TR'),s.steps<7000?AIC_C.warn:null):'',
+    wt.morning?aicMetricChip('KİLO',wt.morning+'kg'):'',
+    (s.weight_delta!=null)?aicMetricChip('DEĞİŞİM',(s.weight_delta>0?'↑':'↓')+Math.abs(s.weight_delta)+'kg',s.weight_delta>0?AIC_C.bad:AIC_C.good):'',
+    (w&&w.recovery_score!=null)?aicMetricChip('RECOVERY','%'+w.recovery_score,w.recovery_score>=67?AIC_C.good:w.recovery_score>=34?AIC_C.warn:AIC_C.bad):'',
+  ].filter(Boolean).join('');
+}
+function aicTrendChips(n,prev){
+  if(!prev) return '';
+  const s=n.summary||{}, p=prev.summary||{}, out=[];
+  const arrow=(d)=>d>0?'↑':d<0?'↓':'→';
+  if(s.whoop&&s.whoop.recovery_score!=null&&p.whoop&&p.whoop.recovery_score!=null){
+    const d=s.whoop.recovery_score-p.whoop.recovery_score;
+    out.push({arrow:arrow(d),label:`Recovery %${p.whoop.recovery_score}→${s.whoop.recovery_score}`,color:d>=0?AIC_C.good:AIC_C.warn});
+  }
+  if(s.weight_delta!=null){ out.push({arrow:s.weight_delta>0?'↑':'↓',label:`Kilo ${Math.abs(s.weight_delta)}kg`,color:s.weight_delta>0?AIC_C.warn:AIC_C.good}); }
+  const sh=s.whoop&&s.whoop.sleep_hours, ph=p.whoop&&p.whoop.sleep_hours;
+  if(sh!=null&&ph!=null){ const d=sh-ph; out.push({arrow:arrow(d),label:`Uyku ${sh.toFixed(1)}s`,color:sh>=7?AIC_C.good:AIC_C.warn}); }
+  return out.map(t=>`<span style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:12px;color:${t.color}"><strong>${t.arrow}</strong>${escHtml(t.label)}</span>`).join('');
+}
+function aicToneColor(ton){ return ton==='good'?AIC_C.good:ton==='warn'?AIC_C.warn:AIC_C.neutral; }
+function aicCardHtml(n,prev,detailed){
+  const d=new Date(n.date+'T12:00:00');
+  const label=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
+  const st=aicStatus(n), s=n.summary||{};
+  const tag=(s.training&&s.training.type)?(s.training.type+(s.training.done?' ✓':'')):'—';
+  const tagC=st==='partial'?AIC_C.warn:AIC_C.good;
+  const tagTxt=st==='partial'?'eksik veri':st==='none'?'kayıt yok':'tam kayıt';
+  const avatar=st==='partial'?'⚠':st==='none'?'·':'✓';
+  const struct=n.structured||null;
+  const headline=(struct&&struct.headline)||'';
+  const r=aicReadiness(n);
+  const chips=aicMetricChips(n), trend=aicTrendChips(n,prev);
+  const clickAttr=detailed?'':`onclick="aicOpenDay('${n.date}')" style="cursor:pointer"`;
+  let body='';
+  if(detailed){
+    let insHtml='';
+    if(struct&&struct.insights&&struct.insights.length){
+      insHtml=struct.insights.map(i=>`<div style="display:flex;gap:13px">
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;width:118px;padding-top:2px">
+          <span style="width:7px;height:7px;border-radius:999px;background:${aicToneColor(i.ton)};flex-shrink:0"></span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:${aicToneColor(i.ton)}">${escHtml(i.kategori||'')}</span>
+        </div>
+        <p style="margin:0;font-size:13.5px;line-height:1.65;color:var(--text)">${escHtml(i.text)}</p>
+      </div>`).join('');
+    } else {
+      insHtml=`<p style="margin:0;font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-line">${escHtml(n.note||'')}</p>`;
+    }
+    const watch=(struct&&struct.izle)?`<div style="display:flex;gap:11px;align-items:flex-start;margin-top:16px;padding:12px 15px;background:${calHexA(AIC_C.warn,.14)};border:1px solid ${calHexA(AIC_C.warn,.32)};border-radius:12px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:${AIC_C.warn};flex-shrink:0;padding-top:3px">İZLE ◇</span>
+      <p style="margin:0;font-size:13.5px;line-height:1.6;color:var(--text)">${escHtml(struct.izle)}</p></div>`:'';
+    const action=(struct&&struct.oneri)?`<div style="display:flex;gap:11px;align-items:flex-start;margin-top:10px;padding:12px 15px;background:${calHexA(AIC_C.accent,.14)};border:1px solid ${calHexA(AIC_C.accent,.32)};border-radius:12px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:${AIC_C.accent};flex-shrink:0;padding-top:3px">ÖNERİ →</span>
+      <p style="margin:0;font-size:13.5px;line-height:1.6;color:var(--text);font-weight:500">${escHtml(struct.oneri)}</p></div>`:'';
+    body=`<div style="display:flex;gap:14px;padding:18px 20px 20px;border-top:1px solid var(--border);background:${calHexA('#000000',.06)}">
+      <div style="flex-shrink:0;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:${calHexA(tagC,.18)};border:1px solid ${calHexA(tagC,.35)};font-size:15px">${avatar}</div>
+      <div style="min-width:0;flex:1">
+        ${headline?`<p style="margin:0 0 14px;font-size:15px;font-weight:600;line-height:1.5;color:var(--text)">${escHtml(headline)}</p>`:''}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="flex:1;height:7px;background:var(--bg3,var(--bg1));border-radius:999px;overflow:hidden;border:1px solid var(--border)"><div style="height:100%;width:${r.pct}%;background:${r.color};border-radius:999px"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);white-space:nowrap"><strong style="color:${r.color}">%${r.pct}</strong> · ${r.label}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">${insHtml}</div>
+        ${watch}${action}
+      </div>
+    </div>`;
+  }
+  return `<article ${clickAttr} style="background:var(--bg2);border:1px solid ${detailed?'var(--border)':calHexA(tagC,.25)};border-radius:16px;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px ${detailed?'14px':'16px'};gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:11px">
+        <span style="font-size:15px;font-weight:600;color:var(--text)">${label}</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:4px 10px;border-radius:999px;background:${calHexA(tagC,.16)};border:1px solid ${calHexA(tagC,.35)};color:${tagC}">${escHtml(tag)} · ${tagTxt}</span>
+      </div>
+      ${detailed?`<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();aicGenerate('${n.date}')">↻ Yeniden oluştur</button>`:`<span style="font-size:12px;color:var(--muted)">detay →</span>`}
+    </div>
+    ${chips?`<div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 14px">${chips}</div>`:''}
+    ${(detailed&&trend)?`<div style="display:flex;flex-wrap:wrap;gap:14px;padding:0 20px 16px">${trend}</div>`:''}
+    ${body}
+  </article>`;
+}
+function aicWeeklyGlanceHtml(){
+  const DAY=['Paz','Pzt','Sal','Çar','Per','Cum','Cts'];
+  const byDate={}; AIC_NOTES.forEach(n=>{byDate[n.date]=n;});
+  const cells=[]; const base=new Date(today()+'T12:00:00');
+  for(let i=6;i>=0;i--){ const dt=new Date(base); dt.setDate(dt.getDate()-i); const ds=dt.toISOString().slice(0,10);
+    const n=byDate[ds]; const st=n?aicStatus(n):'none';
+    const col=st==='full'?AIC_C.good:st==='partial'?AIC_C.warn:'var(--border)';
+    const h=st==='full'?'100%':st==='partial'?'55%':'14%';
+    cells.push({day:DAY[dt.getDay()],col,h}); }
+  const logged=cells.filter(c=>c.col!=='var(--border)').length;
+  return `<section style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--muted)">HAFTALIK BAKIŞ · SON 7 GÜN</span>
+      <span style="font-size:12.5px;color:var(--muted)"><span style="color:${AIC_C.good};font-weight:600">${logged}</span>/7 gün kaydedildi</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+      ${cells.map(c=>`<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <div style="width:100%;height:56px;display:flex;align-items:flex-end;background:var(--bg3,var(--bg1));border-radius:8px;overflow:hidden;border:1px solid var(--border)"><div style="width:100%;height:${c.h};background:${c.col}"></div></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted)">${c.day}</div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:18px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted)">
+      <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:999px;background:${AIC_C.good}"></span>tam kayıt</span>
+      <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:999px;background:${AIC_C.warn}"></span>eksik veri</span>
+      <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:999px;background:var(--border)"></span>kayıt yok</span>
+    </div>
+  </section>`;
+}
+function aicChatBodyHtml(){
+  const rows=AIC_CHAT.map(m=>{const u=m.role==='user';
+    return `<div style="display:flex;${u?'justify-content:flex-end':'justify-content:flex-start'}">
+      <div style="max-width:82%;${u?`background:${AIC_C.accent};color:#08201c;border-radius:14px 14px 4px 14px;font-weight:500`:'background:var(--bg3,var(--bg1));border:1px solid var(--border);color:var(--text);border-radius:14px 14px 14px 4px'};padding:11px 15px;font-size:13.5px;line-height:1.6;white-space:pre-line">${escHtml(m.text)}</div>
+    </div>`;}).join('');
+  const think=AIC_CHAT_BUSY?`<div style="align-self:flex-start;display:flex;align-items:center;gap:6px;background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:12px 15px">
+    ${[0,.2,.4].map(dl=>`<span style="width:7px;height:7px;border-radius:999px;background:${AIC_C.accent};animation:om-pulse 1s ease-in-out ${dl}s infinite"></span>`).join('')}</div>`:'';
+  return rows+think;
+}
+function aicUpdateChat(){
+  const b=$('aic-chat-body'); if(!b)return;
+  b.innerHTML=aicChatBodyHtml();
+  requestAnimationFrame(()=>{b.scrollTop=b.scrollHeight;});
+}
+function aicChatHtml(){
+  const sugg=['Bugün hangi antrenman?','Bugün ağırlık kaldırayım mı?','Recovery\'m neden düşük?','Bu hafta nasıl gidiyorum?','Yeterince su içtim mi?'];
+  return `<section style="background:var(--bg2);border:1px solid ${calHexA(AIC_C.accent,.35)};border-radius:18px;margin-bottom:16px;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:${calHexA(AIC_C.accent,.2)};border:1px solid ${calHexA(AIC_C.accent,.4)};font-size:17px">🧭</div>
+        <div><div style="font-size:15px;font-weight:600;color:var(--text)">Koç ile konuş</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Verini bilir, senin tarzınla cevap verir</div></div>
+      </div>
+      <span style="display:inline-flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:${AIC_C.good}"><span style="width:6px;height:6px;border-radius:999px;background:${AIC_C.good};animation:om-pulse 2.4s ease-in-out infinite"></span>ÇEVRİMİÇİ</span>
+    </div>
+    <div id="aic-chat-body" class="aic-scroll" style="max-height:320px;min-height:120px;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:12px">${aicChatBodyHtml()}</div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border)">
+      <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
+        ${sugg.map(q=>`<button onclick="aicSendChat(${JSON.stringify(q).replace(/"/g,'&quot;')})" style="background:var(--bg3,var(--bg1));border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:12px;font-family:inherit;cursor:pointer">${escHtml(q)}</button>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px">
+        <input id="aic-chat-input" placeholder="Koça bir şey sor — 'bugün ağırlık kaldırayım mı?'" onkeydown="if(event.key==='Enter')aicSendChat()" style="flex:1;background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:11px;padding:12px 15px;font-size:14px;color:var(--text);font-family:inherit;outline:none">
+        <button onclick="aicSendChat()" style="background:${AIC_C.accent};color:#08201c;border:none;border-radius:11px;padding:0 22px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">Gönder</button>
+      </div>
+    </div>
+  </section>`;
+}
+async function aicSendChat(preset){
+  if(AIC_CHAT_BUSY) return;
+  const inp=$('aic-chat-input');
+  const text=(typeof preset==='string'?preset:(inp?inp.value:'')).trim();
+  if(!text) return;
+  AIC_CHAT.push({role:'user',text}); if(inp)inp.value='';
+  AIC_CHAT_BUSY=true; aicUpdateChat();
+  try{
+    const r=await POST('/api/coach/chat',{messages:AIC_CHAT});
+    AIC_CHAT.push({role:'coach',text:(r&&r.ok&&r.reply)?r.reply:((r&&r.error)||'Bağlantı koptu reis, bir daha sor.')});
+  }catch(e){ AIC_CHAT.push({role:'coach',text:'Bağlantı koptu reis, bir daha sor.'}); }
+  AIC_CHAT_BUSY=false; aicUpdateChat();
+}
+function aicSetPeriod(p){ AIC_PERIOD=p; AIC_SEL=null; aicRenderPage(); }
+function aicSetFilter(f){ AIC_FILTER=f; aicRenderPage(); }
+function aicOpenDay(ds){ AIC_SEL=ds; AIC_PERIOD='day'; aicRenderPage(); }
+function aicBackToMonth(){ AIC_SEL=null; AIC_PERIOD='month'; aicRenderPage(); }
+function aicToggleFacts(){ AIC_FACTS_OPEN=!AIC_FACTS_OPEN; aicRenderPage(); }
 function aicRenderPage(){
   const root=$('aic-root'); if(!root) return;
   const todayStr=today();
+  // seri = son notlardan kesintisiz veri
+  let streak=0; for(const n of AIC_NOTES){ if(aicStatus(n)!=='none') streak++; else break; }
+  const filtered=AIC_FILTER==='all'?AIC_NOTES:AIC_NOTES.filter(n=>aicStatus(n)===AIC_FILTER);
+  const tabBtn=(active)=>`padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;border:1px solid ${active?calHexA(AIC_C.accent,.5):'transparent'};background:${active?calHexA(AIC_C.accent,.2):'transparent'};color:${active?AIC_C.accent:'var(--muted)'}`;
+  const periods=[['day','Günlük'],['month','Aylık']].map(([k,l])=>`<button onclick="aicSetPeriod('${k}')" style="${tabBtn(AIC_PERIOD===k)}">${l}</button>`).join('');
+  const filters=[['all','Tümü'],['partial','Eksik veri'],['full','Tam kayıt']].map(([k,l])=>`<button onclick="aicSetFilter('${k}')" style="${tabBtn(AIC_FILTER===k)}">${l}</button>`).join('');
+  // görünür kartlar
+  let cardsHtml='', visCount=0;
+  if(AIC_PERIOD==='day'){
+    const sel=AIC_SEL?filtered.find(n=>n.date===AIC_SEL):filtered[0];
+    if(sel){ const idx=AIC_NOTES.indexOf(sel); cardsHtml=aicCardHtml(sel,AIC_NOTES[idx+1],true); visCount=1; }
+    else cardsHtml=`<div style="text-align:center;padding:40px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:16px">Bu filtrede gösterilecek gözlem yok.</div>`;
+  } else {
+    if(filtered.length){ cardsHtml=filtered.map((n,i)=>aicCardHtml(n,AIC_NOTES[AIC_NOTES.indexOf(n)+1],false)).join(''); visCount=filtered.length; }
+    else cardsHtml=`<div style="text-align:center;padding:40px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:16px">Bu filtrede gösterilecek gözlem yok.</div>`;
+  }
+  const backBtn=(AIC_PERIOD==='day'&&AIC_SEL)?`<button class="btn btn-sm btn-ghost" onclick="aicBackToMonth()">‹ Aylık listeye dön</button>`:`<span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">${AIC_PERIOD==='day'?'SON GÖZLEM':'TÜM GÖZLEMLER'}</span>`;
   root.innerHTML=`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:10px">KALICI PROFİL NOTLARI <span style="opacity:.7">— seninle ilgili sürekli geçerli bilgiler, her AI notunda dikkate alınır</span></div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="aic-facts-list">${aicFactsHtml()}</div>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="aic-fact-input" placeholder="ör. sırt/omuzda sivilce sorunu var, süt ürünü ile ilişkili olabilir" style="flex:1;background:var(--bg,var(--bg1));border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:12px">
-        <button class="btn btn-sm" onclick="aicAddFact()">Ekle</button>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:24px">
+        <div style="text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:${AIC_C.accent};line-height:1">${streak}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">gün seri</div></div>
+        <div style="width:1px;height:34px;background:var(--border)"></div>
+        <div style="text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--text);line-height:1">${AIC_NOTES.length}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">gözlem</div></div>
       </div>
+      <span style="display:inline-flex;align-items:center;gap:7px;background:${calHexA(AIC_C.good,.16)};border:1px solid ${calHexA(AIC_C.good,.4)};color:${AIC_C.good};font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;padding:5px 11px;border-radius:999px"><span style="width:6px;height:6px;border-radius:999px;background:${AIC_C.good};animation:om-pulse 2.4s ease-in-out infinite"></span>AKTİF · her gün öğrenir</span>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:18px">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.5px">MANUEL OLUŞTUR</span>
-      <input type="date" id="aic-date-input" value="${todayStr}" max="${todayStr}" style="background:var(--bg1,var(--bg));border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px">
+    ${aicChatHtml()}
+    ${aicWeeklyGlanceHtml()}
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:18px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em">MANUEL OLUŞTUR</span>
+      <input type="date" id="aic-date-input" value="${todayStr}" max="${todayStr}" style="background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px">
       <button class="btn btn-sm" onclick="aicGenerate($('aic-date-input').value)">Not Oluştur / Yenile</button>
       <span style="font-size:11px;color:var(--muted);margin-left:auto">Her gün otomatik oluşur — bu sadece elle tetiklemek için</span>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px" id="aic-list">${aicListHtml()}</div>`;
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:14px;flex-wrap:wrap">
+      <div style="display:inline-flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:4px">${periods}</div>
+      <div style="display:inline-flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:4px">${filters}</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px">${backBtn}<span style="font-size:12.5px;color:var(--muted)">${visCount} gözlem</span></div>
+    <div style="display:flex;flex-direction:column;gap:16px">${cardsHtml}</div>
+    <div style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="aicToggleFacts()">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em">🧠 KALICI PROFİL NOTLARI <span style="opacity:.7">(${AIC_FACTS.length})</span></span>
+        <span style="color:var(--muted);font-size:13px">${AIC_FACTS_OPEN?'▾':'▸'}</span>
+      </div>
+      ${AIC_FACTS_OPEN?`<div style="margin-top:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Seninle ilgili sürekli geçerli bilgiler — her gözlemde dikkate alınır. AI tekrar eden kalıp görürse otomatik ekler.</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="aic-facts-list">${aicFactsHtml()}</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="aic-fact-input" placeholder="ör. sağ omuz sıkışması — üst itişte dikkat" onkeydown="if(event.key==='Enter')aicAddFact()" style="flex:1;background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:12px">
+          <button class="btn btn-sm" onclick="aicAddFact()">Ekle</button>
+        </div>
+      </div>`:''}
+    </div>`;
 }
 function aicFactsHtml(){
-  if(!AIC_FACTS.length) return `<div style="color:var(--muted);font-size:11.5px">Henüz kalıcı not yok — aşağıdan ekleyebilirsin, AI da tekrar eden bir kalıp fark ederse otomatik ekler.</div>`;
-  return AIC_FACTS.map(f=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg,var(--bg1));border:1px solid var(--border);border-radius:8px;padding:7px 10px">
+  if(!AIC_FACTS.length) return `<div style="color:var(--muted);font-size:11.5px">Henüz kalıcı not yok — ekleyebilirsin, AI da tekrar eden kalıp fark ederse otomatik ekler.</div>`;
+  return AIC_FACTS.map(f=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg3,var(--bg1));border:1px solid var(--border);border-radius:8px;padding:7px 10px">
     <span style="font-size:12px;color:var(--text)">${f.source==='ai_detected'?'🤖 ':'✍️ '}${escHtml(f.text)}</span>
     <button onclick="aicDeleteFact(${f.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px" title="Sil">✕</button>
   </div>`).join('');
@@ -4928,44 +5163,14 @@ async function aicAddFact(){
   const el=$('aic-fact-input'); const text=(el?.value||'').trim();
   if(!text) return;
   await POST('/api/profile/facts',{text});
-  el.value='';
   toast('Kalıcı not eklendi',true);
   AIC_FACTS=await API('/api/profile/facts')||[];
-  aicRenderPage();
+  AIC_FACTS_OPEN=true; aicRenderPage();
 }
 async function aicDeleteFact(id){
   await DEL('/api/profile/facts/'+id);
   AIC_FACTS=AIC_FACTS.filter(f=>f.id!==id);
-  aicRenderPage();
-}
-function aicMetricChip(label,val,color){
-  return `<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:${color||'var(--muted)'};background:${color?calHexA(color,.13):'var(--bg,var(--bg1))'};border-radius:5px;padding:3px 7px;white-space:nowrap">${label} ${val}</span>`;
-}
-function aicListHtml(){
-  if(!AIC_NOTES.length) return `<div style="color:var(--muted);text-align:center;padding:40px 20px;border:1px dashed var(--border);border-radius:12px">Henüz hiç Coach notu yok. Bir gün tamamlandığında otomatik oluşur, ya da yukarıdan elle tetikleyebilirsin.</div>`;
-  return AIC_NOTES.map(n=>{
-    const d=new Date(n.date+'T12:00:00');
-    const label=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
-    const s=n.summary||{};
-    const nut=s.nutrition||{}, w=s.whoop, wt=s.weight||{};
-    const chips=[
-      nut.kcal?aicMetricChip('🍽',nut.kcal.toLocaleString('tr-TR')+' kcal'):'',
-      nut.water_ml?aicMetricChip('💧',(nut.water_ml/1000).toFixed(1)+'L','#38bdf8'):'',
-      s.steps?aicMetricChip('👟',s.steps.toLocaleString('tr-TR')):'',
-      wt.morning?aicMetricChip('☀',wt.morning+'kg'):'',
-      (s.weight_delta!=null)?aicMetricChip(s.weight_delta>=0?'↑':'↓',Math.abs(s.weight_delta)+'kg',s.weight_delta>0?'#e0556b':'#2fd6b0'):'',
-      s.training?aicMetricChip(s.training.type,s.training.done?'✓':'—',s.training.done?'#2fd6b0':'#6b7890'):'',
-      w&&w.recovery_score!=null?aicMetricChip('🔋','%'+w.recovery_score,w.recovery_score>=67?'#2fd6b0':w.recovery_score>=34?'#ffd166':'#e0556b'):'',
-    ].filter(Boolean).join('');
-    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <span style="font-weight:700;font-size:13px">${label}</span>
-        <button class="btn btn-sm btn-ghost" onclick="aicGenerate('${n.date}')">Yeniden oluştur</button>
-      </div>
-      ${chips?`<div style="display:flex;gap:5px;flex-wrap:wrap">${chips}</div>`:''}
-      <div style="font-size:12.5px;line-height:1.6;color:var(--text);white-space:pre-line;border-top:1px solid var(--border);padding-top:9px">🤖 ${escHtml(n.note)}</div>
-    </div>`;
-  }).join('');
+  AIC_FACTS_OPEN=true; aicRenderPage();
 }
 async function aicGenerate(dateStr){
   if(!dateStr) return;
@@ -5098,6 +5303,8 @@ function calBuildCells(){
   return cells;
 }
 function calHexA(hex,a){
+  // CSS token / var() / fonksiyonlu renkler icin color-mix (tema-duyarli). Hex icin rgba (canvas-guvenli).
+  if(typeof hex==='string' && (hex.indexOf('var(')>=0 || hex.indexOf('(')>=0)) return `color-mix(in srgb, ${hex} ${a*100}%, transparent)`;
   const h=hex.replace('#','');
   const r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16);
   return `rgba(${r},${g},${b},${a})`;

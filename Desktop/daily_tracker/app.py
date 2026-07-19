@@ -785,6 +785,20 @@ sync_supplement_catalog_canonical()
 fix_food_registry_typos()
 seed_food_fiber()
 
+def ensure_ai_note_structured_col():
+    """ai_profile_notes'a structured (kategorili gozlem JSON) kolonu ekler (idempotent)."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(ai_profile_notes)").fetchall()}
+        if 'structured' not in cols:
+            conn.execute("ALTER TABLE ai_profile_notes ADD COLUMN structured TEXT DEFAULT ''")
+            conn.commit()
+        conn.close()
+    except Exception as _e:
+        log.warning(f"ensure_ai_note_structured_col skip: {_e}")
+
+ensure_ai_note_structured_col()
+
 def ensure_user_settings_table():
     conn = get_db()
     conn.execute("""
@@ -1366,12 +1380,21 @@ def generate_daily_profile_note(date_str):
         'yine de aynı bilgidir ve null dönmen gerekir, (3) küçük bir varyasyon/güncelleme değil, tamamen yeni '
         'bir gözlem. Şüphedeysen null. Bu alan çoğu günde null olmalı — art arda birçok günde dolu dönüyorsan '
         'muhtemelen aynı şeyi tekrar tekrar farklı cümlelerle yazıyorsundur, bunu YAPMA.\n\n'
+        'Ayrıca aynı gözlemi KATEGORİLİ olarak da ver: "insights" listesinde her biri bugünün gerçek verisine '
+        'dayanan 2-5 madde. Her maddenin "kategori" alanı şunlardan biri olmalı: "Antrenman", "Toparlanma", '
+        '"Uyku", "Beslenme", "Hidrasyon", "Aktivite", "Trend", "Eksik veri". Sadece VERİSİ OLAN kategorileri yaz '
+        '(veri yoksa o kategoriyi hiç ekleme). "ton" alanı: "good" (iyi/hedefte), "warn" (dikkat/eksik), '
+        '"neutral" (nötr/bilgi). "text" 1-2 cümle, sayı içersin. "headline" tek cümlelik günün özeti (note ile '
+        'aynı ruhta ama daha kısa). "izle" varsa (kalıcı not/risk bugünle alakalıysa, ör. omuz ağrısı + üst itiş) '
+        'kısa bir uyarı cümlesi, yoksa null. "oneri" yarın/bugün için TEK net, uygulanabilir öneri (plan değiştirme '
+        'değil, mevcut plan içinde mikro-aksiyon).\n\n'
         'SADECE şu JSON formatında dön, başka hiçbir şey yazma: '
-        '{"note": "...", "yeni_kalici_not": "..." veya null}'
+        '{"note": "...", "headline": "...", "insights": [{"kategori":"...","ton":"good|warn|neutral","text":"..."}], '
+        '"izle": "..." veya null, "oneri": "...", "yeni_kalici_not": "..." veya null}'
     )
     body = {
         'model': ANTHROPIC_MODEL,
-        'max_tokens': 400,
+        'max_tokens': 1600,
         'system': system_prompt,
         'messages': [{'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
     }
@@ -1392,16 +1415,27 @@ def generate_daily_profile_note(date_str):
         parsed = json.loads(text.strip())
         note = (parsed.get('note') or '').strip()
         new_fact = (parsed.get('yeni_kalici_not') or '').strip() or None
+        structured = {
+            'headline': (parsed.get('headline') or '').strip(),
+            'insights': [
+                {'kategori': (i.get('kategori') or '').strip(), 'ton': (i.get('ton') or 'neutral').strip(),
+                 'text': (i.get('text') or '').strip()}
+                for i in (parsed.get('insights') or []) if (i.get('text') or '').strip()
+            ],
+            'izle': (parsed.get('izle') or '').strip() or None,
+            'oneri': (parsed.get('oneri') or '').strip() or None,
+        }
     except Exception as _e:
         import logging; logging.getLogger('daily').warning(f"ai profile note failed: {_e}")
         return None
     if not note:
         return None
+    structured_json = json.dumps(structured, ensure_ascii=False)
     conn2 = get_db()
     conn2.execute(
-        "INSERT INTO ai_profile_notes (date, note) VALUES (?,?) "
-        "ON CONFLICT(date) DO UPDATE SET note=excluded.note, generated_at=CURRENT_TIMESTAMP",
-        (date_str, note)
+        "INSERT INTO ai_profile_notes (date, note, structured) VALUES (?,?,?) "
+        "ON CONFLICT(date) DO UPDATE SET note=excluded.note, structured=excluded.structured, generated_at=CURRENT_TIMESTAMP",
+        (date_str, note, structured_json)
     )
     if new_fact:
         existing = [r['text'] for r in conn2.execute("SELECT text FROM user_profile_facts WHERE active=1").fetchall()]
@@ -1431,11 +1465,15 @@ def api_ai_coach_notes():
     days = int(request.args.get('days', 30))
     conn = get_db()
     rows = conn.execute(
-        "SELECT date, note, generated_at FROM ai_profile_notes ORDER BY date DESC LIMIT ?", (days,)
+        "SELECT date, note, generated_at, structured FROM ai_profile_notes ORDER BY date DESC LIMIT ?", (days,)
     ).fetchall()
     result = []
     for r in rows:
         d = dict(r)
+        try:
+            d['structured'] = json.loads(d['structured']) if d.get('structured') else None
+        except Exception:
+            d['structured'] = None
         snap = gather_day_snapshot(conn, d['date'])
         prev = conn.execute(
             "SELECT weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL AND date<? ORDER BY date DESC LIMIT 1",
@@ -1488,6 +1526,72 @@ def api_profile_facts_delete(fid):
     conn.execute("UPDATE user_profile_facts SET active=0 WHERE id=?", (fid,))
     conn.commit(); conn.close()
     return jsonify({'ok': True})
+
+@app.route('/api/coach/chat', methods=['POST'])
+def api_coach_chat():
+    """Coach sayfasindaki sohbet: kullanicinin verisini bilen, onun tarziyla kisa/net cevap veren
+    konusma modu. Gunluk not uretiminden AYRI — burada veri LOGLANMAZ, sadece gozlem/oneri/sohbet.
+    Istemci mesaj gecmisini gonderir (stateless)."""
+    import urllib.request
+    if not ANTHROPIC_API_KEY:
+        return jsonify({'ok': False, 'error': 'AI anahtarı tanımlı değil'}), 400
+    data = request.get_json(force=True) or {}
+    msgs_in = data.get('messages') or []
+    if not isinstance(msgs_in, list) or not msgs_in:
+        return jsonify({'ok': False, 'error': 'mesaj gerekli'}), 400
+    conn = get_db()
+    today_str = operation_today()
+    yday_str = (operation_date() - timedelta(days=1)).isoformat()
+    snap = gather_day_snapshot(conn, today_str)
+    yday = gather_day_snapshot(conn, yday_str)
+    facts = [r['text'] for r in conn.execute(
+        "SELECT text FROM user_profile_facts WHERE active=1 ORDER BY created_at").fetchall()]
+    last_note = conn.execute(
+        "SELECT date, note FROM ai_profile_notes ORDER BY date DESC LIMIT 1").fetchone()
+    conn.close()
+    try:
+        tr = training_day(today_str)
+    except Exception:
+        tr = snap.get('training', {}).get('type')
+    ctx = {
+        'bugun_tarih': today_str, 'bugun_antrenman_tipi': tr,
+        'bugun': {'beslenme': snap['nutrition'], 'adim': snap['steps'], 'kilo': snap['weight'],
+                  'whoop': snap['whoop'], 'takviye': snap['supplements'], 'ruh_hali': snap['mood']},
+        'dun': {'antrenman': yday['training'], 'beslenme': yday['nutrition'], 'kilo': yday['weight'],
+                'whoop': yday['whoop']} if yday['has_data'] else None,
+        'kalici_notlar': facts,
+        'son_gozlem': ({'tarih': last_note['date'], 'not': last_note['note']} if last_note else None),
+    }
+    system = (
+        'Sen Taha\'nın kişisel spor/sağlık koçusun. Onun verisini önünde tutuyorsun. Türkçe, Taha\'nın kendi '
+        'konuşma tarzıyla yaz: KISA ve NET (1-3 cümle), samimi hitap ("reis", "kanka" gibi), bahaneye '
+        'tahammülsüz, arada espri. Duruma göre ton değiştir: işler kötüyse (seans kaçırma, veri girmeme) SERT '
+        've doğrudan; işler iyiyse ARKADAŞ gibi gaz ver. Uzun paragraf, madde listesi, klişe motivasyon YAZMA. '
+        'Her zaman aşağıdaki gerçek veriye dayan, mümkünse sayı ver. Planı sen değiştirme; sadece gözlem ve net '
+        'öneri sun. Veri yoksa uydurma, "kayıt yok" de.\n\nGÜNCEL VERİ:\n' + json.dumps(ctx, ensure_ascii=False)
+    )
+    messages = []
+    for m in msgs_in[-12:]:
+        role = 'user' if (m.get('role') == 'user') else 'assistant'
+        content = (m.get('text') or m.get('content') or '').strip()
+        if content:
+            messages.append({'role': role, 'content': content})
+    if not messages or messages[-1]['role'] != 'user':
+        return jsonify({'ok': False, 'error': 'son mesaj kullanıcıdan olmalı'}), 400
+    body = {'model': ANTHROPIC_MODEL, 'max_tokens': 400, 'system': system, 'messages': messages}
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages',
+        data=json.dumps(body).encode('utf-8'),
+        headers={'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json'},
+        method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        reply = result['content'][0]['text'].strip()
+    except Exception as _e:
+        log.warning(f"coach chat failed: {_e}")
+        return jsonify({'ok': False, 'error': 'Bağlantı koptu, tekrar dene'}), 502
+    return jsonify({'ok': True, 'reply': reply})
 
 @app.route('/api/cycle/ai-comment', methods=['GET'])
 def api_cycle_ai_comment():
