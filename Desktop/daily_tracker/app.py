@@ -7567,6 +7567,30 @@ def api_supplement_stack_rename(sid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+@app.route('/api/supplements/unmark', methods=['POST'])
+def api_supplements_unmark():
+    """'Tumunu Isaretle' geri alma: gunun stack-kaynakli takviye kayitlarini siler.
+    stack_name verilirse sadece o stack'in kayitlari; verilmezse gunun TUM stack/extra
+    kayitlari silinir. Tekli (manuel/telegram tekil) vitamin kayitlarina DOKUNMAZ."""
+    data = request.get_json(force=True) or {}
+    d = data.get('date') or operation_today()
+    stack_name = (data.get('stack_name') or '').strip()
+    conn = get_db()
+    if stack_name:
+        vit_n = conn.execute("DELETE FROM vitamin_logs WHERE date=? AND notes IN (?,?)",
+                             (d, f'stack:{stack_name}', f'extra:{stack_name}')).rowcount
+        log_ids = [r['id'] for r in conn.execute(
+            "SELECT id FROM supplement_logs WHERE date=? AND stack_name_snapshot=?", (d, stack_name)).fetchall()]
+    else:
+        vit_n = conn.execute("DELETE FROM vitamin_logs WHERE date=? AND (notes LIKE 'stack:%' OR notes LIKE 'extra:%')",
+                             (d,)).rowcount
+        log_ids = [r['id'] for r in conn.execute("SELECT id FROM supplement_logs WHERE date=?", (d,)).fetchall()]
+    for lid in log_ids:
+        conn.execute("DELETE FROM supplement_log_items WHERE log_id=?", (lid,))
+        conn.execute("DELETE FROM supplement_logs WHERE id=?", (lid,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': d, 'stack': stack_name or 'ALL', 'vitamin_rows': vit_n, 'stack_logs': len(log_ids)})
+
 @app.route('/api/supplements/stacks/<int:sid>', methods=['DELETE'])
 def api_supplement_stack_delete(sid):
     conn = get_db()
