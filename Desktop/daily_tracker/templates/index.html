@@ -3293,7 +3293,22 @@ function removeRecipeRow(i){_rcDraftItems.splice(i,1);renderRcDraftItems();}
 function renderRcDraftItems(){
   const el=$('rc-draft-items');if(!el)return;
   if(!_rcDraftItems.length){el.innerHTML='<div style="font-size:.75rem;color:var(--muted)">Bu tarife henüz bileşen eklenmedi.</div>';$('rc-preview').style.display='none';return;}
-  el.innerHTML=_rcDraftItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:8px;padding:6px 10px;font-size:.8rem"><b style="flex:1">${escHtml(it.food_name)}</b><span style="color:var(--muted)">${it.amount}${it.unit}</span><button class="del-btn" onclick="removeRecipeRow(${i})">✕</button></div>`).join('');
+  const list=_foodList||[];
+  el.innerHTML=_rcDraftItems.map((it,i)=>{
+    const food=list.find(x=>x.id===it.food_id)||list.find(x=>(x.official_name||x.name)===it.food_name);
+    // bilesenin kendi makro katkisi (adet -> porsiyon grami cevrimi backend ile ayni)
+    let macroTxt='<span style="color:var(--yellow);font-size:.68rem">DB\'de yok</span>';
+    if(food){
+      let gramsEq=null;
+      if(['g','gr','gram','ml'].includes((it.unit||'').toLowerCase())) gramsEq=(it.amount||0);
+      else if(food.serving_size) gramsEq=(it.amount||0)*food.serving_size;
+      if(gramsEq!=null){
+        const r=gramsEq/100;
+        macroTxt=`<span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;white-space:nowrap"><b style="color:var(--yellow)">${((food.calories_per_100||0)*r).toFixed(0)} kcal</b><span style="color:var(--muted)"> · P ${((food.protein_per_100||0)*r).toFixed(1)} · K ${((food.carbs_per_100||0)*r).toFixed(1)} · Y ${((food.fat_per_100||0)*r).toFixed(1)}</span></span>`;
+      } else macroTxt='<span style="color:var(--yellow);font-size:.68rem">porsiyon gramı yok</span>';
+    }
+    return `<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:8px;padding:6px 10px;font-size:.8rem;flex-wrap:wrap"><b style="flex:1;min-width:120px">${escHtml(it.food_name)}</b>${macroTxt}<span style="color:var(--muted)">${it.amount}${it.unit}</span><button class="del-btn" onclick="removeRecipeRow(${i})">✕</button></div>`;
+  }).join('');
   renderRcPreview();
 }
 function renderRcPreview(){
