@@ -5136,7 +5136,8 @@ function aicRenderPage(){
   const filtered=AIC_FILTER==='all'?AIC_NOTES:AIC_NOTES.filter(n=>aicStatus(n)===AIC_FILTER);
   const tabBtn=(active)=>`padding:7px 15px;border-radius:9px;font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;border:1px solid ${active?calHexA(AIC_C.accent,.5):'transparent'};background:${active?calHexA(AIC_C.accent,.2):'transparent'};color:${active?AIC_C.accent:'var(--muted)'}`;
   const periods=[['day','Günlük'],['month','Aylık']].map(([k,l])=>`<button class="aic-tab" onclick="aicSetPeriod('${k}')" style="${tabBtn(AIC_PERIOD===k)}">${l}</button>`).join('');
-  const filters=[['all','Tümü'],['partial','Eksik veri'],['full','Tam kayıt']].map(([k,l])=>`<button class="aic-tab" onclick="aicSetFilter('${k}')" style="${tabBtn(AIC_FILTER===k)}">${l}</button>`).join('');
+  if(AIC_FILTER==='full') AIC_FILTER='all'; // eski 3'lu filtreden kalan secim
+  const filters=[['all','Tümü'],['partial','Eksik veri']].map(([k,l])=>`<button class="aic-tab" onclick="aicSetFilter('${k}')" style="${tabBtn(AIC_FILTER===k)}">${l}</button>`).join('');
   // görünür kartlar
   let cardsHtml='', visCount=0;
   if(AIC_PERIOD==='day'){
