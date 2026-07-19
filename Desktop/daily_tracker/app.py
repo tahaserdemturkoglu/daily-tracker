@@ -1189,7 +1189,23 @@ SUPP_TAKEN_COUNT_SQL = (
 # yalnizca Pzt/Car/Cum gunleri beklenir; diger gunler 'eod_rest' olur, sayaclara girmez.
 # Baska bir gun yine de alinirsa normal 'taken' sayilir.
 ZINC_PRODUCT_NAME = 'NOW Zinc Picolinate 50mg'
-ZINC_DAYS = (0, 2, 4)  # Pazartesi, Carsamba, Cuma (date.weekday)
+ZINC_DAYS = (0, 2, 4)  # (eski sabit takvim - artik kullanilmiyor, zinc_due_on gercek gun-asiri hesaplar)
+
+def zinc_due_on(conn, date_str):
+    """GERCEK gun-asiri takip (2026-07-19 kullanici kurali): cinko son alimdan 2+ gun
+    gectiyse (veya hic alinmadiysa) o gun ALINMALI; dun alindiysa bugun yok.
+    Sabit Pzt/Car/Cum takvimi degil - son alim tarihinden hesaplanir."""
+    try:
+        row = conn.execute(
+            "SELECT MAX(date) m FROM vitamin_logs WHERE name=? AND date<? "
+            "AND (status IS NULL OR status='' OR status IN ('taken','eod_taken','half_dose'))",
+            (ZINC_PRODUCT_NAME, date_str)).fetchone()
+        last = row['m'] if row else None
+        if not last:
+            return True
+        return (date.fromisoformat(date_str) - date.fromisoformat(last)).days >= 2
+    except Exception:
+        return True
 
 
 def active_supplement_breaks():
@@ -1250,10 +1266,10 @@ def gather_day_snapshot(conn, date_str):
     ).fetchall()
     supp_total = sum(1 for it in _items
                      if it['stack_name'] not in _broken_stacks and it['product_name'] not in _broken_products)
-    # Cinko gunu degilse (Pzt/Car/Cum disi) ve bugun alinmadiysa beklenmez - toplamdan dus.
+    # Cinko o gun due degilse (dun alinmis, gun-asiri dinlenme) ve o gun alinmadiysa beklenmez - toplamdan dus.
     _z_today = conn.execute("SELECT 1 FROM vitamin_logs WHERE date=? AND name=? LIMIT 1",
                             (date_str, ZINC_PRODUCT_NAME)).fetchone()
-    if date.fromisoformat(date_str).weekday() not in ZINC_DAYS and not _z_today and any(
+    if not _z_today and not zinc_due_on(conn, date_str) and any(
             it['product_name'] == ZINC_PRODUCT_NAME and it['stack_name'] not in _broken_stacks
             and it['product_name'] not in _broken_products for it in _items):
         supp_total -= 1
@@ -5705,9 +5721,12 @@ def tg_supplement_excluded_items(matched_items, norm):
     return excluded
 
 def tg_zinc_due_for_date(today):
-    """Cinko yalnizca Pzt/Car/Cum beklenir (kullanici programi, 2026-07-18)."""
+    """Gercek gun-asiri: son alimdan 2+ gun gectiyse due (2026-07-19 kural guncellemesi)."""
     try:
-        return date.fromisoformat(today).weekday() in ZINC_DAYS
+        conn = get_db()
+        due = zinc_due_on(conn, today)
+        conn.close()
+        return due
     except Exception:
         return True
 
@@ -7222,14 +7241,14 @@ def api_supplements_today():
         items = conn.execute(
             "SELECT * FROM supplement_log_items WHERE log_id=?", (log['id'],)).fetchall()
         log['items'] = [dict(i) for i in items]
-    # Zinc programi: Pzt/Car/Cum (ZINC_DAYS). last_date bilgi amacli vitamin_logs'tan.
+    # Zinc: gercek gun-asiri (son alimdan 2+ gun gectiyse bugun alinmali).
     zrow = conn.execute(
         "SELECT date FROM vitamin_logs WHERE name=? AND date<=? ORDER BY date DESC, id DESC LIMIT 1",
         (ZINC_PRODUCT_NAME, today)).fetchone()
+    zinc_today = zinc_due_on(conn, today)
     conn.close()
     last_zinc = zrow['date'] if zrow else None
-    zinc_today = date.fromisoformat(today).weekday() in ZINC_DAYS
-    zinc_rest = not zinc_today                     # cinko gunu degil -> eksik sayilmaz
+    zinc_rest = not zinc_today                     # dun alindi -> bugun beklenmez
     return jsonify({'date': today, 'logs': logs,
                     'zinc': {'take_today': zinc_today, 'rest_today': zinc_rest, 'last_date': last_zinc}})
 
@@ -7405,8 +7424,8 @@ def api_supplements_range():
                     chosen = _pick_log(by_date_name.get((ds, it['product_name'])) or [], s['name'])
                     st = chosen['status'] if chosen else None
                     if (it['product_name'] == ZINC_PRODUCT_NAME and st is None
-                            and d.weekday() not in ZINC_DAYS):
-                        # cinko gunu degil (Pzt/Car/Cum disi) -> beklenmez, toplam sayilmaz
+                            and not zinc_due_on(conn, ds)):
+                        # gun-asiri dinlenme gunu (dun alinmis) -> beklenmez, toplam sayilmaz
                         items_out.append({'name': it['product_name'], 'dose': it['dose'],
                                           'unit': it['unit'], 'status': 'eod_rest'})
                         continue
@@ -7418,6 +7437,9 @@ def api_supplements_range():
                         ui_status = st
                     else:
                         ui_status = 'pending'
+                        # cinko due idi ama GECMIS gunde alinmamis -> sari 'Gun Asiri Atlandi'
+                        if it['product_name'] == ZINC_PRODUCT_NAME and ds < operation_today():
+                            ui_status = 'eod_skipped'
                 item_out = {'name': it['product_name'], 'dose': it['dose'], 'unit': it['unit'], 'status': ui_status}
                 if on_break:
                     item_out['break_until'] = br['end']  # None = suresiz
@@ -7470,7 +7492,7 @@ def api_supplements_log():
 
     # Items (snapshot with overrides)
     items = conn.execute("SELECT * FROM supplement_stack_items WHERE stack_id=? ORDER BY order_num", (stack['id'],)).fetchall()
-    _zinc_day = date.fromisoformat(today).weekday() in ZINC_DAYS
+    _zinc_due = zinc_due_on(conn, today)
     for item in items:
         pname = item['product_name']
         ov = overrides.get(pname, {})
@@ -7478,9 +7500,9 @@ def api_supplements_log():
         unit   = ov.get('unit',  item['unit'])
         taken  = ov.get('taken', 1)
         ov_note = ov.get('note', '')
-        # Cinko yalnizca Pzt/Car/Cum beklenir: gun-asiri gunde 'Tumunu Isaretle' onu ATLAR
-        # (kullanici override ile acikca istemedikce). Boylece gun-asiri rozeti (sari ⚠) korunur.
-        if pname == ZINC_PRODUCT_NAME and not _zinc_day and pname not in overrides:
+        # Cinko due degilse (dun alinmis): 'Tumunu Isaretle' onu ATLAR
+        # (kullanici override ile acikca istemedikce). Boylece gun-asiri dinlenme rozeti korunur.
+        if pname == ZINC_PRODUCT_NAME and not _zinc_due and pname not in overrides:
             continue
         conn.execute("INSERT INTO supplement_log_items (log_id,product_name_snapshot,dose_snapshot,unit_snapshot,taken,override_note) VALUES (?,?,?,?,?,?)",
                      (log_id, pname, dose, unit, taken, ov_note))
@@ -7538,9 +7560,10 @@ def api_supplements_zinc():
         try: last_date = _json.loads(row['rule_data'] or '{}').get('last_date')
         except: pass
     today = operation_today()
-    # Denetim fix: eski 'son alimdan 2 gun gecti mi' hesabi sistemin geri kalaniyla celisiyordu -
-    # tek gercek program ZINC_DAYS (Pzt/Car/Cum), her yer ayni kurali kullanir.
-    take_today = date.fromisoformat(today).weekday() in ZINC_DAYS
+    # 2026-07-19 kural: gercek gun-asiri - son alimdan 2+ gun gectiyse bugun alinmali.
+    conn2 = get_db()
+    take_today = zinc_due_on(conn2, today)
+    conn2.close()
     return jsonify({'take_today': take_today, 'last_date': last_date, 'today': today})
 
 @app.route('/api/supplements/stacks', methods=['POST'])

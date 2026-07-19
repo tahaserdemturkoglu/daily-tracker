@@ -2521,7 +2521,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
         if(!v && zinc && zinc.rest_today){
           const YEL='#F5B23A';
           return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(YEL,.1)};border:1px solid ${ndHexA(YEL,.4)};border-radius:8px;padding:12px 16px">
-            <span style="font-size:13px;font-weight:600;color:${YEL}">⚠️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${YEL};font-weight:600">Gün aşırı · bugün yok (Pzt/Çar/Cum)</span>
+            <span style="font-size:13px;font-weight:600;color:${YEL}">⚠️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${YEL};font-weight:600">Gün aşırı · bugün yok (dün alındı)</span>
           </div>`;
         }
         if(v && ['taken','eod_taken','half_dose'].includes(vitStatusOf(v))){
