@@ -2500,6 +2500,28 @@ def _num_or_none(v):
     try: return float(v)
     except: return None
 
+def _infer_meal_fiber(conn, title, description):
+    """fiber_g verilmemis bir ogun icin: urun food_registry'de eslesiyor VE gram miktari
+    cikarilabiliyorsa lifi hesaplar (Badem/Protein Bar gibi lifli urunler manuel eklenince
+    lif kaybolmasin - 35g hemoroid hedefi icin kritik). Eslesmezse None."""
+    desc = (description or '').strip()
+    name = (title or '').strip()
+    grams = None
+    m = re.match(r'^\s*(\d+(?:[.,]\d+)?)\s*(?:g|gr|gram)\b\s*(.*)$', desc, re.I)
+    if m:
+        grams = float(m.group(1).replace(',', '.'))
+        if not name:
+            name = m.group(2).strip()
+    if grams is None or not name:
+        return None
+    row = conn.execute(
+        "SELECT fiber_per_100 FROM food_registry WHERE name=? OR official_name=? "
+        "OR (','||lower(replace(aliases,' ',''))||',') LIKE '%,'||lower(replace(?,' ',''))||',%' LIMIT 1",
+        (name, name, name)).fetchone()
+    if not row or not row['fiber_per_100']:
+        return None
+    return round(row['fiber_per_100'] * grams / 100.0, 2)
+
 @app.route('/api/meals', methods=['POST'])
 def api_meal_save():
     data = request.get_json(force=True) or {}
@@ -2514,6 +2536,10 @@ def api_meal_save():
     fiber_g = _num_or_none(data.get('fiber_g'))
     source = data.get('source', '').strip()
     conn = get_db()
+    # Lif verilmemis ama urun Besin DB'de eslesiyorsa otomatik hesapla (aksi halde lif
+    # gostergesi ve 35g hedef eksik sayiyor - manuel eklenen Badem/Protein Bar gibi).
+    if fiber_g is None:
+        fiber_g = _infer_meal_fiber(conn, title, description)
     if data.get('replace_existing') and slot != 'extra':
         conn.execute("DELETE FROM meal_entries WHERE date=? AND slot=?", (d, slot))
     if title or description or calories or protein_g or carbs_g or fat_g:
@@ -2525,6 +2551,30 @@ def api_meal_save():
     conn.commit(); conn.close()
     invalidate_ai_insights_cache(d)
     return jsonify({'ok': True})
+
+def backfill_meal_fiber():
+    """fiber_g NULL olan ogun kayitlarina, urun Besin DB'de eslesiyorsa lifi geriye doldur
+    (idempotent - eslesmeyenler NULL kalir). Manuel/web/telegram eklenen lifli urunlerin
+    (Badem, Protein Bar vb.) 35g hedefe sayilmasi icin."""
+    try:
+        conn = get_db()
+        rows = conn.execute("SELECT id, title, description FROM meal_entries WHERE fiber_g IS NULL").fetchall()
+        n = 0
+        for r in rows:
+            fib = _infer_meal_fiber(conn, r['title'], r['description'])
+            if fib is not None:
+                conn.execute("UPDATE meal_entries SET fiber_g=? WHERE id=?", (fib, r['id']))
+                n += 1
+        conn.commit(); conn.close()
+        if n:
+            log.info("Ogun lif backfill: %d kayda lif hesaplandi", n)
+    except Exception as _e:
+        log.warning(f"backfill_meal_fiber skip: {_e}")
+
+try:
+    backfill_meal_fiber()
+except Exception:
+    pass
 
 @app.route('/api/meals/<int:mid>', methods=['DELETE'])
 def api_meal_delete(mid):
