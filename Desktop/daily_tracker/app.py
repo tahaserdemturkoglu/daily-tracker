@@ -6434,15 +6434,72 @@ def api_food_registry_add():
         if not data.get('name','').strip():
             return jsonify({'error':'name required'}), 400
         conn = get_db()
-        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category','')))
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category',''),data.get('recipe','')))
         conn.commit()
         new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
         return jsonify({'ok':True,'id':new_id})
-    except Exception as e:
-        import traceback
-        return jsonify({'error':str(e),'trace':traceback.format_exc()}), 500
+    except Exception:
+        log.exception("api_food_registry_add basarisiz")
+        return jsonify({'error':'Ürün kaydedilemedi'}), 500
+
+@app.route('/api/food-registry/recipe', methods=['POST'])
+def api_food_registry_recipe():
+    """Bilesenlerden (Besin DB kalemleri) bir 'Tarif' urunu olusturur:
+    her bilesenin makrosu toplanir, toplam grama bolunup x100 ile per-100g degeri hesaplanir,
+    food_registry'ye category='Tarif' + recipe JSON olarak kaydedilir. Tavuk Special ile ayni desen."""
+    try:
+        ensure_food_registry()
+        data = request.get_json(force=True) or {}
+        name = (data.get('name') or '').strip()
+        comps = data.get('components') or data.get('items') or []
+        if not name:
+            return jsonify({'ok': False, 'error': 'Tarif adı gerekli'}), 400
+        if not comps:
+            return jsonify({'ok': False, 'error': 'En az 1 bileşen ekle'}), 400
+        conn = get_db()
+        tot = {'kcal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0, 'fiber': 0.0}
+        grams = 0.0
+        recipe_rows = []
+        for it in comps:
+            item = {'food_id': it.get('food_id'), 'food_name': (it.get('food_name') or it.get('name') or '').strip(),
+                    'amount': float(it.get('amount') or 0), 'unit': it.get('unit') or 'g'}
+            calc = _meal_stack_calc_item(conn, item)
+            if not calc:
+                continue
+            food = conn.execute("SELECT fiber_per_100 FROM food_registry WHERE id=?", (calc['food_id'],)).fetchone()
+            ratio = item['amount'] / 100.0
+            tot['kcal'] += calc['kcal']; tot['p'] += calc['protein']; tot['c'] += calc['carbs']; tot['f'] += calc['fat']
+            tot['fiber'] += round((food['fiber_per_100'] if food and food['fiber_per_100'] else 0) * ratio, 2)
+            # gram sayilan birimler toplam agirliga girer (g/gr/ml); adet/yumurta vb. haric tutulur
+            if item['unit'].lower() in ('g', 'gr', 'gram', 'ml'):
+                grams += item['amount']
+            recipe_rows.append({'name': calc['name'], 'amount': item['amount'], 'unit': item['unit']})
+        if grams <= 0:
+            conn.close()
+            return jsonify({'ok': False, 'error': 'Toplam gram 0 — en az bir bileşen gram/ml birimli olmalı'}), 400
+        k = 100.0 / grams
+        per = {
+            'calories_per_100': round(tot['kcal'] * k, 1), 'protein_per_100': round(tot['p'] * k, 1),
+            'carbs_per_100': round(tot['c'] * k, 1), 'fat_per_100': round(tot['f'] * k, 1),
+            'fiber_per_100': round(tot['fiber'] * k, 2),
+        }
+        recipe_json = json.dumps(recipe_rows, ensure_ascii=False)
+        existing = conn.execute("SELECT id FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
+        if existing:
+            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,category='Tarif',notes='karışım',recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
+                (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], recipe_json, existing['id']))
+            new_id = existing['id']
+        else:
+            conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (name, per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], 'g', 100, 'g', 'karışım', '', 'Tarif', recipe_json))
+            new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit(); conn.close()
+        return jsonify({'ok': True, 'id': new_id, 'per_100': per, 'total_grams': round(grams, 1)})
+    except Exception:
+        log.exception("api_food_registry_recipe basarisiz")
+        return jsonify({'ok': False, 'error': 'Tarif kaydedilemedi'}), 500
 
 @app.route('/api/food-registry/<int:fid>', methods=['PUT'])
 def api_food_registry_update(fid):

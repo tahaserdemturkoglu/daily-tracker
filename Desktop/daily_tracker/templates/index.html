@@ -506,6 +506,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             <button class="btn btn-sm" id="nu-mode-db" onclick="setMealMode('db')" style="flex:1;background:var(--accent);color:#fff">📦 Besin DB</button>
             <button class="btn btn-sm" id="nu-mode-manual" onclick="setMealMode('manual')" style="flex:1;background:rgba(255,255,255,.08)">✏️ Manuel</button>
             <button class="btn btn-sm" id="nu-mode-stack" onclick="setMealMode('stack')" style="flex:1;background:rgba(255,255,255,.08)">🧱 Stack Oluştur</button>
+            <button class="btn btn-sm" id="nu-mode-recipe" onclick="setMealMode('recipe')" style="flex:1;background:rgba(255,255,255,.08)">🍳 Tarif</button>
             <button class="btn btn-sm" id="nu-mode-dbmgmt" onclick="setMealMode('dbmgmt')" style="flex:1;background:rgba(255,255,255,.08)">📋 DB Yönetimi</button>
           </div>
           <div id="nu-db-mode" style="padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
@@ -569,6 +570,29 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
             </div>
             <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">Kayıtlı Stack'ler</div>
             <div id="ms-saved-list"><div class="list-empty">Henüz stack yok</div></div>
+          </div>
+          <div id="nu-recipe-mode" style="display:none">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px">Bileşenlerden bir <b style="color:#a78bfa">tarif</b> oluştur (ör. Tavuk Special). Makrolar bileşenlerden otomatik hesaplanıp 100g'a göre Besin DB'ye kaydedilir — sonra normal ürün gibi "100g tarif adı" diye loglayabilirsin.</div>
+            <div class="fg"><label>Tarif Adı</label><input type="text" id="rc-draft-name" placeholder="Tavuk Special"></div>
+            <div class="form-row" style="align-items:flex-end;gap:6px;flex-wrap:wrap;margin-top:6px">
+              <div class="fg" style="flex:3;position:relative">
+                <label>Bileşen Ekle</label>
+                <input type="text" id="rc-row-search" placeholder="tavuk göğsü, panko, yumurta..." oninput="recipeRowSearch(this.value)" autocomplete="off" style="width:100%">
+                <div id="rc-row-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
+              </div>
+              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="rc-row-amount" value="100" min="1" step="1" style="width:100%"></div>
+              <div class="fg" style="flex:0.8"><label>Birim</label><input type="text" id="rc-row-unit" value="g" style="width:100%"></div>
+              <button class="btn btn-teal btn-sm" onclick="addRecipeRow()">+</button>
+            </div>
+            <input type="hidden" id="rc-row-food-id"><input type="hidden" id="rc-row-food-name">
+            <div id="rc-draft-items" style="display:flex;flex-direction:column;gap:5px;margin:10px 0"></div>
+            <div id="rc-preview" style="display:none;font-size:.78rem;font-weight:600;color:#a78bfa;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:8px;padding:8px 10px;margin:6px 0"></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-teal" onclick="saveRecipe()" id="rc-save-btn">Tarifi Kaydet</button>
+              <button class="btn btn-sm btn-ghost" id="rc-cancel-btn" style="display:none" onclick="cancelRecipeEdit()">İptal</button>
+            </div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px">Kayıtlı Tarifler</div>
+            <div id="rc-saved-list"><div class="list-empty">Henüz tarif yok</div></div>
           </div>
           <div id="nu-dbmgmt-mode" style="display:none">
             <div class="form-row">
@@ -2945,8 +2969,8 @@ function getMealSlot(){
 }
 
 function setMealMode(mode){
-  const panels={db:'nu-db-mode',manual:'nu-manual-mode',stack:'nu-stack-mode',dbmgmt:'nu-dbmgmt-mode'};
-  const btns={db:'nu-mode-db',manual:'nu-mode-manual',stack:'nu-mode-stack',dbmgmt:'nu-mode-dbmgmt'};
+  const panels={db:'nu-db-mode',manual:'nu-manual-mode',stack:'nu-stack-mode',recipe:'nu-recipe-mode',dbmgmt:'nu-dbmgmt-mode'};
+  const btns={db:'nu-mode-db',manual:'nu-mode-manual',stack:'nu-mode-stack',recipe:'nu-mode-recipe',dbmgmt:'nu-mode-dbmgmt'};
   Object.keys(panels).forEach(k=>{
     const p=$(panels[k]),b=$(btns[k]);
     if(p)p.style.display=(k===mode)?'':'none';
@@ -2954,6 +2978,7 @@ function setMealMode(mode){
     if(b)b.style.color=(k===mode)?'#fff':'';
   });
   if(mode==='stack')loadMealStacks();
+  if(mode==='recipe')loadRecipes();
   if(mode==='dbmgmt')loadMealDbMgmtList();
   if(mode==='db'){loadMealStackQuick();foodSearch($('nu-food-search')?.value||'');}
 }
@@ -3195,6 +3220,116 @@ async function loadMealStacks(){
     </div>
     <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${(s.items||[]).map(it=>it.food_name).join(', ')||'—'}</div>
   </div>`).join('');
+}
+
+/* ═══ TARİF OLUŞTUR (bileşenlerden Besin DB 'Tarif' ürünü) ═══ */
+let _rcDraftItems=[],_rcEditId=null;
+async function recipeRowSearch(q){
+  const res=$('rc-row-results');if(!res)return;
+  q=(q||'').trim().toLowerCase();
+  if(!q){res.style.display='none';return;}
+  if(!_foodList)_foodList=await API('/api/food-registry')||[];
+  // Tarif icine baska tarif koymayi engelle (dongu riski)
+  const matches=_foodList.filter(f=>(f.category||'')!=='Tarif'&&((f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q))).slice(0,8);
+  if(!matches.length){res.style.display='none';return;}
+  res.innerHTML=matches.map(f=>`<div onclick="selectRecipeRow(${f.id},'${(f.official_name||f.name).replace(/'/g,"\`")}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${f.official_name||f.name} <span style="color:var(--yellow);font-size:.72rem">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span></div>`).join('');
+  res.style.display='block';
+}
+function selectRecipeRow(id,name){
+  $('rc-row-food-id').value=id;$('rc-row-food-name').value=name;
+  $('rc-row-search').value=name;$('rc-row-results').style.display='none';
+}
+function addRecipeRow(){
+  const foodId=parseInt($('rc-row-food-id').value)||null;
+  const foodName=$('rc-row-food-name').value.trim()||$('rc-row-search').value.trim();
+  if(!foodName)return toast('Bileşen seç',false);
+  const amount=parseFloat($('rc-row-amount').value)||100;
+  const unit=$('rc-row-unit').value.trim()||'g';
+  _rcDraftItems.push({food_id:foodId,food_name:foodName,amount,unit});
+  $('rc-row-search').value='';$('rc-row-food-id').value='';$('rc-row-food-name').value='';
+  renderRcDraftItems();
+}
+function removeRecipeRow(i){_rcDraftItems.splice(i,1);renderRcDraftItems();}
+function renderRcDraftItems(){
+  const el=$('rc-draft-items');if(!el)return;
+  if(!_rcDraftItems.length){el.innerHTML='<div style="font-size:.75rem;color:var(--muted)">Bu tarife henüz bileşen eklenmedi.</div>';$('rc-preview').style.display='none';return;}
+  el.innerHTML=_rcDraftItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:8px;padding:6px 10px;font-size:.8rem"><b style="flex:1">${escHtml(it.food_name)}</b><span style="color:var(--muted)">${it.amount}${it.unit}</span><button class="del-btn" onclick="removeRecipeRow(${i})">✕</button></div>`).join('');
+  renderRcPreview();
+}
+function renderRcPreview(){
+  const box=$('rc-preview');if(!box)return;
+  const list=_foodList||[];
+  let kcal=0,p=0,c=0,f=0,fib=0,grams=0,missing=0;
+  _rcDraftItems.forEach(it=>{
+    const food=list.find(x=>x.id===it.food_id)||list.find(x=>(x.official_name||x.name)===it.food_name);
+    if(!food){missing++;return;}
+    const r=(it.amount||0)/100;
+    kcal+=(food.calories_per_100||0)*r;p+=(food.protein_per_100||0)*r;c+=(food.carbs_per_100||0)*r;f+=(food.fat_per_100||0)*r;fib+=(food.fiber_per_100||0)*r;
+    if(['g','gr','gram','ml'].includes((it.unit||'').toLowerCase()))grams+=(it.amount||0);
+  });
+  if(grams<=0){box.style.display='none';return;}
+  const k=100/grams;
+  box.style.display='';
+  box.innerHTML=`100g'da ≈ <b>${(kcal*k).toFixed(0)} kcal</b> · P ${(p*k).toFixed(1)} · K ${(c*k).toFixed(1)} · Y ${(f*k).toFixed(1)} · Lif ${(fib*k).toFixed(1)}g <span style="color:var(--muted);font-weight:400">(toplam ${grams.toFixed(0)}g${missing?`, ${missing} bileşen DB'de yok`:''})</span>`;
+}
+async function saveRecipe(){
+  const name=$('rc-draft-name').value.trim();
+  if(!name)return toast('Tarif adı gir',false);
+  if(!_rcDraftItems.length)return toast('En az 1 bileşen ekle',false);
+  const r=await POST('/api/food-registry/recipe',{name,components:_rcDraftItems});
+  if(!r||r.ok===false)return toast((r&&r.error)||'Hata',false);
+  const per=r.per_100||{};
+  toast(`${name} tarif olarak kaydedildi (${(per.calories_per_100||0)} kcal/100g)`);
+  cancelRecipeEdit();
+  _foodList=null;
+  loadRecipes();
+}
+function cancelRecipeEdit(){
+  _rcDraftItems=[];_rcEditId=null;
+  $('rc-draft-name').value='';
+  $('rc-save-btn').textContent='Tarifi Kaydet';
+  $('rc-cancel-btn').style.display='none';
+  renderRcDraftItems();
+}
+async function editRecipe(id){
+  if(!_foodList)_foodList=await API('/api/food-registry')||[];
+  const rf=_foodList.find(x=>x.id===id);if(!rf)return;
+  let comps=[];try{comps=JSON.parse(rf.recipe||'[]');}catch(e){}
+  _rcEditId=id;
+  $('rc-draft-name').value=rf.official_name||rf.name;
+  _rcDraftItems=comps.map(cp=>{
+    const food=_foodList.find(x=>(x.official_name||x.name)===cp.name);
+    return {food_id:food?food.id:null,food_name:cp.name,amount:cp.amount,unit:cp.unit||'g'};
+  });
+  $('rc-save-btn').textContent='Tarifi Güncelle';
+  $('rc-cancel-btn').style.display='';
+  renderRcDraftItems();
+}
+async function deleteRecipe(id,name){
+  confirm_('Tarif silinsin mi?',`"${name}" Besin DB'den kalıcı silinecek.`,async()=>{
+    await DEL('/api/food-registry/'+id);
+    _foodList=null;toast('Silindi');loadRecipes();
+  });
+}
+async function loadRecipes(){
+  _foodList=await API('/api/food-registry')||[];
+  const el=$('rc-saved-list');if(!el)return;
+  const recipes=_foodList.filter(f=>(f.category||'')==='Tarif'||/kar[ıi]ş[ıi]m/i.test(f.notes||''));
+  if(!recipes.length){el.innerHTML='<div class="list-empty">Henüz tarif yok</div>';return;}
+  el.innerHTML=recipes.map(rf=>{
+    let comps=[];try{comps=JSON.parse(rf.recipe||'[]');}catch(e){}
+    const nm=rf.official_name||rf.name;
+    const compTxt=comps.length?comps.map(c=>`${c.amount}${c.unit||'g'} ${c.name}`).join(' + '):'—';
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(167,139,250,.2);border-radius:9px;padding:9px 11px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <b style="font-size:.85rem;cursor:pointer" onclick="editRecipe(${rf.id})">🍳 ${escHtml(nm)}</b>
+        <span style="font-size:.68rem;color:var(--yellow)">${rf.calories_per_100||0}kcal/100g</span>
+        <span style="margin-left:auto;font-size:.7rem;color:#60a5fa;cursor:pointer" onclick="editRecipe(${rf.id})">Düzenle ✎</span>
+        <button class="del-btn" onclick="deleteRecipe(${rf.id},'${nm.replace(/'/g,"\`")}')">Sil</button>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${escHtml(compTxt)}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ═══ MEAL DB YÖNETİMİ (inline, Öğün Ekle içinde) ═══ */
