@@ -524,6 +524,15 @@ def normalize_meal_slots_all():
     n = 0
     for old, new in MEAL_SLOT_ALIASES.items():
         n += conn.execute("UPDATE meal_entries SET slot=? WHERE slot=?", (new, old)).rowcount
+    # "Meal 1" / "meal 1" / "MEAL 1" / "Öğün 1" -> "meal1" (boşluklu/büyük harf varyantlarını tek
+    # canonical'a çek - yoksa Öğün Sırası'nda "meal 1" ve "Meal 1" ayrı grup gözüküyordu).
+    for row in conn.execute("SELECT DISTINCT slot FROM meal_entries").fetchall():
+        s = row[0] or ''
+        m = re.match(r'^\s*(?:meal|öğün|ogun)\s*([1-9])\s*$', s, re.I)
+        if m:
+            canon = 'meal' + m.group(1)
+            if s != canon:
+                n += conn.execute("UPDATE meal_entries SET slot=? WHERE slot=?", (canon, s)).rowcount
     conn.commit()
     conn.close()
     if n:

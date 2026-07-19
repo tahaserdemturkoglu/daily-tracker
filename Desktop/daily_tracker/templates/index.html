@@ -3010,15 +3010,18 @@ const SLOT_DISPLAY={
 function normSlotKey(s){
   const k=String(s||'extra').toLowerCase().replace(/ı/g,'i').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ç/g,'c').replace(/ş/g,'s').replace(/ğ/g,'g').trim();
   if(/kahv|breakfast/.test(k)) return 'kahvalti';
-  if(/pre.meal|pre_meal|^pre$/.test(k)) return 'pre_meal';
-  if(/post.meal|post_meal|^post$/.test(k)) return 'post_meal';
   if(/pre.snack|pre_snack/.test(k)) return 'pre_snack';
   if(/post.snack|post_snack/.test(k)) return 'post_snack';
+  if(/pre.meal|pre_meal|^pre$/.test(k)) return 'pre_meal';
+  if(/post.meal|post_meal|^post$/.test(k)) return 'post_meal';
   if(/pre.workout|pre-workout/.test(k)) return 'pre_meal';
   if(/post.workout|post-workout/.test(k)) return 'post_meal';
   if(/ogl|ogle/.test(k)) return 'ogle';
   if(/aksam|akşam/.test(k)) return 'aksam';
-  return s.toLowerCase();
+  // "meal 1"/"meal1"/"öğün 1" -> tek canonical key (boşluklu ve boşuksuz ayrı grup olmasın)
+  const mn=k.match(/^(?:meal|ogun|meal ?)\s*([1-9])$/) || k.match(/^meal([1-9])$/);
+  if(mn) return 'meal'+mn[1];
+  return k.replace(/\s+/g,'');
 }
 const CANONICAL_MEAL_SLOTS=['kahvalti','meal1','meal2','meal3','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','aksam','ogle','gece','cheat_meal'];
 async function loadMealTitles(dateStr){
