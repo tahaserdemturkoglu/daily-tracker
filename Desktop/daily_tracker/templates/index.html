@@ -2130,6 +2130,9 @@ function ndRenderWeightChart(bm,weightGoal){
 
 function ndNormSlot(s){
   s=(s||'extra').toLowerCase().trim();
+  if(s==='meal 1')return'meal1';if(s==='meal 2')return'meal2';if(s==='meal 3')return'meal3';
+  if(s==='pre meal')return'pre_meal';if(s==='post meal')return'post_meal';
+  if(s==='pre snack')return'pre_snack';if(s==='post snack')return'post_snack';
   if(s==='breakfast'||s==='kahvaltı')return'kahvalti';
   if(s==='lunch'||s==='öğle'||s==='öğlen'||s==='oglen')return'ogle';
   if(s==='dinner'||s==='akşam')return'aksam';
@@ -2512,7 +2515,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
           const RED='#FF4D4D';
           countable++; totalItems++;
           return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(RED,.12)};border:1px solid ${ndHexA(RED,.5)};border-radius:8px;padding:12px 16px">
-            <span style="font-size:13px;font-weight:700;color:${RED}">⚠ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${RED};font-weight:800;letter-spacing:.03em">ÇİNKO GÜNÜ — BUGÜN ALINACAK</span>
+            <span style="font-size:13px;font-weight:700;color:${RED}">! ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${RED};font-weight:800;letter-spacing:.03em">Gün aşırı — bugün alınacak</span>
           </div>`;
         }
         if(!v && zinc && zinc.rest_today){
@@ -4264,7 +4267,7 @@ function ozpSuppPanelHtml(stacks){
             let meta=OZP_STATUS_META[it.status]||OZP_STATUS_META.pending;
             // Cinko gunu + henuz alinmadi -> kirmizi dikkat (normal 'Bekliyor' yerine)
             if(it.status==='pending' && typeof ND_ZINC_NAME!=='undefined' && it.name===ND_ZINC_NAME){
-              meta={label:'⚠ Çinko günü — bugün alınacak',color:'#FF4D4D'};
+              meta={label:'! Gün aşırı — bugün alınacak',color:'#FF4D4D'};
             }
             const lbl=it.status==='on_break'?`${meta.label} · ${breakLeftTxt(it.break_until)}`:meta.label;
             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-size:12px;border-bottom:1px solid var(--border)">
