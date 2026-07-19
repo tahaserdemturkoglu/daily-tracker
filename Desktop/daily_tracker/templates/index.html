@@ -2853,12 +2853,16 @@ function renderMealList(elId,meals,canDel,elOverride){
   function normSlot(s){
     s=(s||'extra').toLowerCase().trim();
     if(s==='breakfast'||s==='kahvaltı') return 'kahvalti';
-    if(s==='lunch') return 'ogle';
-    if(s==='dinner') return 'aksam';
+    if(s==='lunch'||s==='öğle'||s==='öğlen'||s==='oglen') return 'ogle';
+    if(s==='dinner'||s==='akşam') return 'aksam';
+    if(s==='atistirma'||s==='atıştırma'||s==='atıştırmalık'||s==='atistirmalik') return 'ara';
     if(s==='preworkout') return 'pre-workout';
     if(s==='postworkout'||s==='posworkout') return 'post-workout';
     if(s==='snack2') return 'snack2';
     if(s==='night') return 'gece';
+    // "meal 1"/"öğün 1" boşluklu varyantları -> mealN (grup bölünmesin)
+    const mn=s.match(/^(?:meal|öğün|ogun)\s*([1-9])$/);
+    if(mn) return 'meal'+mn[1];
     return s;
   }
   function slotTR(s){

@@ -1314,6 +1314,7 @@ def gather_day_snapshot(conn, date_str):
             'protein_g': round(sum(m['protein_g'] or 0 for m in meals)),
             'carbs_g': round(sum(m['carbs_g'] or 0 for m in meals)),
             'fat_g': round(sum(m['fat_g'] or 0 for m in meals)),
+            'fiber_g': round(sum((m['fiber_g'] if 'fiber_g' in m.keys() else 0) or 0 for m in meals), 1),
             'water_ml': int(nutrition['w'] or 0) if nutrition else 0,
             'ogunler': [
                 {'slot': m['slot'], 'title': m['title'], 'kcal': m['calories']}
@@ -2399,7 +2400,7 @@ def api_meal_from_food_registry():
     """Besin DB'den ürün seçerek loga ekle — makroları otomatik hesapla."""
     data = request.get_json(force=True) or {}
     d = data.get('date', operation_today())
-    slot = (data.get('slot') or '').strip()
+    slot = normalize_meal_slot(data.get('slot') or '')
     food_id = data.get('food_id')
     food_name = (data.get('food_name') or '').strip()
     amount = float(data.get('amount') or 100)
@@ -2469,7 +2470,7 @@ def api_meal_from_template(tid):
         conn.close()
         return jsonify({'ok': False, 'error': 'Şablon bulunamadı'}), 404
     tmpl = dict(tmpl)
-    use_slot = slot or tmpl.get('category') or tmpl.get('title') or 'extra'
+    use_slot = normalize_meal_slot(slot or tmpl.get('category') or tmpl.get('title') or 'extra')
     conn.execute("""
         INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,source)
         VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -6798,6 +6799,7 @@ def _meal_stack_calc_item(conn, item):
         'protein': round((food.get('protein_per_100') or 0) * ratio, 1),
         'carbs': round((food.get('carbs_per_100') or 0) * ratio, 1),
         'fat': round((food.get('fat_per_100') or 0) * ratio, 1),
+        'fiber': round((food.get('fiber_per_100') or 0) * ratio, 2),
     }
 
 @app.route('/api/meal-stacks', methods=['GET'])
@@ -6863,7 +6865,7 @@ def api_meal_stacks_quick_add(sid):
     """Stack'teki tum urunleri o gunun meal_entries'ine tek seferde ekle."""
     data = request.get_json(force=True) or {}
     d = data.get('date', operation_today())
-    slot = (data.get('slot') or '').strip()
+    slot = normalize_meal_slot(data.get('slot') or '')
     if not slot:
         return jsonify({'ok': False, 'error': 'slot gerekli'}), 400
     conn = get_db()
@@ -6879,9 +6881,9 @@ def api_meal_stacks_quick_add(sid):
             continue
         description = f"{calc['amount']} {calc['unit']} {calc['name']}"
         conn.execute("""
-            INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,source)
-            VALUES (?,?,?,?,?,?,?,?,?)
-        """, (d, slot, calc['name'], description, calc['kcal'], calc['protein'], calc['carbs'], calc['fat'], 'meal_stack'))
+            INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,source)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+        """, (d, slot, calc['name'], description, calc['kcal'], calc['protein'], calc['carbs'], calc['fat'], calc.get('fiber', 0), 'meal_stack'))
         added.append(calc)
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'date': d, 'slot': slot, 'stack_name': stack['name'], 'added': added})
