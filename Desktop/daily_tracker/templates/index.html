@@ -910,7 +910,16 @@ const API  = u => fetch(u, {cache:'no-store'}).then(r=>r.json()).catch(()=>({}))
 const POST = (u,d) => fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).catch(()=>({}));
 const DEL  = u => fetch(u,{method:'DELETE'}).then(r=>r.json()).catch(()=>({}));
 const PUT  = (u,d) => fetch(u,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).catch(()=>({}));
-const today = () => { const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+// "Bugun" = OPERASYON gunu (vardiya cutoff'u + sunucunun force_operation_date override'i),
+// takvim gunu degil. Bu const, global sozcuksel bag oldugu icin window.today atamasiyla
+// degistirilemiyordu; o yuzden eskiden fetch URL'lerinde takvim->op tarih ikamesi yapiliyordu.
+// O ikame ACIK gun navigasyonunu da (Ozet/Takvim/arsiv) sessizce baska gune cevirdigi icin
+// kaldirildi - dogru cozum kaynagi burada duzeltmek. Ayni kalip: L6898, L7185, L7374, L8253.
+const today = () => {
+  if(typeof window.operationToday==='function') return window.operationToday();
+  const d=new Date(); if(d.getHours()<6)d.setDate(d.getDate()-1);
+  return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+};
 /* Tıklama koruması — yanıt gelene kadar butonu kilitler, arka arkaya tıklamada kaydın tekrarlanmasını (2x su, 2x adım vs.) önler */
 function guardClick(ms=1500){
   const el=window.event&&window.event.currentTarget;
@@ -8187,8 +8196,6 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     return isoLocal(new Date());
   };
 
-  // Replace the original top-level today() when possible. It is declared with
-  // const in the base app, so URL rewriting below is the final safety net.
   try { window.today = window.operationToday; } catch(e) {}
 
   const nativeFetch = window.fetch.bind(window);
@@ -8199,19 +8206,23 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const op = window.operationToday();
     if(calendar === op) return input;
     let next = raw;
-    const encodedCalendar = encodeURIComponent(calendar);
-    const encodedOp = encodeURIComponent(op);
-    next = next.replace('/api/meals/' + calendar, '/api/meals/' + op);
-    next = next.replace('/api/meals/' + encodedCalendar, '/api/meals/' + encodedOp);
-    next = next.replace('/api/day/' + calendar, '/api/day/' + op);
-    next = next.replace('/api/day/' + encodedCalendar, '/api/day/' + encodedOp);
-    next = next.replace('date=' + calendar, 'date=' + op);
-    next = next.replace('date=' + encodedCalendar, 'date=' + encodedOp);
-    // /api/today ve /api/macro/today icin date param ekle
-    if(/\/api\/today(\?|$)/.test(next)) next = next.replace(/\/api\/today(\?.*)?$/, '/api/today?date=' + op);
-    if(/\/api\/macro\/today(\?|$)/.test(next)) next = next.replace(/\/api\/macro\/today(\?.*)?$/, '/api/macro/today?date=' + op);
-    if(/\/api\/vitamins\/today(\?|$)/.test(next)) next = next.replace(/\/api\/vitamins\/today(\?.*)?$/, '/api/vitamins/today?date=' + op);
-    if(/\/api\/meals\/today(\?|$)/.test(next)) next = next.replace(/\/api\/meals\/today(\?.*)?$/, '/api/meals/today?date=' + op);
+    // KALDIRILDI: takvim tarihini op-gune ceviren toptan ikame
+    //   next.replace('/api/meals/'+calendar, '/api/meals/'+op)   ve date=... esdegerleri.
+    // Amaci, kendi "bugun"unu yerel hesaplayan eski kodu yakalamakti; ama URL'den niyet
+    // okunamaz - ACIKCA o gune gitmek isteyen istekleri de (Ozet gun nav, Takvim gun
+    // detayi, 7-gun bar modali, tarih secici, arsiv) sessizce baska gune yonlendiriyordu.
+    // 2026-07-20'de birebir bu yasandi: /api/meals/2026-07-20 -> 19'a gidip "20 Temmuz
+    // dun ile ayni" gorunumu uretti. Kok cozum today()'i (L913) op-gun farkindasi yapmakti.
+    // Asagidaki ".../today" -> "?date=op" eklemeleri KALIR: onlar zaten acikca "bugun" der.
+    // Cagiran ZATEN bir date= verdiyse dokunma: o acik bir gun secimidir.
+    // (Bu kontrol olmadan '/api/today?date=2026-07-20' -> '?date=<op>' olarak eziliyordu;
+    //  Ozet Gunluk sekmesinin gun navigasyonu tam olarak bu ucu cagiriyor.)
+    if(!/[?&]date=/.test(next)){
+      next = next.replace(/\/api\/today(\?.*)?$/,           '/api/today?date=' + op);
+      next = next.replace(/\/api\/macro\/today(\?.*)?$/,    '/api/macro/today?date=' + op);
+      next = next.replace(/\/api\/vitamins\/today(\?.*)?$/, '/api/vitamins/today?date=' + op);
+      next = next.replace(/\/api\/meals\/today(\?.*)?$/,    '/api/meals/today?date=' + op);
+    }
     if(next === raw) return input;
     if(typeof input === 'string') return next;
     try { return new Request(next, input); } catch(e) { return next; }
