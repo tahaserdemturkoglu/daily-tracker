@@ -2366,34 +2366,58 @@ def api_vitamin_update(vid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+# Frontend'deki CANONICAL_MEAL_SLOTS (templates/index.html) ile AYNI sira ve kapsam.
+# Ikisi ayrisirsa "Ogun Ekle" listesi ile gruplama birbirini tutmaz.
 CANONICAL_SLOTS = [
-    ('TITLE-001', 'Kahvaltı',   1),
-    ('TITLE-002', 'Meal 1',     2),
-    ('TITLE-003', 'Pre Meal',   3),
-    ('TITLE-004', 'Pre Snack',  4),
-    ('TITLE-005', 'Post Meal',  5),
-    ('TITLE-006', 'Post Snack', 6),
-    ('TITLE-007', 'Snack',      7),
-    ('TITLE-008', 'Gece',       8),
+    ('TITLE-001', 'Kahvaltı',    1),
+    ('TITLE-002', 'Meal 1',      2),
+    ('TITLE-003', 'Meal 2',      3),
+    ('TITLE-004', 'Meal 3',      4),
+    ('TITLE-005', 'Pre Meal',    5),
+    ('TITLE-006', 'Pre Snack',   6),
+    ('TITLE-007', 'Post Meal',   7),
+    ('TITLE-008', 'Post Snack',  8),
+    ('TITLE-009', 'Snack',       9),
+    ('TITLE-010', 'Snack 2',    10),
+    ('TITLE-011', 'Akşam',      11),
+    ('TITLE-012', 'Öğle',       12),
+    ('TITLE-013', 'Gece',       13),
+    ('TITLE-014', 'Cheat Meal', 14),
 ]
 
 def seed_meal_titles():
-    """Canonical öğün slot listesini yükle — kirli kayıtları sil, canonical'i uygula."""
+    """Canonical öğün slot listesini yükle — kullanılmayan kirli kayıtları sil, canonical'i uygula.
+
+    DİKKAT — meal_titles.name UNIQUE. Bir başlığın adını doğrudan güncellemek, hedef ad o an
+    BAŞKA bir satırda duruyorsa IntegrityError fırlatır ve commit edilmediği için TÜM seed
+    (silme dahil) geri alınır. Prod'da tam olarak bu oluyordu: tablo 2026-06-30'dan beri
+    donmuştu, hem canonical isimler eskiydi hem 'lunch'/'pre_workout' artıkları silinemiyordu.
+    Çözüm: önce herkese geçici benzersiz ad ver, sonra gerçek adları uygula."""
     conn = get_db()
-    # Canonical title_id setini belirle
-    canonical_ids = {t[0] for t in CANONICAL_SLOTS}
-    # Canonical olmayan (kullanıcı eklediği kirli) kayıtları sil
-    conn.execute("DELETE FROM meal_titles WHERE title_id NOT IN ({})".format(
-        ','.join('?' for _ in canonical_ids)), list(canonical_ids))
-    # Eksik canonical'leri ekle / order_num'ı güncelle
+    canonical_ids   = [t[0] for t in CANONICAL_SLOTS]
+    canonical_names = [t[1] for t in CANONICAL_SLOTS]
+    ph  = ','.join('?' for _ in canonical_ids)
+    phn = ','.join('?' for _ in canonical_names)
+    # 1) Canonical olmayanları sil — AMA gerçekten kullanımda olan (meal_entries'te slot'u geçen)
+    #    kullanıcı başlığını koru, yoksa kişinin kendi eklediği başlık her deploy'da uçar.
+    #    İstisna: canonical bir adı gasp eden kopya satır, kullanımda olsa bile silinir —
+    #    yoksa 3. adımdaki UPDATE yine UNIQUE'e takılır ve seed baştan bozulur.
+    conn.execute(
+        "DELETE FROM meal_titles WHERE title_id NOT IN ({}) AND ("
+        "  name IN ({}) OR"
+        "  lower(replace(name,' ','_')) NOT IN (SELECT DISTINCT lower(slot) FROM meal_entries))"
+        .format(ph, phn), canonical_ids + canonical_names)
+    # 2) UNIQUE(name) çarpışmasını kır: canonical satırlara geçici, kesin benzersiz ad ver.
+    conn.execute(
+        "UPDATE meal_titles SET name='__seed__'||title_id WHERE title_id IN ({})".format(ph),
+        canonical_ids)
+    # 3) Artık hiçbir hedef ad meşgul değil — canonical ad/sırayı güvenle uygula.
     for tid, name, order in CANONICAL_SLOTS:
-        existing = conn.execute("SELECT id FROM meal_titles WHERE title_id=?", (tid,)).fetchone()
-        if existing:
-            conn.execute("UPDATE meal_titles SET name=?, order_num=? WHERE title_id=?", (name, order, tid))
-        else:
-            try:
-                conn.execute("INSERT INTO meal_titles (title_id,name,order_num) VALUES (?,?,?)", (tid, name, order))
-            except: pass
+        cur = conn.execute("UPDATE meal_titles SET name=?, order_num=? WHERE title_id=?",
+                           (name, order, tid))
+        if cur.rowcount == 0:
+            conn.execute("INSERT INTO meal_titles (title_id,name,order_num) VALUES (?,?,?)",
+                         (tid, name, order))
     conn.commit()
     conn.close()
 

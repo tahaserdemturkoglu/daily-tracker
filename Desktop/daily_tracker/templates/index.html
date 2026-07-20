@@ -2520,14 +2520,18 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
     const items=s.items||[];
     const explicitStackBreak=brokenStacks.has(s.name);
     const isWorkoutStack=/pre.?workout|post.?workout/i.test(s.name||'');
-    let taken=0,countable=0;
+    let taken=0,countable=0,onBreakCount=0;
     const rows=items.map(it=>{
       const onBreak=explicitStackBreak||brokenProducts.has(it.product_name);
       if(onBreak){
+        onBreakCount++;
         const bEnd=brokenProducts.has(it.product_name)?breakEnd['product:'+it.product_name]:breakEnd['stack:'+s.name];
         const BLU='#38BDF8';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(BLU,.1)};border:1px solid ${ndHexA(BLU,.4)};border-radius:8px;padding:12px 16px">
-          <span style="font-size:13px;font-weight:600;color:${BLU}">❄️ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${BLU};font-weight:600;text-align:right">Ara · ${breakLeftTxt(bEnd)}</span>
+        // "Dinlenme" satiri: notr zemin + renkli sol serit + tek satirlik rozet.
+        // (Blok rengi doldurmak 4-5 satir yan yana gelince alarm gibi gorunuyordu.)
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:${ND.bg};border:1px solid ${ND.border};border-left:3px solid ${ndHexA(BLU,.8)};border-radius:8px;padding:12px 16px">
+          <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:${ND.muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="margin-right:6px">❄️</span>${escHtml(it.product_name)}</span>
+          <span style="flex:none;white-space:nowrap;font-size:10px;color:${BLU};font-weight:700;background:${ndHexA(BLU,.12)};border:1px solid ${ndHexA(BLU,.32)};border-radius:999px;padding:3px 9px">Ara · ${breakLeftTxt(bEnd)}</span>
         </div>`;
       }
       const v=ndPickVit(it.product_name,s.name);
@@ -2535,8 +2539,10 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
       // Alinmadiysa "eksik" sayilmaz (sayaca girmez), acikca OFF DAY olarak isaretlenir.
       if(isOffDay && isWorkoutStack && !v){
         const RED='#FF4D4D';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(RED,.1)};border:1px solid ${ndHexA(RED,.42)};border-radius:8px;padding:12px 16px">
-          <span style="font-size:13px;font-weight:700;color:${RED}">! ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${RED};font-weight:800;letter-spacing:.04em">OFF DAY</span>
+        // Ayni "dinlenme" dili: notr zemin + kirmizi sol serit + kirmizi "!" + tek satir OFF DAY rozeti.
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:${ND.bg};border:1px solid ${ND.border};border-left:3px solid ${ndHexA(RED,.8)};border-radius:8px;padding:12px 16px">
+          <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:${ND.muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:${RED};font-weight:800;margin-right:7px">!</span>${escHtml(it.product_name)}</span>
+          <span style="flex:none;white-space:nowrap;font-size:10px;color:${RED};font-weight:800;letter-spacing:.06em;background:${ndHexA(RED,.12)};border:1px solid ${ndHexA(RED,.34)};border-radius:999px;padding:3px 9px">OFF DAY</span>
         </div>`;
       }
       if(it.product_name===ND_ZINC_NAME){
@@ -2587,7 +2593,10 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
     const c=groupColors[i%groupColors.length];
     // "tum urunler sayac disi -> ara veriliyor" sezgisi off-day'de yaniltir:
     // antrenman stack'i off gununde zaten beklenmiyor, bu bir 'ara' degil.
-    const stackOnBreak=items.length>0&&countable===0&&!(isOffDay&&isWorkoutStack);
+    // Ama GERCEKTEN hepsi ara kaydinda ise (onBreakCount===items.length) ara bilgisi daha
+    // spesifiktir -> off-day'i ezer (yoksa baslik "OFF DAY" derken satirlar "Ara" diyordu).
+    const allOnBreak=items.length>0&&onBreakCount===items.length;
+    const stackOnBreak=items.length>0&&countable===0&&(allOnBreak||!(isOffDay&&isWorkoutStack));
     const nameEsc=escHtml(s.name).replace(/'/g,"\\'");
     const full=countable>0&&taken===countable;
     let stackBreakUntil=null;
@@ -2601,9 +2610,9 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
     // Off gununde hic alinmamis antrenman stack'i: "0/4 eksik" degil, OFF DAY
     const offDayStack=isOffDay&&isWorkoutStack&&countable===0&&!stackOnBreak;
     const badge=stackOnBreak
-      ?`<span style="font-size:10px;color:#38BDF8;font-weight:700">❄️ ara · ${breakLeftTxt(stackBreakUntil)}</span>`
+      ?`<span style="font-size:9.5px;color:#38BDF8;font-weight:700;white-space:nowrap;background:${ndHexA('#38BDF8',.12)};border:1px solid ${ndHexA('#38BDF8',.32)};border-radius:999px;padding:2px 8px">❄️ ara · ${breakLeftTxt(stackBreakUntil)}</span>`
       :offDayStack
-      ?`<span style="font-size:10px;color:#FF4D4D;font-weight:800;letter-spacing:.04em">! OFF DAY</span>`
+      ?`<span style="font-size:9.5px;color:#FF4D4D;font-weight:800;letter-spacing:.06em;white-space:nowrap;background:${ndHexA('#FF4D4D',.12)};border:1px solid ${ndHexA('#FF4D4D',.34)};border-radius:999px;padding:2px 8px">! OFF DAY</span>`
       :`<span style="font-size:10px;color:${full?ND.whoop:ND.kcal}">${taken}/${countable}</span>`;
     const markBtn=(!full&&!stackOnBreak&&!offDayStack)?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`
       :(taken>0&&!stackOnBreak)?`<button onclick="event.stopPropagation();ndUnmarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.muted2};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">↩ Geri Al</button>`:'';
@@ -3048,6 +3057,7 @@ const SLOT_DISPLAY={
   aksam:'🌙 Akşam',          akşam:'🌙 Akşam', gece:'🌙 Gece',
   ogle:'🥗 Öğle',            öğle:'🥗 Öğle',
   cheat_meal:'🍰 Cheat Meal',
+  ara:'🍎 Ara Öğün',
   extra:'✨ Ekstra',
 };
 function normSlotKey(s){
@@ -3062,6 +3072,11 @@ function normSlotKey(s){
   if(/post.workout|post-workout/.test(k)) return 'post_meal';
   if(/ogl|ogle/.test(k)) return 'ogle';
   if(/aksam|akşam/.test(k)) return 'aksam';
+  // Eski yazimlar ayri grup acmasin: "snack1"/"snack 1" -> snack, "snack2"/"snack 2" -> snack2
+  if(/^snack ?1$/.test(k)) return 'snack';
+  if(/^snack ?2$/.test(k)) return 'snack2';
+  // "Cheat Meal" (bosluklu, meal_titles'tan gelen ad) -> cheat_meal; yoksa emojisiz kopya secenek acar
+  if(/^cheat.?meal$/.test(k)) return 'cheat_meal';
   // "meal 1"/"meal1"/"öğün 1" -> tek canonical key (boşluklu ve boşuksuz ayrı grup olmasın)
   const mn=k.match(/^(?:meal|ogun|meal ?)\s*([1-9])$/) || k.match(/^meal([1-9])$/);
   if(mn) return 'meal'+mn[1];
@@ -8143,18 +8158,31 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     return isoLocal(d);
   }
   window.operationToday = function(){ return window.__opDayServer || _opDayLocal(); };
-  (function syncOpDay(){
+  // Op-gunu SADECE sayfa acilisinda cekmek yetmez: cutoff saati gecince, /api/new-day
+  // ("gunaydin") sonrasi veya "hala ayaktayim" kilidi birakilinca sunucunun gunu degisir.
+  // Bayat __opDayServer, asagidaki URL yeniden-yazimini yanlis gune yonlendirir - bu yuzden
+  // sekmeye her donuldugunde ve periyodik olarak tazelenir.
+  const nativeFetchEarly = window.fetch.bind(window);   // patch'lenmemis fetch (asagida sarilacak)
+  window.refreshOpDay = function(){
     try{
-      fetch('/api/op-day',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
-        if(!d||!d.date) return;
-        const changed = d.date !== _opDayLocal();
-        window.__opDayServer = d.date;
-        document.documentElement.dataset.operationDate = d.date;
-        // Yerel hesapla farkliysa acik sayfayi tazele (yanlis gunun verisi ekranda kalmasin)
-        if(changed && typeof loadDashboard==='function') { try{ loadDashboard(); }catch(e){} }
-      }).catch(()=>{});
-    }catch(e){}
-  })();
+      return nativeFetchEarly('/api/op-day',{credentials:'same-origin',cache:'no-store'})
+        .then(r=>r.json()).then(d=>{
+          if(!d||!d.date) return null;
+          const prev = window.__opDayServer;
+          window.__opDayServer = d.date;
+          document.documentElement.dataset.operationDate = d.date;
+          // Ilk yukleme: yerel hesapla farkliysa tazele. Sonraki senkronlar: gun DEGISTIYSE tazele.
+          const changed = (prev === null) ? (d.date !== _opDayLocal()) : (prev !== d.date);
+          if(changed && typeof loadDashboard==='function'){ try{ loadDashboard(); }catch(e){} }
+          return d.date;
+        }).catch(()=>null);
+    }catch(e){ return Promise.resolve(null); }
+  };
+  window.refreshOpDay();
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) window.refreshOpDay();
+  });
+  setInterval(function(){ if(!document.hidden) window.refreshOpDay(); }, 5*60*1000);
   window.calendarToday = function(){
     return isoLocal(new Date());
   };
