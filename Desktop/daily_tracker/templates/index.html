@@ -938,7 +938,9 @@ function toggleTheme(){const h=document.documentElement,themes=['dark','classic'
 /* SETTINGS */
 const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight_goal:0,steps:10000};
 // TEK KAYNAK — öğün sırası buradan yönetilir
-const G_SLOT_ORDER=['kahvalti','kahvaltı','snack','meal1','pre_meal','snack2','pre_snack','post_meal','post_snack','meal2','meal3','aksam','akşam','gece','ara','ogle','öğle','cheat_meal','extra'];
+// Varsayilan kronolojik sira (kullanici "Ogun Sirasi"ndan kendi sirasini kaydederse O onceliklidir).
+// post_snack artik meal2/meal3'ten SONRA - gunun son ara ogunu.
+const G_SLOT_ORDER=['kahvalti','kahvaltı','snack','snack2','pre_meal','pre_snack','meal1','ogle','öğle','meal2','meal3','aksam','akşam','post_meal','post_snack','gece','ara','cheat_meal','extra'];
 function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
 // Karb cycle plan — DB'den yuklenir, localStorage sadece fallback
 let CYCLE_PLAN={};
@@ -2161,7 +2163,20 @@ function ndSlotColor(slot,idx){return ND_SLOT_COLOR[slot]||['#2DD4BF','#38BDF8',
 function ndGroupMeals(meals){
   const groups={};
   meals.forEach(m=>{const k=ndNormSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
-  const order=[...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups).filter(s=>!G_SLOT_ORDER.includes(s))];
+  // Kullanicinin "Ogun Sirasi"ndan kaydettigi sira (display_order) ONCELIKLIDIR;
+  // kaydedilmemis slotlar G_SLOT_ORDER'daki varsayilan kronolojik siraya duser.
+  const savedOrd=(slot)=>{
+    const v=groups[slot].map(m=>(m.display_order==null?99:m.display_order)).filter(x=>x<99);
+    return v.length?Math.min(...v):null;
+  };
+  const order=Object.keys(groups).sort((a,b)=>{
+    const da=savedOrd(a), db=savedOrd(b);
+    if(da!=null&&db!=null) return da-db;
+    if(da!=null) return -1;
+    if(db!=null) return 1;
+    const ia=G_SLOT_ORDER.indexOf(a), ib=G_SLOT_ORDER.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib);
+  });
   return order.map((slot,i)=>{
     const rows=groups[slot];
     const tot=rows.reduce((a,m)=>({cal:a.cal+(m.calories||0),p:a.p+(m.protein_g||0),k:a.k+(m.carbs_g||0),y:a.y+(m.fat_g||0)}),{cal:0,p:0,k:0,y:0});
