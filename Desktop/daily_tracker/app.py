@@ -104,15 +104,17 @@ def operation_cutoff_hour(now=None):
 
 def operation_date(now=None):
     """Vardiyaya gore Taha'nin operasyon/log gununu hesaplar. Istanbul saatiyle calisir.
-    force_operation_date (günaydın override) sadece gerçek takvim günüyle eşleştiği sürece
-    geçerlidir - ertesi gün otomatik temizlenir, yoksa sonsuza dek o günde kilitli kalırdı."""
+    force_operation_date override'i iki yonu de kapsar:
+      * BUGUN  -> "gunaydin" (cutoff'tan once erken uyanma, gun one alinir)
+      * DUN    -> "hala ayaktayim" (cutoff gecti ama uyunmadi, gun devam eder)
+    Daha eski bir tarihe kilitlenmez - bayat override otomatik temizlenir."""
     try:
         conn = sqlite3.connect(DB_PATH)
         row = conn.execute("SELECT value FROM user_settings WHERE key='force_operation_date'").fetchone()
         if row and row[0]:
             override = date.fromisoformat(row[0])
             real_today = (now or now_istanbul()).date()
-            if override == real_today:
+            if override in (real_today, real_today - timedelta(days=1)):
                 conn.close()
                 return override
             conn.execute("DELETE FROM user_settings WHERE key='force_operation_date'")
@@ -1933,6 +1935,30 @@ def get_shift_templates():
     return [dict(t) for t in DEFAULT_SHIFT_TEMPLATES]
 
 
+@app.route('/api/op-day', methods=['GET'])
+def api_op_day():
+    """Sunucunun operasyon gunu (force_operation_date dahil). Frontend kendi vardiya
+    hesabini yapmak yerine bunu tek dogruluk kaynagi olarak kullanir."""
+    return jsonify({'date': operation_today(), 'calendar': now_istanbul().date().isoformat()})
+
+@app.route('/api/op-day/hold', methods=['POST'])
+def api_op_day_hold():
+    """'Hala ayaktayim' - cutoff gectiyse gunu DUNDE tutar (uyumadan gun donmesin).
+    'gunaydin' veya /api/op-day/release bunu birakir; 1 gunden eski override otomatik dusualr."""
+    y = (now_istanbul().date() - timedelta(days=1)).isoformat()
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('force_operation_date', ?)", (y,))
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': y})
+
+@app.route('/api/op-day/release', methods=['POST'])
+def api_op_day_release():
+    """Gun kilidini birak - normal vardiya hesabina don (yeni gun)."""
+    conn = get_db()
+    conn.execute("DELETE FROM user_settings WHERE key='force_operation_date'")
+    conn.commit(); conn.close()
+    return jsonify({'ok': True, 'date': operation_today()})
+
 def tg_gunaydin_reply(raw, now=None):
     """Telegram'a 'gunaydin' yazilirsa ve saat henuz cutoff'tan ONCEyse (erken uyanma),
     operasyon gununu bugunun takvim gunune zorlar - sayfa sifirlanir, yeni gun baslar.
@@ -1944,9 +1970,18 @@ def tg_gunaydin_reply(raw, now=None):
     if 'gunaydin' not in norm and 'yeni gune basla' not in norm:
         return {'reply': '', 'reset': False}
     now = now or now_istanbul()
-    if now.hour >= operation_cutoff_hour(now):
-        return {'reply': '', 'reset': False}  # cutoff gecti, zaten yeni gun - AI normal selamlasir
     today_cal = now.date().isoformat()
+    if now.hour >= operation_cutoff_hour(now):
+        # cutoff gecti: normalde zaten yeni gun. AMA "hala ayaktayim" kilidi (dun) varsa
+        # gunaydin onu BIRAKMALI - yoksa kullanici dunde takili kalir.
+        conn = get_db()
+        cur = conn.execute("SELECT value FROM user_settings WHERE key='force_operation_date'").fetchone()
+        if cur and cur[0] and cur[0] != today_cal:
+            conn.execute("DELETE FROM user_settings WHERE key='force_operation_date'")
+            conn.commit(); conn.close()
+            return {'reply': f"Günaydın! ☀️ Yeni gün başladı ({today_cal}) — dünün kaydı kapandı.", 'reset': True}
+        conn.close()
+        return {'reply': '', 'reset': False}  # cutoff gecti, zaten yeni gun - AI normal selamlasir
     conn = get_db()
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('force_operation_date', ?)", (today_cal,))
     conn.commit(); conn.close()

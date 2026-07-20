@@ -1955,13 +1955,15 @@ function ndHeroHtml(t,cal,prot,carb,fat,wml,steps,fiber,fiberSrc){
   const barBg=over?kCol:`linear-gradient(90deg,${ND.ok},${ND.kcal})`;
   const mini=(label,val,mx,color)=>{
     const p=Math.round(val/(mx||1)*100);
-    const over=p>=100;
-    const hard=p>OVER_HARD;
-    const wc=hard?ND.danger:ND.kcal;  // hafif asim amber, gercek asim kirmizi
-    return `<div style="background:${over?ndHexA(wc,.06):ND.bg};border:1px solid ${over?ndHexA(wc,hard?.45:.32):ND.border};border-radius:10px;padding:10px 12px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:${over?wc:ND.muted}"><span>${label}${hard?' ⚠':over?' ·':''}</span><span style="${over?'font-weight:700':''}">${p}%</span></div>
-      <div style="font-size:17px;font-weight:600;margin:4px 0 8px;color:${over?wc:ND.text}">${Math.round(val)}<span style="font-size:12px;color:${ND.muted}">/${Math.round(mx)}g</span></div>
-      <div style="height:4px;background:${ND.border};border-radius:2px"><div style="height:100%;width:${Math.min(100,p)}%;background:${over?wc:color};border-radius:2px"></div></div>
+    // %95-105 = HEDEFTE (yesil ✓, olumlu) · %105-120 hafif asim (amber) · >%120 gercek asim (kirmizi)
+    const hard=p>OVER_HARD, over=p>105, onTarget=p>=95&&p<=105;
+    const col=hard?ND.danger:over?ND.kcal:onTarget?ND.ok:color;
+    const hi=hard||over||onTarget;   // kutuyu vurgula
+    const mark=hard?' ⚠':over?' ·':onTarget?' ✓':'';
+    return `<div style="background:${hi?ndHexA(col,.06):ND.bg};border:1px solid ${hi?ndHexA(col,hard?.45:.3):ND.border};border-radius:10px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:${hi?col:ND.muted}"><span>${label}${mark}</span><span style="${hi?'font-weight:700':''}">${p}%</span></div>
+      <div style="font-size:17px;font-weight:600;margin:4px 0 8px;color:${hi?col:ND.text}">${Math.round(val)}<span style="font-size:12px;color:${ND.muted}">/${Math.round(mx)}g</span></div>
+      <div style="height:4px;background:${ND.border};border-radius:2px"><div style="height:100%;width:${Math.min(100,p)}%;background:${hi?col:color};border-radius:2px"></div></div>
     </div>`;
   };
   const waterSegs=Math.max(1,Math.round((t.water||3000)/500));
@@ -2014,15 +2016,18 @@ function ndWeekChartHtml(week7,t){
   const bars=week7.map(e=>{
     const isToday=e.date===tstr;
     const h=Math.max(2,Math.round(e.calories/maxCal*100));
-    const over=e.calories>t.cal;
-    const barColor=isToday?(over?ND.danger:ND.ok):(over?ndHexA(ND.danger,.55):'#2A3348');
+    const ratio=e.calories/(t.cal||1);
+    const over=ratio>1.05;                       // %5 tolerans - tam hedef "asim" sayilmasin
+    // Ferah palet: hedefte turkuaz, hafif asim amber, gercek asim mercan (camurlu kirmizi yerine)
+    const base=ratio>1.2?'#FF7A5C':over?'#FFB020':'#2DD4BF';
+    const barColor=`linear-gradient(180deg,${base},${ndHexA(base,.45)})`;
     const dt=new Date(e.date+'T12:00:00');
     const dowLbl=isToday?'Bgn':dt.toLocaleDateString('tr-TR',{weekday:'short'}).replace('.','').slice(0,3);
-    const lblColor=isToday?(over?ND.danger:ND.text):ND.muted;
+    const lblColor=isToday?base:ND.muted;
     const dateLbl=dt.getDate()+' '+dt.toLocaleDateString('tr-TR',{month:'short'}).toUpperCase().replace('.','');
     const durum=over?`<span style="color:${ND.danger}">⚠ +${Math.round(e.calories-t.cal).toLocaleString('tr-TR')} aşım</span>`:`<span style="color:${ND.whoop}">✓ hedefte</span>`;
     return `<div class="nd-daybar" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:6px;position:relative;cursor:pointer" onclick="ndOpenDayModal('${e.date}')">
-      <div style="background:${barColor};border-radius:5px 5px 2px 2px;height:${h}%"></div>
+      <div style="background:${barColor};border-radius:6px 6px 3px 3px;height:${h}%;opacity:${isToday?1:.82};${isToday?`box-shadow:0 0 14px -2px ${ndHexA(base,.55)}`:''};transition:opacity .15s"></div>
       <div style="text-align:center;font-size:11px;color:${lblColor};font-weight:${isToday?700:400}">${dowLbl}${isToday&&over?' ⚠':''}</div>
       <div class="nd-tooltip" style="position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);background:${ND.card};border:1px solid #2A3348;border-radius:10px;padding:10px 12px;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;z-index:5;transition:opacity .12s">
         <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:${ND.muted2};margin-bottom:5px">${dateLbl}</div>
@@ -8083,11 +8088,27 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadDashbo
     const block = Math.floor(days / 14) % 2;
     return block === 0 ? {name:'06:00-15:00', cutoff:3} : {name:'21:00-06:00', cutoff:12};
   };
-  window.operationToday = function(){
+  // Sunucunun operasyon gunu TEK DOGRULUK KAYNAGI (force_operation_date / "hala ayaktayim"
+  // kilidini frontend kendi vardiya hesabiyla bilemez). Gelene kadar yerel hesap fallback.
+  window.__opDayServer = null;
+  function _opDayLocal(){
     const d = new Date();
     if(d.getHours() < shiftCutoff(d)) d.setDate(d.getDate()-1);
     return isoLocal(d);
-  };
+  }
+  window.operationToday = function(){ return window.__opDayServer || _opDayLocal(); };
+  (function syncOpDay(){
+    try{
+      fetch('/api/op-day',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
+        if(!d||!d.date) return;
+        const changed = d.date !== _opDayLocal();
+        window.__opDayServer = d.date;
+        document.documentElement.dataset.operationDate = d.date;
+        // Yerel hesapla farkliysa acik sayfayi tazele (yanlis gunun verisi ekranda kalmasin)
+        if(changed && typeof loadDashboard==='function') { try{ loadDashboard(); }catch(e){} }
+      }).catch(()=>{});
+    }catch(e){}
+  })();
   window.calendarToday = function(){
     return isoLocal(new Date());
   };
