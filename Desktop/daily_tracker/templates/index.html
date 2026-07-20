@@ -2129,7 +2129,7 @@ function ndRenderWeightChart(bm,weightGoal){
 }
 
 function ndNormSlot(s){
-  s=(s||'extra').toLowerCase().trim();
+  s=(s||'extra').replace(/^[^\p{L}\p{N}]+/u,'').toLowerCase().trim();  // bastaki emoji/simge
   if(s==='meal 1')return'meal1';if(s==='meal 2')return'meal2';if(s==='meal 3')return'meal3';
   if(s==='pre meal')return'pre_meal';if(s==='post meal')return'post_meal';
   if(s==='pre snack')return'pre_snack';if(s==='post snack')return'post_snack';
@@ -3014,7 +3014,8 @@ const SLOT_DISPLAY={
   extra:'✨ Ekstra',
 };
 function normSlotKey(s){
-  const k=String(s||'extra').toLowerCase().replace(/ı/g,'i').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ç/g,'c').replace(/ş/g,'s').replace(/ğ/g,'g').trim();
+  // bastaki emoji/simgeleri at ("🍽️ Meal 1" -> "meal 1") - aksi halde ayri grup acar
+  const k=String(s||'extra').replace(/^[^\p{L}\p{N}]+/u,'').toLowerCase().replace(/ı/g,'i').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ç/g,'c').replace(/ş/g,'s').replace(/ğ/g,'g').trim();
   if(/kahv|breakfast/.test(k)) return 'kahvalti';
   if(/pre.snack|pre_snack/.test(k)) return 'pre_snack';
   if(/post.snack|post_snack/.test(k)) return 'post_snack';
@@ -3732,8 +3733,11 @@ function renderMealOrderList(){
   window.molDragEnd=()=>{_dragIdx=null;};
 }
 function addToMealGroup(key,label){
+  // Mevcut gruba ekliyoruz: SADECE slot seçilir. "Yeni Başlık" kutusuna etiketi YAZMA -
+  // etiket emojili ("🍽️ Meal 1") ve getMealSlot() yeni başlığı öncelediği için öğün
+  // "🍽️ Meal 1" adlı AYRI bir slot'a düşüyordu (aynı öğün iki panel olarak görünüyordu).
   if($('nu-slot'))$('nu-slot').value=key;
-  if($('nu-slot-new'))$('nu-slot-new').value=label;
+  if($('nu-slot-new'))$('nu-slot-new').value='';
   setMealMode('db');
   $('meal-add-card')?.scrollIntoView({behavior:'smooth',block:'start'});
 }

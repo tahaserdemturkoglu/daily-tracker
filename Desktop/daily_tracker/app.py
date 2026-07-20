@@ -514,8 +514,14 @@ MEAL_SLOT_ALIASES = {
 }
 
 def normalize_meal_slot(slot):
-    s = (slot or 'extra').strip().lower()
-    return MEAL_SLOT_ALIASES.get(s, s)
+    # Bastaki emoji/simgeleri at ("🍽️ Meal 1" -> "meal 1") - UI etiketleri emojili geldiginde
+    # ayri slot olusturup ayni ogunu iki panel yapiyordu.
+    s = re.sub(r'^\W+', '', (slot or 'extra').strip(), flags=re.UNICODE).strip().lower() or 'extra'
+    s = MEAL_SLOT_ALIASES.get(s, s)
+    m = re.match(r'^(?:meal|öğün|ogun)\s*([1-9])$', s)
+    if m:
+        return 'meal' + m.group(1)
+    return s
 
 def normalize_meal_slots_all():
     """Tarihi meal_entries kayitlarindaki slot yazim varyantlarini kanonik isme cek
@@ -528,11 +534,9 @@ def normalize_meal_slots_all():
     # canonical'a çek - yoksa Öğün Sırası'nda "meal 1" ve "Meal 1" ayrı grup gözüküyordu).
     for row in conn.execute("SELECT DISTINCT slot FROM meal_entries").fetchall():
         s = row[0] or ''
-        m = re.match(r'^\s*(?:meal|öğün|ogun)\s*([1-9])\s*$', s, re.I)
-        if m:
-            canon = 'meal' + m.group(1)
-            if s != canon:
-                n += conn.execute("UPDATE meal_entries SET slot=? WHERE slot=?", (canon, s)).rowcount
+        canon = normalize_meal_slot(s)
+        if canon and s != canon:
+            n += conn.execute("UPDATE meal_entries SET slot=? WHERE slot=?", (canon, s)).rowcount
     conn.commit()
     conn.close()
     if n:
