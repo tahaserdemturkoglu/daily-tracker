@@ -3107,9 +3107,11 @@ async function foodSearch(q){
   grid.innerHTML=matches.map(f=>{
     const isRecipe=(f.category||'')==='Tarif'||/karışım|karisim/i.test(f.notes||'');
     const recipeBadge=isRecipe?` <span title="${escHtml(f.notes||'')}" style="font-size:.58rem;font-weight:700;color:#a78bfa;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.35);padding:1px 5px;border-radius:5px;vertical-align:middle;white-space:nowrap">🍳 tarif</span>`:'';
+    // Degerler etiketten degil, genel referanstan geliyorsa acikca isaretle
+    const estBadge=f.estimated?` <span title="Bu ürünün değerleri etiketten değil, genel referans değerlerinden alındı — yaklaşıktır. Etiketi varsa güncelle." style="font-size:.58rem;font-weight:700;color:#F5B23A;background:rgba(245,178,58,.14);border:1px solid rgba(245,178,58,.35);padding:1px 5px;border-radius:5px;vertical-align:middle;white-space:nowrap">≈ tahmini</span>`:'';
     return `<div onclick="selectFood(${f.id},'${(f.official_name||f.name).replace(/'/g,"\`")}')" style="cursor:pointer;background:rgba(255,255,255,.04);border:1px solid ${isRecipe?'rgba(167,139,250,.3)':'rgba(255,255,255,.08)'};border-radius:10px;padding:10px;transition:.15s" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:start">
-      <b style="font-size:.82rem;line-height:1.25">${f.official_name||f.name}${recipeBadge}</b>
+      <b style="font-size:.82rem;line-height:1.25">${f.official_name||f.name}${recipeBadge}${estBadge}</b>
       <span style="color:var(--yellow);font-size:.72rem;white-space:nowrap;flex-shrink:0">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span>
     </div>
     <div style="font-size:.72rem;margin-top:5px;display:flex;gap:6px">
@@ -3485,7 +3487,7 @@ async function loadMealDbMgmtList(){
   $('nu-dbmgmt-count').textContent=`Besin DB — ${items.length} ürün`;
   if(!items.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
   el.innerHTML=items.map(f=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:5px;background:rgba(255,255,255,.04);border-radius:8px;font-size:.8rem">
-    <span style="flex:2;font-weight:700" id="fdb-name-${f.id}">${f.name}${f.category?` <span style="color:var(--muted);font-weight:400;font-size:.7rem">· ${f.category}</span>`:''}</span>
+    <span style="flex:2;font-weight:700" id="fdb-name-${f.id}">${f.name}${f.category?` <span style="color:var(--muted);font-weight:400;font-size:.7rem">· ${f.category}</span>`:''}${f.estimated?` <span title="Değerler etiketten değil, genel referanstan — yaklaşık. Etiketi varsa düzelt." style="color:#F5B23A;font-weight:700;font-size:.65rem">≈ tahmini</span>`:''}</span>
     <span style="color:var(--yellow)">${f.calories_per_100||0} kcal</span>
     <span style="color:var(--green)">P${f.protein_per_100||0}</span>
     <span style="color:var(--blue)">K${f.carbs_per_100||0}</span>
@@ -5233,9 +5235,19 @@ function aicRenderPage(){
   if(AIC_FILTER==='full') AIC_FILTER='all'; // eski 3'lu filtreden kalan secim
   const filters=[['all','Tümü'],['partial','Eksik veri']].map(([k,l])=>`<button class="aic-tab" onclick="aicSetFilter('${k}')" style="${tabBtn(AIC_FILTER===k)}">${l}</button>`).join('');
   // görünür kartlar
-  let cardsHtml='', visCount=0;
+  let cardsHtml='', visCount=0, dayHint='';
   if(AIC_PERIOD==='day'){
     const sel=AIC_SEL?filtered.find(n=>n.date===AIC_SEL):filtered[0];
+    // Gunluk gozlem gun BITTIKTEN sonra uretilir; bugunun notu yoksa gosterilen kart
+    // dunun/onceki gunun notudur - "bugun" sanilmasin diye acikca yaz.
+    if(sel && !AIC_SEL && sel.date!==todayStr){
+      const dl=new Date(sel.date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long'});
+      const tl=new Date(todayStr+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long'});
+      dayHint=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:${calHexA(AIC_C.warn,.1)};border:1px solid ${calHexA(AIC_C.warn,.3)};border-radius:12px;padding:10px 14px;margin-bottom:12px">
+        <span style="font-size:12.5px;color:var(--text)">📌 Bugünün (<b>${tl}</b>) gözlemi henüz oluşmadı — gün bitince yazılır. Aşağıdaki <b>${dl}</b> gözlemidir.</span>
+        <button class="btn btn-sm" onclick="aicGenerate('${todayStr}')">Bugünü şimdi oluştur</button>
+      </div>`;
+    }
     if(sel){ const idx=AIC_NOTES.indexOf(sel); cardsHtml=aicCardHtml(sel,AIC_NOTES[idx+1],true); visCount=1; }
     else cardsHtml=`<div style="text-align:center;padding:40px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:16px">Bu filtrede gösterilecek gözlem yok.</div>`;
   } else {
@@ -5265,6 +5277,7 @@ function aicRenderPage(){
       <div style="display:inline-flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:4px">${filters}</div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px">${backBtn}<span style="font-size:12.5px;color:var(--muted)">${visCount} gözlem</span></div>
+    ${dayHint}
     <div style="display:flex;flex-direction:column;gap:16px">${cardsHtml}</div>
     <div class="aic-card" style="margin-top:20px;border:1px solid var(--border);border-radius:14px;padding:14px 16px">
       <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="aicToggleFacts()">

@@ -6678,7 +6678,9 @@ def ensure_food_registry():
                         ('product_id',"TEXT DEFAULT ''"),('official_name',"TEXT DEFAULT ''"),
                         ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''"),
                         ('category',"TEXT DEFAULT ''"),('fiber_per_100','REAL DEFAULT 0'),
-                        ('recipe',"TEXT DEFAULT ''")]:
+                        ('recipe',"TEXT DEFAULT ''"),
+                        # 1 = degerler etiketten DEGIL, genel referans/tahmin (guvenilirlik isareti)
+                        ('estimated','INTEGER DEFAULT 0')]:
         if col not in cols:
             try: conn.execute(f"ALTER TABLE food_registry ADD COLUMN {col} {defval}")
             except: pass
@@ -6701,8 +6703,8 @@ def api_food_registry_add():
         if not data.get('name','').strip():
             return jsonify({'error':'name required'}), 400
         conn = get_db()
-        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category',''),data.get('recipe','')))
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe,estimated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category',''),data.get('recipe',''),1 if data.get('estimated') else 0))
         conn.commit()
         new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
@@ -6801,7 +6803,7 @@ def api_food_registry_recipe():
 def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
-    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','unit','serving_size','serving_unit','notes','aliases','category','recipe']
+    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','unit','serving_size','serving_unit','notes','aliases','category','recipe','estimated']
     sent = {k: data[k] for k in fields if k in data}
     if not sent:
         return jsonify({'ok': False, 'error': 'Güncellenecek alan yok'}), 400
