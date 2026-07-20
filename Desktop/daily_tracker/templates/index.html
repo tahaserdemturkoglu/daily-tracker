@@ -2492,7 +2492,9 @@ function ndToggleSuppStack(name,idx){
   if(body) body.style.display=open?'none':'flex';
   if(arr) arr.textContent=open?'▸':'▾';
 }
-function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
+function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
+  // Off gununde (Off/Off1/Off2) antrenman yok -> pre/post-workout stack'i beklenmez.
+  const isOffDay=/^off/i.test(String(todayType||'').trim());
   // Eski "canli" tasarim geri getirildi (kullanici istegi): akordiyon yok, her urun her
   // zaman kendi cerceveli kutusunda, ✓/○ + doz sagda, renkli buyuk-harf stack basliklari.
   // Break (ara veriliyor) destegi korunur: ara verilen satirlar soluk ⏸, sayaca girmez.
@@ -2517,6 +2519,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
   const groups=stacks.map((s,i)=>{
     const items=s.items||[];
     const explicitStackBreak=brokenStacks.has(s.name);
+    const isWorkoutStack=/pre.?workout|post.?workout/i.test(s.name||'');
     let taken=0,countable=0;
     const rows=items.map(it=>{
       const onBreak=explicitStackBreak||brokenProducts.has(it.product_name);
@@ -2528,6 +2531,14 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
         </div>`;
       }
       const v=ndPickVit(it.product_name,s.name);
+      // OFF DAY: antrenman olmadigi icin pre/post-workout stack'i beklenmez.
+      // Alinmadiysa "eksik" sayilmaz (sayaca girmez), acikca OFF DAY olarak isaretlenir.
+      if(isOffDay && isWorkoutStack && !v){
+        const RED='#FF4D4D';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(RED,.1)};border:1px solid ${ndHexA(RED,.42)};border-radius:8px;padding:12px 16px">
+          <span style="font-size:13px;font-weight:700;color:${RED}">! ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${RED};font-weight:800;letter-spacing:.04em">OFF DAY</span>
+        </div>`;
+      }
       if(it.product_name===ND_ZINC_NAME){
         // Cinko gun takibi (Pzt/Car/Cum):
         //  - cinko gunu + HENUZ ALINMADI -> KIRMIZI "bugun alinacak" (kacirmamasi icin dikkat)
@@ -2574,7 +2585,9 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
       </div>`;
     }).join('');
     const c=groupColors[i%groupColors.length];
-    const stackOnBreak=items.length>0&&countable===0;
+    // "tum urunler sayac disi -> ara veriliyor" sezgisi off-day'de yaniltir:
+    // antrenman stack'i off gununde zaten beklenmiyor, bu bir 'ara' degil.
+    const stackOnBreak=items.length>0&&countable===0&&!(isOffDay&&isWorkoutStack);
     const nameEsc=escHtml(s.name).replace(/'/g,"\\'");
     const full=countable>0&&taken===countable;
     let stackBreakUntil=null;
@@ -2585,10 +2598,14 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc){
         stackBreakUntil=ends.length&&ends.every(e=>e)?ends.slice().sort().pop():null;
       }
     }
+    // Off gununde hic alinmamis antrenman stack'i: "0/4 eksik" degil, OFF DAY
+    const offDayStack=isOffDay&&isWorkoutStack&&countable===0&&!stackOnBreak;
     const badge=stackOnBreak
       ?`<span style="font-size:10px;color:#38BDF8;font-weight:700">❄️ ara · ${breakLeftTxt(stackBreakUntil)}</span>`
+      :offDayStack
+      ?`<span style="font-size:10px;color:#FF4D4D;font-weight:800;letter-spacing:.04em">! OFF DAY</span>`
       :`<span style="font-size:10px;color:${full?ND.whoop:ND.kcal}">${taken}/${countable}</span>`;
-    const markBtn=(!full&&!stackOnBreak)?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`
+    const markBtn=(!full&&!stackOnBreak&&!offDayStack)?`<button onclick="event.stopPropagation();ndMarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">✓ Tümünü İşaretle</button>`
       :(taken>0&&!stackOnBreak)?`<button onclick="event.stopPropagation();ndUnmarkStack('${nameEsc}')" style="margin-top:10px;background:#161B28;color:${ND.muted2};border:1px solid ${ND.border2};font-family:inherit;font-size:10.5px;font-weight:600;padding:5px 10px;border-radius:7px;cursor:pointer">↩ Geri Al</button>`:'';
     const isOpen=ND_SUPP_OPEN[s.name]!==false;   // varsayilan acik; kullanici kapatinca hatirlanir
     return `<div style="background:#0F131C;border:1px solid ${ndHexA(c,.3)};border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.28)">
@@ -2730,7 +2747,7 @@ function renderNewDashboard(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start">
         ${ndMealLogHtml(groups)}
-        ${ndSuppSidebarHtml(stacks,d.vitamins||[],breaks||[],zinc)}
+        ${ndSuppSidebarHtml(stacks,d.vitamins||[],breaks||[],zinc,todayType)}
       </div>
     </div>`;
   const weightGoal=Number(t.weight_goal)||0;
