@@ -198,7 +198,7 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
 .meal-item:last-child{border-bottom:none}
 .meal-item:hover{background:rgba(255,255,255,.03)}
 .meal-item-head{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.meal-name{font-weight:600;font-size:.9rem;color:#eef3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.meal-name{font-weight:600;font-size:.9rem;color:#eef3ff;flex:1;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meal-desc{display:none}
 .meal-gram{font-size:.78em;color:var(--teal);font-weight:700;margin-right:4px;opacity:.85}
 .meal-macro-row{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;flex-shrink:0}
@@ -2353,7 +2353,7 @@ function ndRecipeRows(rf,parentMeal){
     const kcal=f?Math.round((f.calories_per_100||0)*r):0;
     const p=f?(f.protein_per_100||0)*r:0,k=f?(f.carbs_per_100||0)*r:0,y=f?(f.fat_per_100||0)*r:0;
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #171E2C">
-      <span style="font-size:12px;color:${ND.text2};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">${c.amount||''}${escHtml(c.unit||'g')} ${escHtml(c.name)}</span>
+      <span style="font-size:12px;color:${ND.text2};flex:1;min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.amount||''}${escHtml(c.unit||'g')} ${escHtml(c.name)}</span>
       <span style="display:flex;align-items:center;gap:5px;flex-shrink:0"><b style="font-size:12px;color:${ND.kcal}">${kcal} kcal</b>${rc('P',p,ND.p)}${rc('K',k,ND.k)}${rc('Y',y,ND.y)}</span>
     </div>`;
   }).join('');
@@ -2381,7 +2381,7 @@ function ndMealLogHtml(groups){
       const clickAttr=recipeBody?`onclick="var e=document.getElementById('${rid}');if(e){e.style.display=e.style.display==='none'?'block':'none'}"`:'';
       return `<div style="border-top:1px solid #1E2637">
         <div ${clickAttr} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;${recipeBody?'cursor:pointer':''}">
-          <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${escHtml(name)}">${recipeBody?'🍳 ':''}${escHtml(name)}${recipeBody?' <span style="font-size:9px;color:#a78bfa">▸ içerik</span>':''}</div>
+          <div style="font-size:13px;font-weight:600;color:#fff;flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(name)}">${recipeBody?'🍳 ':''}${escHtml(name)}${recipeBody?' <span style="font-size:9px;color:#a78bfa">▸ içerik</span>':''}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
             <b style="font-size:13px;color:${ND.kcal}">${Math.round(m.calories||0)} kcal</b>
             ${chip('P',m.protein_g,ND.p)}${chip('K',m.carbs_g,ND.k)}${chip('Y',m.fat_g,ND.y)}
