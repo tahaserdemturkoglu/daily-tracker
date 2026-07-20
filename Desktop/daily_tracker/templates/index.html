@@ -2376,7 +2376,9 @@ function ndMealLogHtml(groups){
       const isRecipe=!!(rf&&((rf.category||'')==='Tarif'||/kar[ıi]ş[ıi]m/i.test(rf.notes||'')||rf.recipe));
       const recipeBody=isRecipe?ndRecipeRows(rf,m):'';
       const rid='ndrcp'+m.id;
-      const clickAttr=recipeBody?`onclick="var e=document.getElementById('${rid}');if(e){e.style.display=e.style.display==='none'?'block':'none'}" style="cursor:pointer"`:'';
+      // NOT: burada style= KOYMA - satirin kendi style'i var, ikinci style attribute
+      // ilkini gecersiz kilip display:flex'i dusuruyor (makrolar alta kayiyordu).
+      const clickAttr=recipeBody?`onclick="var e=document.getElementById('${rid}');if(e){e.style.display=e.style.display==='none'?'block':'none'}"`:'';
       return `<div style="border-top:1px solid #1E2637">
         <div ${clickAttr} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;${recipeBody?'cursor:pointer':''}">
           <div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${escHtml(name)}">${recipeBody?'🍳 ':''}${escHtml(name)}${recipeBody?' <span style="font-size:9px;color:#a78bfa">▸ içerik</span>':''}</div>
