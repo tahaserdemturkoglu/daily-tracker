@@ -1184,7 +1184,16 @@ def generate_dashboard_ai_insights(date_str=None):
                 text = text[4:]
         insights = json.loads(text.strip()).get('insights', [])
     except Exception as _e:
-        import logging; logging.getLogger('daily').warning(f"dashboard AI insights failed: {_e}")
+        import logging
+        # HTTPError'da govdeyi de logla - "400 Bad Request" tek basina teshis edilemiyor
+        detail = ''
+        try:
+            import urllib.error
+            if isinstance(_e, urllib.error.HTTPError):
+                detail = ' | ' + _e.read().decode('utf-8', errors='ignore')[:400]
+        except Exception:
+            pass
+        logging.getLogger('daily').warning(f"dashboard AI insights failed: {_e}{detail}")
         return []
     # Bos gunu (henuz veri girilmemis) KALICI cache'leme: yoksa gunun erken saatinde
     # uretilen "bugun 0 kcal" insight'i, veri sonradan girilince guncellenmeden takili kalir.
