@@ -1761,6 +1761,14 @@ def api_coach_chat():
     # KAYIT MODU: mesaj kayit niyeti tasiyorsa TG botuyla ayni hattan gecir.
     # Actions bos donerse (soru/sohbetti) asagidaki normal sohbet akisina duser.
     last_user = messages[-1]['content']
+    # Idman kisayolu: once DETERMINISTIK parser (AI'siz, %100, kredi bagimsiz)
+    try:
+        det = tg_try_workout_log(last_user)
+    except Exception:
+        det = None
+    if det:
+        return jsonify({'ok': True, 'reply': det['reply'], 'saved': det['saved']})
+
     if _chat_msg_looks_like_record(last_user):
         try:
             parsed = _claude_call(last_user)
@@ -3649,6 +3657,112 @@ def normalize_set_details(sets):
         })
     return clean
 
+
+# ── Deterministik idman kisayol parser'i ────────────────────────────────────────
+# Taha'nin gercek formati (2026-07-21 Push metniyle dogrulandi):
+#   Push day                        <- gun tipi (opsiyonel)
+#   Sirt sivilcelerinden ...        <- serbest not (set satiri gelmeyen baslik nota doner)
+#   Lateral raise                   <- hareket adi
+#   8-10                            <- AGIRLIK-TEKRAR (ilk sayi HEP kg)
+#   14-13/7-12                      <- set + drop set
+#   ad1/ad2/ad3                     <- superset basligi
+#   6-10/12-10/12-10                <- k. sutun k. harekete
+#   idman kayit                     <- tetik (bunsuz parser devreye girmez)
+# AI'ya hic gitmez: %100 deterministik, API kredisi bitse de calisir.
+_WK_SETLINE = re.compile(r'^\s*\d+(?:[.,]\d+)?\s*-\s*\d+(?:\s*/\s*\d+(?:[.,]\d+)?\s*-\s*\d+)*\s*$')
+_WK_DAYLINE = re.compile(r'^\s*(push|pull|legs?|upper|lower)\s*(?:day|günü|gunu)?\s*$', re.I)
+
+def parse_workout_shorthand(raw):
+    """Idman kisayol metnini cozer. Donus: {'day','notes','exercises':[{'name','set_details'}]}
+    ya da None (tetik yok / hic hareket cozulemedi -> AI yoluna dusulur)."""
+    txt = (raw or '').replace('\r', '\n')
+    nrm = _tg_norm(txt)
+    if 'idman kayit' not in nrm and 'antrenman kayit' not in nrm:
+        return None
+    day = None
+    groups, notes = [], []
+    cur = None
+    for line in txt.split('\n'):
+        s = line.strip()
+        if not s:
+            continue
+        sn = _tg_norm(s)
+        if 'idman kayit' in sn or 'antrenman kayit' in sn:
+            continue
+        if day is None and _WK_DAYLINE.match(s):
+            day = _WK_DAYLINE.match(s).group(1).capitalize()
+            if day == 'Legs':
+                day = 'Leg'
+            continue
+        if _WK_SETLINE.match(s):
+            if cur is not None:
+                pairs = []
+                for part in s.split('/'):
+                    w, r = part.split('-', 1)
+                    pairs.append((float(w.replace(',', '.').strip()), int(r.strip())))
+                cur['rows'].append(pairs)
+            continue
+        if re.search(r'[a-zA-ZçğıöşüÇĞİÖŞÜ]', s):
+            cur = {'names': [p.strip() for p in s.split('/') if p.strip()], 'rows': []}
+            groups.append(cur)
+    exercises = []
+    for g in groups:
+        if not g['rows']:
+            # set satiri gelmeyen baslik = serbest not ("benche uzanmiyoruz" gibi)
+            notes.append(' / '.join(g['names']))
+            continue
+        k = len(g['names'])
+        per = [[] for _ in range(k)]
+        for pairs in g['rows']:
+            for j, (w, r) in enumerate(pairs):
+                # k'dan tasan sutunlar son hareketin DROP setidir ("50-8/27-8")
+                per[j if j < k else k - 1].append(
+                    {'type': 'Working set' if j < k else 'Drop set', 'reps': str(r), 'weight': f'{w:g}'})
+        for j, name in enumerate(g['names']):
+            if per[j]:
+                exercises.append({'name': name, 'set_details': [
+                    {'set': i + 1, 'type': x['type'], 'reps': x['reps'], 'weight': x['weight']}
+                    for i, x in enumerate(per[j])]})
+    if not exercises:
+        return None
+    return {'day': day, 'notes': ' | '.join(notes), 'exercises': exercises}
+
+
+def tg_try_workout_log(raw):
+    """Deterministik idman kaydi: parse + uygula + Turkce ozet dondur. Uymazsa None.
+    Telegram (cmd_chat_ai) ve site Coach chat'i AYNI fonksiyonu kullanir."""
+    try:
+        p = parse_workout_shorthand(raw)
+    except Exception:
+        log.exception('parse_workout_shorthand')
+        return None
+    if not p:
+        return None
+    d = operation_today()
+    if re.search(r'\bd[uü]n\b', (raw or '').lower()):
+        d = (operation_date() - timedelta(days=1)).isoformat()
+    actions = []
+    if p['day'] or p['notes']:
+        actions.append({'type': 'exercise', 'date': d, 'exercise_type': p['day'] or '', 'notes': p['notes']})
+    for ex in p['exercises']:
+        actions.append({'type': 'training_exercise', 'date': d, 'exercise': ex['name'], 'set_details': ex['set_details']})
+    saved = ai_apply_actions(actions)
+    n_ex = len(p['exercises'])
+    n_set = sum(1 for ex in p['exercises'] for s in ex['set_details'] if s['type'] != 'Drop set')
+    n_drop = sum(1 for ex in p['exercises'] for s in ex['set_details'] if s['type'] == 'Drop set')
+    names = ', '.join(ex['name'] for ex in p['exercises'][:5]) + (' …' if n_ex > 5 else '')
+    reply = (f"✅ İdman işlendi ({d}): {p['day'] or 'Antrenman'} · {n_ex} hareket · {n_set} set"
+             + (f" + {n_drop} drop" if n_drop else '')
+             + f"\n{names}\nAntrenman sayfasında seans olarak hazır.")
+    if p['notes']:
+        reply += f"\n📝 {p['notes']}"
+    try:
+        invalidate_ai_insights_cache(d)
+    except Exception:
+        pass
+    return {'reply': reply, 'actions': actions, 'saved': saved}
+
+
 def parse_training_sets_from_text(raw_text):
     import re
     text = (raw_text or '').replace('\r', '\n').strip()
@@ -4950,10 +5064,21 @@ def rebuild_antrenman_session_for_date(date_str):
     if not rows:
         conn.close()
         return False
+    # Seans etiketi: KULLANICININ beyan ettigi gun tipi (exercise_logs.type, mesajdaki
+    # "Push day" gibi) planin onune gecer - plan Pull derken kullanici Push yaptiysa
+    # yapileni kaydederiz. Beyan yoksa plana (training_day) duselir.
+    td = None
     try:
-        td = training_day(date_str)
+        _er = conn.execute(
+            "SELECT type FROM exercise_logs WHERE date=? AND COALESCE(type,'')<>''", (date_str,)).fetchone()
+        td = _er['type'] if _er else None
     except Exception:
-        td = ''
+        td = None
+    if not td:
+        try:
+            td = training_day(date_str)
+        except Exception:
+            td = ''
     d = date.fromisoformat(date_str)
     AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
     GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
@@ -6589,6 +6714,14 @@ async def cmd_chat_ai(u, c):
     if water_correction:
         reply = water_correction.get('reply') or 'Su kaydı düzeltildi.'
         tg_store_message('out', reply, chat_id, 'AI Coach', water_correction)
+        await u.message.reply_text(reply)
+        return
+    # Idman kisayolu ("idman kayit" tetikli) DETERMINISTIK islenir - AI'ya hic gitmez:
+    # %100 dogruluk, cift kayit riski yok, API kredisi bitse de calisir.
+    workout_log = tg_try_workout_log(raw) if 'tg_try_workout_log' in globals() else None
+    if workout_log:
+        reply = workout_log['reply']
+        tg_store_message('out', reply, chat_id, 'AI Coach', workout_log['actions'])
         await u.message.reply_text(reply)
         return
 
