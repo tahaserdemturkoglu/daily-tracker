@@ -580,10 +580,11 @@ input[type=range]{flex:1;padding:0;height:4px;accent-color:var(--red)}
                 <input type="text" id="rc-row-search" placeholder="tavuk göğsü, panko, yumurta..." oninput="recipeRowSearch(this.value)" autocomplete="off" style="width:100%">
                 <div id="rc-row-results" style="background:#1e2235;border:1px solid rgba(255,255,255,.12);border-radius:8px;max-height:160px;overflow-y:auto;display:none;position:absolute;z-index:200;width:100%;top:100%;left:0"></div>
               </div>
-              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="rc-row-amount" value="100" min="1" step="1" style="width:100%"></div>
-              <div class="fg" style="flex:0.8"><label>Birim</label><input type="text" id="rc-row-unit" value="g" style="width:100%"></div>
+              <div class="fg" style="flex:1.2"><label>Miktar</label><input type="number" id="rc-row-amount" value="100" min="0.25" step="0.25" style="width:100%"></div>
+              <div class="fg" style="flex:0.8"><label>Birim</label><select id="rc-row-unit" onchange="rcUnitChanged()" style="width:100%"><option value="g">g</option></select></div>
               <button class="btn btn-teal btn-sm" onclick="addRecipeRow()">+</button>
             </div>
+            <div id="rc-row-hint" style="display:none;font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 10px;margin-top:6px"></div>
             <input type="hidden" id="rc-row-food-id"><input type="hidden" id="rc-row-food-name">
             <div id="rc-draft-items" style="display:flex;flex-direction:column;gap:5px;margin:10px 0"></div>
             <div id="rc-preview" style="display:none;font-size:.78rem;font-weight:600;color:#a78bfa;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:8px;padding:8px 10px;margin:6px 0"></div>
@@ -3383,21 +3384,62 @@ async function recipeRowSearch(q){
   // Tarif icine baska tarif koymayi engelle (dongu riski)
   const matches=_foodList.filter(f=>(f.category||'')!=='Tarif'&&((f.name||'').toLowerCase().includes(q)||(f.official_name||'').toLowerCase().includes(q))).slice(0,8);
   if(!matches.length){res.style.display='none';return;}
-  res.innerHTML=matches.map(f=>{const disp=f.official_name||f.name;return `<div onclick="selectRecipeRow(${f.id},${JSON.stringify(disp).replace(/"/g,'&quot;')})" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${escHtml(disp)} <span style="color:var(--yellow);font-size:.72rem">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span></div>`;}).join('');
+  res.innerHTML=matches.map(f=>{const disp=f.official_name||f.name;
+    // Ogun Ekle'deki URUN ARA listesiyle ayni bilgi yogunlugu: kcal + P/K/Y (+L varsa)
+    const L=f.fiber_per_100?` · L${f.fiber_per_100}`:'';
+    const sv=(f.serving_size&&f.serving_unit&&!['g','gr','gram','ml'].includes((f.serving_unit||'').toLowerCase()))?` <span style="color:#a78bfa">1 ${escHtml(f.serving_unit)}=${f.serving_size}${f.unit||'g'}</span>`:'';
+    return `<div onclick="selectRecipeRow(${f.id},${JSON.stringify(disp).replace(/"/g,'&quot;')})" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem">${escHtml(disp)}${f.estimated?' <span style="color:var(--yellow);font-size:.62rem">≈</span>':''}<br><span style="color:var(--yellow);font-size:.7rem;font-family:'JetBrains Mono',monospace">${f.calories_per_100||0}kcal/100${f.unit||'g'}</span> <span style="color:var(--muted);font-size:.7rem;font-family:'JetBrains Mono',monospace">P${f.protein_per_100||0} K${f.carbs_per_100||0} Y${f.fat_per_100||0}${L}</span>${sv}</div>`;}).join('');
   res.style.display='block';
+}
+function rcSelectedFood(){
+  const id=parseInt($('rc-row-food-id').value)||null;
+  return id?(_foodList||[]).find(f=>f.id===id):null;
+}
+// Secilen urune gore Birim listesini kur: g/ml her zaman, urunun kendi porsiyon birimi
+// (adet/tablet/olcek...) varsa o da eklenir. Yumurta gibi adet-bazli urunlerde adet otomatik secilir.
+function rcApplyUnitOptions(f){
+  const sel=$('rc-row-unit');if(!sel)return;
+  const base=(f&&f.unit)||'g';
+  const opts=[base];
+  const su=f&&f.serving_size&&f.serving_unit&&!['g','gr','gram','ml'].includes((f.serving_unit||'').toLowerCase())?f.serving_unit:null;
+  if(su)opts.push(su);
+  sel.innerHTML=opts.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
+  if(su&&(su||'').toLowerCase()==='adet'){
+    sel.value=su;
+    // adet secilince "100 adet" saçmalığına düşme: varsayılan 100 duruyorsa 1'e çek
+    if(parseFloat($('rc-row-amount').value)===100)$('rc-row-amount').value=1;
+  } else sel.value=base;
+  rcRenderHint();
+}
+function rcUnitChanged(){
+  const f=rcSelectedFood(),sel=$('rc-row-unit');
+  if(f&&sel&&!['g','gr','gram','ml'].includes((sel.value||'').toLowerCase())&&parseFloat($('rc-row-amount').value)===100)$('rc-row-amount').value=1;
+  rcRenderHint();
+}
+function rcRenderHint(){
+  const el=$('rc-row-hint');if(!el)return;
+  const f=rcSelectedFood();
+  if(!f){el.style.display='none';return;}
+  const u=f.unit||'g';
+  const sv=(f.serving_size&&f.serving_unit&&!['g','gr','gram','ml'].includes((f.serving_unit||'').toLowerCase()))?` · <span style="color:#a78bfa">1 ${escHtml(f.serving_unit)} = ${f.serving_size}${u}</span>`:'';
+  const L=f.fiber_per_100?` · L ${f.fiber_per_100}`:'';
+  el.innerHTML=`<b style="color:var(--text)">${escHtml(f.official_name||f.name)}</b>${f.estimated?' <span style="color:var(--yellow)">≈ tahmini</span>':''} — 100${u}: <b style="color:var(--yellow)">${f.calories_per_100||0} kcal</b> · P ${f.protein_per_100||0} · K ${f.carbs_per_100||0} · Y ${f.fat_per_100||0}${L}${sv}`;
+  el.style.display='block';
 }
 function selectRecipeRow(id,name){
   $('rc-row-food-id').value=id;$('rc-row-food-name').value=name;
   $('rc-row-search').value=name;$('rc-row-results').style.display='none';
+  rcApplyUnitOptions(rcSelectedFood());
 }
 function addRecipeRow(){
   const foodId=parseInt($('rc-row-food-id').value)||null;
   const foodName=$('rc-row-food-name').value.trim()||$('rc-row-search').value.trim();
   if(!foodName)return toast('Bileşen seç',false);
   const amount=parseFloat($('rc-row-amount').value)||100;
-  const unit=$('rc-row-unit').value.trim()||'g';
+  const unit=($('rc-row-unit').value||'g').trim()||'g';
   _rcDraftItems.push({food_id:foodId,food_name:foodName,amount,unit});
   $('rc-row-search').value='';$('rc-row-food-id').value='';$('rc-row-food-name').value='';
+  $('rc-row-amount').value=100;rcApplyUnitOptions(null);   // sonraki bilesen icin sifirla
   renderRcDraftItems();
 }
 function removeRecipeRow(i){_rcDraftItems.splice(i,1);renderRcDraftItems();}
@@ -3415,7 +3457,8 @@ function renderRcDraftItems(){
       else if(food.serving_size) gramsEq=(it.amount||0)*food.serving_size;
       if(gramsEq!=null){
         const r=gramsEq/100;
-        macroTxt=`<span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;white-space:nowrap"><b style="color:var(--yellow)">${((food.calories_per_100||0)*r).toFixed(0)} kcal</b><span style="color:var(--muted)"> · P ${((food.protein_per_100||0)*r).toFixed(1)} · K ${((food.carbs_per_100||0)*r).toFixed(1)} · Y ${((food.fat_per_100||0)*r).toFixed(1)}</span></span>`;
+        const lifTx=food.fiber_per_100?` · L ${((food.fiber_per_100||0)*r).toFixed(1)}`:'';
+        macroTxt=`<span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;white-space:nowrap"><b style="color:var(--yellow)">${((food.calories_per_100||0)*r).toFixed(0)} kcal</b><span style="color:var(--muted)"> · P ${((food.protein_per_100||0)*r).toFixed(1)} · K ${((food.carbs_per_100||0)*r).toFixed(1)} · Y ${((food.fat_per_100||0)*r).toFixed(1)}${lifTx}</span></span>`;
       } else macroTxt='<span style="color:var(--yellow);font-size:.68rem">porsiyon gramı yok</span>';
     }
     return `<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:8px;padding:6px 10px;font-size:.8rem;flex-wrap:wrap"><b style="flex:1;min-width:120px">${escHtml(it.food_name)}</b>${macroTxt}<span style="color:var(--muted)">${it.amount}${it.unit}</span><button class="del-btn" onclick="removeRecipeRow(${i})">✕</button></div>`;
