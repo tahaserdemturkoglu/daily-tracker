@@ -2727,6 +2727,14 @@ def _infer_meal_nutrient(conn, title, description, col):
         # food_registry'de eslesmez -> aciklamadan cikarilan saf urun adini kullan.
         if not name or re.match(r'^\s*\d', name):
             name = m.group(2).strip()
+    if grams is None:
+        # Adet'li kayitlar: "6 adet (45g) Jutrzenka..." / "2 adet (105g) Yumurta" -
+        # gramaj parantez icinde. Urun adi parantezden sonrasi.
+        m2 = re.search(r'\((\d+(?:[.,]\d+)?)\s*(?:g|gr|gram)\)\s*(.*)$', desc, re.I)
+        if m2:
+            grams = float(m2.group(1).replace(',', '.'))
+            if not name or re.match(r'^\s*\d', name):
+                name = m2.group(2).strip()
     if grams is None or not name:
         return None
     row = conn.execute(
