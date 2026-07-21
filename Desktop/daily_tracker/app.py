@@ -1014,6 +1014,22 @@ def generate_dashboard_ai_insights(date_str=None):
         whoop_row = conn.execute("SELECT recovery_score, strain FROM whoop_daily WHERE date=?", (date_str,)).fetchone()
     except Exception:
         pass
+    # Baglam icin: bugun antrenman yapildi mi + son 7 gunun kcal ortalamasi
+    # (tek gunun sapmasi haftalik resim icinde degerlendirilsin, tek basina degil)
+    ex_row = None
+    try:
+        ex_row = conn.execute("SELECT type, intensity, notes FROM exercise_logs WHERE date=?", (date_str,)).fetchone()
+    except Exception:
+        pass
+    week_avg_kcal = None
+    try:
+        wk = conn.execute(
+            "SELECT AVG(c) a FROM (SELECT date, SUM(calories) c FROM meal_entries "
+            "WHERE date>=? AND date<? GROUP BY date)",
+            ((date.fromisoformat(date_str) - timedelta(days=7)).isoformat(), date_str)).fetchone()
+        week_avg_kcal = round(wk['a']) if wk and wk['a'] else None
+    except Exception:
+        pass
     conn.close()
 
     total_cal = round(sum(m['calories'] or 0 for m in meals))
@@ -1042,6 +1058,11 @@ def generate_dashboard_ai_insights(date_str=None):
                     'kcal': 4 * tomorrow_cyc['protein_g'] + 4 * tomorrow_cyc['carb_g'] + 9 * tomorrow_cyc['fat_g'],
                     'carb_g': tomorrow_cyc['carb_g']}
     weight_trend = [{'date': r['date'], 'weight_kg': r['weight_kg']} for r in reversed(weight_rows)]
+    # g/kg oranlari: "yag asildi" tek basina anlamsiz - vucut agirligina gore makul mu ona bak
+    cur_weight = weight_rows[0]['weight_kg'] if weight_rows else None
+    fat_per_kg = round(total_y / cur_weight, 2) if cur_weight else None
+    protein_per_kg = round(total_p / cur_weight, 2) if cur_weight else None
+    kcal_pct = round(100 * total_cal / target['kcal']) if target and target.get('kcal') else None
 
     payload = {
         'tarih': date_str,
@@ -1049,6 +1070,11 @@ def generate_dashboard_ai_insights(date_str=None):
                    'su_ml': water_ml, 'adim': steps, 'lif_g': total_fiber},
         'lif_hedefi_g': 35,
         'hedef': target,
+        'kcal_hedef_yuzdesi': kcal_pct,
+        'yag_g_per_kg': fat_per_kg,
+        'protein_g_per_kg': protein_per_kg,
+        'son7gun_ort_kcal': week_avg_kcal,
+        'bugun_antrenman': ({'tip': ex_row['type'], 'not': ex_row['notes'] or ''} if ex_row else None),
         'yarinin_hedefi': tomorrow,
         'recovery_pct': recovery,
         'whoop_strain': whoop_strain,
@@ -1057,20 +1083,35 @@ def generate_dashboard_ai_insights(date_str=None):
         'saat': now_istanbul().strftime('%H:%M'),
     }
     system_prompt = (
-        'Sen kullanıcının kişisel antrenman ve beslenme koçusun. Sana bugünün gerçek verisini '
-        '(kalori/makro, hedef, su, adım, varsa recovery yüzdesi, son kilo trendi, yarının Karb Cycle '
-        'hedefi) JSON olarak vereceğim. En fazla 4, en az 2 kısa içgörü üret. Her içgörü şu 5 tipten '
-        'BİRİNE ait olmalı: "kritik" (veri hatası/tehlikeli aşım şüphesi — örn. tek bir öğün kaydı '
-        'toplam kalorinin çoğunu oluşturuyorsa muhtemel girdi hatasıdır), "aksiyon" (bugün yapılabilecek '
-        'somut bir şey, varsa recovery ile antrenman kesişimi), "hatirlatma" (payload\'daki "saat" alanına '
-        'göre su/öğün ritmi — saat üretim anının saatidir, gün içinde değişmez; saate çok bağlı ifadeler yerine '
-        'günün geneline uyan ritim önerisi ver), '
-        '"motivasyon" (kilo trendi/ilerleme), "ai_plan" (yarının Karb Cycle hedefinin kısa özeti). '
-        'Lif: kullanıcının sindirim/bağırsak sağlığı için günlük lif hedefi lif_hedefi_g (35g). '
-        'lif_g bu hedefin belirgin altındaysa (ör. <25) ve gün ilerlediyse, bir "hatirlatma" ile lif + su '
-        'artırmasını hatırlat (yulaf/meyve/sebze öner); sebep/teşhis yazma, sadece "lif bugün düşük" de. '
-        'recovery_pct null ise recovery ile ilgili hiçbir şey uydurma. SADECE şu JSON formatında dön, '
-        'başka hiçbir şey yazma: {"insights":[{"type":"kritik|aksiyon|hatirlatma|motivasyon|ai_plan",'
+        'Sen kullanıcının kişisel antrenman ve beslenme koçusun; onu tanıyan, verisine hâkim, '
+        'dost ama net bir koç gibi yaz. Sana bugünün gerçek verisini JSON olarak vereceğim. '
+        'En fazla 4, en az 2 kısa içgörü üret. Tipler: "kritik", "aksiyon", "hatirlatma", '
+        '"motivasyon", "ai_plan" (yarının Karb Cycle hedefinin kısa özeti).\n'
+        'DEĞERLENDİRME KURALLARI — sapmayı asla tek başına değil, yön + büyüklük + bağlamla yorumla:\n'
+        '1) KALORİ: kcal_hedef_yuzdesi ≤110 ise aşımı sorun yapma (tek cümleyle "hedef bandında" de). '
+        '%110-130 arası: azarlamadan, kaçamağı normalize ederek yarına odakla ("bisküvi olur öyle, '
+        'yarın hedefe dönüyoruz" tonu). son7gun_ort_kcal hâlâ hedefin altındaysa bunu MUTLAKA söyle — '
+        'haftalık resim tek günden önemlidir. Antrenman yapılan günde (bugun_antrenman dolu) aşım daha '
+        'da toleranslı değerlendirilir.\n'
+        '2) YAĞ: yag_g_per_kg <1.0 ise gram hedefi aşılmış olsa bile "kilona göre hâlâ makul aralıkta '
+        '(X g/kg)" de — kırmızı alarm verme.\n'
+        '3) PROTEİN: hedefi aşmak SORUN DEĞİL; ±%15 bandı "tam isabet" say, üstünü tokluk avantajı '
+        'olarak olumlu not et.\n'
+        '4) İYİ GİDENLERİ MUTLAKA SAY: su, adım, protein, takviye, antrenman — en az bir içgörü '
+        'gerçekten iyi giden şeyleri somut sayıyla övmeli. Kullanıcı gününü kaydetmiş, emeğini gör.\n'
+        '5) KİLO: trend hedef yönündeyse tek günlük sıçramayı önemseme — yüksek karb + geç yemek '
+        'sonrası +0.5-1.0 kg su/glikojendir, yağ değil; bunu kısaca söyle. Trend hedeften uzaklaşıyorsa '
+        'nazik ama net uyar (suçlama yok, plan öner).\n'
+        '6) "kritik" tipini YALNIZCA gerçek anomali için kullan: aynı öğünün mükerrer kaydı, '
+        'imkânsız değerler (tek kalemde 3000 kcal) gibi. Normal bir kaçamak (bisküvi, post snack, '
+        'cheat) ASLA "kritik" değildir ve ASLA "kontrol et / tek öğün mü kaydedildi" tarzı robotik '
+        'şüphe cümlesi yazma.\n'
+        '7) LİF: hedef lif_hedefi_g (35g, sindirim sağlığı). lif_g <25 ise bir "hatirlatma" ile lif+su '
+        'artışı öner (yulaf/meyve/sebze); teşhis/sebep yazma. 25-35 arası: "fena değil, +Xg kaldı" tonu.\n'
+        '8) recovery_pct null ise recovery hakkında hiçbir şey uydurma. "saat" üretim anıdır; saate '
+        'aşırı bağlı cümle kurma.\n'
+        'SADECE şu JSON formatında dön, başka hiçbir şey yazma: '
+        '{"insights":[{"type":"kritik|aksiyon|hatirlatma|motivasyon|ai_plan",'
         '"text":"Türkçe, kısa, somut, 1-2 cümle"}]}'
     )
     body = {
@@ -1589,11 +1630,26 @@ def api_profile_facts_delete(fid):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+def _chat_msg_looks_like_record(t):
+    """Chat mesaji kayit niyeti tasiyor mu? (extraction cagrisini her mesajda yapmamak icin
+    ucuz on-filtre - yanlis pozitif zararsizdir: extraction actions bos donerse sohbete duselir)."""
+    tl = (t or '').lower()
+    kws = ('kaydet', 'kayıt', 'kayit', 'yedim', 'yedik', 'aldım', 'aldim', 'aldık', 'aldik',
+           'içtim', 'ictim', 'içtik', 'ictik', 'uyudum', 'tartıldım', 'tartildim', 'idman',
+           'antrenman yaptım', 'antrenman yaptim', 'stack', 'adım ', 'adim ')
+    if any(k in tl for k in kws):
+        return True
+    # sayi+birim (100g, 5 l, 2 adet) veya set deseni (3x8, 21-12) gecen mesajlar
+    return bool(re.search(r'\d+\s*(g|gr|gram|ml|l|kg|adet|kapsül|kapsul|tablet|ölçek|olcek)\b', tl)
+                or re.search(r'\d+\s*[x×-]\s*\d+', tl))
+
+
 @app.route('/api/coach/chat', methods=['POST'])
 def api_coach_chat():
     """Coach sayfasindaki sohbet: kullanicinin verisini bilen, onun tarziyla kisa/net cevap veren
-    konusma modu. Gunluk not uretiminden AYRI — burada veri LOGLANMAZ, sadece gozlem/oneri/sohbet.
-    Istemci mesaj gecmisini gonderir (stateless)."""
+    konusma modu. Kayit niyeti tasiyan mesajlar Telegram botuyla AYNI extraction hattindan
+    (_claude_call + ai_apply_actions) gecer - site chat'i de kayit yapabilir ("koc tum siteye hakim").
+    Kayit niyeti yoksa salt sohbet: veri LOGLANMAZ."""
     import urllib.request
     if not ANTHROPIC_API_KEY:
         return jsonify({'ok': False, 'error': 'AI anahtarı tanımlı değil'}), 400
@@ -1643,6 +1699,33 @@ def api_coach_chat():
         messages.pop(0)
     if not messages or messages[-1]['role'] != 'user':
         return jsonify({'ok': False, 'error': 'son mesaj kullanıcıdan olmalı'}), 400
+
+    # KAYIT MODU: mesaj kayit niyeti tasiyorsa TG botuyla ayni hattan gecir.
+    # Actions bos donerse (soru/sohbetti) asagidaki normal sohbet akisina duser.
+    last_user = messages[-1]['content']
+    if _chat_msg_looks_like_record(last_user):
+        try:
+            parsed = _claude_call(last_user)
+            acts = parsed.get('actions') or []
+            if parsed.get('_error'):
+                # Kayit DENENDI ama basarisiz (API/parse) - sohbete dusup kullaniciyi
+                # "kaydedildi sanmasi" tuzagina itme, hatayi acikca soyle.
+                return jsonify({'ok': True, 'reply': parsed.get('reply') or 'Kayıt işlenemedi, tekrar dener misin?', 'saved': []})
+            if acts:
+                saved = ai_apply_actions(acts)
+                reply = (parsed.get('reply') or '').strip()
+                if saved:
+                    reply = (reply + '\n\n' if reply else '') + '✅ Kaydedildi: ' + ', '.join(saved)
+                    try:
+                        invalidate_ai_insights_cache(operation_today())
+                    except Exception:
+                        pass
+                else:
+                    reply = (reply + '\n\n' if reply else '') + '⚠️ Kayıt niyeti gördüm ama uygulayamadım — Telegram\'dan dener misin?'
+                return jsonify({'ok': True, 'reply': reply, 'saved': saved})
+        except Exception:
+            log.exception('coach chat kayit modu hatasi - sohbet moduna dusuluyor')
+
     body = {'model': ANTHROPIC_MODEL, 'max_tokens': 400, 'system': system, 'messages': messages}
     req = urllib.request.Request(
         'https://api.anthropic.com/v1/messages',
@@ -4423,6 +4506,15 @@ def _claude_call(user_text):
         ']}\n'
         'Cilt kurali: kullanici cilt rutini/akne/krem-surme gibi seylerden bahsederse skin_log action uret (area: yüz/sırt vb, name: urun/rutin adi). '
         'Set detayli antrenman anlatiminda (orn. "hack squat 3x8 120kg") training_exercise uret; sadece "antrenman yaptim" genel ifadesinde exercise action yeterli.\n'
+        'IDMAN KISAYOL GRAMERI (Taha idmanlarini boyle yazar, MUTLAKA uygula): '
+        '"A-B" = A kg x B tekrar (orn "21-12" = 21 kg, 12 tekrar; ILK sayi HEP agirlik). '
+        'Bir setin sonunda "X-Y/Z-W" = drop set: ana set X kg x Y tekrar, hemen ardindan dusuk agirlik Z kg x W tekrar '
+        '(drop icin set_details\'e {"set":N,"type":"Drop set","reps":"W","weight":"Z"} satiri ekle). '
+        'Hareket satirinda "/" ile ayrilmis BIRDEN FAZLA isim ve altinda "a-b/c-d/e-f" satirlari varsa bu SUPERSET tablosudur: '
+        'her satir bir tur, k-inci sutun k-inci harekete aittir - HER hareket icin AYRI training_exercise uret. '
+        'Mesajda "idman kayit"/"antrenman kayit" geciyorsa metindeki TUM hareketleri training_exercise olarak cikar, hicbirini atlama; '
+        'antrenman tipi mesajda yaziyorsa (orn "Push day") ayrica exercise action (exercise_type) uret. '
+        'Idman disi notlar (orn "benche uzanmiyoruz") exercise action\'in notes alanina gider.\n'
         'Vardiya kurali: kullanici calisma saatlerinin degistigini soylerse (or. "pazartesiden itibaren oglen 2 aksam 10 calisiyorum") work_shift action uret - start/end 24 saat formatinda. Gun kesim saati ve gece-kayit mantigi otomatik guncellenir. '
         f'Kayitli vardiya sablonlari: {_shift_tpl_txt}. "1. shifte gectim / shift 2 basladi" gibi mesajlarda ilgili sablonun saatleriyle work_shift uret.\n'
         f'Tarih kuralı: Kullanıcı tarih belirtmemişse date={operation_today()} (bugün). '
@@ -4438,7 +4530,9 @@ def _claude_call(user_text):
     )
     body = {
         'model': ANTHROPIC_MODEL,
-        'max_tokens': 1800,
+        # 1800 idi: 9 hareket x ~30 set'lik tam idman kaydinin JSON'u sigmiyordu,
+        # cevap yarida kesilip parse hatasina dusuyordu ("KAYIT YAPMADIM").
+        'max_tokens': 6000,
         'system': system_prompt,
         'messages': [{'role': 'user', 'content': user_text}]
     }
@@ -4459,17 +4553,19 @@ def _claude_call(user_text):
     except urllib.error.HTTPError as e:
         detail = e.read().decode('utf-8', errors='ignore')
         log.error("Anthropic HTTP hatasi: %s", detail)
-        return {'reply': 'Koç şu an cevap veremedi (API hatası). Birazdan tekrar yazar mısın?', 'actions': []}
+        return {'reply': 'Koç şu an cevap veremedi (API hatası). Birazdan tekrar yazar mısın?', 'actions': [], '_error': True}
     except Exception:
         log.exception("Claude cevap hatasi")
-        return {'reply': 'Bağlantı sorunu. Tekrar dener misin?', 'actions': []}
+        return {'reply': 'Bağlantı sorunu. Tekrar dener misin?', 'actions': [], '_error': True}
     # Parse hatasi baglanti sorunu DEGIL: kullanici ayni mesaji tekrar gonderirse regex-fallback
     # kayitlari cift islenebilir - o yuzden acikca 'kayit yapmadim' diyoruz.
+    # _error bayragi: chat kayit-modu "actions bos = soruydu" ile "kayit denedi ama BASARISIZ"
+    # durumlarini ayirt edebilsin (ikincisinde sohbete dusmek yerine hatayi soylemeli).
     try:
         return _json_from_text(txt)
     except Exception:
         log.exception("Claude JSON parse hatasi; ham metin: %.300s", txt)
-        return {'reply': 'Cevabı düzgün işleyemedim, KAYIT YAPMADIM — aynı mesajı bir daha yollar mısın?', 'actions': []}
+        return {'reply': 'Cevabı düzgün işleyemedim, KAYIT YAPMADIM — aynı mesajı bir daha yollar mısın?', 'actions': [], '_error': True}
 
 
 def ai_coach_call(user_text):
@@ -4691,9 +4787,101 @@ def end_supplement_break(target_type, target_name):
     )
     conn.commit(); conn.close()
 
+def _guess_muscle(name):
+    """Hareket adindan (kas grubu, Turkce etiket) tahmini - antrenman_sessions semasi icin.
+    Once spesifik desenler (rear delt/face pull), sonra genel olanlar."""
+    n = (name or '').lower()
+    rules = [
+        (('rear delt', 'face pull', 'reverse fly', 'arka omuz'), ('shoulder', 'Arka Omuz')),
+        (('lateral', 'front raise', 'shoulder press', 'overhead press', 'ohp', 'omuz'), ('shoulder', 'Omuz')),
+        (('shrug', 'trapez'), ('back', 'Üst Sırt')),
+        (('triceps', 'pushdown', 'skull'), ('arm', 'Triceps')),
+        (('biceps', 'curl',), ('arm', 'Biceps')),
+        (('bench', 'chest', 'fly', 'pec', 'dips', 'gogus', 'göğüs'), ('chest', 'Göğüs')),
+        (('row', 'pulldown', 'pull up', 'pullup', 'lat ', 'deadlift', 'sırt', 'sirt'), ('back', 'Sırt')),
+        (('leg curl', 'hamstring', 'rdl', 'romanian'), ('leg', 'Hamstring')),
+        (('squat', 'leg press', 'leg extension', 'quad', 'hack'), ('leg', 'Quad')),
+        (('calf', 'kaf'), ('leg', 'Kaf')),
+    ]
+    for keys, res in rules:
+        if any(k in n for k in keys):
+            return res
+    return ('back', 'Sırt')
+
+
+def rebuild_antrenman_session_for_date(date_str):
+    """training_day_logs -> antrenman_sessions seansi. TG/chat'ten kaydedilen hareketler
+    Antrenman sayfasinda gercek seans olarak gorunsun (ayni gun tekrar kayitta uzerine yazar).
+    'Drop set' tipli satirlar bir onceki setin drops[] alanina katlanir - Antrenman.html semasi."""
+    conn = get_db()
+    ensure_training_day_logs_table()
+    rows = conn.execute("SELECT * FROM training_day_logs WHERE date=? ORDER BY id", (date_str,)).fetchall()
+    if not rows:
+        conn.close()
+        return False
+    try:
+        td = training_day(date_str)
+    except Exception:
+        td = ''
+    d = date.fromisoformat(date_str)
+    AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+    GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
+    DOW = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+    exercises = []
+    for ei, r in enumerate(rows):
+        try:
+            raw_sets = json.loads(r['sets_json'] or '[]')
+        except Exception:
+            raw_sets = []
+        muscle, mlabel = _guess_muscle(r['exercise'])
+        sets = []
+        for si, s in enumerate(raw_sets):
+            try:
+                w = float(str(s.get('weight') or '0').replace(',', '.') or 0)
+            except Exception:
+                w = 0
+            try:
+                reps = int(float(str(s.get('reps') or '0').replace(',', '.') or 0))
+            except Exception:
+                reps = 0
+            tname = str(s.get('type') or '').lower()
+            if ('drop' in tname) and sets:
+                sets[-1]['drops'].append({'id': f'tg{ei}s{si}d', 'weight': w, 'reps': reps, 'done': True})
+                continue
+            stype = 'wu' if ('warm' in tname or 'isinma' in tname or 'ısınma' in tname) else ('bo' if 'back' in tname else 'ws')
+            sets.append({'id': f'tg{ei}s{si}', 'type': stype, 'weight': w, 'reps': reps, 'done': True, 'drops': []})
+        if sets:
+            exercises.append({'id': f'tg{ei}', 'muscle': muscle, 'muscleLabel': mlabel,
+                              'name': r['exercise'], 'pr': None, 'sets': sets})
+    if not exercises:
+        conn.close()
+        return False
+    session = {
+        'date': date_str,
+        'dateLabel': f"{d.day} {AYLAR[d.month-1]} {GUNLER[d.weekday()]}",
+        'dow': DOW[d.weekday()],
+        'dur': '',
+        'label': td or 'Antrenman',
+        'short': f"{d.day} {AYLAR[d.month-1][:3]}",
+        'split': (td or '').lower(),
+        'exercises': exercises,
+    }
+    _antrenman_seed_if_empty(conn)
+    row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
+    sessions = json.loads(row['value']) if row else []
+    sessions = [s for s in sessions if s.get('date') != date_str]
+    sessions.append(session)
+    sessions.sort(key=lambda s: s.get('date', ''))
+    conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('antrenman_sessions', ?)",
+                 (json.dumps(sessions, ensure_ascii=False),))
+    conn.commit(); conn.close()
+    return True
+
+
 def ai_apply_actions(actions):
     saved = []
     today = operation_today()
+    trained_dates = set()   # training_exercise gelen gunler: sonda seansa derlenir
     for a in actions or []:
         typ = (a.get('type') or '').strip()
         action_date = (a.get('date') or today)
@@ -4756,7 +4944,8 @@ def ai_apply_actions(actions):
                 db_upsert('mood_logs', action_date, tg_normalize_mood_payload(a) if 'tg_normalize_mood_payload' in globals() else {'energy': a.get('energy'), 'mood': a.get('mood'), 'stress': a.get('stress')})
                 saved.append('ruh hali')
             elif typ == 'exercise':
-                db_upsert('exercise_logs', action_date, {'type': a.get('exercise_type') or a.get('type') or '', 'duration': a.get('duration'), 'intensity': a.get('intensity'), 'notes': a.get('notes') or ''})
+                # a.get('type') fallback'i KULLANMA - o hep 'exercise' (action tipi), Push/Pull degil
+                db_upsert('exercise_logs', action_date, {'type': a.get('exercise_type') or '', 'duration': a.get('duration'), 'intensity': a.get('intensity'), 'notes': a.get('notes') or ''})
                 saved.append('egzersiz')
             elif typ == 'training_exercise':
                 if isinstance(a.get('set_details'), list) and a.get('set_details'):
@@ -4767,15 +4956,19 @@ def ai_apply_actions(actions):
                 conn = get_db()
                 td = training_day(action_date)
                 exercise_name = a.get('exercise') or 'Hareket'
-                notes_json = json.dumps({'set_details': details}, ensure_ascii=False)
-                conn.execute("INSERT INTO training_exercises (training_day, exercise, sets, reps, weight, notes) VALUES (?,?,?,?,?,?)",
-                             (td, exercise_name, str(len(details)), details[0].get('reps', '') if details else '', details[0].get('weight', '') if details else '', notes_json))
+                # DIKKAT: training_exercises tablosuna YAZILMAZ - o PPLUL program SABLONU.
+                # Eski kod her TG idman kaydinda programa yeni satir ekleyip sabloyu sisiriyordu.
+                # Log yeri training_day_logs; seans gorunumu asagida rebuild ile antrenman_sessions'a derlenir.
                 ensure_training_day_logs_table()
+                # Ayni gun ayni hareket tekrar gonderilirse (duzeltme/yeniden yollama) coğaltma:
+                conn.execute("DELETE FROM training_day_logs WHERE date=? AND exercise=? AND notes IN ('telegram-ai','coach-chat')",
+                             (action_date, exercise_name))
                 conn.execute("""
                     INSERT INTO training_day_logs (date, training_day, exercise, sets_json, notes)
                     VALUES (?,?,?,?,?)
                 """, (action_date, td, exercise_name, json.dumps(details, ensure_ascii=False), 'telegram-ai'))
                 conn.commit(); conn.close()
+                trained_dates.add(action_date)
                 saved.append('hareket')
             elif typ == 'vitamin':
                 vname = (a.get('name') or '').strip()
@@ -4883,6 +5076,12 @@ def ai_apply_actions(actions):
                 saved.append('not silindi')
         except Exception:
             log.exception("AI action kaydedilemedi: %s", typ)
+    # training_exercise gelen gunler: gun loglarini Antrenman sayfasinin seans formatina derle
+    for _d in trained_dates:
+        try:
+            rebuild_antrenman_session_for_date(_d)
+        except Exception:
+            log.exception("seans rebuild basarisiz: %s", _d)
     return saved
 
 

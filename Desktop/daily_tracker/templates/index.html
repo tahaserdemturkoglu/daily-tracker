@@ -2176,7 +2176,9 @@ function ndGroupMeals(meals){
   // Kullanicinin "Ogun Sirasi"ndan kaydettigi sira (display_order) ONCELIKLIDIR;
   // kaydedilmemis slotlar G_SLOT_ORDER'daki varsayilan kronolojik siraya duser.
   const savedOrd=(slot)=>{
-    const v=groups[slot].map(m=>(m.display_order==null?99:m.display_order)).filter(x=>x<99);
+    // 99 = "kaydedilmemis" varsayilani. Bilesik kodlama (grupSira*100+kalemSira, drag&drop
+    // ve Ogun Sirasi paneli yazar) 100+ degerler uretir - o yuzden "<99" DEGIL "!==99" filtrele.
+    const v=groups[slot].map(m=>(m.display_order==null?99:m.display_order)).filter(x=>x!==99);
     return v.length?Math.min(...v):null;
   };
   const order=Object.keys(groups).sort((a,b)=>{
@@ -2396,6 +2398,7 @@ function ndMealLogHtml(groups){
   </div>`;
   const cards=groups.map(g=>{
     const expanded=!!ND_MEAL_EXPANDED[g.slot];
+    const slotEsc=escHtml(g.slot).replace(/'/g,"\\'");
     const items=expanded?g.rows.map(m=>{
       const desc=(m.description||'').trim().replace(/\b(\d+)\.0+\b/g,'$1');
       const title=(m.title||m.slot||'—').trim();
@@ -2409,8 +2412,11 @@ function ndMealLogHtml(groups){
       // NOT: burada style= KOYMA - satirin kendi style'i var, ikinci style attribute
       // ilkini gecersiz kilip display:flex'i dusuruyor (makrolar alta kayiyordu).
       const clickAttr=recipeBody?`onclick="var e=document.getElementById('${rid}');if(e){e.style.display=e.style.display==='none'?'block':'none'}"`:'';
-      return `<div style="border-top:1px solid #1E2637">
+      // Surukle-birak: satir tasinabilir; baska satirin uzerine birakinca ONUNE girer,
+      // baska grubun baslik/govdesine birakinca o grubun SONUNA gider (slot degisir).
+      return `<div draggable="true" data-mid="${m.id}" ondragstart="ndMealDragStart(event,${m.id},'${slotEsc}')" ondragover="ndMealDragOver(event)" ondrop="ndMealDrop(event,'${slotEsc}',${m.id})" style="border-top:1px solid #1E2637">
         <div ${clickAttr} style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;${recipeBody?'cursor:pointer':''}">
+          <span title="Sürükle" style="cursor:grab;color:#3a4356;font-size:12px;flex:none;user-select:none">⠿</span>
           <div style="font-size:13px;font-weight:600;color:#fff;flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(name)}">${recipeBody?'🍳 ':''}${escHtml(name)}${recipeBody?' <span style="font-size:9px;color:#a78bfa">▸ içerik</span>':''}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
             <b style="font-size:13px;color:${ND.kcal}">${Math.round(m.calories||0)} kcal</b>
@@ -2420,8 +2426,7 @@ function ndMealLogHtml(groups){
         ${recipeBody?`<div id="${rid}" style="display:none;background:${ndHexA('#a78bfa',.05)}">${recipeBody}</div>`:''}
       </div>`;
     }).join(''):'';
-    const slotEsc=escHtml(g.slot).replace(/'/g,"\\'");
-    return `<div style="background:${ND.card2};border:1px solid ${ndHexA(g.color,.3)};border-radius:12px;overflow:hidden;box-shadow:0 0 24px ${ndHexA(g.color,.06)}">
+    return `<div ondragover="ndMealDragOver(event)" ondrop="ndMealDrop(event,'${slotEsc}',null)" style="background:${ND.card2};border:1px solid ${ndHexA(g.color,.3)};border-radius:12px;overflow:hidden;box-shadow:0 0 24px ${ndHexA(g.color,.06)}">
       <div onclick="ndToggleMealGroup('${slotEsc}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,${ndHexA(g.color,.16)},${ndHexA(g.color,.04)});cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.06em;color:${g.color}">
           <span style="font-size:10px;display:inline-block;transition:transform .15s;transform:rotate(${expanded?90:0}deg)">▸</span>
@@ -2434,9 +2439,48 @@ function ndMealLogHtml(groups){
   }).join('');
   return `<div id="nd-meal-log" style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
     <div style="font-size:15px;font-weight:700">Öğün Logu</div>
-    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Bir öğüne tıkla, kalemleri gör.</div>
+    <div style="font-size:12px;color:${ND.muted};margin:4px 0 16px">Bir öğüne tıkla, kalemleri gör. ⠿ ile sürükle: grup içinde sırala ya da başka öğüne taşı.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">${cards}</div>
   </div>`;
+}
+
+/* ── Öğün Logu drag&drop: kalem taşıma (slot değişimi) + grup içi sıralama ──
+   display_order bileşik kodlanır: (grupSira+1)*100 + kalemSira. Grup sıralaması
+   min() ile korunur (ndGroupMeals.savedOrd), kalem sırası SQL ORDER BY ile gelir. */
+let ND_MEAL_DRAG=null;
+function ndMealDragStart(ev,id,slot){
+  ND_MEAL_DRAG={id,slot};
+  ev.dataTransfer.effectAllowed='move';
+  try{ev.dataTransfer.setData('text/plain',String(id));}catch(e){}
+}
+function ndMealDragOver(ev){ev.preventDefault();ev.dataTransfer.dropEffect='move';}
+async function ndMealDrop(ev,targetSlot,beforeId){
+  ev.preventDefault();ev.stopPropagation();
+  if(!ND_MEAL_DRAG)return;
+  const {id,slot}=ND_MEAL_DRAG; ND_MEAL_DRAG=null;
+  if(id===beforeId)return;
+  const groups=(ND_LAST_MEAL_GROUPS||[]).map(g=>({slot:g.slot,ids:g.rows.map(r=>r.id)}));
+  const src=groups.find(g=>g.ids.includes(id));
+  const tgt=groups.find(g=>g.slot===targetSlot);
+  if(!src||!tgt)return;
+  // kaynaktan çıkar, hedefe yerleştir (beforeId varsa onun önüne, yoksa sona)
+  src.ids=src.ids.filter(x=>x!==id);
+  if(beforeId!=null&&tgt.ids.includes(beforeId)) tgt.ids.splice(tgt.ids.indexOf(beforeId),0,id);
+  else tgt.ids.push(id);
+  try{
+    if(slot!==targetSlot) await PUT('/api/meals/'+id,{slot:targetSlot});
+    // TÜM grupları mevcut görsel sırayla yeniden numarala — grup sırası da kalem sırası da netleşir
+    const jobs=[];
+    groups.forEach((g,gi)=>g.ids.forEach((mid,ri)=>{
+      jobs.push(fetch('/api/meals/'+mid,{method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({display_order:(gi+1)*100+(ri+1)})}).then(r=>r.json()).catch(()=>null));
+    }));
+    await Promise.all(jobs);
+    toast(slot!==targetSlot?('Taşındı → '+ndSlotLabel(targetSlot)):'Sıra güncellendi');
+  }catch(e){toast('Taşıma başarısız',false);}
+  ND_MEAL_EXPANDED[targetSlot]=true;
+  loadDashboard();
+  if(typeof loadMealEntries==='function'){try{loadMealEntries();}catch(e){}}
 }
 
 async function ndSyncWhoop(){
@@ -2537,11 +2581,11 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
         onBreakCount++;
         const bEnd=brokenProducts.has(it.product_name)?breakEnd['product:'+it.product_name]:breakEnd['stack:'+s.name];
         const BLU='#38BDF8';
-        // "Dinlenme" satiri: notr zemin + renkli sol serit + tek satirlik rozet.
-        // (Blok rengi doldurmak 4-5 satir yan yana gelince alarm gibi gorunuyordu.)
-        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:${ND.bg};border:1px solid ${ND.border};border-left:3px solid ${ndHexA(BLU,.8)};border-radius:8px;padding:12px 16px">
-          <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:${ND.muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="margin-right:6px">❄️</span>${escHtml(it.product_name)}</span>
-          <span style="flex:none;white-space:nowrap;font-size:10px;color:${BLU};font-weight:700;background:${ndHexA(BLU,.12)};border:1px solid ${ndHexA(BLU,.32)};border-radius:999px;padding:3px 9px">Ara · ${breakLeftTxt(bEnd)}</span>
+        // Kullanici istegi: ara karti, cinkonun sari dinlenme kartiyla AYNI dilde olsun -
+        // yumusak mavi dolgulu kart (soluk gri + rozet degil).
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:${ndHexA(BLU,.1)};border:1px solid ${ndHexA(BLU,.4)};border-radius:8px;padding:12px 16px">
+          <span style="flex:1;min-width:0;font-size:13px;font-weight:600;color:${BLU};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">❄️ ${escHtml(it.product_name)}</span>
+          <span style="flex:none;white-space:nowrap;font-size:11px;color:${BLU};font-weight:600">Ara · ${breakLeftTxt(bEnd)}</span>
         </div>`;
       }
       const v=ndPickVit(it.product_name,s.name);
@@ -3860,10 +3904,10 @@ async function saveMealOrder(){
   let ok=true;
   for(let i=0;i<_mealOrderData.length;i++){
     const g=_mealOrderData[i];
-    for(const m of g.items){
-      // slot adını canonical'a çevir — sıralama için display_order alanı yoksa slot'u güncelliyoruz
-      // Şimdilik slot adını koruyup display_order olarak index gönder
-      const r=await fetch('/api/meals/'+m.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({display_order:i})}).then(r=>r.json()).catch(()=>({ok:false}));
+    for(let j=0;j<g.items.length;j++){
+      // Bilesik kodlama: (grupSira+1)*100 + kalemSira. Grup siralamasi min() ile,
+      // kalem sirasi ayni grup icindeki artan degerle korunur (drag&drop ile ayni sema).
+      const r=await fetch('/api/meals/'+g.items[j].id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({display_order:(i+1)*100+(j+1)})}).then(r=>r.json()).catch(()=>({ok:false}));
       if(!r?.ok) ok=false;
     }
   }
