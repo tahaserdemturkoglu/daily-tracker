@@ -2574,7 +2574,9 @@ def _infer_meal_fiber(conn, title, description):
     m = re.match(r'^\s*(\d+(?:[.,]\d+)?)\s*(?:g|gr|gram)\b\s*(.*)$', desc, re.I)
     if m:
         grams = float(m.group(1).replace(',', '.'))
-        if not name:
+        # title bos DEGIL ama kendisi de "50 g Skyr Yogurt" gibi miktarla basliyorsa
+        # food_registry'de eslesmez -> aciklamadan cikarilan saf urun adini kullan.
+        if not name or re.match(r'^\s*\d', name):
             name = m.group(2).strip()
     if grams is None or not name:
         return None
@@ -4357,7 +4359,7 @@ def _besin_db_for_prompt():
     """Besin DB'deki tum urunleri AI prompt icin formatla."""
     try:
         conn = get_db()
-        rows = conn.execute("SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, serving_size, serving_unit, unit, notes FROM food_registry ORDER BY name").fetchall()
+        rows = conn.execute("SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, fiber_per_100, serving_size, serving_unit, unit, notes FROM food_registry ORDER BY name").fetchall()
         conn.close()
         lines = [
             "BESIN DB (etiket degerleri - bunlari kullan, genel bilgine gore tahmin yapma):",
@@ -4373,8 +4375,11 @@ def _besin_db_for_prompt():
             p = r['protein_per_100'] or 0
             k = r['carbs_per_100'] or 0
             y = r['fat_per_100'] or 0
+            lif = r['fiber_per_100'] or 0
             unit_lbl = r['unit'] or 'g'
-            base_str = f"100{unit_lbl}={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f}"
+            # L = lif. 35 g/gun hedefi icin kritik: lif prompt'ta yoksa model onu hic donduremez
+            # ve Telegram'dan girilen her ogunun lifi NULL kalir.
+            base_str = f"100{unit_lbl}={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f}" + (f" L{lif:.1f}" if lif else "")
             sv_sz = r['serving_size']
             sv_unit = r['serving_unit'] or ''
             serving_str = f" | 1 {sv_unit}={sv_sz}{unit_lbl}" if sv_sz and sv_unit else ""
@@ -4405,7 +4410,7 @@ def _claude_call(user_text):
         '{"reply":"...","actions":['
         '{"type":"sleep","date":"YYYY-MM-DD","hours":7.5,"quality":8},'
         '{"type":"exercise","date":"YYYY-MM-DD","exercise_type":"Upper","duration":60,"intensity":8,"notes":""},'
-        '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvaltı","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10},'
+        '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvaltı","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10,"fiber_g":4},'
         '{"type":"water","date":"YYYY-MM-DD","water_ml":500},'
         '{"type":"mood","date":"YYYY-MM-DD","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","date":"YYYY-MM-DD","name":"D3","amount":"5000","unit":"IU"},'
@@ -4699,6 +4704,11 @@ def ai_apply_actions(actions):
                 title = a.get('title') or a.get('name') or a.get('description') or slot
                 if title and len(title) > 80:
                     title = title[:80]
+                # Model lifi atlarsa Besin DB'den turet (/api/meals ile ayni fallback).
+                # Lif NULL kalirsa 35 g hedefi oldugundan dusuk gorunur - sessizce eksik sayilmasin.
+                fiber = a.get('fiber_g')
+                if fiber is None:
+                    fiber = _infer_meal_fiber(conn, title, a.get('description') or '')
                 conn.execute("""
                     INSERT INTO meal_entries
                         (date, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, source)
@@ -4706,7 +4716,7 @@ def ai_apply_actions(actions):
                 """, (
                     action_date, slot, title, a.get('description') or '',
                     a.get('calories'), a.get('protein_g'), a.get('carbs_g'),
-                    a.get('fat_g'), a.get('fiber_g'), 'telegram-ai'
+                    a.get('fat_g'), fiber, 'telegram-ai'
                 ))
                 conn.commit(); conn.close()
                 saved.append('öğün')
