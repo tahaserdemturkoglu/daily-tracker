@@ -718,6 +718,20 @@ FOOD_FIBER_PER_100 = {
     'Alpro Badem Sütü Şekersiz': 0.4, 'Valio PROfeel Protein Pudding Chocolate': 0.5,
 }
 
+# Toplam seker (g/100g) - genel etiket ortalamalari. Meyve/sut sekeri ile ilave sekeri
+# etikette ayirt edemeyiz; kaynagi Koc yorumlar (meyve agirlikliysa yumusak degerlendirir).
+FOOD_SUGAR_PER_100 = {
+    'Muz': 12.2, 'Çilek': 4.9, 'Kırmızı Elma': 10.4, 'Kırmızı Erik': 9.9,
+    'Domates': 2.6, 'Salatalık': 1.7, 'Marul': 0.8, 'Karışık Yeşillik': 0.8,
+    'Turşu': 1.0, 'Badem': 4.4, 'Kaju': 5.9, 'Kakao': 1.8, 'Yulaf': 1.0,
+    'Yasmin Pirinc': 0.1, 'Genç Patates': 0.8, 'Patates': 0.8, 'Panko': 3.0,
+    'Tam Tahıllı Tost Ekmeği': 4.0, 'Carrefour Tam Tahıllı Tost Ekmeği': 4.0,
+    'Keto Ketçap': 3.0, 'Çikolatalı Protein Bar 33%': 2.3,
+    'Valio PROfeel Protein Pudding Chocolate': 4.1, 'Alpro Badem Sütü Şekersiz': 0.0,
+    'Skyr Yoğurt': 4.0, 'Lor Peyniri': 3.0, 'Kefir': 4.0,
+    'Jutrzenka Familijne Klasyczne': 21.5, 'Brokoli (Dondurulmuş)': 1.7,
+}
+
 
 def seed_food_fiber():
     """Bilinen ürünlere lif (fiber_per_100) doldurur (idempotent). fiber_per_100 kolonu
@@ -741,6 +755,30 @@ def seed_food_fiber():
             log.info("food_registry lif tohumu: %d urune fiber_per_100 dolduruldu", n)
     except Exception:
         log.exception("seed_food_fiber basarisiz")
+
+
+def seed_food_sugar():
+    """Bilinen urunlere toplam seker (sugar_per_100) doldurur - seed_food_fiber ile ayni desen,
+    idempotent (sadece 0/NULL olanlara yazar, kullanicinin etiketten girdigi degeri ezmez)."""
+    try:
+        conn = get_db()
+        if not conn.execute("SELECT name FROM sqlite_master WHERE name='food_registry'").fetchone():
+            conn.close()
+            return
+        cols = {r['name'] for r in conn.execute("PRAGMA table_info(food_registry)").fetchall()}
+        if 'sugar_per_100' not in cols:
+            conn.execute("ALTER TABLE food_registry ADD COLUMN sugar_per_100 REAL DEFAULT 0")
+            conn.commit()
+        n = 0
+        for name, sg in FOOD_SUGAR_PER_100.items():
+            n += conn.execute(
+                "UPDATE food_registry SET sugar_per_100=? WHERE (sugar_per_100 IS NULL OR sugar_per_100=0) "
+                "AND (name=? OR official_name=?)", (sg, name, name)).rowcount
+        conn.commit(); conn.close()
+        if n:
+            log.info("food_registry seker tohumu: %d urune sugar_per_100 dolduruldu", n)
+    except Exception:
+        log.exception("seed_food_sugar basarisiz")
 
 
 def fix_food_registry_typos():
@@ -799,6 +837,7 @@ normalize_meal_slots_all()
 sync_supplement_catalog_canonical()
 fix_food_registry_typos()
 seed_food_fiber()
+seed_food_sugar()
 
 def ensure_ai_note_structured_col():
     """ai_profile_notes'a structured (kategorili gozlem JSON) kolonu ekler (idempotent)."""
@@ -1037,6 +1076,7 @@ def generate_dashboard_ai_insights(date_str=None):
     total_k = round(sum(m['carbs_g'] or 0 for m in meals))
     total_y = round(sum(m['fat_g'] or 0 for m in meals))
     total_fiber = round(sum((m['fiber_g'] if 'fiber_g' in m.keys() else 0) or 0 for m in meals))
+    total_sugar = round(sum((m['sugar_g'] if 'sugar_g' in m.keys() else 0) or 0 for m in meals))
     water_ml = int(nutrition['water_ml'] if nutrition and nutrition['water_ml'] else 0)
     steps = int(step_row['steps']) if step_row and step_row['steps'] else 0
     try:
@@ -1067,8 +1107,9 @@ def generate_dashboard_ai_insights(date_str=None):
     payload = {
         'tarih': date_str,
         'gercek': {'kcal': total_cal, 'protein_g': total_p, 'carb_g': total_k, 'fat_g': total_y,
-                   'su_ml': water_ml, 'adim': steps, 'lif_g': total_fiber},
+                   'su_ml': water_ml, 'adim': steps, 'lif_g': total_fiber, 'seker_g': total_sugar},
         'lif_hedefi_g': 35,
+        'seker_referans_g': 50,
         'hedef': target,
         'kcal_hedef_yuzdesi': kcal_pct,
         'yag_g_per_kg': fat_per_kg,
@@ -1108,7 +1149,14 @@ def generate_dashboard_ai_insights(date_str=None):
         'şüphe cümlesi yazma.\n'
         '7) LİF: hedef lif_hedefi_g (35g, sindirim sağlığı). lif_g <25 ise bir "hatirlatma" ile lif+su '
         'artışı öner (yulaf/meyve/sebze); teşhis/sebep yazma. 25-35 arası: "fena değil, +Xg kaldı" tonu.\n'
-        '8) recovery_pct null ise recovery hakkında hiçbir şey uydurma. "saat" üretim anıdır; saate '
+        '8) ŞEKER: seker_g TOPLAM şekerdir (meyve/süt şekeri dahil, sadece ilave şeker değil). '
+        'seker_referans_g (50g) altındaysa hiç konu etme. Üstündeyse kaynağına bak: gün meyve/süt '
+        'ağırlıklıysa yumuşak tek cümle ("çoğu meyveden, dert değil"); bisküvi/tatlı gibi ilave şeker '
+        'kaynaklıysa nazikçe not et, yarın için azaltma öner. Asla şeker paniği yapma.\n'
+        '9) ANTRENMAN İLERLEMESİ: ağırlık artıp tekrar 1-2 düştüyse bu İLERLEMEDİR (progressive '
+        'overload), olumlu not et; kötü yorumlama. Tekrar 3+ düştüyse veya ağırlık sabitken tekrar '
+        'düştüyse dikkat çek (toparlanma/yorgunluk sorusu).\n'
+        '10) recovery_pct null ise recovery hakkında hiçbir şey uydurma. "saat" üretim anıdır; saate '
         'aşırı bağlı cümle kurma.\n'
         'SADECE şu JSON formatında dön, başka hiçbir şey yazma: '
         '{"insights":[{"type":"kritik|aksiyon|hatirlatma|motivasyon|ai_plan",'
@@ -1362,6 +1410,7 @@ def gather_day_snapshot(conn, date_str):
             'carbs_g': round(sum(m['carbs_g'] or 0 for m in meals)),
             'fat_g': round(sum(m['fat_g'] or 0 for m in meals)),
             'fiber_g': round(sum((m['fiber_g'] if 'fiber_g' in m.keys() else 0) or 0 for m in meals), 1),
+            'seker_g': round(sum((m['sugar_g'] if 'sugar_g' in m.keys() else 0) or 0 for m in meals), 1),
             'water_ml': int(nutrition['w'] or 0) if nutrition else 0,
             'ogunler': [
                 {'slot': m['slot'], 'title': m['title'], 'kcal': m['calories']}
@@ -2585,23 +2634,25 @@ def api_meal_from_food_registry():
     carb = round((food.get('carbs_per_100') or 0) * ratio, 1)
     fat  = round((food.get('fat_per_100') or 0) * ratio, 1)
     fiber = round((food.get('fiber_per_100') or 0) * ratio, 1)
+    sugar = round((food.get('sugar_per_100') or 0) * ratio, 1) if 'sugar_per_100' in food else None
 
     official_name = food.get('official_name') or food.get('name')
     disp = (data.get('display') or '').strip()   # ör. "4 adet (210g)" - frontend adet birimi
     amount_txt = f"{amount:g}"
     description = f"{disp} {official_name}" if disp else f"{amount_txt} {unit} {official_name}"
 
+    ensure_meal_sugar_col(conn)
     conn.execute("""
-        INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,source)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    """, (d, slot, official_name, description, kcal, prot, carb, fat, fiber, 'food_registry'))
+        INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,sugar_g,source)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    """, (d, slot, official_name, description, kcal, prot, carb, fat, fiber, sugar, 'food_registry'))
     conn.commit(); conn.close()
     invalidate_ai_insights_cache(d)
 
     return jsonify({
         'ok': True, 'date': d, 'slot': slot,
         'item': {'name': official_name, 'amount': amount, 'unit': unit,
-                 'kcal': kcal, 'protein': prot, 'carbs': carb, 'fat': fat, 'fiber': fiber}
+                 'kcal': kcal, 'protein': prot, 'carbs': carb, 'fat': fat, 'fiber': fiber, 'sugar': sugar}
     })
 
 @app.route('/api/meals/from-template/<int:tid>', methods=['POST'])
@@ -2647,10 +2698,25 @@ def _num_or_none(v):
     try: return float(v)
     except: return None
 
-def _infer_meal_fiber(conn, title, description):
-    """fiber_g verilmemis bir ogun icin: urun food_registry'de eslesiyor VE gram miktari
-    cikarilabiliyorsa lifi hesaplar (Badem/Protein Bar gibi lifli urunler manuel eklenince
-    lif kaybolmasin - 35g hemoroid hedefi icin kritik). Eslesmezse None."""
+def ensure_meal_sugar_col(conn=None):
+    """meal_entries.sugar_g kolonu (idempotent). Ayrı fonksiyon: birden çok INSERT
+    noktası var, hepsi bunu çağırır."""
+    own = conn is None
+    if own:
+        conn = get_db()
+    try:
+        conn.execute("ALTER TABLE meal_entries ADD COLUMN sugar_g REAL")
+        conn.commit()
+    except Exception:
+        pass
+    if own:
+        conn.close()
+
+
+def _infer_meal_nutrient(conn, title, description, col):
+    """Genel besin-ogesi turetici: urun food_registry'de eslesiyor VE gram miktari
+    cikarilabiliyorsa istenen kolonun (fiber_per_100 / sugar_per_100) porsiyon degerini
+    hesaplar. _infer_meal_fiber'in genellemesi - ayni kurallar."""
     desc = (description or '').strip()
     name = (title or '').strip()
     grams = None
@@ -2664,12 +2730,24 @@ def _infer_meal_fiber(conn, title, description):
     if grams is None or not name:
         return None
     row = conn.execute(
-        "SELECT fiber_per_100 FROM food_registry WHERE name=? OR official_name=? "
+        f"SELECT {col} FROM food_registry WHERE name=? OR official_name=? "
         "OR (','||lower(replace(aliases,' ',''))||',') LIKE '%,'||lower(replace(?,' ',''))||',%' LIMIT 1",
         (name, name, name)).fetchone()
-    if not row or not row['fiber_per_100']:
+    if not row or not row[col]:
         return None
-    return round(row['fiber_per_100'] * grams / 100.0, 2)
+    return round(row[col] * grams / 100.0, 2)
+
+
+def _infer_meal_fiber(conn, title, description):
+    return _infer_meal_nutrient(conn, title, description, 'fiber_per_100')
+
+
+def _infer_meal_sugar(conn, title, description):
+    try:
+        return _infer_meal_nutrient(conn, title, description, 'sugar_per_100')
+    except Exception:
+        return None   # kolon henuz yoksa (eski DB) sessizce gec
+
 
 @app.route('/api/meals', methods=['POST'])
 def api_meal_save():
@@ -2683,20 +2761,24 @@ def api_meal_save():
     carbs_g = _num_or_none(data.get('carbs_g'))
     fat_g = _num_or_none(data.get('fat_g'))
     fiber_g = _num_or_none(data.get('fiber_g'))
+    sugar_g = _num_or_none(data.get('sugar_g'))
     source = data.get('source', '').strip()
     conn = get_db()
-    # Lif verilmemis ama urun Besin DB'de eslesiyorsa otomatik hesapla (aksi halde lif
-    # gostergesi ve 35g hedef eksik sayiyor - manuel eklenen Badem/Protein Bar gibi).
+    # Lif/seker verilmemis ama urun Besin DB'de eslesiyorsa otomatik hesapla (aksi halde
+    # gostergeler eksik sayiyor - manuel eklenen Badem/Muz gibi).
     if fiber_g is None:
         fiber_g = _infer_meal_fiber(conn, title, description)
+    if sugar_g is None:
+        sugar_g = _infer_meal_sugar(conn, title, description)
     if data.get('replace_existing') and slot != 'extra':
         conn.execute("DELETE FROM meal_entries WHERE date=? AND slot=?", (d, slot))
     if title or description or calories or protein_g or carbs_g or fat_g:
+        ensure_meal_sugar_col(conn)
         conn.execute("""
             INSERT INTO meal_entries
-                (date, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, source)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
-        """, (d, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, source))
+                (date, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, source)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        """, (d, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, source))
     conn.commit(); conn.close()
     invalidate_ai_insights_cache(d)
     return jsonify({'ok': True})
@@ -2720,8 +2802,33 @@ def backfill_meal_fiber():
     except Exception as _e:
         log.warning(f"backfill_meal_fiber skip: {_e}")
 
+
+def backfill_meal_sugar():
+    """sugar_g NULL olan ogun kayitlarina, urun Besin DB'de eslesiyorsa sekeri geriye doldur
+    (idempotent). backfill_meal_fiber ile ayni desen."""
+    try:
+        ensure_meal_sugar_col()
+        conn = get_db()
+        rows = conn.execute("SELECT id, title, description FROM meal_entries WHERE sugar_g IS NULL").fetchall()
+        n = 0
+        for r in rows:
+            sg = _infer_meal_sugar(conn, r['title'], r['description'])
+            if sg is not None:
+                conn.execute("UPDATE meal_entries SET sugar_g=? WHERE id=?", (sg, r['id']))
+                n += 1
+        conn.commit(); conn.close()
+        if n:
+            log.info("Ogun seker backfill: %d kayda seker hesaplandi", n)
+    except Exception as _e:
+        log.warning(f"backfill_meal_sugar skip: {_e}")
+
+
 try:
     backfill_meal_fiber()
+except Exception:
+    pass
+try:
+    backfill_meal_sugar()
 except Exception:
     pass
 
@@ -2776,7 +2883,7 @@ def api_meal_update(mid):
 
 def meal_macro_totals(date_str):
     conn = get_db()
-    rows = conn.execute("SELECT calories, protein_g, carbs_g, fat_g, fiber_g FROM meal_entries WHERE date=?", (date_str,)).fetchall()
+    rows = conn.execute("SELECT * FROM meal_entries WHERE date=?", (date_str,)).fetchall()
     conn.close()
     totals = {'calories': 0, 'protein_g': 0, 'carbs_g': 0, 'fat_g': 0, 'fiber_g': 0}
     for row in rows:
@@ -4442,7 +4549,7 @@ def _besin_db_for_prompt():
     """Besin DB'deki tum urunleri AI prompt icin formatla."""
     try:
         conn = get_db()
-        rows = conn.execute("SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, fiber_per_100, serving_size, serving_unit, unit, notes FROM food_registry ORDER BY name").fetchall()
+        rows = conn.execute("SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100, fiber_per_100, sugar_per_100, serving_size, serving_unit, unit, notes FROM food_registry ORDER BY name").fetchall()
         conn.close()
         lines = [
             "BESIN DB (etiket degerleri - bunlari kullan, genel bilgine gore tahmin yapma):",
@@ -4459,10 +4566,15 @@ def _besin_db_for_prompt():
             k = r['carbs_per_100'] or 0
             y = r['fat_per_100'] or 0
             lif = r['fiber_per_100'] or 0
+            try:
+                sek = r['sugar_per_100'] or 0
+            except Exception:
+                sek = 0
             unit_lbl = r['unit'] or 'g'
-            # L = lif. 35 g/gun hedefi icin kritik: lif prompt'ta yoksa model onu hic donduremez
-            # ve Telegram'dan girilen her ogunun lifi NULL kalir.
-            base_str = f"100{unit_lbl}={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f}" + (f" L{lif:.1f}" if lif else "")
+            # L = lif, S = toplam seker. Prompt'ta olmayan degeri model donduremez,
+            # ogunlerin ilgili kolonu NULL kalir (lifte yasandi - ayni tuzak).
+            base_str = (f"100{unit_lbl}={cal:.0f}kcal P{p:.1f} K{k:.1f} Y{y:.1f}"
+                        + (f" L{lif:.1f}" if lif else "") + (f" S{sek:.1f}" if sek else ""))
             sv_sz = r['serving_size']
             sv_unit = r['serving_unit'] or ''
             serving_str = f" | 1 {sv_unit}={sv_sz}{unit_lbl}" if sv_sz and sv_unit else ""
@@ -4493,7 +4605,7 @@ def _claude_call(user_text):
         '{"reply":"...","actions":['
         '{"type":"sleep","date":"YYYY-MM-DD","hours":7.5,"quality":8},'
         '{"type":"exercise","date":"YYYY-MM-DD","exercise_type":"Upper","duration":60,"intensity":8,"notes":""},'
-        '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvaltı","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10,"fiber_g":4},'
+        '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvaltı","description":"...","calories":500,"protein_g":30,"carbs_g":60,"fat_g":10,"fiber_g":4,"sugar_g":6},'
         '{"type":"water","date":"YYYY-MM-DD","water_ml":500},'
         '{"type":"mood","date":"YYYY-MM-DD","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","date":"YYYY-MM-DD","name":"D3","amount":"5000","unit":"IU"},'
@@ -4796,6 +4908,8 @@ def _guess_muscle(name):
         (('lateral', 'front raise', 'shoulder press', 'overhead press', 'ohp', 'omuz'), ('shoulder', 'Omuz')),
         (('shrug', 'trapez'), ('back', 'Üst Sırt')),
         (('triceps', 'pushdown', 'skull'), ('arm', 'Triceps')),
+        # 'leg curl' biceps kuralindan ONCE gelmeli - yoksa 'curl' eslesip Biceps sanir
+        (('leg curl',), ('leg', 'Hamstring')),
         (('biceps', 'curl',), ('arm', 'Biceps')),
         (('bench', 'chest', 'fly', 'pec', 'dips', 'gogus', 'göğüs'), ('chest', 'Göğüs')),
         (('row', 'pulldown', 'pull up', 'pullup', 'lat ', 'deadlift', 'sırt', 'sirt'), ('back', 'Sırt')),
@@ -4892,19 +5006,22 @@ def ai_apply_actions(actions):
                 title = a.get('title') or a.get('name') or a.get('description') or slot
                 if title and len(title) > 80:
                     title = title[:80]
-                # Model lifi atlarsa Besin DB'den turet (/api/meals ile ayni fallback).
-                # Lif NULL kalirsa 35 g hedefi oldugundan dusuk gorunur - sessizce eksik sayilmasin.
+                # Model lifi/sekeri atlarsa Besin DB'den turet (/api/meals ile ayni fallback).
                 fiber = a.get('fiber_g')
                 if fiber is None:
                     fiber = _infer_meal_fiber(conn, title, a.get('description') or '')
+                sugar = a.get('sugar_g')
+                if sugar is None:
+                    sugar = _infer_meal_sugar(conn, title, a.get('description') or '')
+                ensure_meal_sugar_col(conn)
                 conn.execute("""
                     INSERT INTO meal_entries
-                        (date, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, source)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)
+                        (date, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, source)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 """, (
                     action_date, slot, title, a.get('description') or '',
                     a.get('calories'), a.get('protein_g'), a.get('carbs_g'),
-                    a.get('fat_g'), fiber, 'telegram-ai'
+                    a.get('fat_g'), fiber, sugar, 'telegram-ai'
                 ))
                 conn.commit(); conn.close()
                 saved.append('öğün')
@@ -6911,6 +7028,7 @@ def ensure_food_registry():
                         ('product_id',"TEXT DEFAULT ''"),('official_name',"TEXT DEFAULT ''"),
                         ('base_unit',"TEXT DEFAULT '100g'"),('is_raw','INTEGER DEFAULT 0'),('source',"TEXT DEFAULT ''"),
                         ('category',"TEXT DEFAULT ''"),('fiber_per_100','REAL DEFAULT 0'),
+                        ('sugar_per_100','REAL DEFAULT 0'),
                         ('recipe',"TEXT DEFAULT ''"),
                         # 1 = degerler etiketten DEGIL, genel referans/tahmin (guvenilirlik isareti)
                         ('estimated','INTEGER DEFAULT 0')]:
@@ -6936,8 +7054,8 @@ def api_food_registry_add():
         if not data.get('name','').strip():
             return jsonify({'error':'name required'}), 400
         conn = get_db()
-        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe,estimated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category',''),data.get('recipe',''),1 if data.get('estimated') else 0))
+        conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,sugar_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe,estimated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (data.get('name','').strip(),data.get('calories_per_100') or 0,data.get('protein_per_100') or 0,data.get('carbs_per_100') or 0,data.get('fat_per_100') or 0,data.get('fiber_per_100') or 0,data.get('sugar_per_100') or 0,data.get('unit','g'),data.get('serving_size') or 100,data.get('serving_unit') or 'g',data.get('notes',''),data.get('aliases',''),data.get('category',''),data.get('recipe',''),1 if data.get('estimated') else 0))
         conn.commit()
         new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
@@ -6961,7 +7079,7 @@ def api_food_registry_recipe():
         if not comps:
             return jsonify({'ok': False, 'error': 'En az 1 bileşen ekle'}), 400
         conn = get_db()
-        tot = {'kcal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0, 'fiber': 0.0}
+        tot = {'kcal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0, 'fiber': 0.0, 'sugar': 0.0}
         grams = 0.0
         recipe_rows = []
         unresolved = []
@@ -6997,6 +7115,7 @@ def api_food_registry_recipe():
             tot['c'] += (food.get('carbs_per_100') or 0) * ratio
             tot['f'] += (food.get('fat_per_100') or 0) * ratio
             tot['fiber'] += (food.get('fiber_per_100') or 0) * ratio
+            tot['sugar'] += (food.get('sugar_per_100') or 0) * ratio
             grams += grams_eq
             recipe_rows.append({'name': disp, 'amount': amount, 'unit': unit})
         # Denetim fix: cozulemeyen bilesen sessizce dusmesin - eksik makroyla yanlis tarif kaydetmek yerine hata ver
@@ -7011,6 +7130,7 @@ def api_food_registry_recipe():
             'calories_per_100': round(tot['kcal'] * k, 1), 'protein_per_100': round(tot['p'] * k, 1),
             'carbs_per_100': round(tot['c'] * k, 1), 'fat_per_100': round(tot['f'] * k, 1),
             'fiber_per_100': round(tot['fiber'] * k, 2),
+            'sugar_per_100': round(tot['sugar'] * k, 2),
         }
         recipe_json = json.dumps(recipe_rows, ensure_ascii=False)
         existing = conn.execute("SELECT id, category FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
@@ -7019,12 +7139,12 @@ def api_food_registry_recipe():
             conn.close()
             return jsonify({'ok': False, 'error': f'"{name}" isminde tarif olmayan bir besin zaten var — farklı bir isim seç veya önce onu sil'}), 400
         if existing:
-            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,category='Tarif',notes='karışım',recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
-                (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], recipe_json, existing['id']))
+            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,sugar_per_100=?,category='Tarif',notes='karışım',recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
+                (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], recipe_json, existing['id']))
             new_id = existing['id']
         else:
-            conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (name, per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], 'g', 100, 'g', 'karışım', '', 'Tarif', recipe_json))
+            conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,sugar_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (name, per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], 'g', 100, 'g', 'karışım', '', 'Tarif', recipe_json))
             new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.commit(); conn.close()
         return jsonify({'ok': True, 'id': new_id, 'per_100': per, 'total_grams': round(grams, 1)})
@@ -7036,7 +7156,7 @@ def api_food_registry_recipe():
 def api_food_registry_update(fid):
     ensure_food_registry()
     data = request.get_json(force=True) or {}
-    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','unit','serving_size','serving_unit','notes','aliases','category','recipe','estimated']
+    fields = ['name','calories_per_100','protein_per_100','carbs_per_100','fat_per_100','fiber_per_100','sugar_per_100','unit','serving_size','serving_unit','notes','aliases','category','recipe','estimated']
     sent = {k: data[k] for k in fields if k in data}
     if not sent:
         return jsonify({'ok': False, 'error': 'Güncellenecek alan yok'}), 400
@@ -7074,6 +7194,7 @@ def _meal_stack_calc_item(conn, item):
         'carbs': round((food.get('carbs_per_100') or 0) * ratio, 1),
         'fat': round((food.get('fat_per_100') or 0) * ratio, 1),
         'fiber': round((food.get('fiber_per_100') or 0) * ratio, 2),
+        'sugar': round((food.get('sugar_per_100') or 0) * ratio, 2),
     }
 
 @app.route('/api/meal-stacks', methods=['GET'])
@@ -7154,10 +7275,11 @@ def api_meal_stacks_quick_add(sid):
         if not calc:
             continue
         description = f"{calc['amount']} {calc['unit']} {calc['name']}"
+        ensure_meal_sugar_col(conn)
         conn.execute("""
-            INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,source)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
-        """, (d, slot, calc['name'], description, calc['kcal'], calc['protein'], calc['carbs'], calc['fat'], calc.get('fiber', 0), 'meal_stack'))
+            INSERT INTO meal_entries (date,slot,title,description,calories,protein_g,carbs_g,fat_g,fiber_g,sugar_g,source)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        """, (d, slot, calc['name'], description, calc['kcal'], calc['protein'], calc['carbs'], calc['fat'], calc.get('fiber', 0), calc.get('sugar', 0), 'meal_stack'))
         added.append(calc)
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'date': d, 'slot': slot, 'stack_name': stack['name'], 'added': added})
