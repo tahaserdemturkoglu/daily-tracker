@@ -758,6 +758,45 @@ def seed_food_fiber():
         log.exception("seed_food_fiber basarisiz")
 
 
+# Taha'nin Telegram kisaltmalari -> Besin DB alias'lari (301 gercek mesajdan cikarildi).
+# Deterministik ogun parser'i bu alias'larla urunu bulur; olmayinca kalem cozumsuz kaliyordu
+# ("1 kutu puding", "50g yogurt", "100g yasmin", "1 fis yag", "2 adet tost ekemgi").
+FOOD_ALIAS_APPEND = {
+    'Valio PROfeel Protein Pudding Chocolate': ['puding', 'pudding'],
+    'Skyr Yoğurt': ['yogurt', 'yoğurt'],
+    'Yasmin Pirinc': ['yasmin'],
+    'Tam Tahıllı Tost Ekmeği': ['tost', 'tost ekmegi', 'tost ekmeği'],
+    'GymBeam Sprey Yağ': ['fis yag', 'fıs yağ', 'sprey yag'],
+    'Çikolatalı Protein Bar 33%': ['protein bar'],
+}
+
+def seed_food_aliases():
+    """Eksik alias'lari mevcut aliases CSV'sine EKLER (idempotent, var olani ezmez)."""
+    try:
+        conn = get_db()
+        if not conn.execute("SELECT name FROM sqlite_master WHERE name='food_registry'").fetchone():
+            conn.close()
+            return
+        n = 0
+        for name, extra in FOOD_ALIAS_APPEND.items():
+            row = conn.execute("SELECT id, aliases FROM food_registry WHERE name=? OR official_name=?",
+                               (name, name)).fetchone()
+            if not row:
+                continue
+            cur = [a.strip() for a in (row['aliases'] or '').split(',') if a.strip()]
+            cur_low = {a.lower() for a in cur}
+            add = [a for a in extra if a.lower() not in cur_low]
+            if add:
+                conn.execute("UPDATE food_registry SET aliases=? WHERE id=?",
+                             (','.join(cur + add), row['id']))
+                n += len(add)
+        conn.commit(); conn.close()
+        if n:
+            log.info("food_registry alias tohumu: %d yeni alias", n)
+    except Exception:
+        log.exception("seed_food_aliases basarisiz")
+
+
 def seed_food_sugar():
     """Bilinen urunlere toplam seker (sugar_per_100) doldurur - seed_food_fiber ile ayni desen,
     idempotent (sadece 0/NULL olanlara yazar, kullanicinin etiketten girdigi degeri ezmez)."""
@@ -839,6 +878,7 @@ sync_supplement_catalog_canonical()
 fix_food_registry_typos()
 seed_food_fiber()
 seed_food_sugar()
+seed_food_aliases()
 
 def ensure_ai_note_structured_col():
     """ai_profile_notes'a structured (kategorili gozlem JSON) kolonu ekler (idempotent)."""
@@ -4774,6 +4814,14 @@ def _claude_call(user_text):
         ']}\n'
         'Cilt kurali: kullanici cilt rutini/akne/krem-surme gibi seylerden bahsederse skin_log action uret (area: yüz/sırt vb, name: urun/rutin adi). '
         'Set detayli antrenman anlatiminda (orn. "hack squat 3x8 120kg") training_exercise uret; sadece "antrenman yaptim" genel ifadesinde exercise action yeterli.\n'
+        "TAHA'NIN YAZIM STILI (gercek mesajlarindan - bu kaliplari taniyip dogru isle):\n"
+        '- Ogun basligi tek satir, altina kalemler: "kahvaltı\\n2 yumurta\\n130g sıvı yumurta akı\\n5g ketçap". '
+        'Slot adlari: kahvaltı/snack/snack 2/meal1/meal2/meal3/pre meal/pre snack/post meal/post snack/gece/cheat meal.\n'
+        '- Miktarlar: "100g tavuk special", "2 adet tost ekmeği", "1 kutu puding", "1 fıs yağ" (fıs = GymBeam sprey), '
+        '"bol salata" (≈100g marul say). Adet/kutu gecen kayitli urunlerde Besin DB porsiyonunu kullan.\n'
+        '- Kilo iki yonlu: "kilo 67.85" VEYA "68.40 kilo" (aç karna sabah tartısı). Su: "3L SU İÇİLDİ", "su 5l". '
+        'Adim: "adım 9000". Stack: "aç karna stack alındı", "pre workout alındı" (yazim hatasi olabilir: workput).\n'
+        '- "günaydın" yeni gun baslangicidir; 00:00-08:00 arasi gelen yemek buyuk ihtimalle ONCEKI gunundur.\n'
         'IDMAN KISAYOL GRAMERI (Taha idmanlarini boyle yazar, MUTLAKA uygula): '
         '"A-B" = A kg x B tekrar (orn "21-12" = 21 kg, 12 tekrar; ILK sayi HEP agirlik). '
         'Bir setin sonunda "X-Y/Z-W" = drop set: ana set X kg x Y tekrar, hemen ardindan dusuk agirlik Z kg x W tekrar '
@@ -6055,9 +6103,7 @@ def tg_food_registry_match(norm_text):
     dunya bilgisi gerektiriyor. Burada amac sadece KAYITLI urunler dogru taninsin."""
     try:
         conn = get_db()
-        rows = conn.execute(
-            "SELECT name, aliases, calories_per_100, protein_per_100, carbs_per_100, fat_per_100 FROM food_registry"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM food_registry").fetchall()
         conn.close()
     except Exception:
         return None
@@ -6074,12 +6120,22 @@ def tg_food_registry_match(norm_text):
     if not best:
         return None
     r = best[1]
-    return {'cal': r['calories_per_100'] or 0, 'p': r['protein_per_100'] or 0, 'c': r['carbs_per_100'] or 0, 'f': r['fat_per_100'] or 0}
+    def _col(row, name):
+        try:
+            return row[name] or 0
+        except Exception:
+            return 0
+    return {'cal': r['calories_per_100'] or 0, 'p': r['protein_per_100'] or 0,
+            'c': r['carbs_per_100'] or 0, 'f': r['fat_per_100'] or 0,
+            # lif/seker: 35g hedefi + seker takibi deterministik yoldan da aksin
+            'fib': _col(r, 'fiber_per_100'), 'sug': _col(r, 'sugar_per_100'),
+            # adet/kutu kayitlari icin porsiyon donusumu ("1 kutu puding" = 182g)
+            'ss': _col(r, 'serving_size') or 100, 'name': r['name']}
 
 def tg_food_estimate(line):
     n = tg_ascii_text(line) if 'tg_ascii_text' in globals() else (line or '').lower()
     raw_line = line or ''
-    out = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
+    out = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0, 'fib': 0.0, 'sug': 0.0, 'db_name': ''}
     explicit = re.search(r'(\d+(?:[\.,]\d+)?)\s*kcal.*?(\d+(?:[\.,]\d+)?)\s*g.*?(\d+(?:[\.,]\d+)?)\s*g.*?(\d+(?:[\.,]\d+)?)\s*g', n)
     if explicit:
         return {
@@ -6087,10 +6143,12 @@ def tg_food_estimate(line):
             'p': float(explicit.group(2).replace(',', '.')),
             'c': float(explicit.group(3).replace(',', '.')),
             'f': float(explicit.group(4).replace(',', '.')),
+            'fib': 0.0, 'sug': 0.0, 'db_name': '',
         }
 
-    def add(cal=0, p=0, c=0, f=0):
+    def add(cal=0, p=0, c=0, f=0, fib=0, sug=0):
         out['cal'] += cal; out['p'] += p; out['c'] += c; out['f'] += f
+        out['fib'] += fib; out['sug'] += sug
 
     gm = re.search(r'(\d{1,4})\s*(?:g|gr|gram)\b', n)
     if not gm and any(food in n for food in ['tavuk', 'yulaf', 'cilek', 'kayisi', 'kakao', 'pirinc', 'patates', 'salatalik', 'tost', 'ekmek']):
@@ -6105,12 +6163,28 @@ def tg_food_estimate(line):
     if qm:
         qty = float(qm.group(2))
 
+    # "1 adet / 1 kutu / 2 dilim / 5 fis X" (gramaj yok): Besin DB porsiyonuyla coz -
+    # Taha'nin gercek stili ("1 adet Protein bar cikolatali", "1 kutu puding", "5fıs yağ").
+    qty_unit = 0.0
+    qum = re.search(r'(^|\s)(\d+)\s*(?:adet|kutu|dilim|paket|fis|basis)\b', n)
+    if qum and not grams:
+        qty_unit = float(qum.group(2))
+
     db_match = None
-    if grams:
+    if grams or qty_unit:
         db_match = tg_food_registry_match(n)
         if db_match:
-            factor = grams / 100.0
-            add(db_match['cal'] * factor, db_match['p'] * factor, db_match['c'] * factor, db_match['f'] * factor)
+            unit_word = (qum.group(0) if qum else '')
+            ss = db_match.get('ss') or 100
+            # 'fis/basis' bir sprey puskurtmesidir - porsiyon 10g'i gecemez (DB'de
+            # serving_size default 100 kalmissa 1 fis = 100g sanip 1500 kcal yazmasin)
+            if qty_unit and ('fis' in unit_word or 'basis' in unit_word):
+                ss = ss if 0 < ss <= 10 else 1   # sprey ~1g/fis; DB porsiyonu sacmaysa 1g varsay
+            eff_grams = grams if grams else qty_unit * ss
+            factor = eff_grams / 100.0
+            out['db_name'] = db_match.get('name') or ''
+            add(db_match['cal'] * factor, db_match['p'] * factor, db_match['c'] * factor,
+                db_match['f'] * factor, db_match['fib'] * factor, db_match['sug'] * factor)
         elif 'marine' in n and 'tavuk' in n:
             factor = grams / 300.0
             add(390 * factor, 68 * factor, 3 * factor, 10 * factor)
@@ -6161,64 +6235,123 @@ def tg_food_estimate(line):
             add(sprays * 15, 0, 0, sprays * 1.65)
     return out
 
+# Taha'nin GERCEK slot sozlugu (301 TG mesajindan cikarildi) - sira onemli:
+# spesifik olan once ("pre snack" once, yoksa "snack" yutar; "snack 2" once).
+_TG_SLOT_HEADS = [
+    (r'kahvalti', 'kahvalti'),
+    (r'pre\s*snack', 'pre_snack'),
+    (r'post\s*snack', 'post_snack'),
+    (r'pre\s*meal', 'pre_meal'),
+    (r'post\s*meal', 'post_meal'),
+    (r'snack\s*2', 'snack2'),
+    (r'snack(?:\s*1)?', 'snack'),
+    (r'meal\s*1', 'meal1'),
+    (r'meal\s*2', 'meal2'),
+    (r'meal\s*3', 'meal3'),
+    (r'cheat\s*meal', 'cheat_meal'),
+    (r'oglen?', 'ogle'),
+    (r'aksam', 'aksam'),
+    (r'gece', 'gece'),
+    (r'ara\s*ogun', 'ara'),
+]
+_TG_SLOT_LABELS = {
+    'kahvalti': 'Kahvaltı', 'snack': 'Snack', 'snack2': 'Snack 2', 'meal1': 'Meal 1',
+    'meal2': 'Meal 2', 'meal3': 'Meal 3', 'pre_meal': 'Pre Meal', 'pre_snack': 'Pre Snack',
+    'post_meal': 'Post Meal', 'post_snack': 'Post Snack', 'ogle': 'Öğle', 'aksam': 'Akşam',
+    'gece': 'Gece', 'cheat_meal': 'Cheat Meal', 'ara': 'Ara Öğün',
+}
+
+def _tg_meal_header(line_norm):
+    """Satir bir ogun basligi mi? ('kahvalti', 'post snack', 'meal1' ...) Basliksa
+    (slot, ayni satirdaki kalan icerik) dondurur; degilse None.
+    'gece stack alindi' gibi takviye/kayit satirlari baslik SAYILMAZ."""
+    if any(w in line_norm for w in ('stack', 'alindi', 'aldim', 'kayit', 'icildi', 'ictim')):
+        return None
+    for pat, slot in _TG_SLOT_HEADS:
+        m = re.match(r'^\s*(?:' + pat + r')\s*[:\-]?\s*(.*)$', line_norm)
+        if m:
+            rest = m.group(1).strip()
+            # baslik + pespese yemek ayni satirda olabilir ("kahvalti 2 yumurta");
+            # ama "gecen hafta..." gibi cumleler baslik degildir - kalan kisim ya bos
+            # ya da sayiyla/besinle baslamali.
+            if rest and not re.match(r'^\d', rest) and len(rest.split()) > 6:
+                return None
+            return (slot, rest)
+    return None
+
+
 def tg_full_day_actions_from_text(raw_text):
+    """Taha'nin dogal ogun formatini DETERMINISTIK cozer (AI'siz - kredi bitse de calisir):
+        kahvalti            <- baslik satiri (tam sozluk: snack/meal1/pre-post/gece/cheat...)
+        2 yumurta           <- kalem satirlari (Besin DB eslesmesi + adet/kutu porsiyonu)
+        130g sivi yumurta aki
+    Her KALEM ayri meal action olur (web'deki gorunumle ayni: kalem bazli makro).
+    Cozulemeyen kalemler not action'inda raporlanir - sessizce kaybolmaz."""
     text = raw_text or ''
     norm = tg_ascii_text(text) if 'tg_ascii_text' in globals() else text.lower()
-    if not any(w in norm for w in ['kahvalti', 'ogle', 'aksam']):
-        return []
     today = tg_effective_log_date(text, 'meal') if 'tg_effective_log_date' in globals() else operation_today()
     actions = []
-    buckets = {'kahvalti': [], 'ogle': [], 'aksam': []}
+    buckets = {}          # slot -> [satirlar]
+    order = []            # slot sirasi korunur
     slot = ''
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
             continue
-        n = tg_ascii_text(line) if 'tg_ascii_text' in globals() else line.lower()
-        if any(w in n for w in ['gun totali', 'toplam']):
+        nline = tg_ascii_text(line) if 'tg_ascii_text' in globals() else line.lower()
+        if any(w in nline for w in ('gun totali', 'toplam')):
             continue
-        new_slot = tg_line_slot(line, slot)
-        if new_slot in buckets and (n in ['kahvalti', 'ogle', 'aksam'] or n.startswith(('kahvalti', 'ogle', 'aksam'))):
-            slot = new_slot
-            rest = re.sub(r'^(kahvalti|ogle|aksam)\s*[:\-]?\s*', '', n).strip()
-            if not rest:
-                continue
-        elif new_slot in buckets and new_slot != slot and any(x in n for x in ['kahvalti', 'ogle', 'aksam']):
-            slot = new_slot
-        if slot in buckets:
+        head = _tg_meal_header(nline)
+        if head:
+            slot = head[0]
+            if slot not in buckets:
+                buckets[slot] = []
+                order.append(slot)
+            if head[1]:
+                buckets[slot].append(head[1])
+            continue
+        # kilo/su/adim/takviye satirlari ogun kalemi DEGIL - kendi cikaricilari isler
+        if re.search(r'(kilo|\bkg\b|litre|\blt\b|\bl\b\s*su|su\s*icildi|adim|stack|alindi|gunaydin)', nline):
+            continue
+        if slot:
             buckets[slot].append(line)
 
     total = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-    for slot_name, lines in buckets.items():
-        if not lines:
-            continue
-        sub = {'cal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0}
-        for line in lines:
+    unresolved = []
+    for slot_name in order:
+        for line in buckets.get(slot_name, []):
             e = tg_food_estimate(line)
-            sub['cal'] += e['cal']; sub['p'] += e['p']; sub['c'] += e['c']; sub['f'] += e['f']
-        if any(sub.values()):
-            total['cal'] += sub['cal']; total['p'] += sub['p']; total['c'] += sub['c']; total['f'] += sub['f']
+            if e['cal'] <= 0:
+                unresolved.append(f"{_TG_SLOT_LABELS.get(slot_name, slot_name)}: {line}")
+                continue
+            total['cal'] += e['cal']; total['p'] += e['p']; total['c'] += e['c']; total['f'] += e['f']
             actions.append({
                 'type': 'meal', 'date': today, 'slot': slot_name,
-                'title': slot_name.title(),
-                'description': '\n'.join(lines)[:900],
-                'calories': int(round(sub['cal'])),
-                'protein_g': round(sub['p'], 1),
-                'carbs_g': round(sub['c'], 1),
-                'fat_g': round(sub['f'], 1),
+                'title': (e.get('db_name') or line)[:80],
+                'description': line[:200],
+                'calories': round(e['cal'], 1),
+                'protein_g': round(e['p'], 1),
+                'carbs_g': round(e['c'], 1),
+                'fat_g': round(e['f'], 1),
+                'fiber_g': round(e['fib'], 2) if e.get('db_name') else None,
+                'sugar_g': round(e['sug'], 2) if e.get('db_name') else None,
             })
 
-    kg = re.search(r'(?:kilo|kg)\s*[:\-]?\s*(\d{2,3}(?:[\.,]\d+)?)', norm)
+    # kilo iki yonde de yazilir: "kilo 68.4" VE "68.40 kilo" (Taha'nin gercek stili)
+    kg = (re.search(r'(?:kilo|kg)\s*[:\-]?\s*(\d{2,3}(?:[\.,]\d+)?)', norm)
+          or re.search(r'(\d{2,3}(?:[\.,]\d+)?)\s*(?:kilo|kg)\b', norm))
     if kg:
         actions.append({'type': 'weight', 'date': today, 'weight_kg': float(kg.group(1).replace(',', '.')), 'notes': 'telegram full day'})
     water = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:l|lt|litre)\s*su', norm)
     if water:
         actions.append({'type': 'water', 'date': today, 'water_ml': int(round(float(water.group(1).replace(',', '.')) * 1000)), 'mode': 'set'})
-    steps = re.search(r'(\d{4,6})\s*(?:adim|ad\?m)', norm)
+    steps = re.search(r'(?:adim\s*[:\-]?\s*(\d{3,6})|(\d{3,6})\s*adim)', norm)
     if steps:
-        actions.append({'type': 'steps', 'date': today, 'steps': int(steps.group(1)), 'notes': 'telegram full day'})
-    if total['cal']:
-        actions.append({'type': 'note', 'date': today, 'note': f"Telegram tam gun ozeti: ~{int(round(total['cal']))} kcal | P {round(total['p'],1)}g | K {round(total['c'],1)}g | Y {round(total['f'],1)}g"})
+        actions.append({'type': 'steps', 'date': today, 'steps': int(steps.group(1) or steps.group(2)), 'notes': 'telegram full day'})
+    if total['cal'] and len(order) > 1:
+        actions.append({'type': 'note', 'date': today, 'note': f"Telegram gun ozeti: ~{int(round(total['cal']))} kcal | P {round(total['p'],1)}g | K {round(total['c'],1)}g | Y {round(total['f'],1)}g"})
+    if unresolved:
+        actions.append({'type': '_bot_note', 'text': '⚠️ Çözümleyemediğim kalemler (Besin DB\'de yok, elle ekleyebilirsin): ' + ' · '.join(unresolved[:6])})
     return actions
 
 def tg_supplement_stack_slot(raw_text):
@@ -6227,9 +6360,10 @@ def tg_supplement_stack_slot(raw_text):
         return 'ac-karna'
     if any(w in norm for w in ['gece', 'uyku', 'yatmadan']):
         return 'gece'
-    if any(w in norm for w in ['pre workout', 'pre-workout', 'preworkout', 'idman oncesi']):
+    # 'workput/workut' = Taha'nin gercek yazim hatalari (2026-07-22 00:07 mesaji kayboldu)
+    if any(w in norm for w in ['pre workout', 'pre-workout', 'preworkout', 'idman oncesi', 'pre workput', 'pre workut', 'pre wokout']):
         return 'pre-workout'
-    if any(w in norm for w in ['post workout', 'post-workout', 'postworkout', 'idman sonrasi']):
+    if any(w in norm for w in ['post workout', 'post-workout', 'postworkout', 'idman sonrasi', 'post workput', 'post workut', 'post wokout']):
         return 'post-workout'
     if any(w in norm for w in ['ogle', 'oglen', '?gle', '??le']):
         return 'ogle'
@@ -6805,11 +6939,23 @@ async def cmd_chat_ai(u, c):
     if full_day_actions:
         preferred = []
         deterministic_keys = set()
+        # Dedup anahtarinda slot NORMALIZE edilir: AI 'kahvaltı' derken deterministik
+        # 'kahvalti' diyor - ham karsilastirma kacirip AYNI ogunu iki kez kaydediyordu.
+        # Ayrica kalem-bazli deterministik kayitta ayni slot'un TUM AI kopyalari duser
+        # (isim bagimsiz) - cift sayimin ana kaynagi buydu.
+        def _dedup_key(a):
+            typ = a.get('type')
+            slot_n = normalize_meal_slot(a.get('slot')) if typ == 'meal' else ''
+            return (typ, a.get('date'), slot_n, '' if typ == 'meal' else (a.get('name') or ''))
         for ba in full_day_actions + basic_actions:
             if not isinstance(ba, dict):
                 continue
             typ = ba.get('type')
-            key = (typ, ba.get('date'), ba.get('slot') if typ == 'meal' else '', ba.get('name') or '')
+            if typ == 'meal':
+                deterministic_keys.add(_dedup_key(ba))
+                preferred.append(ba)
+                continue
+            key = _dedup_key(ba)
             if key in deterministic_keys:
                 continue
             deterministic_keys.add(key)
@@ -6818,10 +6964,7 @@ async def cmd_chat_ai(u, c):
             preferred.append(ba)
         actions = [
             a for a in actions
-            if not (
-                isinstance(a, dict) and
-                (a.get('type'), a.get('date'), a.get('slot') if a.get('type') == 'meal' else '', a.get('name') or '') in deterministic_keys
-            )
+            if not (isinstance(a, dict) and _dedup_key(a) in deterministic_keys)
         ]
         actions = preferred + actions
     elif basic_actions:
