@@ -4796,6 +4796,13 @@ def _claude_call(user_text):
     except urllib.error.HTTPError as e:
         detail = e.read().decode('utf-8', errors='ignore')
         log.error("Anthropic HTTP hatasi: %s", detail)
+        if 'credit balance is too low' in detail:
+            # Kredi bitimi gecici ariza DEGIL - kullanici "birazdan tekrar" deneyip durmasin,
+            # gercek cozumu soyle. Deterministik yollar calismaya devam ediyor.
+            return {'reply': ('⚠️ AI kredisi bitti — console.anthropic.com → Billing\'den yükleme gerekiyor.\n'
+                              'Şunlar yine de ÇALIŞIYOR: idman kaydı ("idman kayıt" ile), stack işaretleme '
+                              '("X stack alındı"), su/kilo/adım. Serbest yemek kaydı kredi gelince açılır.'),
+                    'actions': [], '_error': True}
         return {'reply': 'Koç şu an cevap veremedi (API hatası). Birazdan tekrar yazar mısın?', 'actions': [], '_error': True}
     except Exception:
         log.exception("Claude cevap hatasi")
@@ -5238,7 +5245,7 @@ def ai_apply_actions(actions):
                 if not vname and 'tg_supplement_catalog' in globals():
                     notes_lower = vnotes.lower()
                     for item in tg_supplement_catalog():
-                        if any(k in notes_lower for k in item['keys']):
+                        if any(tg_kw_hit(tg_ascii_text(notes_lower) if 'tg_ascii_text' in globals() else notes_lower, k) for k in item['keys']):
                             vname = item['name']
                             if not vamount:
                                 vamount = item['amount']
@@ -6217,7 +6224,7 @@ TG_SUPPLEMENT_KEYS = {
     'Thorne Vitamin D + K2': ['d3', 'k2', 'd+k', 'd vitamini'],
     'Life Extension Mega EPA/DHA (Omega-3)': ['omega', 'epa', 'dha'],
     'NOW Magtein Magnesium L-Threonate': ['magtein', 'threonate', 'l-threonate'],
-    'Life Extension MacuGuard with Saffron': ['goz', 'macuguard', 'saffron'],
+    'Life Extension MacuGuard with Saffron': ['goz', 'macuguard', 'macguard', 'saffron'],
     'Life Extension BioActive Complete B-Complex': ['b-complex', 'b complex', 'bcomplex'],
     'California Gold Nutrition Gold C 1000mg': ['vitamin c', 'c vitamini', 'gold c'],
     'NOW Zinc Picolinate 50mg': ['cinko', 'zinc'],
@@ -6271,12 +6278,24 @@ def tg_stack_label(slot):
         'post-workout':'Post-workout stack',
     }.get(slot, 'Supplement stack')
 
+def _kw_pat(key):
+    """Katalog anahtarini KELIME SINIRLI regex desenine cevirir. Alt-dizgi aramasi 'nac'
+    anahtarini 'post sNACk' icinde esletip NAC'i alinmis yaziyordu (2026-07-22 00:07,
+    gercek vaka - sahte vitamin_logs satiri silindi). ASCII-normalize norm'da calisir."""
+    k = tg_ascii_text(key) if 'tg_ascii_text' in globals() else (key or '').lower()
+    return r'(?<![a-z0-9])' + re.escape(k) + r'(?![a-z0-9])'
+
+
+def tg_kw_hit(norm, key):
+    """Anahtar norm icinde BAGIMSIZ KELIME olarak geciyor mu? ('nac' != 'snack')"""
+    return re.search(_kw_pat(key), norm) is not None
+
+
 def tg_supplement_item_missing(item, norm):
     for key in [item['name'].lower()] + item['keys']:
-        k = tg_ascii_text(key) if 'tg_ascii_text' in globals() else key
-        if re.search(re.escape(k) + r'.{0,28}(eksik|icmedim|almadim|alma|haric|hari?|yok)', norm):
+        if re.search(_kw_pat(key) + r'.{0,28}(eksik|icmedim|almadim|alma|haric|hari?|yok)', norm):
             return True
-        if re.search(r'(eksik|icmedim|almadim|haric|hari?|yok).{0,28}' + re.escape(k), norm):
+        if re.search(r'(eksik|icmedim|almadim|haric|hari?|yok).{0,28}' + _kw_pat(key), norm):
             return True
     return False
 
@@ -6291,7 +6310,7 @@ def tg_supplement_excluded_items(matched_items, norm):
     for item in matched_items:
         for key in item['keys']:
             key_norm = tg_ascii_text(key) if 'tg_ascii_text' in globals() else key
-            for m in re.finditer(re.escape(key_norm), norm):
+            for m in re.finditer(_kw_pat(key), norm):
                 item_spans.append((m.start(), m.end(), item['name']))
     if not item_spans:
         return set()
@@ -6326,7 +6345,7 @@ def tg_supplement_actions_from_text(raw_text):
     norm = tg_ascii_text(text) if 'tg_ascii_text' in globals() else text.lower()
     catalog = tg_supplement_catalog()
     trigger_words = ['stack', 'takviye', 'vitamin', 'supplement', 'suplement', 'aldim', 'alindi', 'ictim', 'icti']
-    if not any(w in norm for w in trigger_words) and not any(k in norm for item in catalog for k in item['keys']):
+    if not any(w in norm for w in trigger_words) and not any(tg_kw_hit(norm, k) for item in catalog for k in item['keys']):
         return []
     slot = tg_supplement_stack_slot(text)
     today = tg_effective_log_date(text, 'vitamin') if 'tg_effective_log_date' in globals() else operation_today()
@@ -6335,7 +6354,7 @@ def tg_supplement_actions_from_text(raw_text):
         wanted = set(tg_stack_preset(slot))
         matched = [item for item in catalog if item['name'] in wanted]
     for item in catalog:
-        if any(k in norm for k in item['keys']) and item not in matched:
+        if any(tg_kw_hit(norm, k) for k in item['keys']) and item not in matched:
             matched.append(item)
     unit_pat = r'(kapsul|damla|drop|doz|tablet|olcek|g|mg|iu|paket)'
     excluded_names = tg_supplement_excluded_items(matched, norm) if len(matched) > 1 else (
@@ -6344,10 +6363,10 @@ def tg_supplement_actions_from_text(raw_text):
     for item in matched:
         if item['name'] in seen or item['name'] in excluded_names:
             continue
-        explicit_item = any(k in norm for k in item['keys'])
+        explicit_item = any(tg_kw_hit(norm, k) for k in item['keys'])
         if item['name'] == 'NOW Zinc Picolinate 50mg' and slot in ('sabah', 'kahvalti') and not explicit_item and not tg_zinc_due_for_date(today):
             continue
-        line = next((ln for ln in text.splitlines() if any(k in (tg_ascii_text(ln) if 'tg_ascii_text' in globals() else ln.lower()) for k in item['keys'])), text)
+        line = next((ln for ln in text.splitlines() if any(tg_kw_hit(tg_ascii_text(ln) if 'tg_ascii_text' in globals() else ln.lower(), k) for k in item['keys'])), text)
         line_norm = tg_ascii_text(line) if 'tg_ascii_text' in globals() else line.lower()
         amount, unit = item['amount'], item['unit']
         found = None
@@ -6396,7 +6415,7 @@ def tg_supplement_break_target(raw_text, norm):
     sadece o urun, tum stack degil."""
     catalog = tg_supplement_catalog() if 'tg_supplement_catalog' in globals() else []
     for item in catalog:
-        if any(k in norm for k in item['keys']):
+        if any(tg_kw_hit(norm, k) for k in item['keys']):
             return ('product', item['name'])
     slot = tg_supplement_stack_slot(raw_text) if 'tg_supplement_stack_slot' in globals() else ''
     if slot and slot in _SLOT_STACK_NAME:
