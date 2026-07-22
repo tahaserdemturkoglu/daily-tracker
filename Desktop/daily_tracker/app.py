@@ -2820,34 +2820,56 @@ def ensure_meal_sugar_col(conn=None):
 def _infer_meal_nutrient(conn, title, description, col):
     """Genel besin-ogesi turetici: urun food_registry'de eslesiyor VE gram miktari
     cikarilabiliyorsa istenen kolonun (fiber_per_100 / sugar_per_100) porsiyon degerini
-    hesaplar. _infer_meal_fiber'in genellemesi - ayni kurallar."""
+    hesaplar. _infer_meal_fiber'in genellemesi - ayni kurallar.
+    Cok satirli aciklama (tam-gun kaydi) satir satir cozulup TOPLANIR."""
     desc = (description or '').strip()
+    if '\n' in desc:
+        total, hit = 0.0, False
+        for _line in desc.split('\n'):
+            v = _infer_meal_nutrient(conn, '', _line.strip(), col)
+            if v is not None:
+                total += v
+                hit = True
+        return round(total, 2) if hit else None
     name = (title or '').strip()
     grams = None
+    desc_name = ''   # aciklamadan cikarilan saf urun adi (yedek arama icin)
     m = re.match(r'^\s*(\d+(?:[.,]\d+)?)\s*(?:g|gr|gram)\b\s*(.*)$', desc, re.I)
     if m:
         grams = float(m.group(1).replace(',', '.'))
+        desc_name = m.group(2).strip()
         # title bos DEGIL ama kendisi de "50 g Skyr Yogurt" gibi miktarla basliyorsa
         # food_registry'de eslesmez -> aciklamadan cikarilan saf urun adini kullan.
         if not name or re.match(r'^\s*\d', name):
-            name = m.group(2).strip()
+            name = desc_name
     if grams is None:
         # Adet'li kayitlar: "6 adet (45g) Jutrzenka..." / "2 adet (105g) Yumurta" -
         # gramaj parantez icinde. Urun adi parantezden sonrasi.
         m2 = re.search(r'\((\d+(?:[.,]\d+)?)\s*(?:g|gr|gram)\)\s*(.*)$', desc, re.I)
         if m2:
             grams = float(m2.group(1).replace(',', '.'))
+            desc_name = m2.group(2).strip()
             if not name or re.match(r'^\s*\d', name):
-                name = m2.group(2).strip()
+                name = desc_name
     if grams is None or not name:
         return None
-    row = conn.execute(
-        f"SELECT {col} FROM food_registry WHERE name=? OR official_name=? "
-        "OR (','||lower(replace(aliases,' ',''))||',') LIKE '%,'||lower(replace(?,' ',''))||',%' LIMIT 1",
-        (name, name, name)).fetchone()
-    if not row or not row[col]:
+
+    def _lookup(n):
+        return conn.execute(
+            f"SELECT {col} FROM food_registry WHERE name=? COLLATE NOCASE OR official_name=? COLLATE NOCASE "
+            "OR (','||lower(replace(aliases,' ',''))||',') LIKE '%,'||lower(replace(?,' ',''))||',%' LIMIT 1",
+            (n, n, n)).fetchone()
+
+    row = _lookup(name)
+    if not row or row[col] is None:
+        # Baslik "Snack"/"Pre Meal" gibi slot etiketi olabilir - aciklamadan cikan
+        # urun adiyla bir kez daha dene ("100g muz" -> "muz").
+        if desc_name and desc_name.lower() != name.lower():
+            row = _lookup(desc_name)
+    if not row or row[col] is None:
         return None
-    return round(row[col] * grams / 100.0, 2)
+    # 0 gecerli bir degerdir (Skyr yag=0 gibi) - None'a katlama, 0.0 don.
+    return round((row[col] or 0) * grams / 100.0, 2)
 
 
 def _infer_meal_fiber(conn, title, description):
@@ -5242,9 +5264,11 @@ def ai_apply_actions(actions):
     saved = []
     today = operation_today()
     trained_dates = set()   # training_exercise gelen gunler: sonda seansa derlenir
+    touched_dates = set()   # veri yazilan gunler: sonda Koc Analizi cache'i dusurulur
     for a in actions or []:
         typ = (a.get('type') or '').strip()
         action_date = (a.get('date') or today)
+        _n_before = len(saved)
         try:
             if typ == 'meal':
                 conn = get_db()
@@ -5259,6 +5283,21 @@ def ai_apply_actions(actions):
                 sugar = a.get('sugar_g')
                 if sugar is None:
                     sugar = _infer_meal_sugar(conn, title, a.get('description') or '')
+                # Model ana makrolari da atlayabiliyor (denetim 3/3): NULL birakma,
+                # urun Besin DB'de esliyorsa ayni turetmeyle doldur.
+                _desc = a.get('description') or ''
+                _kcal = a.get('calories')
+                if _kcal is None:
+                    _kcal = _infer_meal_nutrient(conn, title, _desc, 'calories_per_100')
+                _p = a.get('protein_g')
+                if _p is None:
+                    _p = _infer_meal_nutrient(conn, title, _desc, 'protein_per_100')
+                _k = a.get('carbs_g')
+                if _k is None:
+                    _k = _infer_meal_nutrient(conn, title, _desc, 'carbs_per_100')
+                _y = a.get('fat_g')
+                if _y is None:
+                    _y = _infer_meal_nutrient(conn, title, _desc, 'fat_per_100')
                 ensure_meal_sugar_col(conn)
                 conn.execute("""
                     INSERT INTO meal_entries
@@ -5266,8 +5305,7 @@ def ai_apply_actions(actions):
                     VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 """, (
                     action_date, slot, title, a.get('description') or '',
-                    a.get('calories'), a.get('protein_g'), a.get('carbs_g'),
-                    a.get('fat_g'), fiber, sugar, 'telegram-ai'
+                    _kcal, _p, _k, _y, fiber, sugar, 'telegram-ai'
                 ))
                 conn.commit(); conn.close()
                 saved.append('öğün')
@@ -5439,6 +5477,16 @@ def ai_apply_actions(actions):
                 saved.append('not silindi')
         except Exception:
             log.exception("AI action kaydedilemedi: %s", typ)
+        else:
+            if len(saved) > _n_before and typ not in ('note', '_bot_note'):
+                touched_dates.add(action_date)
+    # Yazilan gunlerin Koc Analizi cache'ini dusur - TG kaydi sonrasi yorum bayat kalmasin
+    # (denetim 3/3: web yollari invalidate ediyordu, TG hattinin tamami etmiyordu).
+    for _d in touched_dates:
+        try:
+            invalidate_ai_insights_cache(_d)
+        except Exception:
+            pass
     # training_exercise gelen gunler: gun loglarini Antrenman sayfasinin seans formatina derle
     for _d in trained_dates:
         try:
@@ -7961,7 +8009,7 @@ def import_real_besin_supplement_db():
     PRODUCTS = [
         ('NOW NAC 600mg', 1, 'kapsül'), ('Garden of Life Probiyotik', 1, 'doz'),
         ('Optimum Nutrition Collagen Peptides', 1, 'ölçek'), ('Thorne Vitamin D + K2', 1, 'damla'),
-        ('Life Extension Mega EPA/DHA', 1, 'kapsül'), ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
+        ('Life Extension Mega EPA/DHA (Omega-3)', 1, 'kapsül'), ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
         ('Life Extension MacuGuard with Saffron', 1, 'kapsül'), ('Life Extension BioActive Complete B-Complex', 1, 'kapsül'),
         ('California Gold Nutrition C 1000mg', 1, 'tablet'), ('NOW L-Theanine Double Strength', 1, 'kapsül'),
         ('NOW Zinc Picolinate 50mg', 1, 'kapsül'), ('NOW Astaxanthin 10mg', 1, 'kapsül'),
@@ -7979,7 +8027,9 @@ def import_real_besin_supplement_db():
 
     # Eski genel/yer-tutucu urun isimleri artik daha spesifik gercek marka isimleriyle var - eskisini sil
     SUPERSEDED_PRODUCT_NAMES = [
-        'Garden of Life Probiotic', 'Life Extension Mega EPA/DHA (Omega-3)', 'Life Extension B-Complex',
+        # DIKKAT: buraya KANONIK ad koyma - o urunu her boot silersin (2026-07-22'de
+        # kanonik Omega-3 buradaydi, PRODUCTS ise eski adi ekliyordu -> sonsuz salinim).
+        'Garden of Life Probiotic', 'Life Extension Mega EPA/DHA', 'Life Extension B-Complex',
         'Life Extension MacuGuard', 'California Gold Nutrition C', 'NOW Magtein', 'Elektrolit',
         'Citrulline', 'Taurine', 'Beta Alanine', 'Creatine Monohydrate', 'Magnesium Glycinate',
         'Glycine', 'Melatonin', 'Optimum Nutrition Collagen',
@@ -8003,7 +8053,7 @@ def import_real_besin_supplement_db():
         ]),
         ('Sabah/Kahvaltı', 2, [
             ('Optimum Nutrition Collagen Peptides', 1, 'ölçek'), ('Thorne Vitamin D + K2', 1, 'damla'),
-            ('Life Extension Mega EPA/DHA', 1, 'kapsül'), ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
+            ('Life Extension Mega EPA/DHA (Omega-3)', 1, 'kapsül'), ('NOW Magtein Magnesium L-Threonate', 1, 'kapsül'),
             ('Life Extension MacuGuard with Saffron', 1, 'kapsül'), ('Life Extension BioActive Complete B-Complex', 1, 'kapsül'),
             ('California Gold Nutrition C 1000mg', 1, 'tablet'), ('NOW L-Theanine Double Strength', 1, 'kapsül'),
             ('NOW Zinc Picolinate 50mg', 1, 'kapsül'), ('NOW Astaxanthin 10mg', 1, 'kapsül'),
