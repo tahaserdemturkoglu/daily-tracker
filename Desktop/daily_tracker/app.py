@@ -7250,6 +7250,7 @@ def food_db_auto_learn(actions):
 
 async def cmd_photo(u, c):
     """Kullanici fotograf gonderdiyse Claude vision ile analiz et"""
+    import urllib.request, urllib.error   # except blogu urllib.error'a ihtiyac duyar - try'dan ONCE bagla
     msg = u.message
     caption = (msg.caption or '').strip()
     chat_id = getattr(u.effective_chat, 'id', '') if u else ''
@@ -7270,6 +7271,15 @@ async def cmd_photo(u, c):
         ctx = _today_ai_context()
         official_training = ctx.get('training_day') or training_day(today)
         besin_db_ctx = _besin_db_for_prompt()
+        # Vucut/tarti fotografi yorumu icin kilo trendi (ctx sadece bugunu tasir)
+        _wconn = get_db()
+        weight_trend = [
+            {'d': r['date'], 'kg': r['weight_kg']}
+            for r in _wconn.execute(
+                "SELECT date, weight_kg FROM body_metrics WHERE weight_kg IS NOT NULL "
+                "ORDER BY date DESC LIMIT 14").fetchall()
+        ][::-1]
+        _wconn.close()
         system_prompt = (
             "Sen Taha Serdem'in kisisel antrenman ve gunluk performans kocusun. "
             "Turkce, samimi, net ve motive edici konus.\n"
@@ -7278,17 +7288,32 @@ async def cmd_photo(u, c):
             + f"RESMI ANTRENMAN GUNU: {official_training}. Bu sistem verisidir; fotografla tahmin edilmez. "
             "Bugun icin antrenman onerisi yapacaksan sadece bu resmi gunle uyumlu oner. "
             "Ornek: resmi gun Leg ise Push onerme.\n"
-            "Fotografi analiz et. Antrenman programi, ilerleme, vucut olcumu, yemek veya "
-            "herhangi bir not gorebilirsin.\n"
-            "- Antrenman programi/logu fotografiysa: eksiklikleri, iyilestirme onerilerini, "
-            "o gune uygun antrenmani yaz\n"
-            "- Vucud fotografiysa: durusu, kas gelisimini, genel yorumu paylas\n"
-            "- Yemek fotografiysa besinleri ayri ayri analiz et; caption kayit istiyorsa ayri meal actionlari olustur.\n"
-            "- Kayit istenmediyse actions bos kalsin. Belirsizlik yuksekse once tek net soru sor.\n"
+            "Fotografi analiz et. Yemek, vucut, tarti, antrenman programi veya not gorebilirsin.\n"
+            "- YEMEK fotografi: besinleri AYRI AYRI kalem olarak analiz et (NUTRITION_ANALYSIS "
+            "kurallari aynen gecerli: kaynak onceligi, cig/pismis, 4P+4K+9Y tutarlilik kontrolu, "
+            "· format). Caption kayit istiyorsa her kalem icin ayri meal action olustur; slot "
+            "olarak Taha'nin KENDI basliklarini kullan (kahvalti, snack, meal1, meal2, meal3, "
+            "pre snack, pre meal, post meal, post snack, gece, cheat meal, cheat tatli, ara) - "
+            "asla ogle/aksam gibi standart isimlere cevirme. Caption'da baslik yazdiysa AYNEN onu kullan.\n"
+            "- TARTI/OLCUM fotografi: ekrandaki sayiyi oku, kilo olarak KAYDET (weight action). "
+            "Sayi net okunmuyorsa kaydetme, tek soru sor. Onceki kiloyla farki yorumla "
+            "(gunluk +-0.5 kg su oynamasidir, panik yorumu yapma).\n"
+            "- VUCUT fotografi: durustce degerlendir, pohpohlama. Sirasiyla: (1) gorunen kas "
+            "gruplari ve gelisim, (2) zayif/geride kalan bolge, (3) kilo trendi + WHOOP verisiyle "
+            "baglanti (asagidaki gercek veriden), (4) tek somut oneri. Ayni poz/isik/saatte cekim "
+            "oner ki karsilastirma saglikli olsun. Yag orani icin kesin sayi verme, aralik ver.\n"
+            "- ANTRENMAN programi/logu fotografi: eksikleri ve iyilestirmeleri yaz; o gunun resmi "
+            "gunuyle uyumlu oner.\n"
+            "- Kayit istenmediyse actions bos kalsin. Porsiyon belirsizligi toplami %25+ "
+            "degistirecekse once TEK net soru sor, kaydetme.\n"
             "SADECE gecerli JSON dondur:\n"
-            '{"reply":"...","actions":[{"type":"meal","date":"YYYY-MM-DD","slot":"kahvalti|ogle|aksam|ara","title":"Besin ve miktar","description":"cig/pismis ve hazirlama","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0,"estimated":true,"source":"visual-estimate"}]}'
+            '{"reply":"...","actions":['
+            '{"type":"meal","date":"YYYY-MM-DD","slot":"kahvalti","title":"Besin ve miktar","description":"210 g Urun Adi (cig/pismis, hazirlama)","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0,"fiber_g":0,"sugar_g":0,"estimated":true,"source":"visual-estimate"},'
+            '{"type":"weight","date":"YYYY-MM-DD","weight_kg":0.0}'
+            ']}'
             f"\nTarih: bugun={today}, dun={yesterday}\n"
-            f"Bugunun verisi: {json.dumps(ctx, ensure_ascii=False)}"
+            f"Bugunun verisi: {json.dumps(ctx, ensure_ascii=False)}\n"
+            f"KILO TRENDI (son 14 kayit, vucut/tarti yorumunda kullan): {json.dumps(weight_trend, ensure_ascii=False)}"
             + "\n" + besin_db_ctx
         )
         user_content = []
@@ -7301,7 +7326,7 @@ async def cmd_photo(u, c):
         import urllib.request, urllib.error
         body = {
             "model": ANTHROPIC_MODEL,
-            "max_tokens": 2000,
+            "max_tokens": 6000,   # cok kalemli tabak + vucut analizi 2000'e sigmiyordu (metin hattiyla ayni ders)
             "system": system_prompt,
             "messages": [{"role": "user", "content": user_content}]
         }
@@ -7328,6 +7353,19 @@ async def cmd_photo(u, c):
             reply += f"\n\n✅ Kaydedildi: {', '.join(saved)}"
         tg_store_message('out', reply, getattr(u.effective_chat, 'id', ''), 'AI Coach', actions)
         await msg.reply_text(reply)
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode('utf-8', errors='replace')
+        except Exception:
+            err_body = ''
+        log.error("Fotograf analizi API hatasi %s: %s", e.code, err_body[:500])
+        if 'credit balance is too low' in err_body:
+            await msg.reply_text(
+                "Fotoğraf analizi için AI kredisi bitti, kayıt YAPMADIM. "
+                "Metinle yazarsan (örn. \"kahvaltı / 210g yumurta / 50g yulaf\") "
+                "kredisiz deterministik hattan kaydederim. Kredi yüklenince fotoğraf da çalışır.")
+        else:
+            await msg.reply_text("Fotoğrafı analiz edemedim (API hatası), kayıt yapmadım — bir daha gönderir misin?")
     except Exception:
         log.exception("Fotograf analizi basarisiz")
         await msg.reply_text("Fotoğrafı analiz edemedim, kayıt yapmadım — bir daha gönderir misin?")
