@@ -2442,7 +2442,10 @@ function ndMealLogHtml(groups){
           <span style="font-size:10px;display:inline-block;transition:transform .15s;transform:rotate(${expanded?90:0}deg)">▸</span>
           ● ${g.label.toUpperCase()} <span style="opacity:.7;font-weight:500">(${g.rows.length})</span>
         </div>
-        <div style="font-size:13px;font-weight:700"><span style="color:${ND.kcal}">${Math.round(g.tot.cal)} kcal</span> · <span style="color:${ND.p}">P ${Math.round(g.tot.p)}</span> · <span style="color:${ND.k}">K ${Math.round(g.tot.k)}</span> · <span style="color:${ND.y}">Y ${Math.round(g.tot.y)}</span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:13px;font-weight:700"><span style="color:${ND.kcal}">${Math.round(g.tot.cal)} kcal</span> · <span style="color:${ND.p}">P ${Math.round(g.tot.p)}</span> · <span style="color:${ND.k}">K ${Math.round(g.tot.k)}</span> · <span style="color:${ND.y}">Y ${Math.round(g.tot.y)}</span></div>
+          <button onclick="event.stopPropagation();ndDeleteMealGroup('${slotEsc}')" title="Öğünü komple sil" style="background:none;border:none;color:${ND.muted};font-size:13px;cursor:pointer;padding:2px 4px;line-height:1" onmouseover="this.style.color='#FF4D4D'" onmouseout="this.style.color='${ND.muted}'">🗑</button>
+        </div>
       </div>
       ${items}
     </div>`;
@@ -2457,6 +2460,22 @@ function ndMealLogHtml(groups){
 /* ── Öğün Logu drag&drop: kalem taşıma (slot değişimi) + grup içi sıralama ──
    display_order bileşik kodlanır: (grupSira+1)*100 + kalemSira. Grup sıralaması
    min() ile korunur (ndGroupMeals.savedOrd), kalem sırası SQL ORDER BY ile gelir. */
+async function ndDeleteMealGroup(slot){
+  // Ogun grubunu (tum kalemleriyle) sil - kalem tek tek silmek yerine tek tikla.
+  const g=(ND_LAST_MEAL_GROUPS||[]).find(x=>x.slot===slot);
+  if(!g||!g.rows.length)return;
+  confirm_('Öğünü sil', `${g.label} altındaki ${g.rows.length} kalem (${Math.round(g.tot.cal)} kcal) silinecek. Emin misin?`, async()=>{
+    let ok=0;
+    for(const m of g.rows){
+      const r=await DEL('/api/meals/'+m.id);
+      if(r&&r.ok)ok++;
+    }
+    toast(ok===g.rows.length?`${g.label} silindi (${ok} kalem)`:`${ok}/${g.rows.length} kalem silindi`,ok===g.rows.length);
+    loadDashboard();
+    if(typeof loadMealEntries==='function'){try{loadMealEntries();}catch(e){}}
+  });
+}
+
 let ND_MEAL_DRAG=null;
 function ndMealDragStart(ev,id,slot){
   ND_MEAL_DRAG={id,slot};

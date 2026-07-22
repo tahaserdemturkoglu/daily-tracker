@@ -569,7 +569,7 @@ CANONICAL_SUPPLEMENT_STACKS = [
     ]),
     ('Gece', [
         ('NOW Magnesium Glycinate', 3, 'kapsül'),
-        ('NOW Melatonin 1mg', 3, 'tablet'),
+        ('NOW Melatonin 1000mcg', 3, 'tablet'),
         ('NOW Glycine 1000mg', 3, 'kapsül'),
         ('NOW L-Theanine Double Strength', 1, 'kapsül'),
         ('NOW NAC 600mg', 1, 'kapsül'),
@@ -632,8 +632,9 @@ SUPPLEMENT_NAME_RENAMES = {
     'Magnesium L-Threonate (NOW Magtein)': 'NOW Magtein Magnesium L-Threonate',
     'Magtein': 'NOW Magtein Magnesium L-Threonate',
     'Magtein Magnesium L-Threonate': 'NOW Magtein Magnesium L-Threonate',
-    'Melatonin': 'NOW Melatonin 1mg',
-    'NOW Melatonin': 'NOW Melatonin 1mg',
+    'Melatonin': 'NOW Melatonin 1000mcg',
+    'NOW Melatonin 1mg': 'NOW Melatonin 1000mcg',
+    'NOW Melatonin': 'NOW Melatonin 1000mcg',
     'NAC': 'NOW NAC 600mg',
     'Taurin': 'Swedish Supplements Taurine',
 }
@@ -642,7 +643,7 @@ SUPPLEMENT_NAME_RENAMES = {
 # Kanonik katalog surumu: stack icerigi kodda degistiginde artir. Stack item rewrite
 # SADECE surum degisince uygulanir - yoksa kullanicinin UI'dan yaptigi stack duzenlemeleri
 # her restart'ta sessizce geri aliniyordu. Isim rename'leri surumden bagimsiz her boot calisir.
-SUPPLEMENT_CATALOG_VERSION = '2026-07-17-v1'
+SUPPLEMENT_CATALOG_VERSION = '2026-07-22-v1'   # Melatonin 1mg -> 1000mcg (ayni doz, sise yazimi)
 
 
 def sync_supplement_catalog_canonical():
@@ -4602,7 +4603,7 @@ STANDART PANCAKE V2:
 SUPPLEMENT SISTEMI (5 gercek stack, guncel 2026-07-17):
 - Ac Karna: NOW NAC 600mg (1 kapsul), Garden of Life Dr. Formulated Probiotics Once Daily Men's (1 kapsul).
 - Sabah/Kahvalti: Optimum Nutrition Collagen Peptides Unflavoured (1 olcek), Thorne Vitamin D+K2 (4 damla), Life Extension Mega EPA/DHA Omega-3 (3 kapsul), NOW Magtein Magnesium L-Threonate (1 kapsul), Life Extension MacuGuard with Saffron - goz vitamini (1 kapsul), Life Extension BioActive Complete B-Complex (1 kapsul), California Gold Nutrition Gold C 1000mg (1 tablet), NOW L-Theanine Double Strength (1 kapsul), NOW Zinc Picolinate 50mg - gun asiri (1 kapsul), NOW Extra Strength Astaxanthin 10mg (1 kapsul).
-- Gece: NOW Magnesium Glycinate (3 kapsul), NOW Melatonin 1mg (3 tablet), NOW Glycine 1000mg (3 kapsul), NOW L-Theanine Double Strength (1 kapsul), NOW NAC 600mg (1 kapsul), Weider Ashwagandha Professional (2 kapsul). Ashwagandha artik GECE'de.
+- Gece: NOW Magnesium Glycinate (3 kapsul), NOW Melatonin 1000mcg (3 tablet), NOW Glycine 1000mg (3 kapsul), NOW L-Theanine Double Strength (1 kapsul), NOW NAC 600mg (1 kapsul), Weider Ashwagandha Professional (2 kapsul). Ashwagandha artik GECE'de.
 - NAC gunde 2 kez alinir: ac karna (sabah) + gece. 'NAC aldim' derse saatten hangisi oldugunu cikar; belirsizse sor.
 - Pre-workout: Doctor's Best L-Citrulline Powder (8g), KFD Premium Beta-Alanine (2g), Optimum Nutrition Electrolyte Powder Lemon (8g), Swedish Supplements Taurine (2g).
 - Post-workout: California Gold Nutrition SPORT Creatine Monohydrate (5g).
@@ -6232,7 +6233,7 @@ TG_SUPPLEMENT_KEYS = {
     'NOW L-Theanine Double Strength': ['theanine', 'l-theanine', 'l theanine'],
     'NOW Magnesium Glycinate': ['magnesium glycinate', 'magnezyum glisinat', 'glycinate'],
     'NOW Glycine 1000mg': ['glycine', 'glisin'],
-    'NOW Melatonin 1mg': ['melatonin'],
+    'NOW Melatonin 1000mcg': ['melatonin'],
     "Doctor's Best L-Citrulline Powder": ['citrulline', 'sitrulin', 'l-citrulline'],
     'KFD Premium Beta-Alanine': ['beta alanine', 'beta-alanine', 'alanin'],
     'Optimum Nutrition Electrolyte Powder (Lemon)': ['electrolyte', 'elektrolit', 'hydration'],
@@ -6379,7 +6380,29 @@ def tg_supplement_actions_from_text(raw_text):
             amount = found.group(1).replace(',', '.')
             if found.group(2):
                 unit = found.group(2).replace('kapsul','kapsul').replace('olcek','olcek')
-        actions.append({'type':'vitamin', 'date':today, 'name':item['name'], 'amount':amount, 'unit':unit, 'notes':f"{tg_stack_label(slot or 'manual')} | {item['note']}", 'stack':slot or 'manual'})
+        # STACK ETIKETI: web'in yazdigi 'stack:<ad>' onekiyle ayni format. Bu olmadan NAC ve
+        # L-Theanine gibi IKI stack'te bulunan urunlerin etiketsiz TG kaydi yanlis stack'e
+        # oturuyordu (sabah alinan NAC, Gece stack'te de "alindi" gorunuyordu).
+        stack_name = _SLOT_STACK_NAME.get(slot) if slot else None
+        if not stack_name:
+            # Slot soylenmedi ("nac aldim"): urun tek stack'teyse o; birden fazlasindaysa
+            # saatten cikar - aksam/gece saatleri (17:00-08:00) Gece stack'i demektir.
+            _seen_stacks, _in_stacks = set(), []
+            for _s2 in ('ac-karna', 'sabah', 'gece', 'pre-workout', 'post-workout'):
+                _sn = _SLOT_STACK_NAME.get(_s2)
+                if _sn and _sn not in _seen_stacks and item['name'] in tg_stack_preset(_s2):
+                    _seen_stacks.add(_sn)
+                    _in_stacks.append(_sn)
+            if len(_in_stacks) == 1:
+                stack_name = _in_stacks[0]
+            elif len(_in_stacks) > 1:
+                _h = now_istanbul().hour
+                if 'Gece' in _in_stacks and (_h >= 17 or _h < 8):
+                    stack_name = 'Gece'
+                else:
+                    stack_name = next((x for x in _in_stacks if x != 'Gece'), _in_stacks[0])
+        _prefix = f"stack:{stack_name} | " if stack_name else ''
+        actions.append({'type':'vitamin', 'date':today, 'name':item['name'], 'amount':amount, 'unit':unit, 'notes':_prefix + f"{tg_stack_label(slot or 'manual')} | {item['note']}", 'stack':slot or 'manual'})
         seen.add(item['name'])
     # Çinko sabah/kahvaltı stack'te bekleniyor ama alınmadıysa bot notu ekle
     if slot in ('sabah', 'kahvalti'):
@@ -7750,7 +7773,7 @@ def import_real_besin_supplement_db():
         ('Life Extension MacuGuard with Saffron', 1, 'kapsül'), ('Life Extension BioActive Complete B-Complex', 1, 'kapsül'),
         ('California Gold Nutrition C 1000mg', 1, 'tablet'), ('NOW L-Theanine Double Strength', 1, 'kapsül'),
         ('NOW Zinc Picolinate 50mg', 1, 'kapsül'), ('NOW Astaxanthin 10mg', 1, 'kapsül'),
-        ('NOW Magnesium Glycinate', 1, 'kapsül'), ('NOW Melatonin 1mg', 1, 'tablet'),
+        ('NOW Magnesium Glycinate', 1, 'kapsül'), ('NOW Melatonin 1000mcg', 1, 'tablet'),
         ('NOW Glycine 1000mg', 1, 'kapsül'), ('KSM-66 Ashwagandha', 1, 'kapsül'), ('L-Theanine', 1, 'kapsül'),
         ('5% Nutrition L-Citrulline 3000', 1, 'ölçek'), ('KFD Premium Beta-Alanin', 1, 'ölçek'),
         ('Optimum Nutrition Elektrolit', 1, 'ölçek'), ('Swedish Supplements Taurine', 1, 'ölçek'),
@@ -7794,7 +7817,7 @@ def import_real_besin_supplement_db():
             ('NOW Zinc Picolinate 50mg', 1, 'kapsül'), ('NOW Astaxanthin 10mg', 1, 'kapsül'),
         ]),
         ('Gece', 3, [
-            ('NOW Magnesium Glycinate', 1, 'kapsül'), ('NOW Melatonin 1mg', 1, 'tablet'),
+            ('NOW Magnesium Glycinate', 1, 'kapsül'), ('NOW Melatonin 1000mcg', 1, 'tablet'),
             ('NOW Glycine 1000mg', 1, 'kapsül'), ('KSM-66 Ashwagandha', 1, 'kapsül'), ('L-Theanine', 1, 'kapsül'),
         ]),
         ('Pre-workout', 4, [
