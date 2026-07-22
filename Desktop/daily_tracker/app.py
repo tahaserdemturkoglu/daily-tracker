@@ -1412,6 +1412,35 @@ def active_breaks_prompt_txt():
             + ". Bunlari stack kaydina dahil etme, eksik/atlandi diye elestirme - bilincli ara, UI'da 'Ara Veriliyor' gorunur.")
 
 
+def supp_counts_for_date(conn, date_str):
+    """Bir gunun takviye sayaci: (alinan, beklenen). TEK DOGRULUK KAYNAGI -
+    dashboard sidebar'i, gather_day_snapshot (Koc) ve /api/macro/range (7-gun
+    seridi / gun modali) HEPSI bunu kullanir. Kurallar:
+    - ara verilen stack/urunler beklenmez (ara kendi tarih penceresinde: since<=gun<=end)
+    - cinko gun-asiri dinlenmedeyse ve o gun alinmadiysa beklenmez
+    (2026-07-22 kullanici yakaladi: serit naif COUNT(*) ile '22/23' derken
+    sidebar kurallarla '21/21' diyordu - iki formul ayrismisti.)"""
+    taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (date_str,)).fetchone()['c']
+    _breaks = [b for b in active_supplement_breaks()
+               if (not b.get('since_date') or b['since_date'] <= date_str)
+               and (not b.get('end_date') or date_str <= b['end_date'])]
+    _broken_stacks = {b['target_name'] for b in _breaks if b['target_type'] == 'stack'}
+    _broken_products = {b['target_name'] for b in _breaks if b['target_type'] == 'product'}
+    _items = conn.execute(
+        "SELECT s.name stack_name, si.product_name FROM supplement_stack_items si "
+        "JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
+    ).fetchall()
+    total = sum(1 for it in _items
+                if it['stack_name'] not in _broken_stacks and it['product_name'] not in _broken_products)
+    _z_today = conn.execute("SELECT 1 FROM vitamin_logs WHERE date=? AND name=? LIMIT 1",
+                            (date_str, ZINC_PRODUCT_NAME)).fetchone()
+    if not _z_today and not zinc_due_on(conn, date_str) and any(
+            it['product_name'] == ZINC_PRODUCT_NAME and it['stack_name'] not in _broken_stacks
+            and it['product_name'] not in _broken_products for it in _items):
+        total -= 1
+    return taken, total
+
+
 def gather_day_snapshot(conn, date_str):
     """Bir gunun tum gercek verisini tek bir dict'te toplar (AI Koc payload'i ve Coach
     sayfasi gosterimi AYNI bu fonksiyonu kullanir, ikisi hep birbirini tutsun diye)."""
@@ -1425,28 +1454,7 @@ def gather_day_snapshot(conn, date_str):
         "SELECT recovery_score, strain, sleep_hours, sleep_performance, hrv_ms, rhr_bpm FROM whoop_daily WHERE date=?",
         (date_str,)
     ).fetchone()
-    supp_taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (date_str,)).fetchone()['c']
-    # supp_total ara verilen stack/urunleri saymaz - yoksa Koc arada olan takviyeyi 'eksik' sanir.
-    # Denetim fix: ara SADECE kendi tarih penceresinde (since<=gun<=end) uygulanir - yoksa bugun
-    # baslayan bir ara gecmis gunlerin sayacini/rozetini de retroaktif bozuyordu.
-    _breaks = [b for b in active_supplement_breaks()
-               if (not b.get('since_date') or b['since_date'] <= date_str)
-               and (not b.get('end_date') or date_str <= b['end_date'])]
-    _broken_stacks = {b['target_name'] for b in _breaks if b['target_type'] == 'stack'}
-    _broken_products = {b['target_name'] for b in _breaks if b['target_type'] == 'product'}
-    _items = conn.execute(
-        "SELECT s.name stack_name, si.product_name FROM supplement_stack_items si "
-        "JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
-    ).fetchall()
-    supp_total = sum(1 for it in _items
-                     if it['stack_name'] not in _broken_stacks and it['product_name'] not in _broken_products)
-    # Cinko o gun due degilse (dun alinmis, gun-asiri dinlenme) ve o gun alinmadiysa beklenmez - toplamdan dus.
-    _z_today = conn.execute("SELECT 1 FROM vitamin_logs WHERE date=? AND name=? LIMIT 1",
-                            (date_str, ZINC_PRODUCT_NAME)).fetchone()
-    if not _z_today and not zinc_due_on(conn, date_str) and any(
-            it['product_name'] == ZINC_PRODUCT_NAME and it['stack_name'] not in _broken_stacks
-            and it['product_name'] not in _broken_products for it in _items):
-        supp_total -= 1
+    supp_taken, supp_total = supp_counts_for_date(conn, date_str)
     td = training_day(date_str)
     sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
     session_done = False
@@ -3016,9 +3024,9 @@ def api_macro_range():
                         session_dates.add(s['date'])
         except Exception:
             pass
-        supp_total = conn.execute(
-            "SELECT COUNT(*) c FROM supplement_stack_items si JOIN supplement_stacks s ON s.id=si.stack_id WHERE s.active=1"
-        ).fetchone()['c']
+        # supp_total artik gun-bazli hesaplanir (asagida, supp_counts_for_date ile) -
+        # naif COUNT(*) aralari/cinko dinlenmesini bilmiyordu ve sidebar'la celisiyordu.
+        supp_total = True   # detail bayragi olarak kullanilir
     result = []
     for i in range(days):
         ds = (start + timedelta(days=i)).isoformat()
@@ -3040,9 +3048,9 @@ def api_macro_range():
             entry['steps'] = int(step_row['steps']) if step_row and step_row['steps'] else 0
             entry['training_type'] = training_day(ds)
             entry['training_done'] = ds in session_dates
-            taken = conn.execute(SUPP_TAKEN_COUNT_SQL, (ds,)).fetchone()['c']
-            entry['supp_taken'] = min(taken, supp_total) if supp_total else taken
-            entry['supp_total'] = supp_total or 0
+            _tk, _tt = supp_counts_for_date(conn, ds)
+            entry['supp_taken'] = min(_tk, _tt) if _tt else _tk
+            entry['supp_total'] = _tt
         result.append(entry)
     conn.close()
     return jsonify(result)
