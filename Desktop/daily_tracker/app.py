@@ -1458,6 +1458,7 @@ def gather_day_snapshot(conn, date_str):
         (date_str,)
     ).fetchone()
     supp_taken, supp_total = supp_counts_for_date(conn, date_str)
+    _breaks = active_supplement_breaks()   # 'ara_verilenler' listesi icin (sayaclar zaten molalari dusuyor)
     td = training_day(date_str)
     sess_row = conn.execute("SELECT value FROM user_settings WHERE key='antrenman_sessions'").fetchone()
     session_done = False
@@ -1479,12 +1480,35 @@ def gather_day_snapshot(conn, date_str):
         by_name = {t['exercise']: t for t in all_trends}
         hareket_trendleri = [by_name[n] for n in set(exercise_names_today) if n in by_name]
     kcal = round(sum(m['calories'] or 0 for m in meals))
+    # Gunun HEDEFLERI (denetim: chat baglaminda hedef yoktu, Koc "astin/kaldin"i
+    # bilemiyordu) - cycle_days gunun tipinden, su user_settings'ten, lif sabit 35g.
+    hedefler = None
+    try:
+        # Tip adlari iki tarafta ayni yazilmayabiliyor ('Leg' vs 'Legs', 'Off1' vs 'Off 1')
+        # - bosluksuz kucuk-harf anahtarla esle, tam tutmuyorsa on-ek eslesmesine dus.
+        _tdk = (td or '').lower().replace(' ', '')
+        _cycles = conn.execute("SELECT type, protein_g, carb_g, fat_g FROM cycle_days").fetchall()
+        cyc = next((r for r in _cycles if r['type'].lower().replace(' ', '') == _tdk), None)
+        if cyc is None and _tdk:
+            cyc = next((r for r in _cycles if r['type'].lower().replace(' ', '').startswith(_tdk)
+                        or _tdk.startswith(r['type'].lower().replace(' ', ''))), None)
+        wg_row = conn.execute("SELECT value FROM user_settings WHERE key='water'").fetchone()
+        if cyc:
+            hedefler = {
+                'kcal': 4 * cyc['protein_g'] + 4 * cyc['carb_g'] + 9 * cyc['fat_g'],
+                'protein_g': cyc['protein_g'], 'carbs_g': cyc['carb_g'], 'fat_g': cyc['fat_g'],
+                'su_ml': int(wg_row['value']) if wg_row and wg_row['value'] else 3000,
+                'lif_g': 35,
+            }
+    except Exception:
+        pass
     skin_rows = conn.execute(
         "SELECT area, name, status, notes FROM skin_logs WHERE date=? ORDER BY ts", (date_str,)
     ).fetchall()
     return {
         'date': date_str,
         'training': {'type': td, 'done': session_done},
+        'hedefler': hedefler,
         'nutrition': {
             'kcal': kcal,
             'protein_g': round(sum(m['protein_g'] or 0 for m in meals)),
@@ -1804,6 +1828,8 @@ def api_coach_chat():
         tr = snap.get('training', {}).get('type')
     ctx = {
         'bugun_tarih': today_str, 'bugun_antrenman_tipi': tr,
+        'bugun_antrenman_yapildi': snap.get('training', {}).get('done'),
+        'gunun_hedefleri': snap.get('hedefler'),
         'bugun': {'beslenme': snap['nutrition'], 'adim': snap['steps'], 'kilo': snap['weight'],
                   'whoop': snap['whoop'], 'takviye': snap['supplements'], 'ruh_hali': snap['mood']},
         'dun': {'antrenman': yday['training'], 'beslenme': yday['nutrition'], 'kilo': yday['weight'],
@@ -4436,12 +4462,27 @@ async def cmd_yemek(u,c):
         desc=' '.join(a[1:-1] if cal else a[1:])
         db_upsert('nutrition_logs', today, {'meal_type': slot, 'description': desc, 'calories': cal})
         conn=get_db()
+        ensure_meal_sugar_col(conn)
+        # Denetim: /yemek sadece kalori yaziyordu - Besin DB'den tum makrolari turet
+        # (ai_apply_actions ogun daliyla ayni fallback hatti).
+        if cal is None:
+            cal = _infer_meal_nutrient(conn, '', desc, 'calories_per_100')
+        prot = _infer_meal_nutrient(conn, '', desc, 'protein_per_100')
+        karb = _infer_meal_nutrient(conn, '', desc, 'carbs_per_100')
+        yag  = _infer_meal_nutrient(conn, '', desc, 'fat_per_100')
+        fib  = _infer_meal_fiber(conn, '', desc)
+        sug  = _infer_meal_sugar(conn, '', desc)
         conn.execute("""
-            INSERT INTO meal_entries (date, slot, title, description, calories, source)
-            VALUES (?,?,?,?,?,?)
-        """, (today, slot, slot, desc, cal, 'telegram-command'))
+            INSERT INTO meal_entries (date, slot, title, description, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, source)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        """, (today, slot, slot, desc, cal, prot, karb, yag, fib, sug, 'telegram-command'))
         conn.commit(); conn.close()
-        await u.message.reply_text(f"Yemek kaydedildi: {slot} {desc} {cal or ''} kcal")
+        try:
+            invalidate_ai_insights_cache(today)
+        except Exception:
+            pass
+        makro = f" · P{prot:g} K{karb:g} Y{yag:g}" if None not in (prot, karb, yag) else ""
+        await u.message.reply_text(f"Yemek kaydedildi: {slot} {desc} {int(cal) if cal else '?'} kcal{makro}")
     except Exception:
         log.exception("Telegram /yemek kaydi basarisiz")
         await u.message.reply_text("Kullanim: /yemek kahvalti yumurta 400")
