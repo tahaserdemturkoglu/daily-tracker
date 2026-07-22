@@ -950,7 +950,7 @@ const DEF={cal:1800,cal_training:2000,prot:190,carb:360,fat:80,water:3500,weight
 // TEK KAYNAK — öğün sırası buradan yönetilir
 // Varsayilan kronolojik sira (kullanici "Ogun Sirasi"ndan kendi sirasini kaydederse O onceliklidir).
 // post_snack artik meal2/meal3'ten SONRA - gunun son ara ogunu.
-const G_SLOT_ORDER=['kahvalti','kahvaltı','snack','snack2','pre_meal','pre_snack','meal1','ogle','öğle','meal2','meal3','aksam','akşam','post_meal','post_snack','gece','ara','cheat_meal','extra'];
+const G_SLOT_ORDER=['kahvalti','kahvaltı','snack','snack2','pre_meal','pre_snack','meal1','ogle','öğle','meal2','meal3','aksam','akşam','post_meal','post_snack','gece','ara','cheat_meal','cheat_tatli','extra'];
 function fmtAmt(a){const n=parseFloat(a);return isNaN(n)?String(a||''):(n%1===0?String(Math.round(n)):String(n));}
 // Karb cycle plan — DB'den yuklenir, localStorage sadece fallback
 let CYCLE_PLAN={};
@@ -2183,6 +2183,7 @@ function ndSlotLabel(s){
   if(s==='post_meal'||s==='post'||s==='post-workout')return'Post Meal';
   if(s==='ogle')return'Öğle';if(s==='aksam')return'Akşam';if(s==='gece')return'Gece';
   if(s==='extra')return'Ekstra';
+  if(s==='cheat_tatli')return'Cheat Tatlı';
   return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
 }
 const ND_SLOT_COLOR={extra:'#2DD4BF',kahvalti:'#FFB020',meal1:'#38BDF8',meal2:'#A78BFA',meal3:'#FFB020',meal4:'#FF5C8A',meal5:'#38BDF8',ogle:'#38BDF8',aksam:'#A78BFA',gece:'#8B5CF6'};
@@ -3047,6 +3048,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='aksam') return 'Akşam';
     if(s==='gece') return 'Gece';
     if(s==='cheat_meal') return 'Cheat Meal';
+    if(s==='cheat_tatli') return 'Cheat Tatlı';
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
@@ -3175,6 +3177,7 @@ const SLOT_DISPLAY={
   aksam:'🌙 Akşam',          akşam:'🌙 Akşam', gece:'🌙 Gece',
   ogle:'🥗 Öğle',            öğle:'🥗 Öğle',
   cheat_meal:'🍰 Cheat Meal',
+  cheat_tatli:'🍮 Cheat Tatlı',
   ara:'🍎 Ara Öğün',
   extra:'✨ Ekstra',
 };
@@ -3195,12 +3198,13 @@ function normSlotKey(s){
   if(/^snack ?2$/.test(k)) return 'snack2';
   // "Cheat Meal" (bosluklu, meal_titles'tan gelen ad) -> cheat_meal; yoksa emojisiz kopya secenek acar
   if(/^cheat.?meal$/.test(k)) return 'cheat_meal';
+  if(/^cheat.?tatl/.test(k)||/^tatl[i]?$/.test(k)) return 'cheat_tatli';
   // "meal 1"/"meal1"/"öğün 1" -> tek canonical key (boşluklu ve boşuksuz ayrı grup olmasın)
   const mn=k.match(/^(?:meal|ogun|meal ?)\s*([1-9])$/) || k.match(/^meal([1-9])$/);
   if(mn) return 'meal'+mn[1];
   return k.replace(/\s+/g,'');
 }
-const CANONICAL_MEAL_SLOTS=['kahvalti','meal1','meal2','meal3','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','aksam','ogle','gece','cheat_meal'];
+const CANONICAL_MEAL_SLOTS=['kahvalti','meal1','meal2','meal3','pre_meal','pre_snack','post_meal','post_snack','snack','snack2','aksam','ogle','gece','cheat_meal','cheat_tatli'];
 async function loadMealTitles(dateStr){
   const sel=$('nu-slot');if(!sel)return;
   const cur=sel.value;

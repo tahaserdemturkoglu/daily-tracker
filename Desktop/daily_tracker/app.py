@@ -513,6 +513,9 @@ MEAL_SLOT_ALIASES = {
     'preworkout': 'pre-workout', 'pre workout': 'pre-workout', 'pre_workout': 'pre-workout',
     'postworkout': 'post-workout', 'post workout': 'post-workout', 'post_workout': 'post-workout',
     'night': 'gece',
+    'cheat meal': 'cheat_meal', 'cheatmeal': 'cheat_meal', 'cheat_meal': 'cheat_meal',
+    'cheat tatlı': 'cheat_tatli', 'cheat tatli': 'cheat_tatli', 'cheat_tatlı': 'cheat_tatli',
+    'tatlı': 'cheat_tatli', 'tatli': 'cheat_tatli',
 }
 
 def normalize_meal_slot(slot):
@@ -2615,6 +2618,7 @@ CANONICAL_SLOTS = [
     ('TITLE-012', 'Öğle',       12),
     ('TITLE-013', 'Gece',       13),
     ('TITLE-014', 'Cheat Meal', 14),
+    ('TITLE-015', 'Cheat Tatlı', 15),
 ]
 
 def seed_meal_titles():
@@ -4836,7 +4840,7 @@ def _claude_call(user_text):
         'Set detayli antrenman anlatiminda (orn. "hack squat 3x8 120kg") training_exercise uret; sadece "antrenman yaptim" genel ifadesinde exercise action yeterli.\n'
         "TAHA'NIN YAZIM STILI (gercek mesajlarindan - bu kaliplari taniyip dogru isle):\n"
         '- Ogun basligi tek satir, altina kalemler: "kahvaltı\\n2 yumurta\\n130g sıvı yumurta akı\\n5g ketçap". '
-        'Slot adlari: kahvaltı/snack/snack 2/meal1/meal2/meal3/pre meal/pre snack/post meal/post snack/gece/cheat meal.\n'
+        'Slot adlari: kahvaltı/snack/snack 2/meal1/meal2/meal3/pre meal/pre snack/post meal/post snack/gece/cheat meal/cheat tatlı.\n'
         '- Miktarlar: "100g tavuk special", "2 adet tost ekmeği", "1 kutu puding", "1 fıs yağ" (fıs = GymBeam sprey), '
         '"bol salata" (≈100g marul say). Adet/kutu gecen kayitli urunlerde Besin DB porsiyonunu kullan.\n'
         '- Kilo iki yonlu: "kilo 67.85" VEYA "68.40 kilo" (aç karna sabah tartısı). Su: "3L SU İÇİLDİ", "su 5l". '
@@ -6268,6 +6272,7 @@ _TG_SLOT_HEADS = [
     (r'meal\s*1', 'meal1'),
     (r'meal\s*2', 'meal2'),
     (r'meal\s*3', 'meal3'),
+    (r'cheat\s*tatli', 'cheat_tatli'),
     (r'cheat\s*meal', 'cheat_meal'),
     (r'oglen?', 'ogle'),
     (r'aksam', 'aksam'),
@@ -6278,7 +6283,7 @@ _TG_SLOT_LABELS = {
     'kahvalti': 'Kahvaltı', 'snack': 'Snack', 'snack2': 'Snack 2', 'meal1': 'Meal 1',
     'meal2': 'Meal 2', 'meal3': 'Meal 3', 'pre_meal': 'Pre Meal', 'pre_snack': 'Pre Snack',
     'post_meal': 'Post Meal', 'post_snack': 'Post Snack', 'ogle': 'Öğle', 'aksam': 'Akşam',
-    'gece': 'Gece', 'cheat_meal': 'Cheat Meal', 'ara': 'Ara Öğün',
+    'gece': 'Gece', 'cheat_meal': 'Cheat Meal', 'cheat_tatli': 'Cheat Tatlı', 'ara': 'Ara Öğün',
 }
 
 def _tg_meal_header(line_norm):
