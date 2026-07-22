@@ -1866,7 +1866,19 @@ def api_coach_chat():
             result = json.loads(resp.read().decode('utf-8'))
         reply = result['content'][0]['text'].strip()
     except Exception as _e:
-        log.warning(f"coach chat failed: {_e}")
+        detail = ''
+        try:
+            import urllib.error
+            if isinstance(_e, urllib.error.HTTPError):
+                detail = _e.read().decode('utf-8', errors='ignore')[:400]
+        except Exception:
+            pass
+        log.warning(f"coach chat failed: {_e} | {detail}")
+        if 'credit balance is too low' in detail:
+            # Kredi bitimi gecici ariza degil - TG botuyla AYNI durust mesaj
+            return jsonify({'ok': True, 'reply': ('⚠️ AI kredisi bitti — console.anthropic.com → Billing\'den '
+                                                  'yükleme gerekiyor. Kayıtların (idman/stack/yemek dökümü) '
+                                                  'Telegram\'dan deterministik işlenmeye devam ediyor.')})
         return jsonify({'ok': False, 'error': 'Bağlantı koptu, tekrar dene'}), 502
     return jsonify({'ok': True, 'reply': reply})
 
