@@ -2994,6 +2994,25 @@ function renderVitList(elId,vitamins,canDel){
     return `<div class="meal-slot-group" style="border-top-color:${gc}55;overflow:hidden"><div style="position:absolute;top:16px;bottom:16px;left:0;width:2px;border-radius:2px;background:linear-gradient(180deg,transparent 0%,${gc} 46%,${gc}99 60%,transparent 100%);box-shadow:0 0 12px 2px ${gc}66;pointer-events:none"></div><div class="meal-slot-header" style="background:linear-gradient(90deg,${gc}18 0%,transparent 80%);border-bottom-color:${gc}30"><div style="display:flex;align-items:center;gap:7px;width:100%"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${gc};box-shadow:0 0 8px ${gc},0 0 16px ${gc}77;flex-shrink:0"></span><span style="font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:${gc};text-shadow:0 0 18px ${gc}80">💊 ${g}</span>${bulkDelBtn}</div></div><div style="display:flex;flex-direction:column;gap:5px;padding:8px 12px 10px">${squares}</div></div>`;
   }).join('');
 }
+function slotGroupOrder(groups){
+  // TEK SIRALAMA KURALI (Ogun Listesi + Ogun Sirasi + dashboard ndGroupMeals ayni kurali izler):
+  // kullanicinin kaydettigi sira (display_order, 99 = kaydedilmemis) ONCE; yoksa G_SLOT_ORDER.
+  // "sag sol sira ayni olmali" (2026-07-22): sol liste sablon sirasi, sag panel gelis sirasi
+  // kullaniyordu - ikisi ayni gunu farkli dizip kafa karistiriyordu.
+  const savedOrd=k=>{
+    const v=groups[k].map(m=>(m.display_order==null?99:m.display_order)).filter(x=>x!==99);
+    return v.length?Math.min(...v):null;
+  };
+  return Object.keys(groups).sort((a,b)=>{
+    const da=savedOrd(a),db=savedOrd(b);
+    if(da!=null&&db!=null)return da-db;
+    if(da!=null)return -1;
+    if(db!=null)return 1;
+    const ia=G_SLOT_ORDER.indexOf(a),ib=G_SLOT_ORDER.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib);
+  });
+}
+
 function renderMealList(elId,meals,canDel,elOverride){
   const el=elOverride||(typeof elId==='string'?$(elId):elId);if(!el)return;
   if(!Array.isArray(meals)||!meals.length){el.innerHTML='<div class="list-empty">Kayıt yok</div>';return;}
@@ -3033,7 +3052,7 @@ function renderMealList(elId,meals,canDel,elOverride){
   }
   const groups={};
   meals.forEach(m=>{const k=normSlot(m.slot);(groups[k]=groups[k]||[]).push(m);});
-  const slotOrder=[...G_SLOT_ORDER.filter(s=>groups[s]),...Object.keys(groups).filter(s=>!G_SLOT_ORDER.includes(s))];
+  const slotOrder=slotGroupOrder(groups);
   el.innerHTML=slotOrder.map(function(slot){
     const rows=groups[slot];
     const totCal=rows.reduce(function(s,m){return s+(m.calories||0);},0);
@@ -3893,13 +3912,13 @@ async function loadMealOrder(){
   const el=$('meal-order-list');if(!el)return;
   const d=typeof selectedNutritionDate==='function'?selectedNutritionDate():today();
   const meals=await API('/api/meals/'+d)||[];
-  // Slot gruplarını API'nin döndürdüğü sırada oluştur (display_order'a göre sıralı gelir)
-  const groups={}, slotOrder=[];
+  const groups={};
   meals.forEach(m=>{
     const k=normSlotKey(m.slot||'extra');
-    if(!groups[k]){groups[k]=[];slotOrder.push(k);}
-    groups[k].push(m);
+    (groups[k]=groups[k]||[]).push(m);
   });
+  // Sol Ogun Listesi ile AYNI kural: kaydedilmis sira -> yoksa G_SLOT_ORDER (gelis sirasi degil)
+  const slotOrder=slotGroupOrder(groups);
   _mealOrderData=slotOrder.map(k=>({key:k,label:SLOT_DISPLAY[k]||k,items:groups[k]}));
   renderMealOrderList();
   if($('meal-order-sub'))$('meal-order-sub').textContent=slotOrder.length+' öğün grubu';
