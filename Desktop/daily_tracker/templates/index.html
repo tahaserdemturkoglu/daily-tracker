@@ -1931,7 +1931,10 @@ async function loadNewDashboard(){
       API('/api/supplements/breaks').catch(()=>[]),
       API('/api/supplements/today').catch(()=>null)
     ]);
-    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false},breaks:Array.isArray(breaks)?breaks:[],zinc:(suppToday&&suppToday.zinc)||null};
+    ND_STATE={d,macro,week7:Array.isArray(week7)?week7:[],bm:Array.isArray(bm)?bm:[],ai:aiRes?.insights||[],
+      // generating=true iken donen insights DUNUN fallback'idir - kartta acikca etiketlenir
+      aiStale:!!(aiRes&&aiRes.generating&&(aiRes.insights||[]).length),
+      stacks:Array.isArray(stacks)?stacks:[],meals:Array.isArray(meals)?meals:[],whoopStatus:whoopStatus||{connected:false},whoopDaily:whoopDaily||{found:false},breaks:Array.isArray(breaks)?breaks:[],zinc:(suppToday&&suppToday.zinc)||null};
     renderNewDashboard();
     // Insights arka planda uretiliyorsa (gunun ilk acilisi) kisa sure sonra bir kez daha sor -
     // backend artik sayfayi bekletmiyor, taze analiz hazir olunca kart kendini gunceller.
@@ -1940,7 +1943,7 @@ async function loadNewDashboard(){
         try{
           const fresh=await API('/api/dashboard/ai-insights');
           if(fresh&&!fresh.generating&&Array.isArray(fresh.insights)&&fresh.insights.length){
-            ND_STATE.ai=fresh.insights; renderNewDashboard();
+            ND_STATE.ai=fresh.insights; ND_STATE.aiStale=false; renderNewDashboard();
           }
         }catch(e){}
       },12000);
@@ -1956,15 +1959,19 @@ function ndGoAddMeal(){
 function ndHeroHtml(t,cal,prot,carb,fat,wml,steps,fiber,fiberSrc,sugar,sugarSrc){
   const pct=Math.round(cal/(t.cal||1)*100);
   const over=cal>t.cal;
-  // Kademeli asim: %100-120 arasi HAFIF asim -> amber (yumusak uyari), >%120 GERCEK asim -> kirmizi.
-  const OVER_HARD=120;
-  const kHard=pct>OVER_HARD;
+  // Kademeli asim (koc felsefesi: "hedef degil sistem"):
+  //   %100-105 = HEDEF BANDI (yesil, alarm yok - 16 kcal icin kirmizi rozet sacma)
+  //   %105-120 = hafif asim (amber, yumusak) · >%120 = gercek asim (kirmizi)
+  const OVER_HARD=120, OVER_BAND=105;
+  const kHard=pct>OVER_HARD, kBand=pct<=OVER_BAND;
   const kCol=kHard?ND.danger:ND.kcal;
   const badge=over
-    ?`<span style="background:${ndHexA(kCol,.12)};border:1px solid ${ndHexA(kCol,.45)};color:${kCol};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${kHard?'⚠ ':'+'}${kHard?'+':''}${Math.round(cal-t.cal).toLocaleString('tr-TR')} kcal fazla</span>`
+    ?(kBand
+      ?`<span style="background:${ndHexA(ND.ok,.1)};border:1px solid ${ndHexA(ND.ok,.35)};color:${ND.ok};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">✓ hedef bandında (+${Math.round(cal-t.cal).toLocaleString('tr-TR')})</span>`
+      :`<span style="background:${ndHexA(kCol,.12)};border:1px solid ${ndHexA(kCol,.45)};color:${kCol};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${kHard?'⚠ ':'+'}${kHard?'+':''}${Math.round(cal-t.cal).toLocaleString('tr-TR')} kcal fazla</span>`)
     :`<span style="background:${ndHexA(ND.ok,.1)};border:1px solid ${ndHexA(ND.ok,.35)};color:${ND.ok};font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">${Math.max(0,Math.round(t.cal-cal)).toLocaleString('tr-TR')} kcal kaldı</span>`;
   const barPct=Math.min(100,pct);
-  const barBg=over?kCol:`linear-gradient(90deg,${ND.ok},${ND.kcal})`;
+  const barBg=(over&&!kBand)?kCol:`linear-gradient(90deg,${ND.ok},${ND.kcal})`;
   const mini=(label,val,mx,color)=>{
     const p=Math.round(val/(mx||1)*100);
     // %95-105 = HEDEFTE (yesil ✓, olumlu) · %105-120 hafif asim (amber) · >%120 gercek asim (kirmizi)
@@ -2353,19 +2360,26 @@ const ND_AI_META={
   motivasyon:{icon:'📈',color:ND.whoop,bg:.05,bd:.3},
   ai_plan:{icon:'🤖',color:ND.ai,bg:.06,bd:.35},
 };
-function ndAiCoachHtml(insights){
+function ndAiCoachHtml(insights,stale){
   const rows=(insights&&insights.length)?insights.map(it=>{
     const m=ND_AI_META[it.type]||ND_AI_META.aksiyon;
-    return `<div style="display:flex;gap:10px;background:${ndHexA(m.color,m.bg)};border:1px solid ${ndHexA(m.color,m.bd)};border-radius:10px;padding:10px 14px">
+    return `<div style="display:flex;gap:10px;background:${ndHexA(m.color,m.bg)};border:1px solid ${ndHexA(m.color,m.bd)};border-radius:10px;padding:10px 14px${stale?';opacity:.55':''}">
       <span style="font-size:14px;flex-shrink:0">${m.icon}</span>
       <div style="font-size:13px;line-height:1.5;color:${ND.text2}">${escHtml(it.text)}</div>
     </div>`;
   }).join(''):`<div style="color:${ND.muted};font-size:13px">Bugün için henüz yeterli veri yok.</div>`;
+  // Bayat (dunun) yorumu bugunmus gibi gostermek kafa karistiriyor ("orada hala Push verisi var")
+  // - acikca etiketle + soluklastir. Taze uretim gelince kart kendini gunceller.
+  const staleBanner=stale?`<div style="display:flex;gap:8px;align-items:center;background:${ndHexA('#F5B23A',.1)};border:1px solid ${ndHexA('#F5B23A',.35)};border-radius:10px;padding:8px 12px;margin-bottom:8px">
+      <span style="font-size:13px">⏳</span>
+      <span style="font-size:12px;color:#F5B23A;font-weight:600">Bu DÜNÜN yorumu — bugünkü henüz üretilemedi (AI kredisi gerekli). Kredi gelince otomatik yenilenir.</span>
+    </div>`:'';
   return `<div style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px;display:flex;flex-direction:column">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="font-size:12px;font-weight:600;letter-spacing:.1em;color:${ND.muted};text-transform:uppercase">Koç Analizi</div>
-      <span style="font-size:11px;color:${ND.muted}">tüm verilere göre</span>
+      <span style="font-size:11px;color:${ND.muted}">${stale?'dünün analizi':'tüm verilere göre'}</span>
     </div>
+    ${staleBanner}
     <div style="display:flex;flex-direction:column;gap:8px">${rows}</div>
     <div style="display:flex;gap:8px;margin-top:auto;padding-top:14px">
       <button onclick="showPage('log')" style="background:#161B28;color:${ND.text};border:1px solid ${ND.border2};font-family:inherit;font-size:12px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer">Log aç</button>
@@ -2837,7 +2851,7 @@ function renderNewDashboard(){
           ${ndMealsSummaryHtml(groups,cal,prot,carb,fat)}
           ${ndTrainingWhoopHtml(week7,todayType,whoopStatus,whoopDaily,cal)}
         </div>
-        ${ndAiCoachHtml(ai)}
+        ${ndAiCoachHtml(ai,ND_STATE.aiStale)}
       </div>
       <div style="display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start">
         ${ndMealLogHtml(groups)}
