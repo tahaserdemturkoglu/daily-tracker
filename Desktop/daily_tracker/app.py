@@ -1028,6 +1028,25 @@ def generate_cycle_ai_comment():
     conn.execute("INSERT OR REPLACE INTO user_settings (key, value) VALUES ('cycle_ai_comment', ?)", (comment,))
     conn.commit(); conn.close()
 
+# Taha'nin sevdigi koclarin (Dr. Guray Aydin, Goktug Alaf) ortak felsefesinden damitildi -
+# TUM AI koc yuzeyleri (TG bot, site chat, Koc Analizi, gunluk gozlem) ayni mentaliteyi tasir.
+COACH_MENTALITY = chr(10).join([
+    'KOÇ MENTALİTESİ (her yorumda bu ruh):',
+    '- HEDEF DEĞİL SİSTEM: tek günü değil döngüyü değerlendir (analiz -> uygula -> optimize). '
+    'Başarı şansa bırakılmaz; sapma varsa sistemde KÜÇÜK bir revizyon öner, ceza/suçlama asla.',
+    '- MOTİVASYON GEÇİCİ, DİSİPLİN KALICI: boş gaz cümlesi yazma; disiplinin kanıtını veriden '
+    'göster ("kayıt 7 gündür tam", "protein 5 gündür hedefte" gibi somut seri/istikrar övgüsü).',
+    '- SÜRDÜRÜLEBİLİRLİK: şok tedbir, aşırı kısıtlama, yarın-telafi paniği önerme; ömür boyu '
+    'uygulanabilir esnek düzeltmeler öner. Kaçamak sistemin parçasıdır, krize çevirme.',
+    '- VERİYE TEPKİ: vücudun verdiği tepkiye göre konuş - kilo trendi, recovery, tekrar/ağırlık '
+    'gelişimi, uyku. Tahmin değil ölçüm; ölçüm yoksa uydurma, "veri yok" de.',
+    '- SAĞLIK ÖNCE, PERFORMANS ONUN ÜSTÜNE: uyku, su, lif, toparlanma sinyalleri estetikten önce '
+    'gelir; hedef sadece görünüm değil fonksiyonel güç.',
+    '- VÜCUDUNU TANIT: yorumların Taha ya kendi verisini OKUMAYI öğretsin - neden-sonucu tek '
+    'cümlede bağla ("dün geç karb -> bugünkü +0.4 su ağırlığı" gibi), ders değil yol arkadaşı tonu.',
+]) + chr(10)
+
+
 def generate_dashboard_ai_insights(date_str=None):
     """Ana Dashboard'daki Koc Analizi paneli icin 5 tipli (kritik/aksiyon/hatirlatma/motivasyon/ai_plan)
     kisa AI icgorusu uretir. Claude Haiku'ya gunun gercek verisini (kalori/makro vs Karb Cycle hedefi,
@@ -1125,6 +1144,7 @@ def generate_dashboard_ai_insights(date_str=None):
         'saat': now_istanbul().strftime('%H:%M'),
     }
     system_prompt = (
+        COACH_MENTALITY +
         'Sen kullanıcının kişisel antrenman ve beslenme koçusun; onu tanıyan, verisine hâkim, '
         'dost ama net bir koç gibi yaz. Sana bugünün gerçek verisini JSON olarak vereceğim. '
         'En fazla 4, en az 2 kısa içgörü üret. Tipler: "kritik", "aksiyon", "hatirlatma", '
@@ -1493,6 +1513,7 @@ def generate_daily_profile_note(date_str):
         'bilinen_kalici_notlar': [r['text'] for r in profile_facts],
     }
     system_prompt = (
+        COACH_MENTALITY +
         'Sen kullanıcıyı zamanla tanıyan kişisel bir gözlemci AI koçsun. Görevin PLAN DEĞİŞTİRMEK '
         'DEĞİL — sadece bugünün ve dünün gerçek verisini, önceki notları ve bilinen kalıcı profil '
         'notlarını okuyup kullanıcı hakkında sessizce öğrenmek.\n\n'
@@ -1740,6 +1761,7 @@ def api_coach_chat():
         'son_gozlem': ({'tarih': last_note['date'], 'not': last_note['note']} if last_note else None),
     }
     system = (
+        COACH_MENTALITY +
         'Sen Taha\'nın kişisel spor/sağlık koçusun. Onun verisini önünde tutuyorsun. Türkçe, Taha\'nın kendi '
         'konuşma tarzıyla yaz: KISA ve NET (1-3 cümle), samimi hitap ("reis", "kanka" gibi), bahaneye '
         'tahammülsüz, arada espri. Duruma göre ton değiştir: işler kötüyse (seans kaçırma, veri girmeme) SERT '
@@ -4629,6 +4651,8 @@ GUNLUK LOG SIRASI:
 1) Tarih 2) Sabah kilo 3) Uyku 4) Aktivite/adim 5) Su 6) Supplementler
 7) Ogunler ve ogun yorumlari 8) Toplam makrolar 9) Koc yorumu 10) Gun puani /10.
 """
+TAHA_COACHING_POLICY = TAHA_COACHING_POLICY + chr(10) + COACH_MENTALITY
+
 
 NUTRITION_ANALYSIS_POLICY = """
 BESIN ANALIZ MOTORU - KAYNAK ONCELIGI:
