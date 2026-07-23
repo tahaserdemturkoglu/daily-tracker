@@ -2417,6 +2417,16 @@ function ndRecipeRows(rf,parentMeal){
 }
 function ndMealLogHtml(groups){
   ND_LAST_MEAL_GROUPS=groups||[];
+  // Tarif tespiti Besin DB listesine bakar - dashboard'a direkt gelindiyse henuz yuklu
+  // olmayabilir; arkada yukle ve gelince logu yeniden ciz (🍳 kartlari o zaman belirir).
+  if(!window._foodList&&!window._ndFoodListLoading){
+    window._ndFoodListLoading=true;
+    API('/api/food-registry').then(r=>{
+      window._foodList=r||[];
+      const el=$('nd-meal-log');
+      if(el) el.outerHTML=ndMealLogHtml(ND_LAST_MEAL_GROUPS);
+    }).catch(()=>{});
+  }
   if(!groups.length)return `<div id="nd-meal-log" style="background:${ND.card};border:1px solid ${ND.border};border-radius:16px;padding:24px">
     <div style="font-size:15px;font-weight:700">Öğün Logu</div>
     <div style="color:${ND.muted};font-size:13px;margin-top:12px">Bugün henüz öğün kaydı yok. <a href="javascript:void(0)" onclick="ndGoAddMeal()" style="color:${ND.water}">+ Öğün ekle</a></div>
@@ -2430,7 +2440,17 @@ function ndMealLogHtml(groups){
       const name=(desc&&desc!==title)?(desc.includes(title)?desc:(desc+' '+title)):title;
       const chip=(lbl,v,color)=>(v!=null&&v!=='')?`<span style="background:${ndHexA(color,.12)};border:1px solid ${ndHexA(color,.32)};color:${color};font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px">${lbl}:${+(Math.round(v*10)/10)}</span>`:'';
       // Tarif/karışım kalemi mi? Besin DB'den bul; ise tıkla-aç bileşen kartı göster.
-      const rf=(window._foodList||[]).find(f=>f.name===(m.title||'')||(f.official_name||'')===title||f.name===title);
+      // Tam ad eşleşmesi + gevşek eşleşme: kayıt "Beyti" derken tarif "Beyti (Tavuk)" olabilir —
+      // Tarif kategorisindekilerde ad, kalem adının/açıklamanın içinde geçiyorsa da eşle.
+      const rf=(window._foodList||[]).find(f=>{
+        const rn=f.official_name||f.name||'';
+        if(!rn)return false;
+        if(rn===title||rn===(m.title||''))return true;
+        const isTarif=(f.category||'')==='Tarif'||!!f.recipe;
+        if(!isTarif)return false;
+        const rl=rn.toLowerCase(), tl=title.toLowerCase(), nl=name.toLowerCase();
+        return nl.includes(rl)||(tl.length>3&&rl.includes(tl));
+      });
       const isRecipe=!!(rf&&((rf.category||'')==='Tarif'||/kar[ıi]ş[ıi]m/i.test(rf.notes||'')||rf.recipe));
       const recipeBody=isRecipe?ndRecipeRows(rf,m):'';
       const rid='ndrcp'+m.id;
