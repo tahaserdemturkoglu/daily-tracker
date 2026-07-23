@@ -7667,11 +7667,7 @@ def api_food_registry_recipe():
         recipe_json = json.dumps(recipe_rows, ensure_ascii=False)
         # Kartta 'tamami kac gram/kcal' gorunsun - kullanici porsiyon bolerken bunu baz alir
         # ("493g oldugunu nerden bilcem" - 2026-07-23).
-        auto_notes = (
-            f"TAMAMI: {round(grams, 1):g}g = {round(tot['kcal'])} kcal · "
-            f"P{round(tot['p'])} · K{round(tot['c'])} · Y{round(tot['f'])} | "
-            f"yarısı ≈{round(grams / 2):g}g = {round(tot['kcal'] / 2)} kcal"
-        )
+        auto_notes = f"TAMAMI: {round(grams, 1):g}g | yarısı ≈{round(grams / 2):g}g"
         existing = conn.execute("SELECT id, category FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
         # Denetim fix: ayni isimde TARIF OLMAYAN bir besin varsa sessizce ezme - veri kaybi olur
         if existing and (existing['category'] or '') != 'Tarif':
