@@ -113,8 +113,15 @@ def operation_date(now=None):
         row = conn.execute("SELECT value FROM user_settings WHERE key='force_operation_date'").fetchone()
         if row and row[0]:
             override = date.fromisoformat(row[0])
-            real_today = (now or now_istanbul()).date()
-            if override in (real_today, real_today - timedelta(days=1)):
+            _n = now or now_istanbul()
+            real_today = _n.date()
+            if override == real_today:
+                conn.close()
+                return override
+            # "hala ayaktayim" kilidi (dun): sadece uzayan gecede anlamli - cutoff'tan
+            # 6 saat sonrasina kadar gecerli, sonrasi BAYAT (2026-07-23: dun kilidi
+            # 16:00'da hala duruyordu, gun bir turlu 23'e gecmedi).
+            if override == real_today - timedelta(days=1) and _n.hour < operation_cutoff_hour(_n) + 6:
                 conn.close()
                 return override
             conn.execute("DELETE FROM user_settings WHERE key='force_operation_date'")
