@@ -7665,18 +7665,25 @@ def api_food_registry_recipe():
             'sugar_per_100': round(tot['sugar'] * k, 2),
         }
         recipe_json = json.dumps(recipe_rows, ensure_ascii=False)
+        # Kartta 'tamami kac gram/kcal' gorunsun - kullanici porsiyon bolerken bunu baz alir
+        # ("493g oldugunu nerden bilcem" - 2026-07-23).
+        auto_notes = (
+            f"TAMAMI: {round(grams, 1):g}g çiğ = {round(tot['kcal'])} kcal · "
+            f"P{round(tot['p'])} · K{round(tot['c'])} · Y{round(tot['f'])} | "
+            f"yarısı ≈{round(grams / 2):g}g = {round(tot['kcal'] / 2)} kcal"
+        )
         existing = conn.execute("SELECT id, category FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
         # Denetim fix: ayni isimde TARIF OLMAYAN bir besin varsa sessizce ezme - veri kaybi olur
         if existing and (existing['category'] or '') != 'Tarif':
             conn.close()
             return jsonify({'ok': False, 'error': f'"{name}" isminde tarif olmayan bir besin zaten var — farklı bir isim seç veya önce onu sil'}), 400
         if existing:
-            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,sugar_per_100=?,category='Tarif',notes='karışım',recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
-                (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], recipe_json, existing['id']))
+            conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,sugar_per_100=?,category='Tarif',notes=?,recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
+                (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], auto_notes, recipe_json, existing['id']))
             new_id = existing['id']
         else:
             conn.execute("""INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,sugar_per_100,unit,serving_size,serving_unit,notes,aliases,category,recipe) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (name, per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], 'g', 100, 'g', 'karışım', '', 'Tarif', recipe_json))
+                (name, per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], 'g', 100, 'g', auto_notes, '', 'Tarif', recipe_json))
             new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.commit(); conn.close()
         return jsonify({'ok': True, 'id': new_id, 'per_100': per, 'total_grams': round(grams, 1)})
