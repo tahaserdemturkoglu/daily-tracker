@@ -5110,19 +5110,23 @@ async function ozpRenderMonthly(y,m){
 /* ═══════════════════════════════════════════════════
    CALENDAR (Takvim)
 ════════════════════════════════════════════════════ */
-const CAL_COLORS={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444444'};
+const CAL_COLORS={Push:'#cc0000',Pull:'#0066cc',Leg:'#ff8800',Upper:'#7c3aed',Lower:'#22c55e',Off:'#444444',Off1:'#475569',Off2:'#334155'};
 const CAL_DESC={
   Push:'İtiş günü — göğüs, omuz ve triceps. Ağır bileşik hareketlerle başla.',
   Pull:'Çekiş günü — sırt ve biceps. Formu bozmadan çek.',
   Leg:'Bacak günü — kaçış yok. Squat ile başla.',
   Upper:'Üst vücut tekrar — daha yüksek tekrar, pompa odaklı.',
   Lower:'Alt vücut tekrar — kalça ve tek bacak vurgusu.',
-  Off:'Bugün dinlenme. Kas antrenmanla yıkılır, dinlenmeyle büyür.'
+  Off:'Bugün dinlenme. Kas antrenmanla yıkılır, dinlenmeyle büyür.',
+  Off1:'Off 1 — yüksek karblı dinlenme (K120). Kas antrenmanla yıkılır, dinlenmeyle büyür.',
+  Off2:'Off 2 — düşük karblı dinlenme (K80). Toparlanma ve hafif yürüyüş günü.'
 };
 const CAL_DOW=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
-const CAL_SPLITS=['Push','Pull','Leg','Upper','Lower','Off'];
+/* Off1/Off2 iki AYRI gündür (farklı makro) — asla tek 'Off'a indirgeme. */
+const CAL_SPLITS=['Push','Pull','Leg','Upper','Lower','Off1','Off2'];
+const CAL_SPLIT_LABEL={Off1:'Off 1',Off2:'Off 2'};
 const CAL_WEEKDAY_CYCLE=['Push','Pull','Leg','Upper','Lower','Off','Off'];
-const CAL_SPLIT_DAYINDEX={Push:0,Pull:1,Leg:2,Upper:3,Lower:4,Off:5};
+const CAL_SPLIT_DAYINDEX={Push:0,Pull:1,Leg:2,Upper:3,Lower:4,Off:5,Off1:5,Off2:6};
 
 let CAL_Y=new Date().getFullYear(), CAL_M=new Date().getMonth()+1;
 let CAL_DAYS=[], CAL_WEEK=null, CAL_SEL=null, CAL_DETAIL=null, CAL_PANEL_OPEN=true;
@@ -5737,10 +5741,11 @@ function calDayCellHtml(d){
 
 function calSplitOptionsHtml(dayObj){
   return CAL_SPLITS.map(s=>{
-    const active=s===dayObj.training;
+    // API 'training' alaninda Off gunleri jenerik 'Off' doner - hangi off oldugu day_index'te (5=Off1, 6=Off2)
+    const active=(s===dayObj.training)||(dayObj.training==='Off'&&dayObj.day_index===CAL_SPLIT_DAYINDEX[s]&&(s==='Off1'||s==='Off2'));
     const c=CAL_COLORS[s];
     const style=active?`background:${c};color:#fff;border:1px solid ${c}`:`background:transparent;color:var(--muted);border:1px solid var(--border)`;
-    return `<button onclick="calPickSplit('${dayObj.date}','${s}')" style="font-size:10px;font-weight:800;letter-spacing:.3px;padding:5px 10px;border-radius:7px;cursor:pointer;${style}">${s}</button>`;
+    return `<button onclick="calPickSplit('${dayObj.date}','${s}')" style="font-size:10px;font-weight:800;letter-spacing:.3px;padding:5px 10px;border-radius:7px;cursor:pointer;${style}">${CAL_SPLIT_LABEL[s]||s}</button>`;
   }).join('');
 }
 function calProgramHtml(dayObj){
@@ -5823,7 +5828,7 @@ function calDetailInnerHtml(dayObj){
   if(!dayObj) return calCloseBtnHtml()+`<div style="color:var(--muted)">Gün seçilmedi</div>`;
   const d=new Date(dayObj.date+'T12:00:00');
   const dateLabel=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
-  const c=CAL_COLORS[dayObj.training]||'#444';
+  const c=dayObj.training==='Off'?CAL_COLORS[dayObj.day_index===6?'Off2':'Off1']:(CAL_COLORS[dayObj.training]||'#444');
   const selSplitLabel=(dayObj.training==='Off'&&dayObj.target&&dayObj.target.type)?dayObj.target.type:dayObj.training;
   return calCloseBtnHtml()+`
     <div>
@@ -5832,7 +5837,7 @@ function calDetailInnerHtml(dayObj){
       <div style="margin-top:8px">
         <span style="font-size:12px;font-weight:800;letter-spacing:.5px;color:#fff;background:${c};padding:5px 14px;border-radius:8px">${selSplitLabel.toUpperCase()}${dayObj.session_done?' ✓':''}</span>
       </div>
-      ${CAL_DESC[dayObj.training]?`<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5">${CAL_DESC[dayObj.training]}</div>`:''}
+      ${(()=>{const dk=dayObj.training==='Off'?(dayObj.day_index===6?'Off2':'Off1'):dayObj.training;return CAL_DESC[dk]?`<div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5">${CAL_DESC[dk]}</div>`:'';})()}
       <div style="margin-top:12px">${calScoreHtml(dayObj)}</div>
       <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -5911,7 +5916,7 @@ function renderCalendarPage(){
       ${todayObj?`<span style="font-size:11px;font-weight:800;letter-spacing:.5px;color:#fff;background:${CAL_COLORS[todayObj.training]};padding:5px 12px;border-radius:7px">${((todayObj.training==='Off'&&todayObj.target&&todayObj.target.type)?todayObj.target.type:todayObj.training).toUpperCase()}</span>`:''}
     </div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      ${CAL_SPLITS.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${CAL_COLORS[s]}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s}</span></div>`).join('')}
+      ${CAL_SPLITS.map(s=>`<div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:${CAL_COLORS[s]}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${CAL_SPLIT_LABEL[s]||s}</span></div>`).join('')}
     </div>
   </div>
   <div style="display:grid;grid-template-columns:${CAL_PANEL_OPEN?'1fr 380px':'1fr'};gap:24px;align-items:start">
