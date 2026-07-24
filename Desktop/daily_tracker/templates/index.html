@@ -2615,6 +2615,25 @@ async function ndMarkStack(name){
     loadDashboard();
   }catch(e){toast('Hata oluştu',false);}
 }
+// TEKIL isaretleme (kullanici 2026-07-24: "gece stackte bugun sadece NAC aldim,
+// sadece onu isaretlemek istiyorum"). Satira tiklayinca o urun tek basina kaydedilir;
+// alinmis satira tiklayinca geri alinir. Sayac zaten urun bazli (vitamin_logs) sayar.
+async function ndMarkVitamin(stackName,productName,dose,unit){
+  if(!guardClick())return;
+  try{
+    await POST('/api/vitamin',{name:productName,amount:String(dose||1),unit:unit||'',notes:'stack:'+stackName,status:'taken'});
+    toast(escHtml(productName)+' işaretlendi',true);
+    loadDashboard();
+  }catch(e){toast('Hata oluştu',false);}
+}
+async function ndUnmarkVitamin(vid,productName){
+  if(!guardClick())return;
+  try{
+    await fetch('/api/vitamin/'+vid,{method:'DELETE'});
+    toast(escHtml(productName)+' geri alındı',true);
+    loadDashboard();
+  }catch(e){toast('Hata oluştu',false);}
+}
 let ND_LAST_STACKS=[], ND_LAST_VITAMINS=[], ND_LAST_BREAKS=[];
 let ND_SUPP_OPEN={};   // {stackAdi:false} => kapali; yoksa acik (varsayilan). Aç/kapa hatirlanir.
 const ND_ZINC_NAME='NOW Zinc Picolinate 50mg';
@@ -2688,7 +2707,7 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
         if(!v && zinc && zinc.take_today){
           const RED='#FF4D4D';
           countable++; totalItems++;
-          return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(RED,.12)};border:1px solid ${ndHexA(RED,.5)};border-radius:8px;padding:12px 16px">
+          return `<div onclick="event.stopPropagation();ndMarkVitamin('${escHtml(s.name).replace(/'/g,"\\'")}','${escHtml(it.product_name).replace(/'/g,"\\'")}','${it.dose||1}','${escHtml(it.unit||'').replace(/'/g,'')}')" title="Sadece bunu işaretle" style="display:flex;justify-content:space-between;align-items:center;background:${ndHexA(RED,.12)};border:1px solid ${ndHexA(RED,.5)};border-radius:8px;padding:12px 16px;cursor:pointer">
             <span style="font-size:13px;font-weight:700;color:${RED}">! ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${RED};font-weight:800;letter-spacing:.03em">Gün aşırı — bugün alınacak</span>
           </div>`;
         }
@@ -2707,8 +2726,13 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
         }
       }
       countable++; totalItems++;
+      // Tekil isaretleme: alinmamis satira tikla -> sadece o urun kaydedilir;
+      // alinmis satira tikla -> sadece o urun geri alinir (stack'in kalani dokunulmaz).
+      const prodEsc=escHtml(it.product_name).replace(/'/g,"\\'");
+      const stkEsc=escHtml(s.name).replace(/'/g,"\\'");
+      const unitEsc=escHtml(it.unit||'').replace(/'/g,'');
       if(!v){
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px">
+        return `<div onclick="event.stopPropagation();ndMarkVitamin('${stkEsc}','${prodEsc}','${it.dose||1}','${unitEsc}')" title="Sadece bunu işaretle" style="display:flex;justify-content:space-between;align-items:center;background:${ND.bg};border:1px solid ${ND.border};border-radius:8px;padding:12px 16px;cursor:pointer">
           <span style="font-size:13px;font-weight:600;color:${ND.muted}">○ ${escHtml(it.product_name)}</span><span style="font-size:11px;color:${ND.muted}">${it.dose||1} ${escHtml(it.unit||'')}</span>
         </div>`;
       }
@@ -2720,7 +2744,8 @@ function ndSuppSidebarHtml(stacks,vitamins,breaks,zinc,todayType){
       if(isTaken){taken++;totalTaken++;}
       const strike=st==='missed'?'text-decoration:line-through':'';
       const takenGlow=(st==='taken');
-      return `<div style="display:flex;justify-content:space-between;align-items:center;background:${takenGlow?ndHexA('#FFFFFF',.06):ndHexA(mc,.08)};border:1px solid ${takenGlow?ndHexA('#FFFFFF',.22):ndHexA(mc,.32)};border-radius:8px;padding:12px 16px${takenGlow?';box-shadow:0 0 10px rgba(255,255,255,.05)':''}">
+      const rowClick=isTaken?`onclick="event.stopPropagation();ndUnmarkVitamin(${v.id},'${prodEsc}')" title="Geri al (sadece bunu)"`:`onclick="event.stopPropagation();ndMarkVitamin('${stkEsc}','${prodEsc}','${it.dose||1}','${unitEsc}')" title="Sadece bunu işaretle"`;
+      return `<div ${rowClick} style="display:flex;justify-content:space-between;align-items:center;background:${takenGlow?ndHexA('#FFFFFF',.06):ndHexA(mc,.08)};border:1px solid ${takenGlow?ndHexA('#FFFFFF',.22):ndHexA(mc,.32)};border-radius:8px;padding:12px 16px;cursor:pointer${takenGlow?';box-shadow:0 0 10px rgba(255,255,255,.05)':''}">
         <span style="font-size:13px;font-weight:600;color:${takenGlow?WHT:mc};${strike}">${meta.emoji} ${escHtml(it.product_name)}</span>
         <span style="font-size:11px;color:${takenGlow?ndHexA('#FFFFFF',.7):mc}">${it.dose||1} ${escHtml(it.unit||'')}</span>
       </div>`;
