@@ -2184,6 +2184,7 @@ function ndSlotLabel(s){
   if(s==='ogle')return'Öğle';if(s==='aksam')return'Akşam';if(s==='gece')return'Gece';
   if(s==='extra')return'Ekstra';
   if(s==='cheat_tatli')return'Cheat Tatlı';
+  if(/iksir/.test(String(s).normalize('NFD').replace(/[̀-ͯ]/g,'')))return'Yeşil İksir';
   return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
 }
 const ND_SLOT_COLOR={extra:'#2DD4BF',kahvalti:'#FFB020',meal1:'#38BDF8',meal2:'#A78BFA',meal3:'#FFB020',meal4:'#FF5C8A',meal5:'#38BDF8',ogle:'#38BDF8',aksam:'#A78BFA',gece:'#8B5CF6'};
@@ -3111,6 +3112,7 @@ function renderMealList(elId,meals,canDel,elOverride){
     if(s==='gece') return 'Gece';
     if(s==='cheat_meal') return 'Cheat Meal';
     if(s==='cheat_tatli') return 'Cheat Tatlı';
+    if(/iksir/.test(String(s).normalize('NFD').replace(/[̀-ͯ]/g,''))) return 'Yeşil İksir';
     if(s==='extra') return 'Ekstra';
     return s.split('_').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
@@ -3242,6 +3244,7 @@ const SLOT_DISPLAY={
   cheat_tatli:'🍮 Cheat Tatlı',
   ara:'🍎 Ara Öğün',
   extra:'✨ Ekstra',
+  'yesil iksir':'🥤 Yeşil İksir',
 };
 function normSlotKey(s){
   // bastaki emoji/simgeleri at ("🍽️ Meal 1" -> "meal 1") - aksi halde ayri grup acar
@@ -3262,6 +3265,7 @@ function normSlotKey(s){
   if(/^cheat.?meal$/.test(k)) return 'cheat_meal';
   if(/^cheat.?tatl/.test(k)||/^tatl[i]?$/.test(k)) return 'cheat_tatli';
   // "meal 1"/"meal1"/"öğün 1" -> tek canonical key (boşluklu ve boşuksuz ayrı grup olmasın)
+  if(k.normalize('NFD').replace(/[̀-ͯ]/g,'').includes('iksir')) return 'yesil iksir';
   const mn=k.match(/^(?:meal|ogun|meal ?)\s*([1-9])$/) || k.match(/^meal([1-9])$/);
   if(mn) return 'meal'+mn[1];
   return k.replace(/\s+/g,'');
