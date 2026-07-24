@@ -3658,7 +3658,10 @@ function renderRcPreview(){
   if(grams<=0){box.style.display='none';return;}
   const k=100/grams;
   box.style.display='';
-  box.innerHTML=`100g'da ≈ <b>${(kcal*k).toFixed(0)} kcal</b> · P ${(p*k).toFixed(1)} · K ${(c*k).toFixed(1)} · Y ${(f*k).toFixed(1)} · Lif ${(fib*k).toFixed(1)}g <span style="color:var(--muted);font-weight:400">(toplam ${grams.toFixed(0)}g${missing?`, ${missing} bileşen DB'de yok`:''})</span>`;
+  box.innerHTML=`<div style="display:flex;flex-direction:column;gap:4px">
+    <div>📏 TAMAMI (${grams.toFixed(0)}g) ≈ <b style="color:var(--teal)">${kcal.toFixed(0)} kcal</b> · P ${p.toFixed(0)} · K ${c.toFixed(0)} · Y ${f.toFixed(0)} · Lif ${fib.toFixed(1)}g${missing?` <span style="color:var(--muted);font-weight:400">(${missing} bileşen DB'de yok)</span>`:''}</div>
+    <div style="color:var(--muted)">100g'da ≈ <b>${(kcal*k).toFixed(0)} kcal</b> · P ${(p*k).toFixed(1)} · K ${(c*k).toFixed(1)} · Y ${(f*k).toFixed(1)} · Lif ${(fib*k).toFixed(1)}g</div>
+  </div>`;
 }
 async function saveRecipe(){
   const name=$('rc-draft-name').value.trim();
