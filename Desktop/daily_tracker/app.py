@@ -4925,8 +4925,19 @@ def _claude_call(user_text):
         '{"type":"skin_log","date":"YYYY-MM-DD","area":"yüz","name":"Akneroxid","status":"done","notes":""},'
         '{"type":"training_exercise","date":"YYYY-MM-DD","exercise":"Hack Squat","set_details":[{"set":1,"type":"Working set","reps":"8","weight":"120"}]},'
         '{"type":"work_shift","start":"14:00","end":"22:00"},'
-        '{"type":"note","date":"YYYY-MM-DD","note":"..."}'
+        '{"type":"note","date":"YYYY-MM-DD","note":"..."}',
+        '{"type":"meal_update","date":"YYYY-MM-DD","slot":"pre meal","match":"muz","description":"100 g Muz"},'
+        '{"type":"meal_delete","date":"YYYY-MM-DD","slot":"post meal","match":"muz"},'
+        '{"type":"food_upsert","name":"Donmuş Brokoli (Carrefour)","calories_per_100":29,"protein_per_100":2.7,"carbs_per_100":2.4,"fat_per_100":0.4,"fiber_per_100":2.3,"sugar_per_100":0.4,"serving_size":225,"serving_unit":"adet","aliases":"donmus brokoli","category":"Sebze"},'
+        '{"type":"recipe_upsert","name":"Beyti (Tavuk)","components":[{"food_name":"Tavuk Gogsu","amount":300,"unit":"g"},{"food_name":"Tam Tahıllı Lavaş","amount":1,"unit":"adet"}],"notes_extra":"24 Temmuza özel"},'
+        '{"type":"meal_title_add","name":"Yeşil İksir"}'
         ']}\n'
+        'SİTE YÖNETİM AKSİYONLARI: Tarif oluşturma/değiştirme isteğinde recipe_upsert üret (components TAM listedir - değişmeyen bileşenler de dahil edilir, eksik verirsen tarif küçülür). '
+        'Etiket değeri/yeni ürün/porsiyon-alias düzeltmesi verilirse food_upsert üret (sadece değişen alanları gönder, tahminse estimated:true). '
+        'Mevcut bir öğün kaydını düzeltme ("muzu 100e düşür", "beytiyi sil", "pre meale taşı") isteğinde meal_update/meal_delete üret: '
+        'match alanına o kalemi TEKİL seçen kelimeyi yaz; description değişip makro vermezsen sistem Besin DB\'den yeniden türetir; slot taşıma için new_slot. '
+        'Birden fazla kayıt eşleşirse sistem DOKUNMAZ ve uyarı döner - reply içinde hangi kayıt olduğunu sorarak netleştir. '
+        'Yeni öğün başlığı isteğinde meal_title_add üret. Güncelleme/silme yaptığında hangi kaydı hedeflediğini reply içinde açıkça söyle.\n'
         'Cilt kurali: kullanici cilt rutini/akne/krem-surme gibi seylerden bahsederse skin_log action uret (area: yüz/sırt vb, name: urun/rutin adi). '
         'Set detayli antrenman anlatiminda (orn. "hack squat 3x8 120kg") training_exercise uret; sadece "antrenman yaptim" genel ifadesinde exercise action yeterli.\n'
         "TAHA'NIN YAZIM STILI (gercek mesajlarindan - bu kaliplari taniyip dogru isle):\n"
@@ -5038,8 +5049,14 @@ def ai_coach_call(user_text):
         '{"type":"mood","energy":8,"mood":7,"stress":3},'
         '{"type":"vitamin","name":"D3","amount":"5000","unit":"IU"},'
         '{"type":"training_exercise","exercise":"Bench press","set_details":[{"type":"Warm up","reps":"12","weight":"40 kg"},{"type":"Working set","reps":"8","weight":"80 kg"},{"type":"Back off","reps":"12","weight":"60 kg"}]},'
-        '{"type":"steps","steps":8500},{"type":"body_weight","weight_kg":95.2},{"type":"skin_log","area":"yüz","name":"Benzoyl peroxide","status":"done"},{"type":"note","note":"..."}'
-        ']}'
+        '{"type":"steps","steps":8500},{"type":"body_weight","weight_kg":95.2},{"type":"skin_log","area":"yüz","name":"Benzoyl peroxide","status":"done"},{"type":"note","note":"..."},'
+        '{"type":"meal_update","slot":"pre meal","match":"muz","description":"100 g Muz"},{"type":"meal_delete","slot":"post meal","match":"muz"},'
+        '{"type":"food_upsert","name":"Ürün Adı","calories_per_100":29,"serving_size":225},'
+        '{"type":"recipe_upsert","name":"Tarif Adı","components":[{"food_name":"Tavuk Gogsu","amount":300,"unit":"g"}]},'
+        '{"type":"meal_title_add","name":"Yeşil İksir"}'
+        ']}\n'
+        'Öğün düzeltme/silmede match kalemi TEKİL seçmeli; çoklu eşleşmede sistem dokunmaz. '
+        'Tarif değişikliğinde components TAM listedir. Güncelleme/silmede hedef kaydı reply içinde belirt.'
     )
 
     body = {
@@ -5536,6 +5553,109 @@ def ai_apply_actions(actions):
                 conn.execute("DELETE FROM body_metrics WHERE date=?", (action_date,))
                 conn.commit(); conn.close()
                 saved.append('kilo silindi')
+            elif typ == 'recipe_upsert':
+                payload, _code = recipe_upsert_core(a.get('name'), a.get('components') or [], a.get('notes_extra'))
+                if payload.get('ok'):
+                    saved.append(f"tarif kaydedildi: {a.get('name')} ({payload.get('total_grams')}g)")
+                else:
+                    saved.append('⚠ tarif kaydedilemedi: ' + str(payload.get('error')))
+            elif typ == 'food_upsert':
+                ensure_food_registry()
+                fname = (a.get('name') or '').strip()
+                if fname:
+                    conn = get_db()
+                    _row = conn.execute("SELECT id FROM food_registry WHERE name=? OR official_name=?", (fname, fname)).fetchone()
+                    _fields = ['calories_per_100', 'protein_per_100', 'carbs_per_100', 'fat_per_100',
+                               'fiber_per_100', 'sugar_per_100', 'serving_size', 'serving_unit',
+                               'unit', 'aliases', 'category', 'notes']
+                    _sent = {k: a[k] for k in _fields if k in a and a[k] is not None}
+                    if _row and _sent:
+                        conn.execute("UPDATE food_registry SET " + ",".join(k + "=?" for k in _sent) + " WHERE id=?",
+                                     (*_sent.values(), _row['id']))
+                        conn.commit()
+                        saved.append('besin güncellendi: ' + fname)
+                    elif not _row:
+                        conn.execute("INSERT INTO food_registry (name,calories_per_100,protein_per_100,carbs_per_100,fat_per_100,fiber_per_100,sugar_per_100,unit,serving_size,serving_unit,notes,aliases,category,estimated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                     (fname, a.get('calories_per_100') or 0, a.get('protein_per_100') or 0,
+                                      a.get('carbs_per_100') or 0, a.get('fat_per_100') or 0,
+                                      a.get('fiber_per_100') or 0, a.get('sugar_per_100') or 0,
+                                      a.get('unit') or 'g', a.get('serving_size') or 100,
+                                      a.get('serving_unit') or 'g', a.get('notes') or '',
+                                      a.get('aliases') or '', a.get('category') or '',
+                                      1 if a.get('estimated') else 0))
+                        conn.commit()
+                        saved.append('besin eklendi: ' + fname)
+                    conn.close()
+            elif typ in ('meal_update', 'meal_delete'):
+                conn = get_db()
+                ensure_meal_sugar_col(conn)
+                row = None
+                if a.get('id'):
+                    row = conn.execute("SELECT * FROM meal_entries WHERE id=?", (a.get('id'),)).fetchone()
+                else:
+                    q = "SELECT * FROM meal_entries WHERE date=?"
+                    args = [action_date]
+                    if a.get('slot'):
+                        q += " AND slot=?"
+                        args.append(normalize_meal_slot(a.get('slot')))
+                    rows = conn.execute(q, args).fetchall()
+                    hint = (a.get('match') or a.get('title') or '').strip().lower()
+                    if hint:
+                        rows = [r for r in rows if hint in ((r['title'] or '') + ' ' + (r['description'] or '')).lower()]
+                    if len(rows) == 1:
+                        row = rows[0]
+                    elif len(rows) > 1:
+                        # Yanlis kaydi sessizce ezme: coklu eslesmede DOKUNMA, netlestirme iste
+                        conn.close()
+                        saved.append(f"⚠ {len(rows)} kayıt eşleşti, dokunulmadı: " + (hint or str(a.get('slot') or '')))
+                        continue
+                if not row:
+                    conn.close()
+                    saved.append('⚠ hedef öğün bulunamadı: ' + str(a.get('match') or a.get('title') or a.get('id') or ''))
+                    continue
+                if typ == 'meal_delete':
+                    conn.execute("DELETE FROM meal_entries WHERE id=?", (row['id'],))
+                    conn.commit(); conn.close()
+                    saved.append('öğün silindi: ' + (row['title'] or row['slot']))
+                else:
+                    upd = {}
+                    for col in ('title', 'description', 'calories', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sugar_g'):
+                        if col in a and a[col] is not None:
+                            upd[col] = a[col]
+                    if a.get('new_slot'):
+                        upd['slot'] = normalize_meal_slot(a.get('new_slot'))
+                    # Aciklama degisti ama makro verilmediyse Besin DB'den yeniden turet
+                    if 'description' in upd and 'calories' not in upd:
+                        _t = upd.get('title', row['title'] or '')
+                        for _col, _key in (('calories_per_100', 'calories'), ('protein_per_100', 'protein_g'),
+                                           ('carbs_per_100', 'carbs_g'), ('fat_per_100', 'fat_g'),
+                                           ('fiber_per_100', 'fiber_g'), ('sugar_per_100', 'sugar_g')):
+                            _v = _infer_meal_nutrient(conn, _t, upd['description'], _col)
+                            if _v is not None:
+                                upd[_key] = _v
+                    if upd:
+                        conn.execute("UPDATE meal_entries SET " + ",".join(k + "=?" for k in upd) + " WHERE id=?",
+                                     (*upd.values(), row['id']))
+                        conn.commit()
+                        saved.append('öğün güncellendi: ' + str(upd.get('title') or row['title'] or row['slot']))
+                    conn.close()
+            elif typ == 'meal_title_add':
+                tname = (a.get('name') or '').strip()
+                if tname:
+                    conn = get_db()
+                    if not conn.execute("SELECT id FROM meal_titles WHERE name=?", (tname,)).fetchone():
+                        _last = conn.execute("SELECT title_id FROM meal_titles ORDER BY id DESC LIMIT 1").fetchone()
+                        _num = 1
+                        if _last and _last['title_id']:
+                            try:
+                                _num = int(_last['title_id'].split('-')[1]) + 1
+                            except Exception:
+                                pass
+                        conn.execute("INSERT INTO meal_titles (title_id,name,order_num) VALUES (?,?,?)",
+                                     (f"TITLE-{_num:03d}", tname, a.get('order_num', 99)))
+                        conn.commit()
+                        saved.append('öğün başlığı eklendi: ' + tname)
+                    conn.close()
             elif typ == 'note':
                 db_upsert('daily_notes', action_date, {'note': a.get('note') or ''})
                 saved.append('not')
@@ -7603,20 +7723,17 @@ def api_food_registry_add():
         log.exception("api_food_registry_add basarisiz")
         return jsonify({'error':'Ürün kaydedilemedi'}), 500
 
-@app.route('/api/food-registry/recipe', methods=['POST'])
-def api_food_registry_recipe():
-    """Bilesenlerden (Besin DB kalemleri) bir 'Tarif' urunu olusturur:
-    her bilesenin makrosu toplanir, toplam grama bolunup x100 ile per-100g degeri hesaplanir,
-    food_registry'ye category='Tarif' + recipe JSON olarak kaydedilir. Tavuk Special ile ayni desen."""
+def recipe_upsert_core(name, comps, notes_extra=None):
+    """Bilesenlerden 'Tarif' urunu olusturur/gunceller (route VE Koc aksiyonu ayni cekirdegi
+    kullanir). (payload_dict, http_code) doner."""
     try:
         ensure_food_registry()
-        data = request.get_json(force=True) or {}
-        name = (data.get('name') or '').strip()
-        comps = data.get('components') or data.get('items') or []
+        name = (name or '').strip()
+        comps = comps or []
         if not name:
-            return jsonify({'ok': False, 'error': 'Tarif adı gerekli'}), 400
+            return {'ok': False, 'error': 'Tarif adı gerekli'}, 400
         if not comps:
-            return jsonify({'ok': False, 'error': 'En az 1 bileşen ekle'}), 400
+            return {'ok': False, 'error': 'En az 1 bileşen ekle'}, 400
         conn = get_db()
         tot = {'kcal': 0.0, 'p': 0.0, 'c': 0.0, 'f': 0.0, 'fiber': 0.0, 'sugar': 0.0}
         grams = 0.0
@@ -7660,10 +7777,10 @@ def api_food_registry_recipe():
         # Denetim fix: cozulemeyen bilesen sessizce dusmesin - eksik makroyla yanlis tarif kaydetmek yerine hata ver
         if unresolved:
             conn.close()
-            return jsonify({'ok': False, 'error': 'Bileşen(ler) Besin DB\'de bulunamadı/çevrilemedi: ' + ', '.join(unresolved)}), 400
+            return {'ok': False, 'error': 'Bileşen(ler) Besin DB\'de bulunamadı/çevrilemedi: ' + ', '.join(unresolved)}, 400
         if grams <= 0:
             conn.close()
-            return jsonify({'ok': False, 'error': 'Toplam gram 0 — en az bir bileşen gram/ml birimli olmalı'}), 400
+            return {'ok': False, 'error': 'Toplam gram 0 — en az bir bileşen gram/ml birimli olmalı'}, 400
         k = 100.0 / grams
         per = {
             'calories_per_100': round(tot['kcal'] * k, 1), 'protein_per_100': round(tot['p'] * k, 1),
@@ -7675,11 +7792,13 @@ def api_food_registry_recipe():
         # Kartta 'tamami kac gram/kcal' gorunsun - kullanici porsiyon bolerken bunu baz alir
         # ("493g oldugunu nerden bilcem" - 2026-07-23).
         auto_notes = f"TAMAMI: {round(grams):g}g | yarısı ≈{round(grams / 2):g}g"
+        if notes_extra:
+            auto_notes += ' | ' + str(notes_extra).strip()
         existing = conn.execute("SELECT id, category FROM food_registry WHERE name=? OR official_name=?", (name, name)).fetchone()
         # Denetim fix: ayni isimde TARIF OLMAYAN bir besin varsa sessizce ezme - veri kaybi olur
         if existing and (existing['category'] or '') != 'Tarif':
             conn.close()
-            return jsonify({'ok': False, 'error': f'"{name}" isminde tarif olmayan bir besin zaten var — farklı bir isim seç veya önce onu sil'}), 400
+            return {'ok': False, 'error': f'"{name}" isminde tarif olmayan bir besin zaten var — farklı bir isim seç veya önce onu sil'}, 400
         if existing:
             conn.execute("""UPDATE food_registry SET calories_per_100=?,protein_per_100=?,carbs_per_100=?,fat_per_100=?,fiber_per_100=?,sugar_per_100=?,category='Tarif',notes=?,recipe=?,serving_size=100,serving_unit='g',unit='g' WHERE id=?""",
                 (per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], auto_notes, recipe_json, existing['id']))
@@ -7689,10 +7808,18 @@ def api_food_registry_recipe():
                 (name, per['calories_per_100'], per['protein_per_100'], per['carbs_per_100'], per['fat_per_100'], per['fiber_per_100'], per['sugar_per_100'], 'g', 100, 'g', auto_notes, '', 'Tarif', recipe_json))
             new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.commit(); conn.close()
-        return jsonify({'ok': True, 'id': new_id, 'per_100': per, 'total_grams': round(grams, 1)})
+        return {'ok': True, 'id': new_id, 'per_100': per, 'total_grams': round(grams, 1)}, 200
     except Exception:
-        log.exception("api_food_registry_recipe basarisiz")
-        return jsonify({'ok': False, 'error': 'Tarif kaydedilemedi'}), 500
+        log.exception("recipe_upsert_core basarisiz")
+        return {'ok': False, 'error': 'Tarif kaydedilemedi'}, 500
+
+
+@app.route('/api/food-registry/recipe', methods=['POST'])
+def api_food_registry_recipe():
+    data = request.get_json(force=True) or {}
+    payload, code = recipe_upsert_core(
+        data.get('name'), data.get('components') or data.get('items') or [], data.get('notes_extra'))
+    return jsonify(payload), code
 
 @app.route('/api/food-registry/<int:fid>', methods=['PUT'])
 def api_food_registry_update(fid):
