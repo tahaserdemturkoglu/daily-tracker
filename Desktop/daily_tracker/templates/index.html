@@ -2404,18 +2404,30 @@ function ndRecipeRows(rf,parentMeal){
     return rf.notes?`<div style="padding:10px 16px 12px;font-size:11.5px;color:${ND.muted};line-height:1.6">${escHtml(rf.notes)}</div>`:'';
   }
   const rc=(lbl,v,color)=>`<span style="background:${ndHexA(color,.12)};border:1px solid ${ndHexA(color,.3)};color:${color};font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px">${lbl}${+(Math.round(v*10)/10)}</span>`;
-  return comps.map(c=>{
+  // Bilesen gramlari (adet/fıs porsiyon gramina cevrilir - backend tarif hesabiyla ayni kural)
+  const gramsOf=(c)=>{
     const f=(window._foodList||[]).find(x=>x.name===c.name||(x.official_name||'')===c.name);
-    // adet/fıs gibi gram-dışı birimler porsiyon gramına çevrilir (backend tarif
-    // hesabıyla aynı kural) — yoksa '1 adet lavaş' 1 GRAM sanılıp 3 kcal çıkıyordu.
     const u=(c.unit||'g').toLowerCase();
-    const gramLike=['g','gr','gram','ml'].includes(u);
-    const grams=gramLike?(c.amount||0):((c.amount||0)*(Number(f&&f.serving_size)||0));
+    const g=['g','gr','gram','ml'].includes(u)?(c.amount||0):((c.amount||0)*(Number(f&&f.serving_size)||0));
+    return {f,g};
+  };
+  // KRITIK: kart YENEN PORSIYONA olceklenir. Kayit '300 g Beyti' ise tarifin
+  // tamami (491g) degil 300/491'i gosterilir - yoksa satir 460 kcal derken
+  // dokum 753'e toplaniyordu (2026-07-24 kullanici yakaladi).
+  const totalG=comps.reduce((a,c)=>a+gramsOf(c).g,0);
+  const eatenM=((parentMeal&&parentMeal.description)||'').match(/(\d+(?:[.,]\d+)?)\s*g/i);
+  const eatenG=eatenM?parseFloat(eatenM[1].replace(',','.')):0;
+  const factor=(totalG>0&&eatenG>0)?(eatenG/totalG):1;
+  const oran=factor<0.999?`<div style="padding:8px 16px 0;font-size:10.5px;color:${ND.muted}">Bu porsiyon tarifin %${Math.round(factor*100)}'i — bileşenler porsiyona ölçekli</div>`:'';
+  return oran+comps.map(c=>{
+    const {f,g}=gramsOf(c);
+    const grams=g*factor;
     const r=grams/100;
     const kcal=f?Math.round((f.calories_per_100||0)*r):0;
     const p=f?(f.protein_per_100||0)*r:0,k=f?(f.carbs_per_100||0)*r:0,y=f?(f.fat_per_100||0)*r:0;
+    const miktar=factor<0.999?(Math.round(grams)+'g'):((c.amount||'')+escHtml(c.unit||'g'));
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #171E2C">
-      <span style="font-size:12px;color:${ND.text2};flex:1;min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.amount||''}${escHtml(c.unit||'g')} ${escHtml(c.name)}</span>
+      <span style="font-size:12px;color:${ND.text2};flex:1;min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${miktar} ${escHtml(c.name)}</span>
       <span style="display:flex;align-items:center;gap:5px;flex-shrink:0"><b style="font-size:12px;color:${ND.kcal}">${kcal} kcal</b>${rc('P',p,ND.p)}${rc('K',k,ND.k)}${rc('Y',y,ND.y)}</span>
     </div>`;
   }).join('');
