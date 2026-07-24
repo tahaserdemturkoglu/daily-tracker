@@ -3313,8 +3313,9 @@ function selectFood(id,name){
       const gramLike=['g','ml','gram','gr'].includes(su.toLowerCase());
       let html='<option value="g">'+escHtml(gUnit)+'</option>';
       if(su && !gramLike && ss>0) html+='<option value="__unit__">'+escHtml(su)+' (1='+ss+'g)</option>';
-      // serving_unit tanimsiz ama gercek porsiyon grami varsa (100 default degil, ör. yumurta 52.5g) adet sec
-      else if(!su && ss>0 && ss!==100) html+='<option value="__unit__">adet (1='+ss+'g)</option>';
+      // serving_unit 'g' yazilmis ya da bos ama gercek porsiyon grami varsa (100 default degil,
+      // ör. yumurta 50g, tost dilimi 23g) yine de adet secilebilsin
+      else if(ss>0 && ss!==100) html+='<option value="__unit__">adet (1='+ss+'g)</option>';
       uSel.innerHTML=html; uSel.value='g';
     }
     $('nu-food-amount').value=100;
