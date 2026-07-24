@@ -2392,11 +2392,18 @@ def api_week():
 @app.route('/api/log/<category>', methods=['POST'])
 def api_log(category):
     tables = {'sleep':'sleep_logs','exercise':'exercise_logs','nutrition':'nutrition_logs',
-              'work':'work_logs','coaching':'coaching_logs','mood':'mood_logs'}
+              'work':'work_logs','coaching':'coaching_logs','mood':'mood_logs','skin':'skin_logs'}
     if category not in tables:
         return jsonify({'error': 'Gecersiz kategori'}), 400
     data = request.get_json(force=True) or {}
     d = data.pop('date', operation_today())
+    if category == 'skin':
+        # Cilt kaydi upsert degil INSERT: ayni gun birden fazla bolge/lezyon olabilir
+        conn = get_db()
+        conn.execute("INSERT INTO skin_logs (date, area, name, status, notes) VALUES (?,?,?,?,?)",
+                     (d, data.get('area',''), data.get('name',''), data.get('status',''), data.get('notes','')))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True, 'date': d})
     # Su icin ozel konsolidasyon: cok satir sorunundan kacin
     if category == 'nutrition' and 'water_ml' in data:
         ml = int(data.get('water_ml') or 0)
