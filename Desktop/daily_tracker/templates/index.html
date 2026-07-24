@@ -2406,7 +2406,12 @@ function ndRecipeRows(rf,parentMeal){
   const rc=(lbl,v,color)=>`<span style="background:${ndHexA(color,.12)};border:1px solid ${ndHexA(color,.3)};color:${color};font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px">${lbl}${+(Math.round(v*10)/10)}</span>`;
   return comps.map(c=>{
     const f=(window._foodList||[]).find(x=>x.name===c.name||(x.official_name||'')===c.name);
-    const r=(c.amount||0)/100;
+    // adet/fıs gibi gram-dışı birimler porsiyon gramına çevrilir (backend tarif
+    // hesabıyla aynı kural) — yoksa '1 adet lavaş' 1 GRAM sanılıp 3 kcal çıkıyordu.
+    const u=(c.unit||'g').toLowerCase();
+    const gramLike=['g','gr','gram','ml'].includes(u);
+    const grams=gramLike?(c.amount||0):((c.amount||0)*(Number(f&&f.serving_size)||0));
+    const r=grams/100;
     const kcal=f?Math.round((f.calories_per_100||0)*r):0;
     const p=f?(f.protein_per_100||0)*r:0,k=f?(f.carbs_per_100||0)*r:0,y=f?(f.fat_per_100||0)*r:0;
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid #171E2C">
